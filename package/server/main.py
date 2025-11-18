@@ -5,7 +5,7 @@
 @Time        : 2025/10/14 20:38 
 @Author      : SiYuan 
 @Email       : sixyuan044@gmail.com
-@File        : TimelessTalesAPI-main.py 
+@File        : TrailSnapAPI-main.py 
 @Description : 
 """
 from fastapi.middleware.cors import CORSMiddleware

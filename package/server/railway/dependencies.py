@@ -2,14 +2,16 @@
 # -*- coding: utf-8 -*-
 
 """
-@Time        : 2025/5/10 22:31 
-@Author      : SiYuan 
-@Email       : siyuan044@qq.com 
-@File        : backend-dependencies.py 
+@Time        : 2025/11/18 21:18
+@Author      : SiYuan
+@Email       : siyuan044@gmail.com
+@File        : server-dependencies.py
 @Description : 
 """
-from app.db.base import Base
-from app.db.session import SessionLocal, engine
+
+from railway.db.base import Base
+from railway.db import models
+from railway.db.session import SessionLocal, engine
 from sqlalchemy.orm import Session
 
 # 创建数据库表！！！必须放在User后面

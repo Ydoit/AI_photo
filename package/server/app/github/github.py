@@ -40,7 +40,7 @@ def get_github_headers() -> dict:
     """获取GitHub API请求头（支持Token）"""
     headers = {
         "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "timelesstales"
+        "User-Agent": "TrailSnap"
     }
     if GITHUB_TOKEN:
         headers["Authorization"] = f"token {GITHUB_TOKEN}"

@@ -6,7 +6,7 @@
         <div class="mb-4 md:mb-0">
           <p class="text-sm text-gray-500 dark:text-gray-400">
             © 2023-2025 SiYuan.
-            <a href="https://github.com/LC044/TimelessTales" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600 dark:hover:text-blue-400">
+            <a href="https://github.com/LC044/TrailSnap" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600 dark:hover:text-blue-400">
             本站源码
             </a>
           </p>
