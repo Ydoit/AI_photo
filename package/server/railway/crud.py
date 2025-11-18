@@ -27,9 +27,22 @@ def create_station(db: Session, station: StationCreate) -> Station:
     db.refresh(db_station)
     return db_station
 
-def get_station(db: Session, station_id: str) -> Optional[Station]:
+def update_station(db: Session, db_station: Station, update_data: StationCreate) -> Station:
+    """更新车站信息（仅更新有变化的字段）"""
+    # 遍历 StationCreate 的所有字段，只更新有变化的值
+    update_dict = update_data.model_dump(exclude_unset=True)  # 排除未传递的字段
+    for field, value in update_dict.items():
+        if field in ["station_name", "create_time"]:  # 不允许修改车站名称和创建时间
+            continue
+        setattr(db_station, field, value)
+
+    db.commit()
+    db.refresh(db_station)
+    return db_station
+
+def get_station(db: Session, station_name: str) -> Optional[Station]:
     """根据ID获取车站"""
-    return db.query(Station).filter(Station.station_id == station_id).first()
+    return db.query(Station).filter(Station.station_name == station_name).first()
 
 def get_stations(db: Session, skip: int = 0, limit: int = 100) -> List[Station]:
     """获取车站列表（分页）"""

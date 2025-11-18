@@ -24,7 +24,7 @@ from crud import (
     create_station, get_station, get_stations, get_stations_by_province_city,
     create_train, get_train_by_no_date, get_trains_by_departure_arrival,
     create_train_schedule, get_train_schedules_by_no_date,
-    get_all_train_types, get_all_seat_types, get_train_schedules
+    get_all_train_types, get_all_seat_types, get_train_schedules, update_station
 )
 from railway.db.models.models import Train
 from railway.dependencies import get_db
@@ -34,16 +34,50 @@ app = FastAPI(title="12306 车次信息 API", description="基于 FastAPI+Postgr
 
 
 # ------------------------------ 车站接口 ------------------------------
-@app.post("/stations", response_model=StationRead, summary="创建车站")
-def create_station_api(station: StationCreate, db: Session = Depends(get_db)):
-    db_station = get_station(db, station.station_id)
-    if db_station:
-        raise HTTPException(status_code=400, detail="车站编码已存在")
-    return create_station(db, station)
+@app.post("/stations", response_model=StationRead, summary="创建/更新车站（存在则检查更新）")
+def create_or_update_station_api(station: StationCreate, db: Session = Depends(get_db)):
+    # 1. 根据车站名称查询是否已存在
+    db_station = get_station(db, station.station_name)
 
-@app.get("/stations/{station_id}", response_model=StationRead, summary="根据ID获取车站")
-def get_station_api(station_id: str, db: Session = Depends(get_db)):
-    db_station = get_station(db, station_id)
+    if db_station:
+        # 2. 存在时，对比信息是否有更新（排除create_time，只对比业务字段）
+        # 提取StationCreate的所有业务字段（排除不需要对比的字段）
+        update_fields = [
+            "station_pinyin", "station_py", "province", "city",
+            "district", "telecode", "is_high_speed", "status"
+        ]
+        # 检查每个字段是否有变化
+        has_update = False
+        for field in update_fields:
+            db_value = getattr(db_station, field, None)
+            new_value = getattr(station, field, None)
+            # 处理None值对比（避免None == "" 的误判）
+            if (db_value is None and new_value is not None) or (db_value is not None and new_value is None):
+                has_update = True
+                break
+            if db_value != new_value:
+                has_update = True
+                break
+
+        if has_update:
+            # 3. 有更新则执行更新操作
+            updated_station = update_station(db, db_station, station)
+            # 自定义响应头，标识操作类型（可选）
+            headers = {"X-Operation-Type": "update"}
+            return updated_station
+        else:
+            # 4. 无更新则返回原数据，提示无变化
+            headers = {"X-Operation-Type": "no_change"}
+            return db_station
+
+    # 5. 不存在则创建新车站
+    new_station = create_station(db, station)
+    headers = {"X-Operation-Type": "create"}
+    return new_station
+
+@app.get("/stations/{station_name}", response_model=StationRead, summary="根据ID获取车站")
+def get_station_api(station_name: str, db: Session = Depends(get_db)):
+    db_station = get_station(db, station_name)
     if not db_station:
         raise HTTPException(status_code=404, detail="车站不存在")
     return db_station
@@ -123,5 +157,5 @@ def get_seat_types_api(db: Session = Depends(get_db)):
 
 if __name__ == "__main__":
     import uvicorn
-    # 运行服务：http://127.0.0.1:8000/docs 可访问 Swagger 文档
+    # 运行服务：http://127.0.0.1:8005/docs 可访问 Swagger 文档
     uvicorn.run("api:app", host="0.0.0.0", port=8005, reload=True)

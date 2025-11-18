@@ -24,9 +24,9 @@ class BaseSchema(BaseModel):
 
 # ------------------------------ 车站相关 ------------------------------
 class StationCreate(BaseModel):
-    station_id: str = Field(min_length=6, max_length=6, description="车站6位编码")
     station_name: str = Field(description="车站名称")
-    station_pinyin: str = Field(description="拼音（全拼|首字母，如beijingxi|bjx）")
+    station_pinyin: str = Field(description="拼音（全拼，如beijingxi）")
+    station_py: str = Field(description="拼音（首字母，如bjx）")
     province: str = Field(description="所属省份")
     city: str = Field(description="所属城市")
     district: Optional[str] = Field(None, description="所属区县")
@@ -35,7 +35,6 @@ class StationCreate(BaseModel):
     status: int = Field(ge=0, le=1, default=1, description="状态（1=运营，0=暂停）")
 
 class StationRead(BaseSchema):
-    station_id: str
     station_name: str
     station_pinyin: str
     province: str
