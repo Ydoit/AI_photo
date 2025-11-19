@@ -64,63 +64,59 @@ class SeatTypeDictRead(BaseModel):
 
 # ------------------------------ 车次相关 ------------------------------
 class TrainCreate(BaseModel):
-    train_no: str = Field(description="车次编号（G123/D456）")
+    train_no: str = Field(description="车次唯一编号")
+    train_code: str = Field(description="车次（G123/D456）")
     train_type: str = Field(max_length=2, description="列车类型编码（G/D/Z等）")
-    departure_station_id: str = Field(min_length=6, max_length=6, description="出发站编码")
-    arrival_station_id: str = Field(min_length=6, max_length=6, description="到达站编码")
+    from_station: str = Field(description="出发站")
+    to_station: str = Field(description="到达站")
     train_date: date = Field(description="开行日期（2024-10-01）")
-    departure_time: time = Field(description="发车时间（08:00:00）")
-    arrival_time: time = Field(description="终到时间（14:30:00）")
-    total_duration: int = Field(ge=0, description="全程时长（分钟）")
-    total_mileage: float = Field(ge=0, description="全程里程（公里）")
+    station_num: int = Field(description="途经车站个数（包含起始站）")
+    total_mileage: float = Field(default=0, description="全程里程（公里）")
     is_canceled: int = Field(ge=0, le=1, default=0, description="是否停运（0=正常）")
     is_odd_even: Optional[int] = Field(0, ge=0, le=4, description="开行规律（0=每日）")
 
 class TrainRead(BaseSchema):
-    train_id: int
     train_no: str
+    train_code: str
     train_type: str
-    train_type_info: Optional[TrainTypeDictRead]  # 关联列车类型信息
-    departure_station_id: str
+    from_station: str
     departure_station: StationRead  # 关联出发站信息
-    arrival_station_id: str
+    to_station: str
     arrival_station: StationRead  # 关联到达站信息
     train_date: date
-    departure_time: time
-    arrival_time: time
-    total_duration: int
     total_mileage: float
     is_canceled: int
     is_odd_even: Optional[int]
 
 # ------------------------------ 时刻表相关 ------------------------------
 class TrainScheduleCreate(BaseModel):
-    train_id: int = Field(description="关联车次ID")
-    station_id: str = Field(min_length=6, max_length=6, description="途经站编码")
+    train_no: str = Field(description="关联车次ID")
+    train_code: str = Field(description="关联车次号")
+    station_name: str = Field(description="途经站")
     sequence: int = Field(ge=1, description="途经顺序（1=出发站）")
+    arrive_day_diff: int = Field(ge=0, default=0, description="到达时间距离发车时间的天数差")
     arrival_time: Optional[time] = Field(None, description="到站时间（出发站为NULL）")
     departure_time: Optional[time] = Field(None, description="发车时间（到达站为NULL）")
     stop_duration: int = Field(ge=0, default=0, description="停留时长（分钟）")
     accumulated_mileage: float = Field(ge=0, description="累计里程（公里）")
+    running_time: Optional[time] = Field(None, description="累计运行时间（05:56）")
     is_departure: int = Field(ge=0, le=1, default=0, description="是否出发站（1=是）")
     is_arrival: int = Field(ge=0, le=1, default=0, description="是否到达站（1=是）")
-    platform: Optional[str] = Field(None, description="停靠站台")
-    seat_remain: Optional[Dict[str, int]] = Field(None, description="席位余票")
 
 class TrainScheduleRead(BaseSchema):
     schedule_id: int
-    train_id: int
-    station_id: str
+    train_no: str
+    train_code: str
+    station_name: str
     station: StationRead  # 关联车站信息
     sequence: int
     arrival_time: Optional[time]
     departure_time: Optional[time]
+    running_time: Optional[time]
     stop_duration: int
     accumulated_mileage: float
     is_departure: int
     is_arrival: int
-    platform: Optional[str]
-    seat_remain: Optional[Dict[str, int]]
 
 # ------------------------------ 组合响应模型 ------------------------------
 class TrainWithScheduleRead(TrainRead):

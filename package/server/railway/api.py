@@ -24,7 +24,7 @@ from crud import (
     create_station, get_station, get_stations, get_stations_by_province_city,
     create_train, get_train_by_no_date, get_trains_by_departure_arrival,
     create_train_schedule, get_train_schedules_by_no_date,
-    get_all_train_types, get_all_seat_types, get_train_schedules, update_station
+    get_train_schedules, update_station, get_train_by_code_date
 )
 from railway.db.models.models import Train
 from railway.dependencies import get_db
@@ -93,19 +93,23 @@ def get_stations_by_province_city_api(province: str, city: str, db: Session = De
 # ------------------------------ 车次接口 ------------------------------
 @app.post("/trains", response_model=TrainRead, summary="创建车次")
 def create_train_api(train: TrainCreate, db: Session = Depends(get_db)):
-    db_train = get_train_by_no_date(db, train.train_no, train.train_date)
+    db_train = get_train_by_code_date(db, train.train_code, train.train_date)
     if db_train:
         raise HTTPException(status_code=400, detail="该日期的车次已存在")
     # 验证出发站和到达站是否存在
-    if not get_station(db, train.departure_station_id):
+    if not get_station(db, train.from_station):
         raise HTTPException(status_code=404, detail="出发站不存在")
-    if not get_station(db, train.arrival_station_id):
+    if not get_station(db, train.to_station):
         raise HTTPException(status_code=404, detail="到达站不存在")
-    return create_train(db, train)
+    # 3. 创建车次
+    create_train(db, train)
+    # 4. 重新查询（带关联信息预加载），用于响应返回
+    new_db_train = get_train_by_code_date(db, train.train_code, train.train_date)
+    return new_db_train  # 返回带关联车站信息的车次对象
 
-@app.get("/trains/{train_no}/{train_date}", response_model=TrainRead, summary="根据车次+日期获取车次信息")
-def get_train_api(train_no: str, train_date: date, db: Session = Depends(get_db)):
-    db_train = get_train_by_no_date(db, train_no, train_date)
+@app.get("/trains/{train_code}/{train_date}", response_model=TrainRead, summary="根据车次+日期获取车次信息")
+def get_train_api(train_code: str, train_date: date, db: Session = Depends(get_db)):
+    db_train = get_train_by_code_date(db, train_code, train_date)
     if not db_train:
         raise HTTPException(status_code=404, detail="车次不存在")
     return db_train
@@ -125,9 +129,9 @@ def get_trains_api(
 @app.post("/train-schedules", response_model=TrainScheduleRead, summary="创建车次时刻表")
 def create_train_schedule_api(schedule: TrainScheduleCreate, db: Session = Depends(get_db)):
     # 验证车次和车站是否存在
-    if not db.query(Train).filter(Train.train_id == schedule.train_id).first():
+    if not db.query(Train).filter(Train.train_no == schedule.train_no).first():
         raise HTTPException(status_code=404, detail="车次不存在")
-    if not get_station(db, schedule.station_id):
+    if not get_station(db, schedule.station_name):
         raise HTTPException(status_code=404, detail="车站不存在")
     return create_train_schedule(db, schedule)
 
@@ -145,15 +149,6 @@ def get_train_with_schedule_api(train_no: str, train_date: date, db: Session = D
         raise HTTPException(status_code=404, detail="车次不存在")
     schedules = get_train_schedules(db, train.train_id)
     return TrainWithScheduleRead(**train.__dict__, schedules=schedules)
-
-# ------------------------------ 字典表接口 ------------------------------
-@app.get("/train-types", response_model=List[TrainTypeDictRead], summary="获取所有列车类型")
-def get_train_types_api(db: Session = Depends(get_db)):
-    return get_all_train_types(db)
-
-@app.get("/seat-types", response_model=List[SeatTypeDictRead], summary="获取所有席位类型")
-def get_seat_types_api(db: Session = Depends(get_db)):
-    return get_all_seat_types(db)
 
 if __name__ == "__main__":
     import uvicorn
