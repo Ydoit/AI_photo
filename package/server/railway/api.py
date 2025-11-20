@@ -10,7 +10,7 @@
 """
 from typing import List
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Path
 from sqlalchemy.orm import Session
 from datetime import date
 
@@ -108,7 +108,10 @@ def create_train_api(train: TrainCreate, db: Session = Depends(get_db)):
     return new_db_train  # 返回带关联车站信息的车次对象
 
 @app.get("/trains/{train_code}/{train_date}", response_model=TrainRead, summary="根据车次+日期获取车次信息")
-def get_train_api(train_code: str, train_date: date, db: Session = Depends(get_db)):
+def get_train_api(
+        train_code: str = Path(..., description="车次号（例如：G2025）"),
+        train_date: date = Path(..., description="开行日期（格式：YYYY-MM-DD，例如：2025-11-19）"),
+        db: Session = Depends(get_db)):
     db_train = get_train_by_code_date(db, train_code, train_date)
     if not db_train:
         raise HTTPException(status_code=404, detail="车次不存在")
@@ -143,7 +146,10 @@ def get_train_schedules_api(train_no: str, train_date: date, db: Session = Depen
     return schedules
 
 @app.get("/trains/with-schedule/{train_no}/{train_date}", response_model=TrainWithScheduleRead, summary="获取车次+时刻表完整信息")
-def get_train_with_schedule_api(train_no: str, train_date: date, db: Session = Depends(get_db)):
+def get_train_with_schedule_api(
+        train_no: str = Path(..., description="车次唯一编号（例如：620000K5020U）"),
+        train_date: date = Path(..., description="开行日期（格式：YYYY-MM-DD，例如：2025-11-19）"),
+        db: Session = Depends(get_db)):
     train = get_train_by_no_date(db, train_no, train_date)
     if not train:
         raise HTTPException(status_code=404, detail="车次不存在")

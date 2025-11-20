@@ -52,7 +52,11 @@ class Train(Base):
     """车次基础信息表"""
     __tablename__ = "train"
 
-    train_no = Column(String(length=20), primary_key=True, nullable=False, comment="车次唯一编号")
+    train_id = Column(
+        Integer, autoincrement=True,
+        primary_key=True, comment="车次唯一ID"
+    )
+    train_no = Column(String(length=20), nullable=False, comment="车次唯一编号")
     train_code = Column(String(length=20), nullable=False, comment="车次（G123/D456）")
     train_type = Column(String(length=2), nullable=False, comment="列车类型（关联train_type_dict.type_code）")
     from_station = Column(String(length=50), ForeignKey("station.station_name", ondelete="RESTRICT", onupdate="CASCADE"), nullable=False, comment="出发站")
@@ -89,8 +93,9 @@ class TrainSchedule(Base):
         Integer,autoincrement=True,
         primary_key=True, comment="时刻表记录唯一ID"
     )
-    train_no = Column(String(length=20), ForeignKey("train.train_no", ondelete="CASCADE", onupdate="CASCADE"),
-                      nullable=False, comment="关联车次唯一编号")
+    train_id = Column(Integer, ForeignKey("train.train_id", ondelete="RESTRICT", onupdate="CASCADE"),
+                          nullable=False, comment="关联车次ID")
+    train_no = Column(String(length=20), nullable=False, comment="关联车次唯一编号")
     train_code = Column(String(length=20), nullable=False, comment="车次（G123/D456）")
     station_name = Column(String(length=50), ForeignKey("station.station_name", ondelete="RESTRICT", onupdate="CASCADE"),
                           nullable=False, comment="途经站")
