@@ -10,7 +10,7 @@
 """
 
 from railway.db.base import Base
-from railway.db import models
+from railway.db.models import *
 from railway.db.session import SessionLocal, engine
 from sqlalchemy.orm import Session
 
@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 Base.metadata.create_all(bind=engine)
 
 
-def get_db():
+def get_db() -> Session:
     db = SessionLocal()
     try:
         yield db

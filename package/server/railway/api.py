@@ -20,14 +20,14 @@ from schemas import (
     TrainScheduleRead, TrainWithScheduleRead, TrainTypeDictRead,
     SeatTypeDictRead, TrainScheduleCreate
 )
-from crud import (
+from railway.crud import (
     create_station, get_station, get_stations, get_stations_by_province_city,
     create_train, get_train_by_no_date, get_trains_by_departure_arrival,
     create_train_schedule, get_train_schedules_by_no_date,
     get_train_schedules, update_station, get_train_by_code_date
 )
 from railway.db.models.models import Train
-from railway.dependencies import get_db
+from railway.db.dependencies import get_db
 
 # 初始化 FastAPI 应用
 app = FastAPI(title="12306 车次信息 API", description="基于 FastAPI+PostgreSQL+SQLAlchemy 的铁路车次信息管理接口", version="1.0.0")

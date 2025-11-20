@@ -6,12 +6,12 @@
 @Author      : SiYuan
 @Email       : siyuan044@gmail.com
 @File        : server-schemas.py
-@Description : 
+@Description : 铁路时刻表系统 Pydantic Schema（适配版本化运行计划）
 """
 
 from datetime import date, time, datetime
-from typing import List, Optional, Dict
-from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Union
+from pydantic import BaseModel, Field, validator
 
 # ------------------------------ 基础模型 ------------------------------
 class BaseSchema(BaseModel):
@@ -44,81 +44,92 @@ class StationRead(BaseSchema):
     is_high_speed: int
     status: int
 
-# ------------------------------ 列车类型字典 ------------------------------
-class TrainTypeDictRead(BaseModel):
-    type_code: str
-    type_name: str
-    description: Optional[str]
-
-    class Config:
-        from_attributes = True
-
-# ------------------------------ 席位类型字典 ------------------------------
-class SeatTypeDictRead(BaseModel):
-    seat_code: str
-    seat_name: str
-    seat_level: int
-
-    class Config:
-        from_attributes = True
-
-# ------------------------------ 车次相关 ------------------------------
+# ------------------------------ 车次相关（仅固定基础信息） ------------------------------
 class TrainCreate(BaseModel):
-    train_no: str = Field(description="车次唯一编号")
-    train_code: str = Field(description="车次（G123/D456）")
-    train_type: str = Field(max_length=2, description="列车类型编码（G/D/Z等）")
-    from_station: str = Field(description="出发站")
-    to_station: str = Field(description="到达站")
-    train_date: date = Field(description="开行日期（2024-10-01）")
-    station_num: int = Field(description="途经车站个数（包含起始站）")
-    total_mileage: float = Field(default=0, description="全程里程（公里）")
-    is_canceled: int = Field(ge=0, le=1, default=0, description="是否停运（0=正常）")
-    is_odd_even: Optional[int] = Field(0, ge=0, le=4, description="开行规律（0=每日）")
+    train_no: str = Field(description="铁路内部唯一编号（如0G12300）")
+    train_code: str = Field(description="对外公布车次（G123/D456）")
+    train_type: str = Field(max_length=2, description="列车类型编码（G/D/Z/T/K等）")
+    from_station: str = Field(description="固定出发站名称")
+    to_station: str = Field(description="固定到达站名称")
 
 class TrainRead(BaseSchema):
+    train_id: int  # 新增：车次唯一ID（用于关联运行计划）
     train_no: str
     train_code: str
     train_type: str
     from_station: str
-    departure_station: StationRead  # 关联出发站信息
+    departure_station: StationRead  # 关联出发站详情
     to_station: str
-    arrival_station: StationRead  # 关联到达站信息
-    train_date: date
+    arrival_station: StationRead  # 关联到达站详情
+
+# ------------------------------ 运行计划（版本表）相关 ------------------------------
+class TrainOperationPlanCreate(BaseModel):
+    train_no: str = Field(description="关联车次编号")
+    plan_version: str = Field(description="版本号（如20251120V1）")
+    start_date: date = Field(description="生效开始日期（含）")
+    end_date: Optional[date] = Field(None, description="生效结束日期（含），NULL=永久有效")
+    run_rule: int = Field(ge=0, le=5, default=0, description="开行规律：0=每日，1=工作日，2=周末，3=单日，4=双日，5=自定义")
+    custom_run_days: Optional[List[str]] = Field(None, description="自定义开行日期（格式：YYYY-MM-DD）")
+    station_num: int = Field(ge=2, description="途经车站个数（含起止站）")
+    total_mileage: float = Field(ge=0, default=0, description="全程里程（公里）")
+    is_canceled: int = Field(ge=0, le=1, default=0, description="该版本是否停运（0=正常，1=停运）")
+
+    @validator("custom_run_days")
+    def check_custom_days(cls, v, values):
+        """校验：自定义日期仅在run_rule=5时必填"""
+        if values.get("run_rule") == 5 and not v:
+            raise ValueError("自定义开行规律（run_rule=5）时，custom_run_days不能为空")
+        return v
+
+class TrainOperationPlanRead(BaseSchema):
+    operation_id: int  # 运行计划唯一ID
+    train_id: int
+    train_no: str
+    train: TrainRead  # 关联车次基础信息
+    plan_version: str
+    start_date: date
+    end_date: Optional[date]
+    run_rule: int
+    custom_run_days: Optional[List[str]]
+    station_num: int
     total_mileage: float
     is_canceled: int
-    is_odd_even: Optional[int]
 
-# ------------------------------ 时刻表相关 ------------------------------
+# ------------------------------ 时刻表相关（关联运行计划） ------------------------------
 class TrainScheduleCreate(BaseModel):
-    train_no: str = Field(description="关联车次ID")
-    train_code: str = Field(description="关联车次号")
-    station_name: str = Field(description="途经站")
-    sequence: int = Field(ge=1, description="途经顺序（1=出发站）")
-    arrive_day_diff: int = Field(ge=0, default=0, description="到达时间距离发车时间的天数差")
+    operation_id: int = Field(description="关联运行计划ID")
+    station_name: str = Field(description="途经站名称")
+    sequence: int = Field(ge=1, description="途经顺序（1=出发站，递增）")
+    arrive_day_diff: int = Field(ge=0, default=0, description="到达时间距发车的天数差（跨天填1）")
     arrival_time: Optional[time] = Field(None, description="到站时间（出发站为NULL）")
     departure_time: Optional[time] = Field(None, description="发车时间（到达站为NULL）")
     stop_duration: int = Field(ge=0, default=0, description="停留时长（分钟）")
     accumulated_mileage: float = Field(ge=0, description="累计里程（公里）")
-    running_time: Optional[time] = Field(None, description="累计运行时间（05:56）")
+    running_time: time = Field(description="累计运行时间（格式：HH:MM）")
     is_departure: int = Field(ge=0, le=1, default=0, description="是否出发站（1=是）")
     is_arrival: int = Field(ge=0, le=1, default=0, description="是否到达站（1=是）")
 
 class TrainScheduleRead(BaseSchema):
     schedule_id: int
-    train_no: str
-    train_code: str
+    operation_id: int
+    operation_plan: TrainOperationPlanRead  # 关联运行计划（可选，按需返回）
     station_name: str
-    station: StationRead  # 关联车站信息
+    station: StationRead  # 关联途经站详情
     sequence: int
+    arrive_day_diff: int
     arrival_time: Optional[time]
     departure_time: Optional[time]
-    running_time: Optional[time]
     stop_duration: int
     accumulated_mileage: float
+    running_time: time
     is_departure: int
     is_arrival: int
 
-# ------------------------------ 组合响应模型 ------------------------------
-class TrainWithScheduleRead(TrainRead):
-    """包含时刻表的车次信息"""
-    schedules: List[TrainScheduleRead] = Field(description="途经站点时刻表")
+# ------------------------------ 组合响应模型（适配查询需求） ------------------------------
+class TrainOperationPlanWithSchedulesRead(TrainOperationPlanRead):
+    """包含时刻表的运行计划（核心查询响应模型）"""
+    schedules: List[TrainScheduleRead] = Field(description="该版本对应的途经站点时刻表")
+
+class TrainWithOperationPlansRead(TrainRead):
+    """包含所有运行计划的车次信息（用于车次详情查询）"""
+    operation_plans: List[TrainOperationPlanWithSchedulesRead] = Field(description="车次的所有运行计划版本")
