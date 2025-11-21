@@ -20,10 +20,7 @@ from schemas import (
     TrainScheduleRead, TrainScheduleCreate, BaseResponse, StationSingleQuery, StationListQuery, StationListResponse
 )
 from railway.crud import (
-    create_station,
-    create_train,
-    create_train_schedule,
-    get_train_schedules, update_station, get_station_single, get_station_list,
+    create_station, get_station_single, get_station_list,
 )
 from railway.db.models.models import Train
 from railway.db.dependencies import get_db
@@ -84,9 +81,9 @@ def query_station_single(
 )
 def query_station_list(
     # 筛选参数
-    province: Optional[str] = Query(None, description="所属省份（精确匹配）"),
-    city: Optional[str] = Query(None, description="所属城市（精确匹配）"),
-    district: Optional[str] = Query(None, description="所属区县（精确匹配）"),
+    province: Optional[str] = Query(None, description="所属省份（可选）"),
+    city: Optional[str] = Query(None, description="所属城市（可选）"),
+    district: Optional[str] = Query(None, description="所属区县（可选）"),
     is_high_speed: Optional[int] = Query(None, ge=0, le=1, description="是否高铁站（0=普速，1=高铁）"),
     status: Optional[int] = Query(1, ge=0, le=1, description="状态（1=运营，0=暂停）"),
     # 搜索参数

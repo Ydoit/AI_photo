@@ -132,7 +132,6 @@ def get_station_list(db: Session, query: StationListQuery) -> Tuple[int, str, Di
 
         # 2. 城市筛选（同理，前缀模糊匹配）
         if standard_city:
-            # 数据库可能存“商丘”或“商丘市”，所以用前缀匹配（如“商丘”→ 匹配“商丘”“商丘市”）
             db_query = db_query.filter(Station.city.ilike(f"{standard_city}%"))
 
         # 3. 其他筛选条件（不变）

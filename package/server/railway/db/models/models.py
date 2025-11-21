@@ -35,8 +35,6 @@ class Station(Base):
     district = Column(String(length=30), nullable=True, comment="所属区县")
     is_high_speed = Column(SmallInteger, nullable=False, default=0, comment="是否高铁站（0=普速，1=高铁）")
     status = Column(SmallInteger, nullable=False, default=1, comment="状态（1=运营，0=暂停）")
-    create_time = Column(DateTime, nullable=False, default=datetime.utcnow, comment="创建时间")
-    update_time = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
 
     # 索引/约束
     __table_args__ = (
@@ -70,8 +68,6 @@ class TrainOperationPlan(Base):
     total_mileage = Column(DECIMAL(10, 1), nullable=False, default=0, comment="该版本全程里程（公里）")
     total_running_time = Column(Integer, nullable=False, default=0, comment="累计运行时间（分钟）")
     status = Column(SmallInteger, nullable=False, default=1, comment="该版本是否停运：1=正常，0=停运")
-    create_time = Column(DateTime, nullable=False, default=datetime.utcnow, comment="创建时间")
-    update_time = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
 
     # 索引/约束（确保版本唯一、查询高效）
     __table_args__ = (
@@ -105,9 +101,6 @@ class Train(Base):
 
     from_station = Column(String(length=3), ForeignKey("station.telecode", ondelete="RESTRICT", onupdate="CASCADE"), nullable=False, comment="固定出发站")
     to_station = Column(String(length=3), ForeignKey("station.telecode", ondelete="RESTRICT", onupdate="CASCADE"), nullable=False, comment="固定到达站")
-
-    create_time = Column(DateTime, nullable=False, default=datetime.utcnow, comment="创建时间")
-    update_time = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
 
     # 索引/约束（车次对外唯一）
     __table_args__ = (
@@ -157,8 +150,6 @@ class TrainSchedule(Base):
     running_time = Column(Integer, nullable=False, comment="累计运行时间（分钟）")
     is_departure = Column(SmallInteger, nullable=False, default=0, comment="是否出发站：1=是")
     is_arrival = Column(SmallInteger, nullable=False, default=0, comment="是否到达站：1=是")
-    create_time = Column(DateTime, nullable=False, default=datetime.utcnow, comment="创建时间")
-    update_time = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
 
     # 索引/约束（确保版本内的站点唯一、顺序唯一）
     __table_args__ = (

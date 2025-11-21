@@ -10,11 +10,11 @@
 """
 
 from railway.db.base import Base
-from railway.db.models import *
+from railway.db.models import Station, TrainOperationPlan, Train, TrainSchedule
 from railway.db.session import SessionLocal, engine
 from sqlalchemy.orm import Session
 
-# 创建数据库表！！！必须放在User后面
+# 创建数据库表！！！
 Base.metadata.create_all(bind=engine)
 
 
@@ -24,3 +24,6 @@ def get_db() -> Session:
         yield db
     finally:
         db.close()
+
+def init_db():
+    Base.metadata.create_all(bind=engine)
