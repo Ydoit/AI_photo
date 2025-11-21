@@ -21,14 +21,18 @@ class Station(Base):
     """全国车站基础表"""
     __tablename__ = "station"
 
-    # station_name = Column(String(length=6), primary_key=True, comment="车站唯一6位编码")
-    station_name = Column(String(length=50), primary_key=True, nullable=False, comment="车站名称")
+    station_id = Column(
+        Integer, autoincrement=True,
+        primary_key=True, comment="ID"
+    )
+
+    telecode = Column(String(length=3), nullable=False, comment="车站三位唯一电报码")
+    station_name = Column(String(length=50), nullable=False, comment="车站名称")
     station_pinyin = Column(String(length=100), nullable=False, comment="车站拼音（全拼）")
     station_py = Column(String(length=10), nullable=False, comment="车站拼音（首字母简拼）")
     province = Column(String(length=30), nullable=True, comment="所属省份/直辖市")
     city = Column(String(length=30), nullable=False, comment="所属城市")
     district = Column(String(length=30), nullable=True, comment="所属区县")
-    telecode = Column(String(length=3), nullable=True, comment="车站电报码")
     is_high_speed = Column(SmallInteger, nullable=False, default=0, comment="是否高铁站（0=普速，1=高铁）")
     status = Column(SmallInteger, nullable=False, default=1, comment="状态（1=运营，0=暂停）")
     create_time = Column(DateTime, nullable=False, default=datetime.utcnow, comment="创建时间")
@@ -36,9 +40,10 @@ class Station(Base):
 
     # 索引/约束
     __table_args__ = (
-        UniqueConstraint("station_name", name="uk_station_name"),  # 车站名称唯一
+        UniqueConstraint("telecode", name="uk_telecode"),
+        Index("idx_station_name", "station_name"),  # 拼音搜索索引
         Index("idx_station_pinyin", "station_pinyin"),  # 拼音搜索索引
-        Index("idx_province_city", "province", "city"),  # 省市筛选索引
+        Index("idx_station_province_city", "province", "city"),  # 省市筛选索引
     )
 
     # 关联关系：车站作为出发站的车次
@@ -63,8 +68,8 @@ class TrainOperationPlan(Base):
     custom_run_days = Column(JSON, nullable=True, comment="自定义开行日期（run_rule=5时用，如[\"2025-11-20\",\"2025-11-22\"]）")
     station_num = Column(SmallInteger, nullable=False, default=2, comment="该版本途经车站数（含起止站）")
     total_mileage = Column(DECIMAL(10, 1), nullable=False, default=0, comment="该版本全程里程（公里）")
-    total_running_time = Column(Time, nullable=False, default="00:00", comment="该版本全程运行时间（如05:56）")
-    is_canceled = Column(SmallInteger, nullable=False, default=0, comment="该版本是否停运：0=正常，1=停运")
+    total_running_time = Column(Integer, nullable=False, default=0, comment="累计运行时间（分钟）")
+    status = Column(SmallInteger, nullable=False, default=1, comment="该版本是否停运：1=正常，0=停运")
     create_time = Column(DateTime, nullable=False, default=datetime.utcnow, comment="创建时间")
     update_time = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
 
@@ -73,10 +78,10 @@ class TrainOperationPlan(Base):
         # 同一车次的版本号唯一
         UniqueConstraint("train_no",  name="uk_train_no"),
         # 核心查询索引：车次+生效时间范围（快速匹配某天的有效计划）
-        Index("idx_train_effective_date", "train_no", "start_date", "end_date"),
+        Index("idx_train_operation_plan_train_effective_date", "train_no", "start_date", "end_date"),
         # 辅助筛选索引
-        Index("idx_run_rule", "run_rule"),
-        Index("idx_is_canceled", "is_canceled"),
+        Index("idx_train_operation_plan_run_rule", "run_rule"),
+        Index("idx_train_operation_plan_status", "status"),
     )
     # 关联关系
     trains = relationship("Train", back_populates="operation_plan", cascade="all, delete-orphan")
@@ -97,8 +102,9 @@ class Train(Base):
                       nullable=False, comment="铁路内部唯一编号（如0G12300）")
     train_code = Column(String(length=20), nullable=False, comment="对外公布车次（G123/D456）")
     train_type = Column(String(length=2), nullable=False, comment="列车类型（G/D/Z/T/K等）")
-    from_station = Column(String(length=50), ForeignKey("station.station_name", ondelete="RESTRICT", onupdate="CASCADE"), nullable=False, comment="固定出发站")
-    to_station = Column(String(length=50), ForeignKey("station.station_name", ondelete="RESTRICT", onupdate="CASCADE"), nullable=False, comment="固定到达站")
+
+    from_station = Column(String(length=3), ForeignKey("station.telecode", ondelete="RESTRICT", onupdate="CASCADE"), nullable=False, comment="固定出发站")
+    to_station = Column(String(length=3), ForeignKey("station.telecode", ondelete="RESTRICT", onupdate="CASCADE"), nullable=False, comment="固定到达站")
 
     create_time = Column(DateTime, nullable=False, default=datetime.utcnow, comment="创建时间")
     update_time = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
@@ -106,12 +112,11 @@ class Train(Base):
     # 索引/约束（车次对外唯一）
     __table_args__ = (
         # UniqueConstraint("train_no", name="uk_train_no"),
-        Index("idx_train_no", "train_no"),  # 车次查询核心索引
-        Index("idx_train_code", "train_code"),  # 车次查询核心索引
-        Index("idx_from_to_station", "from_station", "to_station"),  # 出发-到达站筛选
+        Index("idx_train_train_no", "train_no"),  # 车次查询核心索引
+        Index("idx_train_train_code", "train_code"),  # 车次查询核心索引
+        Index("idx_train_from_to_station", "from_station", "to_station"),  # 出发-到达站筛选
     )
 
-    # -------------------------- 关键补充：缺失的关联属性 --------------------------
     # 1. 对应 Station.departure_trains 的反向关联（出发站）
     # 必须指定 foreign_keys=from_station，因为 Train 有两个外键关联 Station，避免歧义
     departure_station = relationship(
@@ -125,7 +130,6 @@ class Train(Base):
         foreign_keys=[to_station],  # 明确关联当前模型的 to_station 外键
         back_populates="arrival_trains",  # 和 Station 里的 arrival_trains 对应
     )
-    # -----------------------------------------------------------------------------
 
     # 关联关系：一个运行计划可能对应多个车次
     operation_plan = relationship("TrainOperationPlan", back_populates="trains")
@@ -141,8 +145,9 @@ class TrainSchedule(Base):
     train_no = Column(String(length=20), ForeignKey("train_operation_plan.train_no", ondelete="CASCADE", onupdate="CASCADE"),
                           nullable=False, comment="关联运行计划ID（核心关联）")
     train_code = Column(String(length=20), nullable=False, comment="对外公布车次（G123/D456）")
-    station_name = Column(String(length=50), ForeignKey("station.station_name", ondelete="RESTRICT", onupdate="CASCADE"),
-                          nullable=False, comment="途经站")
+    station_telecode = Column(String(length=3), ForeignKey("station.telecode", ondelete="RESTRICT", onupdate="CASCADE"),
+                          nullable=False, comment="途经站电报码")
+    station_name = Column(String(length=50), nullable=False, comment="途经站")
     sequence = Column(SmallInteger, nullable=False, comment="途经顺序（1=出发站，递增）")
     arrive_day_diff = Column(SmallInteger, nullable=False, comment="到达时间距发车的天数差（如跨天为1）")
     arrival_time = Column(Time, nullable=True, comment="到站时间（出发站为NULL）")
@@ -157,13 +162,14 @@ class TrainSchedule(Base):
 
     # 索引/约束（确保版本内的站点唯一、顺序唯一）
     __table_args__ = (
-        UniqueConstraint("train_no", "station_name", name="uk_operation_station"),
+        UniqueConstraint("train_no", "station_telecode", name="uk_operation_station"),
         UniqueConstraint("train_no", "sequence", name="uk_operation_sequence"),
         # 核心查询索引：运行计划ID+顺序（快速获取排序后的时刻表）
-        Index("idx_operation_train_no", "train_no"),
-        Index("idx_train_no_name", "train_no","station_name"),
-        Index("idx_operation_sequence", "train_no", "sequence"),
-        Index("idx_station_name", "station_name"),
+        Index("idx_train_schedule_operation_train_no", "train_no"),
+        Index("idx_train_schedule_train_no_name", "train_no","station_name"),
+        Index("idx_train_schedule_operation_sequence", "train_no", "sequence"),
+        Index("idx_train_schedule_station_name", "station_name"),
+        Index("idx_train_schedule_station_telecode", "station_telecode"),
     )
 
     # 关联关系

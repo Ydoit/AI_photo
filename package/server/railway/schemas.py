@@ -10,8 +10,21 @@
 """
 
 from datetime import date, time, datetime
-from typing import List, Optional, Dict, Union
+from typing import List, Optional, Generic, TypeVar
 from pydantic import BaseModel, Field, validator
+
+# 定义泛型类型（支持不同业务数据类型）
+T = TypeVar("T")
+
+# ------------------------------ 通用响应模型（统一错误码载体）------------------------------
+class BaseResponse(BaseModel, Generic[T]):
+    """所有接口的统一响应模型：包含错误码、提示信息、业务数据"""
+    code: int = Field(default=200, description="错误码：200=成功，4xx=客户端错误，5xx=服务端错误")
+    msg: str = Field(default="操作成功", description="提示信息")
+    data: Optional[T] = Field(default=None, description="业务数据（成功时返回，失败时为None）")
+
+    class Config:
+        from_attributes = True  # 支持从 ORM 模型直接转换
 
 # ------------------------------ 基础模型 ------------------------------
 class BaseSchema(BaseModel):
@@ -24,13 +37,13 @@ class BaseSchema(BaseModel):
 
 # ------------------------------ 车站相关 ------------------------------
 class StationCreate(BaseModel):
+    telecode: Optional[str] = Field(max_length=3, description="电报码")
     station_name: str = Field(description="车站名称")
     station_pinyin: str = Field(description="拼音（全拼，如beijingxi）")
     station_py: str = Field(description="拼音（首字母，如bjx）")
     province: str = Field(description="所属省份")
     city: str = Field(description="所属城市")
     district: Optional[str] = Field(None, description="所属区县")
-    telecode: Optional[str] = Field(None, max_length=3, description="电报码")
     is_high_speed: int = Field(ge=0, le=1, default=0, description="是否高铁站（0=普速，1=高铁）")
     status: int = Field(ge=0, le=1, default=1, description="状态（1=运营，0=暂停）")
 
@@ -43,6 +56,35 @@ class StationRead(BaseSchema):
     telecode: Optional[str]
     is_high_speed: int
     status: int
+
+# ------------------------------ 查询入参Schema（新增）------------------------------
+class StationSingleQuery(BaseModel):
+    """单条车站查询参数（支持ID/电报码/名称，三选一）"""
+    station_id: Optional[int] = Field(None, description="车站ID（与telecode/name三选一）")
+    telecode: Optional[str] = Field(None, max_length=3, description="车站电报码（唯一，三选一）")
+    station_name: Optional[str] = Field(None, description="车站名称（精确匹配，三选一）")
+
+class StationListQuery(BaseModel):
+    """车站列表查询参数（支持筛选、模糊搜索、分页）"""
+    # 筛选条件
+    province: Optional[str] = Field(None, description="所属省份（精确匹配，如：北京市）")
+    city: Optional[str] = Field(None, description="所属城市（精确匹配，如：北京市）")
+    district: Optional[str] = Field(None, description="所属区县（精确匹配，如：丰台区）")
+    is_high_speed: Optional[int] = Field(None, ge=0, le=1, description="是否高铁站（0=普速，1=高铁）")
+    status: Optional[int] = Field(1, ge=0, le=1, description="状态（1=运营，0=暂停，默认查运营）")
+    # 模糊搜索（名称/全拼/简拼）
+    keyword: Optional[str] = Field(None, description="搜索关键词（匹配名称/全拼/简拼，如：bjx/北京西/beijingxi）")
+    # 分页参数
+    page: int = Field(1, ge=1, description="页码（默认第1页）")
+    page_size: int = Field(20, ge=1, le=100, description="每页条数（1-100，默认20）")
+
+# 定义列表查询的响应数据结构（明确 list 是 StationRead 列表）
+class StationListResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    total_page: int
+    list: List[StationRead]  # 明确是 StationRead 列表
 
 # ------------------------------ 车次相关（仅固定基础信息） ------------------------------
 class TrainCreate(BaseModel):
