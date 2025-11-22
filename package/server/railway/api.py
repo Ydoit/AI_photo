@@ -16,11 +16,17 @@ from datetime import date
 
 
 from schemas import (
-    StationRead, StationCreate, TrainRead, TrainCreate,
-    TrainScheduleRead, TrainScheduleCreate, BaseResponse, StationSingleQuery, StationListQuery, StationListResponse
+    StationRead, StationCreate, BaseResponse, StationSingleQuery, StationListQuery, StationListResponse,
+    TrainScheduleRead, TrainScheduleListQuery, TrainScheduleSingleQuery, TrainScheduleBatchCreate, TrainListQuery,
+    TrainSingleQuery, TrainRead, TrainCreate, TrainOperationPlanRead, TrainOperationPlanListQuery,
+    TrainOperationPlanSingleQuery, TrainOperationPlanCreate, TrainListResponse, TrainScheduleResponse
 )
 from railway.crud import (
-    create_station, get_station_single, get_station_list,
+    create_station, get_station_single, get_station_list, get_train_full_schedule, delete_train_schedule,
+    get_train_schedule_list, get_train_schedule_single, create_train_schedule_batch, delete_train, get_train_list,
+    get_train_single, create_train, delete_train_operation_plan, update_train_operation_plan_status,
+    get_train_operation_plan_list, get_train_operation_plan_single, create_train_operation_plan,
+    get_schedule_by_train_code_and_date,
 )
 from railway.db.models.models import Train
 from railway.db.dependencies import get_db
@@ -109,6 +115,246 @@ def query_station_list(
     # 返回统一响应
     return BaseResponse(code=code, msg=msg, data=data)
 
+# ------------------------------ 运行计划接口 ------------------------------
+@app.post(
+    "/train-operation-plans",
+    response_model=BaseResponse[TrainOperationPlanRead],
+    summary="创建/更新运行计划（存在则更新）"
+)
+def create_or_update_operation_plan(
+    plan: TrainOperationPlanCreate = Body(..., description="运行计划信息"),
+    db: Session = Depends(get_db)
+):
+    code, msg, data = create_train_operation_plan(db, plan)
+    return BaseResponse(code=code, msg=msg, data=data)
+
+@app.get(
+    "/train-operation-plans/single",
+    response_model=BaseResponse[TrainOperationPlanRead],
+    summary="单条运行计划查询（ID/车次编号二选一）"
+)
+def query_operation_plan_single(
+    operation_id: Optional[int] = Query(None, description="运行计划ID（与train_no二选一）"),
+    train_no: Optional[str] = Query(None, max_length=20, description="车次编号（与operation_id二选一）"),
+    db: Session = Depends(get_db)
+):
+    query = TrainOperationPlanSingleQuery(operation_id=operation_id, train_no=train_no)
+    code, msg, data = get_train_operation_plan_single(db, query)
+    return BaseResponse(code=code, msg=msg, data=data)
+
+@app.get(
+    "/train-operation-plans",
+    response_model=BaseResponse[Dict[str, Any]],
+    summary="运行计划列表查询（筛选+分页）"
+)
+def query_operation_plan_list(
+    train_no: Optional[str] = Query(None, description="车次编号（模糊匹配）"),
+    start_date: Optional[date] = Query(None, description="生效开始日期（>=该日期）"),
+    end_date: Optional[date] = Query(None, description="生效结束日期（<=该日期）"),
+    run_rule: Optional[int] = Query(None, ge=0, le=5, description="开行规律：0=每日，1=工作日...5=自定义"),
+    status: Optional[int] = Query(1, ge=0, le=1, description="状态（1=正常，0=停运）"),
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页条数（1-100）"),
+    db: Session = Depends(get_db)
+):
+    query = TrainOperationPlanListQuery(
+        train_no=train_no, start_date=start_date, end_date=end_date,
+        run_rule=run_rule, status=status, page=page, page_size=page_size
+    )
+    code, msg, data = get_train_operation_plan_list(db, query)
+    return BaseResponse(code=code, msg=msg, data=data)
+
+@app.patch(
+    "/train-operation-plans/{operation_id}/status",
+    response_model=BaseResponse[TrainOperationPlanRead],
+    summary="更新运行计划状态（正常/停运）"
+)
+def update_operation_plan_status(
+    operation_id: int = Path(..., ge=1, description="运行计划ID"),
+    status: int = Body(..., ge=0, le=1, description="目标状态：1=正常，0=停运"),
+    db: Session = Depends(get_db)
+):
+    code, msg, data = update_train_operation_plan_status(db, operation_id, status)
+    return BaseResponse(code=code, msg=msg, data=data)
+
+@app.delete(
+    "/train-operation-plans/{operation_id}",
+    response_model=BaseResponse[None],
+    summary="删除运行计划（级联删除关联车次和时刻表）"
+)
+def delete_operation_plan(
+    operation_id: int = Path(..., ge=1, description="运行计划ID"),
+    db: Session = Depends(get_db)
+):
+    code, msg = delete_train_operation_plan(db, operation_id)
+    return BaseResponse(code=code, msg=msg, data=None)
+
+# ------------------------------ 车次接口 ------------------------------
+@app.post(
+    "/trains",
+    response_model=BaseResponse[TrainRead],
+    summary="创建/更新车次（需关联已存在的运行计划和车站）"
+)
+def create_or_update_train(
+    train: TrainCreate = Body(..., description="车次信息"),
+    db: Session = Depends(get_db)
+):
+    code, msg, data = create_train(db, train)
+    return BaseResponse(code=code, msg=msg, data=data)
+
+@app.get(
+    "/trains/single",
+    response_model=BaseResponse[TrainRead],
+    summary="单条车次查询（支持ID/内部编号/对外车次等多字段）"
+)
+def query_train_single(
+    train_id: Optional[int] = Query(None, description="车次ID"),
+    train_no: Optional[str] = Query(None, description="铁路内部编号（如0G12300）"),
+    train_code: Optional[str] = Query(None, description="对外公布车次（如G123）"),
+    from_station: Optional[str] = Query(None, description="出发站电报码"),
+    to_station: Optional[str] = Query(None, description="到达站电报码"),
+    db: Session = Depends(get_db)
+):
+    query = TrainSingleQuery(
+        train_id=train_id, train_no=train_no, train_code=train_code,
+        from_station=from_station, to_station=to_station
+    )
+    code, msg, data = get_train_single(db, query)
+    return BaseResponse(code=code, msg=msg, data=data)
+
+@app.get(
+    "/trains",
+    response_model=BaseResponse[TrainListResponse],
+    summary="车次列表查询（筛选+模糊搜索+分页）"
+)
+def query_train_list(
+    train_code: Optional[str] = Query(None, description="对外车次（模糊匹配）"),
+    train_type: Optional[str] = Query(None, description="列车类型（G/D/Z/T/K等）"),
+    from_station: Optional[str] = Query(None, description="出发站（电报码或名称模糊匹配）"),
+    to_station: Optional[str] = Query(None, description="到达站（电报码或名称模糊匹配）"),
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页条数（1-100）"),
+    db: Session = Depends(get_db)
+):
+    query = TrainListQuery(
+        train_code=train_code, train_type=train_type,
+        from_station=from_station, to_station=to_station,
+        page=page, page_size=page_size
+    )
+    code, msg, data = get_train_list(db, query)
+    return BaseResponse(code=code, msg=msg, data=data)
+
+@app.delete(
+    "/trains/{train_no}",
+    response_model=BaseResponse[None],
+    summary="删除车次（需先解除运行计划关联或删除运行计划）"
+)
+def delete_train_api(
+    train_no: str = Path(..., max_length=20, description="铁路内部编号（如0G12300）"),
+    db: Session = Depends(get_db)
+):
+    code, msg = delete_train(db, train_no)
+    return BaseResponse(code=code, msg=msg, data=None)
+
+# ------------------------------ 时刻表接口 ------------------------------
+@app.post(
+    "/train-schedules/batch",
+    response_model=BaseResponse[List[TrainScheduleRead]],
+    summary="批量创建/更新时刻表（一个运行计划对应多个站点）"
+)
+def batch_create_or_update_schedule(
+    batch_data: TrainScheduleBatchCreate = Body(..., description="批量时刻表数据（至少2条：出发站+到达站）"),
+    db: Session = Depends(get_db)
+):
+    code, msg, data = create_train_schedule_batch(db, batch_data)
+    return BaseResponse(code=code, msg=msg, data=data)
+
+@app.get(
+    "/train-schedules/single",
+    response_model=BaseResponse[TrainScheduleRead],
+    summary="单条时刻表查询（支持ID/车次/车站/顺序）"
+)
+def query_schedule_single(
+    schedule_id: Optional[int] = Query(None, description="时刻表ID"),
+    train_no: Optional[str] = Query(None, description="车次编号"),
+    station_telecode: Optional[str] = Query(None, max_length=3, description="车站电报码"),
+    sequence: Optional[int] = Query(None, ge=1, description="途经顺序"),
+    db: Session = Depends(get_db)
+):
+    query = TrainScheduleSingleQuery(
+        schedule_id=schedule_id, train_no=train_no,
+        station_telecode=station_telecode, sequence=sequence
+    )
+    code, msg, data = get_train_schedule_single(db, query)
+    return BaseResponse(code=code, msg=msg, data=data)
+
+@app.get(
+    "/train-schedules",
+    response_model=BaseResponse[TrainScheduleResponse],
+    summary="时刻表列表查询（筛选+模糊搜索+分页）"
+)
+def query_schedule_list(
+    train_no: Optional[str] = Query(None, description="车次编号（模糊匹配）"),
+    train_code: Optional[str] = Query(None, description="对外车次（模糊匹配）"),
+    station_telecode: Optional[str] = Query(None, description="车站电报码"),
+    station_name: Optional[str] = Query(None, description="车站名称（模糊匹配）"),
+    is_departure: Optional[int] = Query(None, ge=0, le=1, description="是否出发站（1=是）"),
+    is_arrival: Optional[int] = Query(None, ge=0, le=1, description="是否到达站（1=是）"),
+    page: int = Query(1, ge=1, description="页码"),
+    page_size: int = Query(20, ge=1, le=100, description="每页条数（1-100）"),
+    db: Session = Depends(get_db)
+):
+    query = TrainScheduleListQuery(
+        train_no=train_no, train_code=train_code, station_telecode=station_telecode,
+        station_name=station_name, is_departure=is_departure, is_arrival=is_arrival,
+        page=page, page_size=page_size
+    )
+    code, msg, data = get_train_schedule_list(db, query)
+    return BaseResponse(code=code, msg=msg, data=data)
+
+@app.get(
+    "/train-schedules/full/{train_no}",
+    response_model=BaseResponse[List[TrainScheduleRead]],
+    summary="获取某车次完整时刻表（按途经顺序排序）"
+)
+def query_full_schedule(
+    train_no: str = Path(..., max_length=20, description="车次编号（如0G12300）"),
+    db: Session = Depends(get_db)
+):
+    code, msg, data = get_train_full_schedule(db, train_no)
+    return BaseResponse(code=code, msg=msg, data=data)
+
+@app.delete(
+    "/train-schedules/{train_no}",
+    response_model=BaseResponse[None],
+    summary="删除时刻表（支持删除全车次或单个站点）"
+)
+def delete_schedule(
+    train_no: str = Path(..., max_length=20, description="车次编号"),
+    station_telecode: Optional[str] = Query(None, max_length=3, description="车站电报码（留空则删除全车次时刻表）"),
+    db: Session = Depends(get_db)
+):
+    code, msg = delete_train_schedule(db, train_no, station_telecode)
+    return BaseResponse(code=code, msg=msg, data=None)
+
+@app.get(
+    "/trains/{train_code}/schedules",
+    response_model=BaseResponse[List[TrainScheduleRead]],
+    summary="根据对外车次（train_code）和日期查询时刻表"
+)
+def query_schedule_by_train_code_and_date(
+    train_code: str = Path(..., max_length=20, description="对外公布车次（如G123/D456）"),
+    query_date: date = Query(..., description="查询日期（YYYY-MM-DD，如2025-11-20）"),
+    db: Session = Depends(get_db)
+):
+    """
+    按对外车次和日期查询完整时刻表：
+    1. 自动匹配对应的内部编号（train_no）
+    2. 校验该日期的运行计划是否有效（生效时间+开行规律）
+    3. 返回按途经顺序排序的完整时刻表
+    """
+    code, msg, data = get_schedule_by_train_code_and_date(db, train_code, query_date)
+    return BaseResponse(code=code, msg=msg, data=data)
 
 if __name__ == "__main__":
     import uvicorn
