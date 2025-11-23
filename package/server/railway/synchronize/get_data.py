@@ -215,7 +215,7 @@ def fetch_schedules_by_train_no(train_no: str, train_date: str) -> Dict:
         result = response.json()
 
         # 处理返回结果
-        if result.get("status") != True:
+        if not result.get("status"):
             logging.warning(
                 f"train_no[{train_no}] 日期[{train_date}] 查询失败：{result.get('messages', ['未知错误'])[0]}")
             return {}

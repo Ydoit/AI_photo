@@ -27,6 +27,9 @@ from railway.schemas import (
 )
 from railway.util.city import standardize_city_name, PROVINCE_MAPPING
 
+def format_station_name(name:str):
+    return name.strip().replace(' ','')
+
 # ------------------------------ 车站 CRUD ------------------------------
 def create_station(db: Session, station: StationCreate) -> Tuple[int, str, Optional[Station]]:
     """
@@ -100,7 +103,8 @@ def get_station_single(db: Session, query: StationSingleQuery) -> Tuple[int, str
         elif query.telecode:
             station = db_query.filter(Station.telecode == query.telecode).first()
         else:  # station_name（精确匹配）
-            station = db_query.filter(Station.station_name == query.station_name).first()
+            station_name = format_station_name(query.station_name)
+            station = db_query.filter(Station.station_name == station_name).first()
 
         if not station:
             return 404, f"未找到符合条件的车站", None

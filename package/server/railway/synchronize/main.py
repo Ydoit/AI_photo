@@ -18,10 +18,11 @@ from typing import List, Dict
 
 from sqlalchemy.dialects.mssql.information_schema import sequences
 
-from railway.crud import get_station_single, create_train_operation_plan, create_train_schedule_batch, create_train
+from railway.crud import get_station_single, create_train_operation_plan, create_train_schedule_batch, create_train, \
+    get_train_schedule_single, get_train_full_schedule
 from railway.db.dependencies import get_db, init_db
 from railway.schemas import StationSingleQuery, TrainOperationPlanCreate, TrainScheduleCreate, TrainScheduleBatchCreate, \
-    TrainCreate
+    TrainCreate, TrainScheduleSingleQuery
 from railway.synchronize.get_data import get_type_label, fetch_trains_by_keyword, fetch_schedules_by_train_no
 from railway.synchronize.config import KM_URL, TIMETABLE_URL, RETRY_TIMES, REQUEST_INTERVAL, LOG_FILE, TRAIN_TYPE, RECENT_DAYS
 
@@ -106,6 +107,98 @@ def random_sleep():
     logging.info(f"随机暂停 {random_sleep_time:.1f} 秒...")
     time.sleep(random_sleep_time)
 
+def is_train_no_completed(train_no):
+    code, msg, s = get_train_full_schedule(db, train_no)
+    if s:
+        return True
+    return False
+
+def handle_one_train(train_info):
+    try:
+        train_no = train_info["train_no"]
+        station_num = train_info["total_num"]
+        train_code = train_info["station_train_code"]
+        train_date = train_info["date"]
+        from_station_name = train_info["from_station"]
+        to_station_name = train_info["to_station"]
+        if is_train_no_completed(train_no):
+            logging.info(f"[{train_no}]-[{train_code}]已经存在 跳过该任务{train_info}")
+            return
+        logging.info(f'{"---"*10}\n\n开始处理 {train_info}')
+        code, msg, from_station = get_station_single(db,
+                                                     StationSingleQuery(
+                                                         station_id=None,
+                                                         telecode=None,
+                                                         station_name=from_station_name
+                                                     ))
+        code, msg, to_station = get_station_single(db,
+                                                   StationSingleQuery(
+                                                       station_id=None,
+                                                       telecode=None,
+                                                       station_name=to_station_name
+                                                   ))
+        # todo 判断车站是否存在，如果不存在则插入一条新车站
+        schedules_data = fetch_schedules_by_train_no(train_no, f"{train_date[:4]}-{train_date[4:6]}-{train_date[6:8]}")
+        random_sleep()
+        schedules_info = schedules_data['timetable']
+        plan = TrainOperationPlanCreate(
+            train_no=train_no,
+            start_date=datetime.fromisoformat(train_date),
+            end_date=None,
+            station_num=station_num,
+            custom_run_days=None,
+            run_rule=0
+        )
+        schedule_list = []
+        train_code_set = {train_code}
+        if schedules_info:
+            for index, schedule_info in enumerate(schedules_info):
+                code, msg, station = get_station_single(db,
+                                                        StationSingleQuery(
+                                                            station_id=None,
+                                                            telecode=None,
+                                                            station_name=schedule_info["station_name"]
+                                                        ))
+                schedule = TrainScheduleCreate(
+                    train_no=train_no,
+                    train_code=schedule_info["station_train_code"],
+                    station_telecode=station.telecode,
+                    station_name=station.station_name,
+                    sequence=index+1,
+                    arrive_day_diff=int(schedule_info["arrive_day_diff"]),
+                    arrival_time=schedule_info["start_time"] if schedule_info["arrive_time"] == "----" else
+                    schedule_info[
+                        "arrive_time"],
+                    departure_time=schedule_info["start_time"],
+                    stop_duration=calculate_stop_duration(schedule_info["arrive_time"], schedule_info["start_time"]),
+                    accumulated_mileage=calculate_accumulated_mileage(
+                        schedule_info.get("accumulated_mileage", "0")),
+                    running_time=time_to_minutes(schedule_info["running_time"]),
+                    is_departure=int(index == 0),
+                    is_arrival=int(index == len(schedules_info) - 1),
+                )
+                train_code_set.add(schedule.train_code)
+                schedule_list.append(schedule)
+            plan.total_running_time = schedule_list[-1].running_time
+            plan.total_mileage = schedule_list[-1].accumulated_mileage
+        code, msg, plan0 = create_train_operation_plan(db, plan)
+        logging.info(f'{msg} {train_info}')
+        if schedule_list:
+            code, msg, d = create_train_schedule_batch(db, TrainScheduleBatchCreate(schedules=schedule_list))
+            logging.info(f'{msg} {schedules_info}')
+        for train_code_ in train_code_set:
+            train = TrainCreate(
+                train_no=train_no,
+                train_code=train_code_,
+                train_type=train_code_[0],
+                from_station=from_station.telecode,
+                to_station=to_station.telecode
+            )
+            code, msg, train_read = create_train(db, train)
+            # pydantic的BaseModel输出
+            logging.info(f'{msg} {train_code}')
+    except:
+        logging.error(traceback.format_exc())
 
 def collect_all_trains():
     """按「类型→日期→关键词段」采集所有车次，支持中断恢复"""
@@ -153,87 +246,7 @@ def collect_all_trains():
                     # 即时保存数据
                     if trains_info:
                         for train_info in trains_info:
-                            try:
-                                train_no = train_info["train_no"]
-                                station_num = train_info["total_num"]
-                                train_code = train_info["station_train_code"]
-
-                                from_station_name = train_info["from_station"]
-                                to_station_name = train_info["to_station"]
-                                logging.info(f'开始处理 {train_info}')
-                                code, msg, from_station = get_station_single(db,
-                                                                             StationSingleQuery(
-                                                                                 station_id=None,
-                                                                                 telecode=None,
-                                                                                 station_name=from_station_name
-                                                                             ))
-                                code, msg, to_station = get_station_single(db,
-                                                                           StationSingleQuery(
-                                                                               station_id=None,
-                                                                               telecode=None,
-                                                                               station_name=from_station_name
-                                                                           ))
-                                # todo 判断车站是否存在，如果不存在则插入一条新车站
-                                schedules_data = fetch_schedules_by_train_no(train_no, f"{train_date[:4]}-{train_date[4:6]}-{train_date[6:8]}")
-                                random_sleep()
-                                schedules_info = schedules_data['timetable']
-                                plan = TrainOperationPlanCreate(
-                                    train_no=train_no,
-                                    start_date=datetime.fromisoformat(train_date),
-                                    end_date=None,
-                                    station_num=station_num,
-                                    custom_run_days=None,
-                                    run_rule=0
-                                )
-                                schedule_list = []
-                                train_code_set = {train_code}
-                                if schedules_info:
-                                    for index, schedule_info in enumerate(schedules_info):
-                                        code, msg, station = get_station_single(db,
-                                                                     StationSingleQuery(
-                                                                         station_id=None,
-                                                                         telecode=None,
-                                                                         station_name=schedule_info["station_name"]
-                                                                     ))
-                                        schedule = TrainScheduleCreate(
-                                            train_no = train_no,
-                                            train_code = schedule_info["station_train_code"],
-                                            station_telecode = station.telecode,
-                                            station_name=station.station_name,
-                                            sequence = int(schedule_info["station_no"]),
-                                            arrive_day_diff=int(schedule_info["arrive_day_diff"]),
-                                            arrival_time=schedule_info["start_time"] if schedule_info["arrive_time"] == "----" else schedule_info[
-                                                "arrive_time"],
-                                            departure_time=schedule_info["start_time"],
-                                            stop_duration=calculate_stop_duration(schedule_info["arrive_time"], schedule_info["start_time"]),
-                                            accumulated_mileage=calculate_accumulated_mileage(
-                                                schedule_info.get("accumulated_mileage", "0")),
-                                            running_time=time_to_minutes(schedule_info["running_time"]),
-                                            is_departure=int(index == 0),
-                                            is_arrival=int(index == len(schedules_info) - 1),
-                                        )
-                                        train_code_set.add(schedule.train_code)
-                                        schedule_list.append(schedule)
-                                    plan.total_running_time = schedule_list[-1].running_time
-                                    plan.total_mileage = schedule_list[-1].accumulated_mileage
-                                code,msg,plan0=create_train_operation_plan(db, plan)
-                                logging.info(f'{msg} {trains_info}')
-                                if schedule_list:
-                                    code,msg,d = create_train_schedule_batch(db, TrainScheduleBatchCreate(schedules=schedule_list))
-                                    logging.info(f'{msg} {schedules_info}')
-                                for train_code_ in train_code_set:
-                                    train = TrainCreate(
-                                        train_no=train_no,
-                                        train_code=train_code_,
-                                        train_type=train_type,
-                                        from_station=from_station.telecode,
-                                        to_station=to_station.telecode
-                                    )
-                                    code,msg,train_read = create_train(db ,train)
-                                    # pydantic的BaseModel输出
-                                    logging.info(f'{msg} {train_code}')
-                            except:
-                                logging.error(traceback.format_exc())
+                            handle_one_train(train_info)
                     random_sleep()
                     current_task += 1
                     current_task += 1
