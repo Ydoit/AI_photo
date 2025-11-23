@@ -101,7 +101,7 @@ class TrainOperationPlanCreate(BaseModel):
     @field_validator("custom_run_days")
     def check_custom_run_days(cls, v, values):
         """验证自定义开行日期：run_rule=5时必填，格式正确"""
-        if values.get("run_rule") == 5 and not v:
+        if values.data.get("run_rule") == 5 and not v:
             raise ValueError("run_rule=5时，custom_run_days不能为空")
         if v:
             for day in v:
