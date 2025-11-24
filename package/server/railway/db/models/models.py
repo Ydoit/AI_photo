@@ -153,8 +153,6 @@ class TrainSchedule(Base):
 
     # 索引/约束（确保版本内的站点唯一、顺序唯一）
     __table_args__ = (
-        UniqueConstraint("train_no", "station_telecode", name="uk_operation_station"),
-        UniqueConstraint("train_no", "sequence", name="uk_operation_sequence"),
         # 核心查询索引：运行计划ID+顺序（快速获取排序后的时刻表）
         Index("idx_train_schedule_operation_train_no", "train_no"),
         Index("idx_train_schedule_train_no_name", "train_no","station_name"),

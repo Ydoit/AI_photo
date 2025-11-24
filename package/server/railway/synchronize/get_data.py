@@ -23,6 +23,13 @@ from typing import List, Dict, Set, Tuple
 
 from railway.synchronize.config import RETRY_TIMES, SEARCH_URL, TIMETABLE_URL, KM_URL
 
+proxies = {
+    # HTTP 请求走本地 HTTP 代理
+    "http": "http://127.0.0.1:7890",
+    # HTTPS 请求走本地 HTTPS 代理（多数代理工具统一端口，可与 HTTP 共用）
+    "https": "http://127.0.0.1:7890"
+}
+
 with open('UA.txt', 'r', encoding='utf-8') as f:
     ua_list = f.readlines()
 
@@ -115,7 +122,7 @@ def fetch_trains_by_keyword(train_type: str, train_date: str, keyword: str) -> L
             session_12306.headers.update(
                 {"User-Agent": get_random_user_agent()}
             )
-            response = session_12306.get(SEARCH_URL, params=params, timeout=15)
+            response = session_12306.get(SEARCH_URL, params=params, timeout=15, proxies=proxies)
 
             # 特殊处理 HTTP 403
             if response.status_code == 403:
@@ -175,7 +182,7 @@ def fetch_km_by_train_code(train_code: str) -> List[Dict]:
         session_km.headers.update(
             {"User-Agent": get_random_user_agent()}
         )
-        response = session_km.get(KM_URL, params=params, timeout=15)
+        response = session_km.get(KM_URL, params=params, timeout=15, proxies=proxies)
         response.raise_for_status()
         html = response.text
         soup = BeautifulSoup(html, 'html.parser')
@@ -210,7 +217,7 @@ def fetch_schedules_by_train_no(train_no: str, train_date: str) -> Dict:
         session_12306.headers.update(
             {"User-Agent": get_random_user_agent()}
         )
-        response = session_12306.get(TIMETABLE_URL, params=params, timeout=15)
+        response = session_12306.get(TIMETABLE_URL, params=params, timeout=15, proxies=proxies)
         response.raise_for_status()
         result = response.json()
 
@@ -225,7 +232,7 @@ def fetch_schedules_by_train_no(train_no: str, train_date: str) -> Dict:
             logging.warning(f"train_no[{train_no}] 日期[{train_date}] 未查询到时刻表数据")
             return {}
         train_schedule = fetch_km_by_train_code(timetable_data[0]['station_train_code'])
-        if train_schedule and len(timetable_data) == len(timetable_data):
+        if train_schedule and len(timetable_data) == len(train_schedule):
             for i in range(len(timetable_data)):
                 timetable_data[i]['accumulated_mileage'] = train_schedule[i]['里程'].strip('km')
         logging.info(f"train_no[{train_no}] 日期[{train_date}] 查询成功，共{len(timetable_data)}个站点")
@@ -237,4 +244,9 @@ def fetch_schedules_by_train_no(train_no: str, train_date: str) -> Dict:
         }
     except Exception as e:
         logging.error(f"train_no[{train_no}] 日期[{train_date}] 请求异常：{str(e)}")
-        return {}
+        return {
+            "train_no": train_no,
+            "train_date": train_date,
+            "timetable": [],
+            "fetch_time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        }

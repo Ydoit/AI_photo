@@ -109,7 +109,7 @@ def random_sleep():
 
 def is_train_no_completed(train_no):
     code, msg, s = get_train_full_schedule(db, train_no)
-    if s:
+    if s and s[-1].accumulated_mileage!=0:
         return True
     return False
 
@@ -159,6 +159,9 @@ def handle_one_train(train_info):
                                                             telecode=None,
                                                             station_name=schedule_info["station_name"]
                                                         ))
+                if not station:
+                    logging.error(f'{msg} {schedule_info}')
+                    continue
                 schedule = TrainScheduleCreate(
                     train_no=train_no,
                     train_code=schedule_info["station_train_code"],
@@ -184,8 +187,11 @@ def handle_one_train(train_info):
         code, msg, plan0 = create_train_operation_plan(db, plan)
         logging.info(f'{msg} {train_info}')
         if schedule_list:
-            code, msg, d = create_train_schedule_batch(db, TrainScheduleBatchCreate(schedules=schedule_list))
-            logging.info(f'{msg} {schedules_info}')
+            try:
+                code, msg, d = create_train_schedule_batch(db, TrainScheduleBatchCreate(schedules=schedule_list))
+                logging.info(f'{msg} {schedules_info}')
+            except:
+                logging.error(traceback.format_exc())
         for train_code_ in train_code_set:
             train = TrainCreate(
                 train_no=train_no,
@@ -254,7 +260,7 @@ def collect_all_trains():
                     logging.error(traceback.format_exc())
         logging.info(f"----- 日期[{train_date}] 处理完成 -----")
 
-    logging.info(f"\n===== 所有任务处理完毕（累计完成{sum(len(tasks) for tasks in task_status.values())}个任务）=====")
+    logging.info(f"\n===== 所有任务处理完毕 =====")
 
 def main():
     logging.info("===== 12306车次数据采集程序启动 =====")
@@ -272,4 +278,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    train_info = {'date': '20251124', 'from_station': '汉口', 'station_train_code': 'G6892', 'to_station': '汉  口', 'total_num': '5', 'train_no': '39000G689310'}
+    handle_one_train(train_info)

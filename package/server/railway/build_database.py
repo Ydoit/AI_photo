@@ -89,6 +89,24 @@ def convert_value(value: str, field_type: Optional[type] = None) -> Optional[any
             # 字符串类型直接返回
             return value
 
+def sync_sequence(db: Session, table_name: str, pk_column: str):
+    """同步自增序列到表中最大主键值"""
+    try:
+        # 序列名默认是：表名_主键列名_seq
+        sequence_name = f"{table_name}_{pk_column}_seq"
+        sql = f"""
+            SELECT setval(
+                '{sequence_name}',
+                (SELECT COALESCE(MAX({pk_column}), 0) FROM {table_name})
+            );
+        """
+        db.execute(text(sql))
+        db.commit()
+        print(f"✅ 同步序列 {sequence_name} 成功")
+    except Exception as e:
+        print(f"❌ 同步序列 {sequence_name} 失败：{str(e)}")
+        db.rollback()
+
 def read_csv_to_db(db: Session, table_name: str, model_class: Type[Base]):
     """
     读取CSV文件并批量插入到对应的数据库表中（使用原生csv模块）
@@ -181,7 +199,54 @@ def read_csv_to_db(db: Session, table_name: str, model_class: Type[Base]):
     except Exception as e:
         print(f"❌ 未知错误：处理表 {table_name} 失败 - {str(e)}")
         db.rollback()
+# ------------------------------ 核心：按表名同步序列（失败跳过） ------------------------------
+def sync_table_sequence(db: Session, table_name: str) -> None:
+    """
+    按单个表名同步序列（PostgreSQL默认规则）
+    逻辑：表名 → 找模型主键列 → 生成序列名（表名_主键列名_seq）→ 同步序列 → 失败跳过
+    """
+    print(f"\n📌 开始同步表 [{table_name}] 的序列...")
 
+    try:
+        # 1. 验证表是否有对应模型
+        if table_name not in TABLE_MODEL_MAPPING:
+            print(f"⚠️  表 {table_name} 无对应模型 → 跳过")
+            return
+
+        model_class = TABLE_MODEL_MAPPING[table_name]
+
+        # 2. 提取模型的主键列（默认单个主键）
+        primary_keys = list(model_class.__table__.primary_key.columns.keys())
+        if not primary_keys:
+            print(f"⚠️  表 {table_name} 无主键列 → 跳过")
+            return
+        pk_column = primary_keys[0]  # 取第一个主键列（绝大多数场景适用）
+
+        # 3. 生成PostgreSQL默认序列名（表名_主键列名_seq）
+        sequence_name = f"{table_name}_{pk_column}_seq"
+
+        # 4. 执行同步：查询主键最大值 → 设置序列
+        try:
+            # 查主键列最大值（无数据则设为0，避免序列从1开始冲突）
+            get_max_sql = text(f"SELECT COALESCE(MAX({pk_column}), 0) AS max_id FROM {table_name};")
+            max_id = db.execute(get_max_sql).scalar()
+
+            # 同步序列（setval：将序列当前值设为max_id，后续插入从max_id+1开始）
+            sync_sql = text(f"SELECT setval(:seq_name, :max_id);")
+            db.execute(sync_sql, {"seq_name": sequence_name, "max_id": max_id})
+            db.commit()
+
+            print(f"✅ 表 [{table_name}] 同步成功：序列 [{sequence_name}] → 最大值 [{max_id}]")
+
+        except SQLAlchemyError as e:
+            db.rollback()
+            print(f"❌ 表 [{table_name}] 同步失败（数据库错误）：{str(e)} → 跳过")
+        except Exception as e:
+            db.rollback()
+            print(f"❌ 表 [{table_name}] 同步失败（未知错误）：{str(e)} → 跳过")
+
+    except Exception as e:
+        print(f"❌ 表 [{table_name}] 处理异常：{str(e)} → 跳过")
 def build_database(db:Session):
     """主函数：批量处理所有CSV文件"""
     try:
@@ -196,7 +261,8 @@ def build_database(db:Session):
 
             model_class = TABLE_MODEL_MAPPING[table_name]
             read_csv_to_db(db, table_name, model_class)
-
+            sync_table_sequence(db, table_name)
+        # sync_sequence(db, "train_schedule", "schedule_id")
         print("\n🎉 所有CSV文件处理完成！")
 
     finally:
