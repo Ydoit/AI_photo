@@ -1,0 +1,104 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+@Time        : 2025/11/23 23:14
+@Author      : SiYuan
+@Email       : siyuan044@gmail.com
+@File        : server-train_ticket.py
+@Description : 
+"""
+
+from sqlalchemy.orm import Session
+from typing import List, Optional, Dict, Any
+from decimal import Decimal
+from datetime import datetime
+
+from app.db.models.trip import TrainTicket
+from app.schemas.train_ticket import TrainTicketCreate, TrainTicketUpdate
+
+
+def get_train_ticket(db: Session, ticket_id: int) -> Optional[TrainTicket]:
+    """根据ID获取单张火车票"""
+    return db.query(TrainTicket).filter(TrainTicket.id == ticket_id).first()
+
+
+def get_train_tickets(
+        db: Session,
+        skip: int = 0,
+        limit: int = 100,
+        filters: Optional[Dict[str, Any]] = None
+) -> (int, List[TrainTicket]):
+    """获取火车票列表（支持过滤、分页）"""
+    query = db.query(TrainTicket)
+
+    # 应用过滤条件（如按车次、乘车人、出发站等）
+    if filters:
+        for key, value in filters.items():
+            if hasattr(TrainTicket, key) and value is not None:
+                if isinstance(value, str):
+                    # 字符串字段支持模糊查询
+                    query = query.filter(getattr(TrainTicket, key).ilike(f"%{value}%"))
+                elif isinstance(value, (int, Decimal, datetime)):
+                    # 精确匹配
+                    query = query.filter(getattr(TrainTicket, key) == value)
+
+    # 计算总记录数
+    total = query.count()
+
+    # 分页查询
+    items = query.offset(skip).limit(limit).order_by(TrainTicket.datetime.desc()).all()
+
+    return total, items
+
+
+def create_train_ticket(db: Session, ticket: TrainTicketCreate) -> TrainTicket:
+    """创建新的火车票"""
+    db_ticket = TrainTicket(
+        train_code=ticket.train_code,
+        departure_station=ticket.departure_station,
+        arrival_station=ticket.arrival_station,
+        date_time=ticket.date_time,
+        carriage=ticket.carriage,
+        seat_num=ticket.seat_num,
+        berth_type=ticket.berth_type,
+        price=ticket.price,
+        seat_type=ticket.seat_type,
+        name=ticket.name,
+        discount_type=ticket.discount_type
+    )
+    db.add(db_ticket)
+    db.commit()
+    db.refresh(db_ticket)  # 刷新获取数据库生成的字段（如id、created_at）
+    return db_ticket
+
+
+def update_train_ticket(
+        db: Session,
+        ticket_id: int,
+        ticket_update: TrainTicketUpdate
+) -> Optional[TrainTicket]:
+    """更新火车票信息"""
+    db_ticket = get_train_ticket(db, ticket_id)
+    if not db_ticket:
+        return None
+
+    # 只更新提供的字段
+    update_data = ticket_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_ticket, key, value)
+
+    db.commit()
+    db.refresh(db_ticket)
+    return db_ticket
+
+
+def delete_train_ticket(db: Session, ticket_id: int) -> bool:
+    """删除火车票"""
+    db_ticket = get_train_ticket(db, ticket_id)
+    if not db_ticket:
+        return False
+
+    db.delete(db_ticket)
+    db.commit()
+    return True

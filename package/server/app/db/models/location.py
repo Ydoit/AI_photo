@@ -24,6 +24,7 @@ class Country(Base):
     id = Column(Integer, primary_key=True)                 # 主键
     name = Column(String, nullable=False)                  # 国家名称
     country_code = Column(String, nullable=False)          # 国家编码
+
     provinces = relationship('Province', back_populates='country')
 
 class Province(Base):
@@ -35,6 +36,7 @@ class Province(Base):
     name = Column(String, nullable=False)                  # 省份名称
     country_id = Column(Integer, ForeignKey('countries.id')) # 所属国家
     province_code = Column(String, nullable=False)          # 省份编码
+
     country = relationship('Country', back_populates='provinces')
     cities = relationship('City', back_populates='province')
 
@@ -48,6 +50,7 @@ class City(Base):
     name = Column(String, nullable=False)                  # 城市名称
     province_id = Column(Integer, ForeignKey('provinces.id')) # 所属省份
     city_code = Column(String, nullable=False)  # 城市编码
+
     province = relationship('Province', back_populates='cities')
     media_items = relationship('Media', back_populates='city')
     scenic_spots = relationship('ScenicSpot', back_populates='city')

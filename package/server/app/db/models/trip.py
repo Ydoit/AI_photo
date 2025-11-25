@@ -9,8 +9,9 @@
 @Description : 
 """
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Enum
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Enum, Numeric
 from sqlalchemy.orm import relationship
+from datetime import datetime
 
 from app.db.base import Base
 
@@ -66,3 +67,22 @@ class TripTicket(Base):
     __tablename__ = 'trip_ticket'
     trip_id = Column(Integer, ForeignKey('trips.id'), primary_key=True)  # 行程ID
     ticket_id = Column(Integer, ForeignKey('tickets.id'), primary_key=True) # 票据ID
+
+class TrainTicket(Base):
+    """火车票模型"""
+    __tablename__ = "train_tickets"
+
+    id = Column(Integer, primary_key=True, index=True, comment="票据ID")
+    train_code = Column(String(20), index=True, nullable=False, comment="车次号（如G1920）")
+    departure_station = Column(String(50), nullable=False, comment="出发站")
+    arrival_station = Column(String(50), nullable=False, comment="到达站")
+    date_time = Column(DateTime, nullable=False, comment="发车时间")
+    carriage = Column(String(10), nullable=False, comment="车厢号（如8A、12）")
+    seat_num = Column(String(10), nullable=False, comment="座位号（如12F、05下）")
+    berth_type = Column(String(10), default="无", comment="铺位类型（上/中/下/无）")
+    price = Column(Numeric(10, 2), nullable=False, comment="票价（保留两位小数）")
+    seat_type = Column(String(20), nullable=False, comment="座位类型（一等座/二等座/商务座等）")
+    name = Column(String(50), nullable=False, comment="乘车人姓名")
+    discount_type = Column(String(20), default="全价票", comment="优惠类型（学生票/儿童票/优惠票/全价票等）")
+    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")

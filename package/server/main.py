@@ -17,9 +17,7 @@ if not os.path.exists('./data'):
     os.mkdir('./data')
 load_dotenv('./data/.env')
 
-from app.blog import blog_router
-from app.github import github
-from app.api import user
+from app.api import user,train_ticket
 
 app = FastAPI(title="TrailSnap - 足迹相册")
 
@@ -45,10 +43,9 @@ def root():
     return {"message": "Image Manager Backend Ready"}
 
 app.include_router(user.router, prefix="/users", tags=["Users"])
-app.include_router(blog_router, prefix="/api/blog", tags=["Users"])
-app.include_router(github.router, prefix="/api/github", tags=["Users"])
+app.include_router(train_ticket.router, prefix="/train-ticket", tags=["train-ticket"])
 
 if __name__ == "__main__":
     import uvicorn
-
+    # http://127.0.0.1:8000/docs
     uvicorn.run(app, host="0.0.0.0", port=8000)
