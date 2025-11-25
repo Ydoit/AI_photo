@@ -10,7 +10,7 @@
 """
 from typing import List, Optional, Dict, Any
 
-from fastapi import FastAPI, Depends, HTTPException, Path, Body, Query
+from fastapi import FastAPI, Depends, HTTPException, Path, Body, Query, APIRouter
 from sqlalchemy.orm import Session
 from datetime import date
 
@@ -31,12 +31,10 @@ from railway.crud import (
 from railway.db.models.models import Train
 from railway.db.dependencies import get_db
 
-# 初始化 FastAPI 应用
-app = FastAPI(title="12306 车次信息 API", description="基于 FastAPI+PostgreSQL+SQLAlchemy 的铁路车次信息管理接口", version="1.0.0")
-
+router = APIRouter()
 
 # ------------------------------ 车站接口 ------------------------------
-@app.post(
+@router.post(
     "/stations",
     response_model=BaseResponse[StationRead],  # 统一响应模型+业务数据结构
     summary="创建/更新车站（存在则检查更新）"
@@ -56,7 +54,7 @@ def create_or_update_station_api(
     )
 
 # ------------------------------ 单条车站查询接口 ------------------------------
-@app.get(
+@router.get(
     "/stations/single",
     response_model=BaseResponse[StationRead],
     summary="单条车站查询（ID/电报码/名称三选一）"
@@ -80,7 +78,7 @@ def query_station_single(
     return BaseResponse(code=code, msg=msg, data=data)
 
 # ------------------------------ 车站列表查询接口 ------------------------------
-@app.get(
+@router.get(
     "/stations",
     response_model=BaseResponse[StationListResponse],  # data为分页字典
     summary="车站列表查询（支持筛选、模糊搜索、分页）"
@@ -116,7 +114,7 @@ def query_station_list(
     return BaseResponse(code=code, msg=msg, data=data)
 
 # ------------------------------ 运行计划接口 ------------------------------
-@app.post(
+@router.post(
     "/train-operation-plans",
     response_model=BaseResponse[TrainOperationPlanRead],
     summary="创建/更新运行计划（存在则更新）"
@@ -128,7 +126,7 @@ def create_or_update_operation_plan(
     code, msg, data = create_train_operation_plan(db, plan)
     return BaseResponse(code=code, msg=msg, data=data)
 
-@app.get(
+@router.get(
     "/train-operation-plans/single",
     response_model=BaseResponse[TrainOperationPlanRead],
     summary="单条运行计划查询（ID/车次编号二选一）"
@@ -142,7 +140,7 @@ def query_operation_plan_single(
     code, msg, data = get_train_operation_plan_single(db, query)
     return BaseResponse(code=code, msg=msg, data=data)
 
-@app.get(
+@router.get(
     "/train-operation-plans",
     response_model=BaseResponse[Dict[str, Any]],
     summary="运行计划列表查询（筛选+分页）"
@@ -164,7 +162,7 @@ def query_operation_plan_list(
     code, msg, data = get_train_operation_plan_list(db, query)
     return BaseResponse(code=code, msg=msg, data=data)
 
-@app.patch(
+@router.patch(
     "/train-operation-plans/{operation_id}/status",
     response_model=BaseResponse[TrainOperationPlanRead],
     summary="更新运行计划状态（正常/停运）"
@@ -177,7 +175,7 @@ def update_operation_plan_status(
     code, msg, data = update_train_operation_plan_status(db, operation_id, status)
     return BaseResponse(code=code, msg=msg, data=data)
 
-@app.delete(
+@router.delete(
     "/train-operation-plans/{operation_id}",
     response_model=BaseResponse[None],
     summary="删除运行计划（级联删除关联车次和时刻表）"
@@ -190,7 +188,7 @@ def delete_operation_plan(
     return BaseResponse(code=code, msg=msg, data=None)
 
 # ------------------------------ 车次接口 ------------------------------
-@app.post(
+@router.post(
     "/trains",
     response_model=BaseResponse[TrainRead],
     summary="创建/更新车次（需关联已存在的运行计划和车站）"
@@ -202,7 +200,7 @@ def create_or_update_train(
     code, msg, data = create_train(db, train)
     return BaseResponse(code=code, msg=msg, data=data)
 
-@app.get(
+@router.get(
     "/trains/single",
     response_model=BaseResponse[TrainRead],
     summary="单条车次查询（支持ID/内部编号/对外车次等多字段）"
@@ -222,7 +220,7 @@ def query_train_single(
     code, msg, data = get_train_single(db, query)
     return BaseResponse(code=code, msg=msg, data=data)
 
-@app.get(
+@router.get(
     "/trains",
     response_model=BaseResponse[TrainListResponse],
     summary="车次列表查询（筛选+模糊搜索+分页）"
@@ -244,7 +242,7 @@ def query_train_list(
     code, msg, data = get_train_list(db, query)
     return BaseResponse(code=code, msg=msg, data=data)
 
-@app.delete(
+@router.delete(
     "/trains/{train_no}",
     response_model=BaseResponse[None],
     summary="删除车次（需先解除运行计划关联或删除运行计划）"
@@ -257,7 +255,7 @@ def delete_train_api(
     return BaseResponse(code=code, msg=msg, data=None)
 
 # ------------------------------ 时刻表接口 ------------------------------
-@app.post(
+@router.post(
     "/train-schedules/batch",
     response_model=BaseResponse[List[TrainScheduleRead]],
     summary="批量创建/更新时刻表（一个运行计划对应多个站点）"
@@ -269,7 +267,7 @@ def batch_create_or_update_schedule(
     code, msg, data = create_train_schedule_batch(db, batch_data)
     return BaseResponse(code=code, msg=msg, data=data)
 
-@app.get(
+@router.get(
     "/train-schedules/single",
     response_model=BaseResponse[TrainScheduleRead],
     summary="单条时刻表查询（支持ID/车次/车站/顺序）"
@@ -288,7 +286,7 @@ def query_schedule_single(
     code, msg, data = get_train_schedule_single(db, query)
     return BaseResponse(code=code, msg=msg, data=data)
 
-@app.get(
+@router.get(
     "/train-schedules",
     response_model=BaseResponse[TrainScheduleResponse],
     summary="时刻表列表查询（筛选+模糊搜索+分页）"
@@ -312,7 +310,7 @@ def query_schedule_list(
     code, msg, data = get_train_schedule_list(db, query)
     return BaseResponse(code=code, msg=msg, data=data)
 
-@app.get(
+@router.get(
     "/train-schedules/full/{train_no}",
     response_model=BaseResponse[List[TrainScheduleRead]],
     summary="获取某车次完整时刻表（按途经顺序排序）"
@@ -324,7 +322,7 @@ def query_full_schedule(
     code, msg, data = get_train_full_schedule(db, train_no)
     return BaseResponse(code=code, msg=msg, data=data)
 
-@app.delete(
+@router.delete(
     "/train-schedules/{train_no}",
     response_model=BaseResponse[None],
     summary="删除时刻表（支持删除全车次或单个站点）"
@@ -337,7 +335,7 @@ def delete_schedule(
     code, msg = delete_train_schedule(db, train_no, station_telecode)
     return BaseResponse(code=code, msg=msg, data=None)
 
-@app.get(
+@router.get(
     "/trains/{train_code}/schedules",
     response_model=BaseResponse[List[TrainScheduleRead]],
     summary="根据对外车次（train_code）和日期查询时刻表"
