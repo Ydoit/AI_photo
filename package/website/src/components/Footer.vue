@@ -12,13 +12,6 @@
           </p>
         </div>
 
-        <div class="mb-4 md:mb-0 text-center md:text-left">
-          <p class="text-sm text-gray-500 dark:text-gray-400">
-            <i class="mgc_user_3_line"></i> {{ counterStore.visitorCount.toLocaleString() }} | 
-            <i class="mgc_eye_2_line"></i> {{ counterStore.visitCount.toLocaleString() }}
-          </p>
-        </div>
-
         <div class="flex items-center space-x-1">
           <a
             href="https://beian.miit.gov.cn/"
@@ -49,28 +42,4 @@
 import { ref,onMounted } from 'vue';
 import { useCounterStore } from '@/api/blog' 
 import axios from 'axios'
-export default {
-  name: 'SiteFooter',
-  setup() {
-    const counterStore = useCounterStore()
-    const fetchData = async () => {
-    try {
-      const response = await axios.get('/api/blog/public/viewer')
-      const status = response.data.statusCode
-      if (status !== 200) {
-        throw new Error(response.data.message || '请求失败，请稍后再试')
-      }
-      const data = response.data.data
-      counterStore.setVisit(data.viewer)
-      counterStore.setVisitor(data.visited)
-      } catch (err) {
-        console.error('请求错误:', err)
-      } finally {
-      }
-    }
-
-    onMounted(fetchData)
-    return { counterStore }
-  }
-}
 </script>

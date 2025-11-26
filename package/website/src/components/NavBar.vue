@@ -11,104 +11,104 @@
         v-for="(item, index) in navLinks"
         :key="index"
         :to="item.href"
-        class="relative px-1 py-1 text-gray-700 dark:text-gray-200 hover:text-accent-fresh-mint dark:hover:text-accent-fresh-mint transition-colors"
+        class="relative px-1 py-1 text-gray-700 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-500 transition-colors"
         active-class="font-medium"
       >
         {{ item.label }}
         <span
           v-if="$route.path === item.href || ($route.path.startsWith(item.href) && item.href !== '/')"
-          class="absolute bottom-0 left-0 w-full h-0.5 bg-accent-fresh-mint"
+          class="absolute bottom-0 left-0 w-full h-0.5 bg-primary-500 rounded-full"
         ></span>
       </RouterLink>
-          <!-- 主题切换下拉菜单 -->
-    <div class="ml-4 relative" v-click-outside="closeThemeMenu">
+      <!-- 主题切换下拉菜单 -->
+      <div class="relative">
         <button 
-            class="flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-            @click="toggleThemeMenu"
+          @click="showThemeMenu = !showThemeMenu"
+          class="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 transition-colors"
         >
-            <i class="mgc_moon_line  hidden dark:inline"></i>
-            <i class="mgc_sun_line dark:hidden"></i>
+          <Palette class="w-5 h-5" />
         </button>
         
-        <!-- 下拉菜单 -->
-        <div 
-            v-if="showThemeMenu"
-            class="absolute right-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-2 z-20 transition-all duration-200"
-        >
-            <button 
-            class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            @click="setTheme('light')"
-            >
-            <i class="mgc_sun_line mr-2"></i>浅色模式
-            </button>
-            <button 
-            class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            @click="setTheme('dark')"
-            >
-            <i class="mgc_moon_line mr-2"></i>深色模式
-            </button>
-            <button 
-            class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            @click="setTheme('auto')"
-            >
-            <i class="mgc_phone_line mr-2"></i>跟随系统
-            </button>
+        <div v-if="showThemeMenu" class="absolute right-0 top-12 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-4 z-50 animate-in fade-in zoom-in-95 duration-200">
+          <div class="space-y-4">
+            <div>
+              <h3 class="text-xs font-bold text-slate-400 uppercase mb-2">显示模式</h3>
+              <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
+                <button 
+                  @click="toggleDarkMode(false)" 
+                  :class="['flex-1 flex items-center justify-center py-1.5 rounded-md text-xs font-medium transition-all', !isDarkMode ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 dark:text-slate-400']"
+                >
+                  <Sun class="w-3.5 h-3.5 mr-1" /> 浅色
+                </button>
+                <button 
+                  @click="toggleDarkMode(true)"
+                  :class="['flex-1 flex items-center justify-center py-1.5 rounded-md text-xs font-medium transition-all', isDarkMode ? 'bg-slate-600 shadow-sm text-white' : 'text-slate-500 dark:text-slate-400']"
+                >
+                  <Moon class="w-3.5 h-3.5 mr-1" /> 深色
+                </button>
+              </div>
+            </div>
+            
+            <div>
+              <h3 class="text-xs font-bold text-slate-400 uppercase mb-2">主题颜色</h3>
+              <div class="grid grid-cols-5 gap-2">
+                <button
+                  v-for="color in themeColors"
+                  :key="color.name"
+                  @click="setTheme(color)"
+                  class="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center"
+                  :style="{ backgroundColor: color.primary, borderColor: currentTheme.name === color.name ? 'var(--text-color)' : 'transparent' }"
+                  :title="color.label"
+                >
+                    <Check v-if="currentTheme.name === color.name" class="w-4 h-4 text-white drop-shadow-md" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-    </div>
+        <div v-if="showThemeMenu" @click="showThemeMenu = false" class="fixed inset-0 z-40 bg-transparent"></div>
+      </div>
     </nav>
 
   </header>
 </template>
 
 <script setup>
+import { injectTheme } from '@/composables/useTheme.js'
 import { ref, watchEffect } from 'vue'
+import {
+  TrainFront, Search, Plus, MapPin, Clock, Route,
+  ChevronDown, Trash2, MoveRight, Pencil, X, Check,
+  Palette, Sun, Moon
+} from 'lucide-vue-next';
 import { useRoute } from 'vue-router'
 import { onClickOutside } from '@vueuse/core'  // 需安装 @vueuse/core: npm i @vueuse/core
 
 // 导航数据
 const navLinks = [
   { label: '首页', href: '/' },
-  { label: '文档', href: '/blog' },
-  { label: '项目', href: '/project' },
+  { label: '车票', href: '/ticket' },
+  { label: '统计', href: '/statistics' },
   { label: '工具', href: '/tools' },
-  { label: '更多', href: '/more' },
+  { label: '关于', href: '/about' },
 ]
 
-// 主题相关状态
-const theme = ref(localStorage.getItem('theme') || 'auto')
-const showThemeMenu = ref(false)
-const route = useRoute()
+// 关键步骤：注入全局状态和修改函数
+const {
+  isDarkMode,
+  currentTheme,
+  themeColors,
+  toggleDarkMode, // <--- 切换模式函数
+  setTheme        // <--- 切换主题色函数
+} = injectTheme();
 
-// 处理点击外部关闭菜单
-const themeMenuRef = ref(null)
-onClickOutside(themeMenuRef, () => {
-  showThemeMenu.value = false
-})
-
-// 切换主题菜单显示状态
-const toggleThemeMenu = () => {
-  showThemeMenu.value = !showThemeMenu.value
-}
-
-// 关闭主题菜单
-const closeThemeMenu = () => {
-  showThemeMenu.value = false
-}
-
-// 设置主题
-const setTheme = (newTheme) => {
-  theme.value = newTheme
-  localStorage.setItem('theme', newTheme)
-  updateTheme()
-  showThemeMenu.value = false
-}
+const showThemeMenu = ref(false);
 
 // 更新主题到DOM
 const updateTheme = () => {
-  const isDark = theme.value === 'dark' || 
-                (theme.value === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-  
-  document.documentElement.classList.toggle('dark', isDark)
+  // const isDark = theme.value === 'dark' || 
+  //               (theme.value === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  // document.documentElement.classList.toggle('dark', isDark)
 }
 
 // 监听主题变化和系统主题变化
