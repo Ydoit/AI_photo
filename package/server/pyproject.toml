@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "aiohttp>=3.13.2",
     "aiosqlite==0.21.0",
+    "alembic>=1.17.2",
     "apscheduler>=3.11.1",
     "fastapi>=0.122.0",
     "paddleocr[all]>=3.3.2",

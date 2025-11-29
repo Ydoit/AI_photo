@@ -27,6 +27,9 @@ class TrainTicketBase(BaseModel):
     seat_type: str = Field(..., description="座位类型（一等座/二等座/商务座等）")
     name: str = Field(..., description="乘车人姓名")
     discount_type: Optional[str] = Field("全价票", description="优惠类型（学生票/儿童票/优惠票/全价票等）")
+    total_running_time: Optional[int] = Field(default=0, ge=0, description="总运行时间（分钟）")
+    total_mileage: Optional[int] = Field(default=0, ge=0, description="总里程（公里）")
+    stop_stations: Optional[str] = Field(None, description="途经站点列表")
 
 class TrainTicketCreate(TrainTicketBase):
     """创建火车票请求模型（继承基础模型，无额外字段）"""
@@ -45,6 +48,9 @@ class TrainTicketUpdate(BaseModel):
     seat_type: Optional[str] = Field(None, description="座位类型（一等座/二等座/商务座等）")
     name: Optional[str] = Field(None, description="乘车人姓名")
     discount_type: Optional[str] = Field(None, description="优惠类型（学生票/儿童票/优惠票/全价票等）")
+    total_running_time: Optional[str] = Field(None, description="总运行时间（分钟）")
+    total_mileage: Optional[int] = Field(None, ge=0, description="总里程（公里）")
+    stop_stations: Optional[str] = Field(None, description="途经站点列表")
 
 class TrainTicketResponse(TrainTicketBase):
     """火车票响应模型（包含数据库额外字段）"""

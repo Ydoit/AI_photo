@@ -65,7 +65,10 @@ def create_train_ticket(db: Session, ticket: TrainTicketCreate) -> TrainTicket:
         price=ticket.price,
         seat_type=ticket.seat_type,
         name=ticket.name,
-        discount_type=ticket.discount_type
+        discount_type=ticket.discount_type,
+        total_running_time=ticket.total_running_time or 0,
+        total_mileage=ticket.total_mileage or Decimal('0.0'),
+        stop_stations="[]"  # 默认空列表，后续可更新
     )
     db.add(db_ticket)
     db.commit()

@@ -45,6 +45,9 @@ def create_ticket(
     - **seat_type**: 座位类型（一等座/二等座/商务座等）
     - **name**: 乘车人姓名
     - **discount_type**: 优惠类型（学生票/儿童票/优惠票/全价票，默认全价票）
+    - **total_running_time**: 总运行时间（分钟，可选）
+    - **total_mileage**: 总里程（公里，可选）
+    - **stop_stations**: 途经站点列表（可选）
     """
     return create_train_ticket(db=db, ticket=ticket)
 

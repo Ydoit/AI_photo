@@ -9,7 +9,7 @@
 @Description : 
 """
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Enum, Numeric
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Enum, Numeric, DECIMAL
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -84,5 +84,8 @@ class TrainTicket(Base):
     seat_type = Column(String(20), nullable=False, comment="座位类型（一等座/二等座/商务座等）")
     name = Column(String(50), nullable=False, comment="乘车人姓名")
     discount_type = Column(String(20), default="全价票", comment="优惠类型（学生票/儿童票/优惠票/全价票等）")
+    total_mileage = Column(DECIMAL(10, 1), nullable=False, default=0, comment="线路里程（公里）")
+    total_running_time = Column(Integer, nullable=False, default=0, comment="累计运行时间（分钟）")
+    stop_stations = Column(Text, nullable=True, default="[]", comment="经停站列表，JSON格式存储")
     created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
