@@ -25,6 +25,7 @@ app = FastAPI(title="TrailSnap - 足迹相册")
 origins = [
     "http://localhost:8080",  # Vue开发环境地址
     "http://localhost:5173",  # Vite开发环境地址
+    "http://localhost:5176",  # Vite开发环境地址
     "https://your-production-domain.com"  # 生产环境前端域名
 ]
 
@@ -43,7 +44,7 @@ def root():
     return {"message": "Image Manager Backend Ready"}
 
 app.include_router(user.router, prefix="/users", tags=["Users"])
-app.include_router(train_ticket.router, prefix="/train-ticket", tags=["train-ticket"])
+app.include_router(train_ticket.router, prefix="/api/train-ticket", tags=["train-ticket"])
 
 if __name__ == "__main__":
     import uvicorn

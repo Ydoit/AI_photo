@@ -323,7 +323,7 @@ const renderMap = () => {
 const initCharts = () => {
   const isDark = props.isDarkMode;
   const textColor = isDark ? '#cbd5e1' : '#475569';
-  const mainColor = props.themeColor || '#1E88E5';
+  const mainColor = themeColor.value || '#1E88E5';
 
   // --- 趋势图 (Line) ---
   myTrend = echarts.init(trendChart.value);

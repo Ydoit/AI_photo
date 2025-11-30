@@ -48,6 +48,7 @@ def create_ticket(
     - **total_running_time**: 总运行时间（分钟，可选）
     - **total_mileage**: 总里程（公里，可选）
     - **stop_stations**: 途经站点列表（可选）
+    - **comments**: 车票备注（可选）
     """
     return create_train_ticket(db=db, ticket=ticket)
 

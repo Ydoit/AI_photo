@@ -16,7 +16,6 @@ export default defineConfig({
     port: 5176,      // 设置你想要的端口
     proxy: {
       '/api': {
-        // target: 'http://nas.siyaun.ink:8088/',
         target: 'http://127.0.0.1:8000/',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, 'api')
