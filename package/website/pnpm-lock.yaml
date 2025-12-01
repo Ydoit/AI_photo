@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@vueuse/core':
         specifier: ^14.0.0
-        version: 14.0.0(vue@3.5.13)
+        version: 14.0.0(vue@3.5.13(typescript@5.9.3))
       axios:
         specifier: ^1.12.2
         version: 1.12.2
@@ -28,23 +28,29 @@ importers:
         version: 1.4.1
       lucide-vue-next:
         specifier: ^0.555.0
-        version: 0.555.0(vue@3.5.13)
+        version: 0.555.0(vue@3.5.13(typescript@5.9.3))
       mingcute_icon:
         specifier: ^2.9.6
         version: 2.9.6
       pinia:
         specifier: ^3.0.3
-        version: 3.0.3(vue@3.5.13)
+        version: 3.0.3(typescript@5.9.3)(vue@3.5.13(typescript@5.9.3))
       vue:
         specifier: ^3.5.13
-        version: 3.5.13
+        version: 3.5.13(typescript@5.9.3)
       vue-router:
         specifier: ^4.5.0
-        version: 4.5.0(vue@3.5.13)
+        version: 4.5.0(vue@3.5.13(typescript@5.9.3))
     devDependencies:
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.1
       '@vitejs/plugin-vue':
         specifier: ^5.2.1
-        version: 5.2.3(vite@6.2.5(jiti@1.21.7)(yaml@2.7.1))(vue@3.5.13)
+        version: 5.2.3(vite@6.2.5(@types/node@24.10.1)(jiti@1.21.7)(yaml@2.7.1))(vue@3.5.13(typescript@5.9.3))
+      '@vue/tsconfig':
+        specifier: ^0.8.1
+        version: 0.8.1(typescript@5.9.3)(vue@3.5.13(typescript@5.9.3))
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.21(postcss@8.5.3)
@@ -54,9 +60,12 @@ importers:
       tailwindcss:
         specifier: 3.4.17
         version: 3.4.17
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
       vite:
         specifier: ^6.2.0
-        version: 6.2.5(jiti@1.21.7)(yaml@2.7.1)
+        version: 6.2.5(@types/node@24.10.1)(jiti@1.21.7)(yaml@2.7.1)
 
 packages:
 
@@ -372,6 +381,9 @@ packages:
   '@types/estree@1.0.7':
     resolution: {integrity: sha512-w28IoSUCJpidD/TGviZwwMJckNESJZXFu7NBZ5YJ4mEUnNraUn9Pm8HSZm/jDF1pDWYKspWE7oVphigUPRakIQ==}
 
+  '@types/node@24.10.1':
+    resolution: {integrity: sha512-GNWcUTRBgIRJD5zj+Tq0fKOJ5XZajIiBroOF0yvj2bSU1WvNdYS/dn9UxwsujGW4JX06dnHyjV2y9rRaybH0iQ==}
+
   '@types/web-bluetooth@0.0.21':
     resolution: {integrity: sha512-oIQLCGWtcFZy2JW77j9k8nHzAOpqMHLQejDA48XXMWH6tjCQHz5RCFz1bzsmROyL6PUm+LLnUiI4BCn221inxA==}
 
@@ -422,6 +434,17 @@ packages:
 
   '@vue/shared@3.5.13':
     resolution: {integrity: sha512-/hnE/qP5ZoGpol0a5mDi45bOd7t3tjYJBjsgCsivow7D48cJeV5l05RD82lPqi7gRiphZM37rnhW1l6ZoCNNnQ==}
+
+  '@vue/tsconfig@0.8.1':
+    resolution: {integrity: sha512-aK7feIWPXFSUhsCP9PFqPyFOcz4ENkb8hZ2pneL6m2UjCkccvaOhC/5KCKluuBufvp2KzkbdA2W2pk20vLzu3g==}
+    peerDependencies:
+      typescript: 5.x
+      vue: ^3.4.0
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+      vue:
+        optional: true
 
   '@vueuse/core@14.0.0':
     resolution: {integrity: sha512-d6tKRWkZE8IQElX2aHBxXOMD478fHIYV+Dzm2y9Ag122ICBpNKtGICiXKOhWU3L1kKdttDD9dCMS4bGP3jhCTQ==}
@@ -1005,6 +1028,14 @@ packages:
   tslib@2.3.0:
     resolution: {integrity: sha512-N82ooyxVNm6h1riLCoyS9e3fuJ3AMG2zIZs2Gd1ATcSFjSA23Q0fzjjZeh0jbJvWVDZ0cJT8yaNNaaXHzueNjg==}
 
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+  undici-types@7.16.0:
+    resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
+
   update-browserslist-db@1.1.3:
     resolution: {integrity: sha512-UxhIZQ+QInVdunkDAaiazvvT/+fXL5Osr0JZlJulepYu6Jd7qJtDZjlur0emRlT71EN3ScPoE7gvsuIKKNavKw==}
     hasBin: true
@@ -1286,12 +1317,16 @@ snapshots:
 
   '@types/estree@1.0.7': {}
 
+  '@types/node@24.10.1':
+    dependencies:
+      undici-types: 7.16.0
+
   '@types/web-bluetooth@0.0.21': {}
 
-  '@vitejs/plugin-vue@5.2.3(vite@6.2.5(jiti@1.21.7)(yaml@2.7.1))(vue@3.5.13)':
+  '@vitejs/plugin-vue@5.2.3(vite@6.2.5(@types/node@24.10.1)(jiti@1.21.7)(yaml@2.7.1))(vue@3.5.13(typescript@5.9.3))':
     dependencies:
-      vite: 6.2.5(jiti@1.21.7)(yaml@2.7.1)
-      vue: 3.5.13
+      vite: 6.2.5(@types/node@24.10.1)(jiti@1.21.7)(yaml@2.7.1)
+      vue: 3.5.13(typescript@5.9.3)
 
   '@vue/compiler-core@3.5.13':
     dependencies:
@@ -1359,26 +1394,31 @@ snapshots:
       '@vue/shared': 3.5.13
       csstype: 3.1.3
 
-  '@vue/server-renderer@3.5.13(vue@3.5.13)':
+  '@vue/server-renderer@3.5.13(vue@3.5.13(typescript@5.9.3))':
     dependencies:
       '@vue/compiler-ssr': 3.5.13
       '@vue/shared': 3.5.13
-      vue: 3.5.13
+      vue: 3.5.13(typescript@5.9.3)
 
   '@vue/shared@3.5.13': {}
 
-  '@vueuse/core@14.0.0(vue@3.5.13)':
+  '@vue/tsconfig@0.8.1(typescript@5.9.3)(vue@3.5.13(typescript@5.9.3))':
+    optionalDependencies:
+      typescript: 5.9.3
+      vue: 3.5.13(typescript@5.9.3)
+
+  '@vueuse/core@14.0.0(vue@3.5.13(typescript@5.9.3))':
     dependencies:
       '@types/web-bluetooth': 0.0.21
       '@vueuse/metadata': 14.0.0
-      '@vueuse/shared': 14.0.0(vue@3.5.13)
-      vue: 3.5.13
+      '@vueuse/shared': 14.0.0(vue@3.5.13(typescript@5.9.3))
+      vue: 3.5.13(typescript@5.9.3)
 
   '@vueuse/metadata@14.0.0': {}
 
-  '@vueuse/shared@14.0.0(vue@3.5.13)':
+  '@vueuse/shared@14.0.0(vue@3.5.13(typescript@5.9.3))':
     dependencies:
-      vue: 3.5.13
+      vue: 3.5.13(typescript@5.9.3)
 
   ansi-regex@5.0.1: {}
 
@@ -1699,9 +1739,9 @@ snapshots:
 
   lru-cache@10.4.3: {}
 
-  lucide-vue-next@0.555.0(vue@3.5.13):
+  lucide-vue-next@0.555.0(vue@3.5.13(typescript@5.9.3)):
     dependencies:
-      vue: 3.5.13
+      vue: 3.5.13(typescript@5.9.3)
 
   magic-string@0.30.17:
     dependencies:
@@ -1769,10 +1809,12 @@ snapshots:
 
   pify@2.3.0: {}
 
-  pinia@3.0.3(vue@3.5.13):
+  pinia@3.0.3(typescript@5.9.3)(vue@3.5.13(typescript@5.9.3)):
     dependencies:
       '@vue/devtools-api': 7.7.7
-      vue: 3.5.13
+      vue: 3.5.13(typescript@5.9.3)
+    optionalDependencies:
+      typescript: 5.9.3
 
   pirates@4.0.7: {}
 
@@ -1960,6 +2002,10 @@ snapshots:
 
   tslib@2.3.0: {}
 
+  typescript@5.9.3: {}
+
+  undici-types@7.16.0: {}
+
   update-browserslist-db@1.1.3(browserslist@4.24.4):
     dependencies:
       browserslist: 4.24.4
@@ -1972,28 +2018,31 @@ snapshots:
     dependencies:
       base64-arraybuffer: 1.0.2
 
-  vite@6.2.5(jiti@1.21.7)(yaml@2.7.1):
+  vite@6.2.5(@types/node@24.10.1)(jiti@1.21.7)(yaml@2.7.1):
     dependencies:
       esbuild: 0.25.2
       postcss: 8.5.3
       rollup: 4.39.0
     optionalDependencies:
+      '@types/node': 24.10.1
       fsevents: 2.3.3
       jiti: 1.21.7
       yaml: 2.7.1
 
-  vue-router@4.5.0(vue@3.5.13):
+  vue-router@4.5.0(vue@3.5.13(typescript@5.9.3)):
     dependencies:
       '@vue/devtools-api': 6.6.4
-      vue: 3.5.13
+      vue: 3.5.13(typescript@5.9.3)
 
-  vue@3.5.13:
+  vue@3.5.13(typescript@5.9.3):
     dependencies:
       '@vue/compiler-dom': 3.5.13
       '@vue/compiler-sfc': 3.5.13
       '@vue/runtime-dom': 3.5.13
-      '@vue/server-renderer': 3.5.13(vue@3.5.13)
+      '@vue/server-renderer': 3.5.13(vue@3.5.13(typescript@5.9.3))
       '@vue/shared': 3.5.13
+    optionalDependencies:
+      typescript: 5.9.3
 
   which@2.0.2:
     dependencies:
