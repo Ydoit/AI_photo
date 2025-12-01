@@ -230,12 +230,12 @@
                        </div>
                        <!-- 新增乘车人显示 -->
                        <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                         乘车人：{{ ticket.passengerName }}
+                         乘车人：{{ ticket.name }}
                        </div>
                     </div>
                   </div>
                   <div class="text-right">
-                    <div class="text-xl font-bold text-primary-600 dark:text-primary-400 font-mono">{{ ticket.trainNumber }}</div>
+                    <div class="text-xl font-bold text-primary-600 dark:text-primary-400 font-mono">{{ ticket.train_code }}</div>
                     <div class="text-xs text-slate-400">{{ formatDate(ticket.date) }}</div>
                   </div>
                 </div>
@@ -291,128 +291,16 @@
       </div>
     </main>
 
-    <!-- 新增/编辑模态框 -->
-    <Transition name="fade">
-      <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="closeModal"></div>
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh]">
-          
-          <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800">
-            <h2 class="text-lg font-bold text-slate-800 dark:text-white">{{ isEditing ? '编辑车票' : '新增车票' }}</h2>
-            <button @click="closeModal" class="text-slate-400 hover:text-red-500 transition-colors">
-              <X class="w-6 h-6" />
-            </button>
-          </div>
-
-          <div class="p-6 overflow-y-auto dark:text-slate-200">
-            <form @submit.prevent="saveTicket" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <!-- 基础信息 -->
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">出发地 <span class="text-red-500">*</span></label>
-                <input v-model="form.from" type="text" required class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none transition-colors" placeholder="如：北京南" />
-              </div>
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">目的地 <span class="text-red-500">*</span></label>
-                <input v-model="form.to" type="text" required class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none transition-colors" placeholder="如：上海虹桥" />
-              </div>
-
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">车次 <span class="text-red-500">*</span></label>
-                <input v-model="form.trainNumber" type="text" required class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none font-mono" placeholder="G101 / Z123" />
-              </div>
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">乘车人 <span class="text-red-500">*</span></label>
-                <input v-model="form.passengerName" type="text" required class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none transition-colors" placeholder="如：张三" />
-              </div>
-
-              <div class="space-y-1 md:col-span-2">
-                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">出发日期时间 <span class="text-red-500">*</span></label>
-                <input 
-                  v-model="form.dateTime" 
-                  type="datetime-local" 
-                  required 
-                  class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none"
-                />
-              </div>
-
-              <!-- 座位信息 -->
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">座位类型 <span class="text-red-500">*</span></label>
-                <select v-model="form.seatType" required class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none">
-                  <option>二等座</option>
-                  <option>一等座</option>
-                  <option>商务座</option>
-                  <option>硬卧</option>
-                  <option>软卧</option>
-                  <option>硬座</option>
-                  <option>软座</option>
-                </select>
-              </div>
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">铺位类型</label>
-                <select v-model="form.berthType" class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none">
-                  <option>无</option>
-                  <option>上铺</option>
-                  <option>中铺</option>
-                  <option>下铺</option>
-                </select>
-              </div>
-
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">车厢号 <span class="text-red-500">*</span></label>
-                <input v-model="form.carriage" type="text" required class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none" placeholder="如：03 / 8A" />
-              </div>
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">座位号 <span class="text-red-500">*</span></label>
-                <input v-model="form.seatNumber" type="text" required class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none" placeholder="如：12A / 05下" />
-              </div>
-
-              <!-- 价格和里程 -->
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">票价（元）<span class="text-red-500">*</span></label>
-                <input v-model.number="form.price" type="number" step="0.01" min="0" required class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none" placeholder="198.5" />
-              </div>
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">里程 (km)</label>
-                <input v-model.number="form.distance" type="number" min="0" class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none" placeholder="1318" />
-              </div>
-
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">运行时间（分钟）</label>
-                <input v-model.number="form.totalRunningTime" type="number" min="0" class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none" placeholder="268" />
-              </div>
-              <div class="space-y-1">
-                <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">优惠类型</label>
-                <select v-model="form.discountType" class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none">
-                  <option>全价票</option>
-                  <option>学生票</option>
-                  <option>儿童票</option>
-                  <option>优惠票</option>
-                </select>
-              </div>
-
-              <!-- 备注 -->
-              <div class="md:col-span-2 space-y-1">
-                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">备注</label>
-                 <textarea v-model="form.comments" rows="2" class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none resize-none" placeholder="旅行的意义..."></textarea>
-              </div>
-            </form>
-          </div>
-
-          <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 bg-slate-50 dark:bg-slate-800">
-            <button @click="closeModal" class="px-5 py-2 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">取消</button>
-            <button 
-              @click="saveTicket" 
-              :disabled="saving"
-              :class="['px-5 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-md shadow-primary-200 dark:shadow-none transition-transform active:scale-95', saving ? 'opacity-70 cursor-not-allowed' : '']"
-            >
-              <span v-if="saving" class="inline-block w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              保存
-            </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
+    <TicketFormModal
+      :is-open="isModalOpen"
+      :is-editing="isEditing"
+      :initial-data="currentTicket"
+      :current-theme="currentTheme"
+      :saving="saving"
+      :api-base-url="API_BASE_URL"
+      @save="handleModalSave"
+      @cancel="closeModal"
+    />
 
     <!-- 城市筛选模态框 -->
     <Transition name="fade">
@@ -454,6 +342,9 @@ import axios from 'axios';
 
 // 注入主题
 import { injectTheme } from '@/composables/useTheme';
+import TicketFormModal from '@/components/TicketFormModal.vue';
+
+
 const { isDarkMode, currentTheme } = injectTheme();
 const isDark = isDarkMode;
 const mainColor = computed(() => currentTheme.value.primary);
@@ -480,14 +371,15 @@ const loading = ref(false);
 const error = ref('');
 const saving = ref(false);
 const selectedPassenger = ref(''); // 选中的乘车人筛选条件
+const currentTicket = ref({});
 
 // --- 表单模型（新增乘车人字段、精确时间字段）---
 const form = ref({
   id: null,
   from: '', // departure_station
   to: '', // arrival_station
-  trainNumber: '', // train_code
-  passengerName: '', // 乘车人姓名（对应后端name字段）
+  train_code: '', // train_code
+  name: '', // 乘车人姓名（对应后端name字段）
   dateTime: new Date().toISOString().slice(0, 16), // 精确到分钟的日期时间（YYYY-MM-DDTHH:mm）
   carriage: '', // 车厢号
   seatNumber: '', // 座位号
@@ -526,8 +418,8 @@ const formatTicket = (ticket) => ({
   id: ticket.id,
   from: ticket.departure_station,
   to: ticket.arrival_station,
-  trainNumber: ticket.train_code,
-  passengerName: ticket.name || '', // 乘车人姓名
+  train_code: ticket.train_code,
+  name: ticket.name || '', // 乘车人姓名
   date: ticket.date_time.split(' ')[0], // 提取日期部分（YYYY-MM-DD）- 展示用
   dateTime: ticket.date_time, // 完整日期时间（后端格式）
   time: ticket.date_time.split(' ')[1], // 提取时间部分（HH:MM:SS）
@@ -551,20 +443,21 @@ const formatTicket = (ticket) => ({
 
 // 前端数据 → 后端请求数据映射
 const formatFormToBackend = (formData) => ({
-  train_code: formData.trainNumber,
+  // 保持不变（注意：dateTime已经在子组件中转换过）
+  train_code: formData.train_code,
   departure_station: formData.from,
   arrival_station: formData.to,
-  date_time: formData.dateTime.replace('T', ' '), // 转换为后端需要的格式（YYYY-MM-DD HH:mm）
+  date_time: formData.dateTime, // 直接使用子组件转换后的格式
   carriage: formData.carriage,
   seat_num: formData.seatNumber,
   berth_type: formData.berthType,
   price: formData.price,
   seat_type: formData.seatType,
-  name: formData.passengerName, // 乘车人姓名（必填）
+  name: formData.name,
   discount_type: formData.discountType,
   total_running_time: formData.totalRunningTime || 0,
   total_mileage: formData.distance || 0,
-  stop_stations: '', // 暂未实现途经站点
+  stop_stations: '',
   comments: formData.comments
 });
 
@@ -576,17 +469,17 @@ const filteredTickets = computed(() => {
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase();
     res = res.filter(t => 
-      t.trainNumber.toLowerCase().includes(q) || 
+      t.train_code.toLowerCase().includes(q) || 
       t.from.toLowerCase().includes(q) || 
       t.to.toLowerCase().includes(q) ||
-      t.passengerName.toLowerCase().includes(q) // 新增：乘车人搜索
+      t.name.toLowerCase().includes(q) // 新增：乘车人搜索
     );
   }
 
   // 2. 列车类型筛选
   if (filterType.value !== 'all') {
     res = res.filter(t => {
-      const firstChar = t.trainNumber.charAt(0).toUpperCase();
+      const firstChar = t.train_code.charAt(0).toUpperCase();
       return filterType.value === 'highspeed' 
         ? ['G', 'D', 'C'].includes(firstChar) 
         : !['G', 'D', 'C'].includes(firstChar);
@@ -595,7 +488,7 @@ const filteredTickets = computed(() => {
 
   // 3. 乘车人筛选
   if (selectedPassenger.value) {
-    res = res.filter(t => t.passengerName === selectedPassenger.value);
+    res = res.filter(t => t.name === selectedPassenger.value);
   }
 
   // 4. 多维度排序（新增时长、票价排序）
@@ -729,81 +622,50 @@ const formatDate = (dateStr) => {
   });
 };
 
-// 打开模态框
+// 打开模态框（修改）
 const openTicketModal = (ticket = null) => {
   isModalOpen.value = true;
   if (ticket) {
     isEditing.value = true;
-    // 反向填充表单（包含乘车人和精确时间）
-    form.value = {
-      id: ticket.id,
-      from: ticket.from,
-      to: ticket.to,
-      trainNumber: ticket.trainNumber,
-      passengerName: ticket.passengerName,
-      dateTime: ticket.dateTime.replace(' ', 'T').slice(0, 16), // 转换为datetime-local格式
-      carriage: ticket.carriage,
-      seatNumber: ticket.seatNumber,
-      berthType: ticket.berthType,
-      price: ticket.price,
-      seatType: ticket.seatType,
-      discountType: ticket.discountType,
-      totalRunningTime: ticket.totalRunningTime,
-      distance: ticket.distance,
-      comments: ticket.comments
-    };
+    currentTicket.value = ticket; // 传递给子组件的初始数据
   } else {
     isEditing.value = false;
-    // 重置表单
-    form.value = {
-      id: null,
-      from: '',
-      to: '',
-      trainNumber: '',
-      passengerName: '',
-      dateTime: new Date().toISOString().slice(0, 16),
-      carriage: '',
-      seatNumber: '',
-      berthType: '无',
-      price: 0,
-      seatType: '二等座',
-      discountType: '全价票',
-      totalRunningTime: 0,
-      distance: 0,
-      comments: ''
-    };
+    currentTicket.value = {}; // 重置初始数据
   }
 };
 
-// 关闭模态框
+// 关闭模态框（修改）
 const closeModal = () => {
   isModalOpen.value = false;
   setTimeout(() => {
-    form.value = {
-      id: null,
-      from: '',
-      to: '',
-      trainNumber: '',
-      passengerName: '',
-      dateTime: new Date().toISOString().slice(0, 16),
-      carriage: '',
-      seatNumber: '',
-      berthType: '无',
-      price: 0,
-      seatType: '二等座',
-      discountType: '全价票',
-      totalRunningTime: 0,
-      distance: 0,
-      comments: ''
-    };
+    currentTicket.value = {}; // 清空当前车票数据
   }, 300);
+};
+
+// 处理模态框保存事件（新增）
+const handleModalSave = async (formData) => {
+  saving.value = true;
+  try {
+    if (isEditing.value) {
+      await updateTicket(formData.id, formData);
+    } else {
+      await createTicket(formData);
+    }
+    await fetchTickets();
+    closeModal();
+  } catch (err) {
+    alert(err.message);
+    console.error('Save ticket error:', err);
+  } finally {
+    saving.value = false;
+  }
 };
 
 // 保存车票
 const saveTicket = async () => {
   saving.value = true;
   try {
-    if (!form.value.passengerName) {
+    if (!form.value.name) {
       alert('乘车人姓名不能为空');
       return;
     }

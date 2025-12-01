@@ -18,6 +18,7 @@ if not os.path.exists('./data'):
 load_dotenv('./data/.env')
 
 from app.api import user,train_ticket
+from railway.api import router as railway_router
 
 app = FastAPI(title="TrailSnap - 足迹相册")
 
@@ -45,6 +46,7 @@ def root():
 
 app.include_router(user.router, prefix="/users", tags=["Users"])
 app.include_router(train_ticket.router, prefix="/api/train-ticket", tags=["train-ticket"])
+app.include_router(railway_router, prefix="/api/railway", tags=["railway"])
 
 if __name__ == "__main__":
     import uvicorn
