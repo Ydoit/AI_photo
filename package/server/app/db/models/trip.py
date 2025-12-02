@@ -11,7 +11,9 @@
 
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Enum, Numeric, DECIMAL
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime
+import uuid
 
 from app.db.base import Base
 
@@ -72,7 +74,14 @@ class TrainTicket(Base):
     """火车票模型"""
     __tablename__ = "train_tickets"
 
-    id = Column(Integer, primary_key=True, index=True, comment="票据ID")
+    # 修改为UUID类型主键
+    id = Column(
+        String(36),
+        primary_key=True,
+        index=True,
+        default=lambda: str(uuid.uuid4()),  # 自动生成UUID
+        comment="票据ID（UUID）"
+    )
     train_code = Column(String(20), index=True, nullable=False, comment="车次号（如G1920）")
     departure_station = Column(String(50), nullable=False, comment="出发站")
     arrival_station = Column(String(50), nullable=False, comment="到达站")

@@ -55,7 +55,7 @@ def create_ticket(
 
 @router.get("/{ticket_id}", response_model=TrainTicketResponse, summary="获取单张火车票")
 def read_ticket(
-        ticket_id: int = Path(..., ge=1, description="火车票ID"),
+        ticket_id: str = Path(..., description="火车票ID"),
         db: Session = Depends(get_db)
 ):
     """根据ID获取单张火车票的详细信息"""
@@ -117,7 +117,7 @@ def read_tickets(
 @router.put("/{ticket_id}", response_model=TrainTicketResponse, summary="更新火车票记录")
 def update_ticket(
         ticket_update: TrainTicketUpdate,
-        ticket_id: int = Path(..., ge=1, description="火车票ID"),
+        ticket_id: str = Path(..., description="火车票ID"),
         db: Session = Depends(get_db)
 ):
     """根据ID更新火车票信息（只需要提供要更新的字段）"""
@@ -129,7 +129,7 @@ def update_ticket(
 
 @router.delete("/{ticket_id}", response_model=dict, summary="删除火车票记录")
 def delete_ticket(
-        ticket_id: int = Path(..., ge=1, description="火车票ID"),
+        ticket_id: str = Path(..., description="火车票ID"),
         db: Session = Depends(get_db)
 ):
     """根据ID删除火车票记录"""
