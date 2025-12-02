@@ -6,12 +6,10 @@ const HomePage = () => import('@/views/HomePage.vue');
 const TicketPage = () => import('@/views/TicketPage.vue');
 const StatisticsPage = () => import('@/views/StatisticsPage.vue');
 const More = () => import('@/views/More.vue');
-const ProjectPage = () => import('@/views/ProjectPage.vue');
 const Responsive = () => import('@/views/tools/Responsive.vue');
 const ToolPage = () => import('@/views/tools/ToolPage.vue');
-// 新增 404 页面（适配空白布局）
+
 const NotFound = () => import('@/views/NotFound.vue');
-// 新增 About 页面（对应导航栏的「关于」链接）
 const AboutPage = () => import('@/views/AboutPage.vue');
 
 // 路由配置：TS 类型为 RouteRecordRaw 数组，强制类型校验
@@ -25,7 +23,6 @@ const routes: RouteRecordRaw[] = [
       { path: '', name: 'Home', component: HomePage, meta: { title: '首页' } },
       { path: '/ticket', name: 'Ticket', component: TicketPage, meta: { title: '车票' } },
       { path: '/statistics', name: 'Statistics', component: StatisticsPage, meta: { title: '统计' } },
-      { path: '/project', name: 'Project', component: ProjectPage, meta: { title: '项目' } },
       { path: '/tools', name: 'Tool', component: ToolPage, meta: { title: '工具' } },
       { path: '/tools/responsive', name: 'Responsive', component: Responsive, meta: { title: '响应式测试' } },
       { path: '/more', name: 'More', component: More, meta: { title: '更多' } },

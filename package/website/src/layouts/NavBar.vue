@@ -4,7 +4,7 @@
       <img src="/src/assets/logo.png" alt="Logo" class="logo" />
       <h1 class="site-title text-gray-800 dark:text-gray-100">拾光物语</h1>
     </div>
-    
+
     <nav class="nav-bg bg-light-bg dark:bg-gray-800 shadow-md rounded-full px-4 py-1 flex justify-center items-center space-x-2 fixed left-1/2 transform -translate-x-1/2 transition-colors duration-300">
       <RouterLink
         v-for="(item, index) in navLinks"
@@ -128,8 +128,10 @@ onClickOutside(themeMenuRef, () => {
 </script>
 
 <style scoped>
-/* 样式保持不变 */
-/* ... (样式代码) ... */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 
 .header {
   position: sticky;

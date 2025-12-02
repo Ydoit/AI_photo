@@ -16,10 +16,13 @@
     "allowJs": true,
     "checkJs": false,
     "baseUrl": ".",
+    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "types": ["vite/client", "node"], // 包含 vite 内置类型
     "paths": {
       "@/*": ["src/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "references": [{ "path": "./tsconfig.node.json" }],
+  "exclude": ["node_modules"]
 }
