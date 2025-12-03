@@ -4,16 +4,14 @@
     <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="handleCancel"></div>
       <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh]">
-        
         <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800">
           <h2 class="text-lg font-bold text-slate-800 dark:text-white">{{ isEditing ? '编辑车票' : '新增车票' }}</h2>
           <button @click="handleCancel" class="text-slate-400 hover:text-red-500 transition-colors">
             <X class="w-6 h-6" />
           </button>
         </div>
-
         <div class="p-6 overflow-y-auto dark:text-slate-200">
-          <form @submit.prevent="handleSubmit" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form @submit.prevent="handleSubmit" class="grid grid-cols-1 md:grid-cols-2 gap-2">
             <!-- 车次（移到第一个位置） -->
             <div class="space-y-1 md:col-span-2">
               <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">车次 <span class="text-red-500">*</span></label>
@@ -179,8 +177,8 @@
 
         <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 bg-slate-50 dark:bg-slate-800">
           <button @click="handleCancel" class="px-5 py-2 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">取消</button>
-          <button 
-            @click="handleSubmit" 
+          <button
+            @click="handleSubmit"
             :disabled="saving"
             :class="['px-5 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 shadow-md shadow-primary-200 dark:shadow-none transition-transform active:scale-95', saving ? 'opacity-70 cursor-not-allowed' : '']"
           >
@@ -197,6 +195,8 @@
 import { ref, watch, onUnmounted } from 'vue';
 import { X } from 'lucide-vue-next';
 import axios from 'axios';
+import { ElMessage } from 'element-plus';
+
 
 // 接收props
 const props = defineProps({
@@ -387,7 +387,9 @@ const calculateDistanceAndTime = (fromStation, toStation) => {
 const handleSubmit = () => {
   // 表单验证
   if (!form.value.name) {
-    alert('乘车人姓名不能为空');
+    ElMessage.error('乘车人姓名不能为空');
+    //
+    // alert('乘车人姓名不能为空');
     return;
   }
   
