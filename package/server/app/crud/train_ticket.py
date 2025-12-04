@@ -18,7 +18,7 @@ from app.db.models.trip import TrainTicket
 from app.schemas.train_ticket import TrainTicketCreate, TrainTicketUpdate
 
 
-def get_train_ticket(db: Session, ticket_id: int) -> Optional[TrainTicket]:
+def get_train_ticket(db: Session, ticket_id: str) -> Optional[TrainTicket]:
     """根据ID获取单张火车票"""
     return db.query(TrainTicket).filter(TrainTicket.id == ticket_id).first()
 
@@ -47,9 +47,15 @@ def get_train_tickets(
     total = query.count()
 
     # 分页查询
-    items = query.offset(skip).limit(limit).order_by(TrainTicket.datetime.desc()).all()
+    items = query.offset(skip).limit(limit).order_by(TrainTicket.date_time.desc()).all()
 
     return total, items
+
+
+def get_all_train_tickets(db: Session) -> List[TrainTicket]:
+    """获取所有火车票（用于导出）"""
+    return db.query(TrainTicket).order_by(TrainTicket.date_time.desc()).all()
+
 
 
 def create_train_ticket(db: Session, ticket: TrainTicketCreate) -> TrainTicket:
@@ -79,7 +85,7 @@ def create_train_ticket(db: Session, ticket: TrainTicketCreate) -> TrainTicket:
 
 def update_train_ticket(
         db: Session,
-        ticket_id: int,
+        ticket_id: str,
         ticket_update: TrainTicketUpdate
 ) -> Optional[TrainTicket]:
     """更新火车票信息"""
@@ -97,7 +103,7 @@ def update_train_ticket(
     return db_ticket
 
 
-def delete_train_ticket(db: Session, ticket_id: int) -> bool:
+def delete_train_ticket(db: Session, ticket_id: str) -> bool:
     """删除火车票"""
     db_ticket = get_train_ticket(db, ticket_id)
     if not db_ticket:

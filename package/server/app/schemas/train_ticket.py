@@ -58,7 +58,6 @@ class TrainTicketResponse(TrainTicketBase):
     """火车票响应模型（包含数据库额外字段）"""
     id: str
     created_at: datetime
-    updated_at: datetime
 
     # 配置ORM模式（允许直接从SQLAlchemy模型转换）
     class Config:
