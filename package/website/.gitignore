@@ -41,3 +41,4 @@ build
 .yarn/*
 !.yarn/patches
 !.yarn/releases
+.trae

@@ -15,9 +15,9 @@
         <div class="hidden lg:block w-1/3">
           <div class="relative group">
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
-            <input 
+            <input
               v-model="searchQuery"
-              type="text" 
+              type="text"
               placeholder="搜索车次 / 出发地 / 目的地 / 乘车人"
               class="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-900 transition-all text-sm dark:text-white dark:placeholder-slate-400"
               @input="handleSearchInput"
@@ -26,7 +26,7 @@
         </div>
 
         <div class="flex items-center gap-3">
-          <button 
+          <button
             @click="openTicketModal()"
             class="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md transition-all active:scale-95 shadow-md shadow-primary-200 dark:shadow-none"
           >
@@ -40,14 +40,14 @@
       </div>
     </nav>
 
-    <main class="max-w-[1400px] mx-auto px-4 py-6">
+    <main class="max-w-[1400px] mx-auto px-4 py-4">
       <div class="flex flex-col xl:flex-row gap-6">
         <aside class="w-full xl:w-[320px] shrink-0 space-y-4">
           <div class="lg:hidden mb-4">
-             <input 
-              v-model="searchQuery" 
-              type="text" 
-              placeholder="搜索车票 / 乘车人..." 
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="搜索车票 / 乘车人..."
               class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg dark:text-white"
               @input="handleSearchInput"
             />
@@ -108,11 +108,14 @@
 
         <section class="flex-1 min-w-0">
           <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-6 flex flex-wrap gap-4 justify-between items-center shadow-sm transition-colors">
-            
             <div class="flex items-center gap-3 w-full sm:w-auto">
               <div class="relative w-full sm:w-40">
-                <select 
-                  v-model="filterType" 
+                <select
+                  v-model="filterType"
+                  class="w-full appearance-none bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm rounded-md px-3 py-2 pr-8 focus:border-primary-500 dark:text-white outline-none cursor-pointer"
+                  @change="fetchTickets()"
+                >
+                  v-model="filterType"
                   class="w-full appearance-none bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm rounded-md px-3 py-2 pr-8 focus:border-primary-500 dark:text-white outline-none cursor-pointer"
                   @change="fetchTickets"
                 >
@@ -128,7 +131,7 @@
                   v-for="type in sortOptions"
                   :key="type.value"
                   @click="changeSortType(type.value)"
-                  :class="['px-3 py-1 text-xs font-medium rounded transition-all', sortType === type.value ? 'bg-white dark:bg-slate-600 text-primary-600 dark:text-primary-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200']"
+                  :class="['px-3 py-1 text-xs font-medium rounded transition-all', sortType === type.value ? 'bg-white dark:bg-slate-600 text-primary-600 dark:text-primary-400 shadow-sm' : 'text-slate-500 dark:text-slate-700 hover:text-slate-700 dark:hover:text-slate-800']"
                 >
                   {{ type.label }}
                 </button>
@@ -138,15 +141,24 @@
             <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
               <div class="bg-slate-100 dark:bg-slate-700 p-1 rounded-md flex gap-1">
                 <button 
+                  @click="fetchTickets(true)"
+                  class="p-1.5 rounded transition-all text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm"
+                  title="刷新数据"
+                  :disabled="loading"
+                >
+                  <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" />
+                </button>
+                <div class="w-px bg-slate-300 dark:bg-slate-600 my-1 mx-0.5"></div>
+                <button 
                   @click="viewMode = 'timeline'"
-                  :class="['p-1.5 rounded transition-all', viewMode === 'timeline' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300']"
+                  :class="['p-1.5 rounded transition-all', viewMode === 'timeline' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-slate-500 hover:text-slate-600 dark:hover:text-slate-300']"
                   title="时间轴视图"
                 >
                   <ListTree class="w-4 h-4" />
                 </button>
                 <button 
                   @click="viewMode = 'grid'"
-                  :class="['p-1.5 rounded transition-all', viewMode === 'grid' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300']"
+                  :class="['p-1.5 rounded transition-all', viewMode === 'grid' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-slate-500 hover:text-slate-600 dark:hover:text-slate-300']"
                   title="卡片视图"
                 >
                   <LayoutGrid class="w-4 h-4" />
@@ -255,18 +267,18 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { 
   TrainFront, Search, Plus, MapPin, Clock, Route,
-  ChevronDown, Trash2, X, User
+  ChevronDown, Trash2, X, User, RefreshCw
 } from 'lucide-vue-next';
 import { ElMessage } from 'element-plus';
 import { ListTree, LayoutGrid } from 'lucide-vue-next'; // 引入图标
 import TicketTimeline from '@/components/TicketTimeline.vue'; // 引入新组件
+import { storeToRefs } from 'pinia';
+import { useTicketStore } from '@/stores/ticketStore';
 
 // 导入自定义类型、服务和组件
 import type {
-  TicketBackend,
   TicketFrontend,
   TicketFormData,
-  TicketQueryParams,
   SortType,
   FilterType
 } from '@/types/ticket';
@@ -280,23 +292,28 @@ import TicketCard from '@/components/TicketCard.vue';
 import StatsCard from '@/components/StatsCard.vue'; // 新组件
 
 const { isDarkMode, currentTheme } = injectTheme();
+const ticketStore = useTicketStore();
 
 // --- 状态定义 ---
-const tickets = ref<TicketBackend[]>([]); // 原始后端数据
-const searchQuery = ref<string>('');
-const filterType = ref<FilterType>('all');
-const sortType = ref<SortType>('date');
+// 使用 storeToRefs 保持响应性
+const {
+  tickets,
+  searchQuery,
+  filterType,
+  sortType,
+  selectedPassenger,
+  viewMode,
+  loading,
+  error
+} = storeToRefs(ticketStore);
+
 const selectedTickets = ref<number[]>([]);
 const isModalOpen = ref(false);
 const isEditing = ref(false);
 const showCityModal = ref(false);
-const loading = ref(false);
-const error = ref('');
 const saving = ref(false);
-const selectedPassenger = ref('');
 // 初始编辑对象，使用 Partial 或特定类型
 const currentTicket = ref<Partial<TicketFormData>>({});
-const viewMode = ref<'timeline' | 'grid'>('timeline'); // 新增状态控制视图，默认时间轴
 
 // 排序选项配置
 const sortOptions: { label: string; value: SortType }[] = [
@@ -309,6 +326,10 @@ const sortOptions: { label: string; value: SortType }[] = [
 // --- 搜索防抖 ---
 // 使用我们封装的带类型的防抖函数
 const debouncedFetchTickets = debounce(() => {
+  // 搜索时触发 store 的 fetch，或者因为 store 中 tickets 已经是全量数据，
+  // 其实搜索主要是在前端过滤，所以这里可能不需要重新请求后端，
+  // 除非后端支持搜索参数且我们希望服务端过滤。
+  // 原逻辑中 fetchTickets 会带上 params，所以这里保留调用
   fetchTickets();
 }, 500);
 
@@ -318,6 +339,7 @@ const handleSearchInput = () => {
 
 // --- 生命周期 ---
 onMounted(() => {
+  // 组件加载时获取数据（会自动检查缓存）
   fetchTickets();
 });
 
@@ -334,9 +356,7 @@ const frontendTickets = computed<TicketFrontend[]>(() => {
 
 const filteredTickets = computed<TicketFrontend[]>(() => {
   let res = [...frontendTickets.value];
-  
-  // 1. 本地搜索筛选 (后端已支持部分搜索，但前端进行二次快速过滤或高亮逻辑时可用)
-  // 如果完全依赖后端搜索，此处逻辑可移除，主要用于 filterType 和 sort
+  // 1. 本地搜索筛选
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase();
     res = res.filter(t => 
@@ -409,32 +429,28 @@ const totalDuration = computed(() => {
 
 // --- API 方法 ---
 
-async function fetchTickets() {
-  loading.value = true;
-  error.value = '';
-  try {
-    const params: TicketQueryParams = {
-      skip: 0,
-      limit: 100,
-      // 如果搜索框为空，传 undefined
-      train_code: searchQuery.value || undefined,
-      departure_station: searchQuery.value || undefined,
-      arrival_station: searchQuery.value || undefined,
-      name: selectedPassenger.value || undefined, 
-    };
-    
-    // 注意：实际逻辑中，如果后端只支持精准匹配某个字段，这里可能需要调整传参策略
-    // 上面的逻辑假设后端能同时处理这几个字段的模糊查询，或者你需要决定优先传哪个
-    
-    const res = await ticketService.getTickets(params);
-    tickets.value = res.items || [];
-  } catch (err: any) {
-    error.value = err.response?.data?.detail || '获取车票失败，请重试';
-    console.error('Fetch tickets error:', err);
-  } finally {
-    loading.value = false;
-  }
+async function fetchTickets(force = false) {
+  await ticketStore.fetchTickets(force);
 }
+
+const changeSortType = (type: SortType) => {
+  sortType.value = type;
+};
+
+const filterByPassenger = (passenger: string) => {
+  selectedPassenger.value = passenger;
+  // 如果需要重新请求后端筛选，这里调用 fetchTickets
+  // 目前是前端筛选，所以不需要
+};
+
+const clearPassengerFilter = () => {
+  selectedPassenger.value = '';
+};
+
+const filterByCity = (city: string) => {
+  searchQuery.value = city;
+  showCityModal.value = false;
+};
 
 // --- 事件处理 ---
 
@@ -480,10 +496,14 @@ const handleModalSave = async (formData: TicketFormData) => {
     
     if (isEditing.value && formData.id) {
       await ticketService.updateTicket(formData.id, backendData);
+      // 更新本地数据
+      // const updatedTicket = { ...backendData, id: formData.id };
+      // ticketStore.updateLocalTicket(updatedTicket as any); // 类型可能需要适配
     } else {
       await ticketService.createTicket(backendData);
     }
-    await fetchTickets();
+    // 简单起见，保存后强制刷新，确保数据一致性
+    await fetchTickets(true);
     closeModal();
     ElMessage.success(isEditing.value ? '更新成功' : '新增成功');
   } catch (err: any) {
@@ -506,7 +526,7 @@ const confirmDelete = async (id: number) => {
   if (confirm('确定要删除这张车票吗？删除后不可恢复')) {
     try {
       await ticketService.deleteTicket(id);
-      tickets.value = tickets.value.filter(t => t.id !== id);
+      ticketStore.removeLocalTickets([id]);
       selectedTickets.value = selectedTickets.value.filter(tid => tid !== id);
       ElMessage.success('删除成功');
     } catch (err: any) {
@@ -521,35 +541,15 @@ const batchDelete = async () => {
     try {
       await ticketService.batchDeleteTickets(selectedTickets.value);
       // 前端乐观更新
-      tickets.value = tickets.value.filter(t => !selectedTickets.value.includes(t.id));
+      // 注意：这里需要调用 store 的方法来更新数据，或者重新 fetch
+      // 简单起见，我们更新 store 中的 tickets
+      ticketStore.removeLocalTickets(selectedTickets.value);
       selectedTickets.value = [];
       ElMessage.success('批量删除成功');
     } catch (err: any) {
       ElMessage.error(err.message || '批量删除失败');
     }
   }
-};
-
-const changeSortType = (type: SortType) => {
-    sortType.value = type;
-    // 如果是后端排序，这里需要调用 fetchTickets()
-    // 如果是前端排序（当前逻辑），不需要调接口，computed 会自动更新
-};
-
-const filterByCity = (city: string) => {
-  searchQuery.value = city;
-  showCityModal.value = false;
-  fetchTickets();
-};
-
-const filterByPassenger = (passenger: string) => {
-  selectedPassenger.value = passenger;
-  fetchTickets();
-};
-
-const clearPassengerFilter = () => {
-  selectedPassenger.value = '';
-  fetchTickets();
 };
 </script>
 

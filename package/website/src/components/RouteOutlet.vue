@@ -1,7 +1,11 @@
 <!-- src/components/RouteOutlet.vue -->
 <template>
-  <!-- 仅作为子路由的挂载点，无任何实际内容 -->
-  <router-view />
+  <router-view v-slot="{ Component, route }">
+    <keep-alive>
+      <component :is="Component" v-if="route.meta.keepAlive" :key="route.path" />
+    </keep-alive>
+    <component :is="Component" v-if="!route.meta.keepAlive" :key="route.path" />
+  </router-view>
 </template>
 
 <script setup lang="ts"></script>

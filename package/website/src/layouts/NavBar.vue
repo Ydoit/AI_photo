@@ -10,15 +10,43 @@
         v-for="(item, index) in navLinks"
         :key="index"
         :to="item.href"
-        class="relative px-1 py-1 text-gray-700 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-500 transition-colors"
-        active-class="font-medium"
+        class="relative px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-500 transition-colors flex items-center gap-1.5"
+        active-class="font-medium text-primary-600 dark:text-primary-400"
       >
+        <ImageIcon v-if="item.icon" class="w-4 h-4" />
         {{ item.label }}
         <span
           v-if="$route.path === item.href || ($route.path.startsWith(item.href) && item.href !== '/')"
           class="absolute bottom-0 left-0 w-full h-0.5 bg-primary-500 rounded-full"
         ></span>
       </RouterLink>
+
+      <!-- More Menu -->
+      <div class="relative" ref="moreMenuRef">
+        <button
+          @click="showMoreMenu = !showMoreMenu"
+          class="px-2 py-1 text-gray-700 dark:text-gray-200 hover:text-primary-500 transition-colors flex items-center gap-1 text-sm font-medium"
+          :class="{ 'text-primary-500': showMoreMenu || moreLinks.some(l => $route.path.startsWith(l.href)) }"
+        >
+          更多 <ChevronDown class="w-3 h-3 transition-transform duration-200" :class="{ 'rotate-180': showMoreMenu }" />
+        </button>
+
+        <div
+          v-if="showMoreMenu"
+          class="absolute top-10 left-1/2 transform -translate-x-1/2 w-32 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-1 z-50 animate-in fade-in zoom-in-95 duration-200 overflow-hidden"
+        >
+          <RouterLink
+            v-for="link in moreLinks"
+            :key="link.href"
+            :to="link.href"
+            @click="showMoreMenu = false"
+            class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-center"
+            active-class="bg-primary-50 text-primary-600 dark:bg-slate-700 dark:text-primary-400 font-medium"
+          >
+            {{ link.label }}
+          </RouterLink>
+        </div>
+      </div>
 
       <div class="relative">
         <button 
@@ -89,7 +117,7 @@
 import { injectTheme } from '@/composables/useTheme.js'
 import { ref } from 'vue'
 import {
-  Palette, Sun, Moon, Check
+  Palette, Sun, Moon, Check, Image as ImageIcon, MoreHorizontal, ChevronDown
 } from 'lucide-vue-next';
 import { useRoute } from 'vue-router'
 import { onClickOutside } from '@vueuse/core' 
@@ -97,11 +125,23 @@ import { onClickOutside } from '@vueuse/core'
 // 导航数据
 const navLinks = [
   { label: '首页', href: '/' },
+  { label: '相册', href: '/album', icon: true },
+]
+
+const moreLinks = [
   { label: '车票', href: '/ticket' },
   { label: '统计', href: '/statistics' },
   { label: '工具', href: '/tools' },
   { label: '关于', href: '/about' },
 ]
+
+const showMoreMenu = ref(false);
+const moreMenuRef = ref(null);
+
+onClickOutside(moreMenuRef, () => {
+  showMoreMenu.value = false;
+});
+
 
 // 关键步骤：注入全局状态和修改函数
 const {
