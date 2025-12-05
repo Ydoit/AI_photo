@@ -3,7 +3,10 @@ import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
 
 // 路由懒加载（优化首屏性能，TS 自动推断类型）
 const HomePage = () => import('@/views/HomePage.vue');
-const AlbumPage = () => import('@/views/AlbumPage.vue');
+// const AlbumPage = () => import('@/views/AlbumPage.vue');
+const AlbumList = () => import('@/views/AlbumList.vue');
+const AlbumDetail = () => import('@/views/AlbumDetail.vue');
+const PhotosPage = () => import('@/views/PhotosPage.vue');
 const TicketPage = () => import('@/views/TicketPage.vue');
 const StatisticsPage = () => import('@/views/StatisticsPage.vue');
 const More = () => import('@/views/More.vue');
@@ -22,7 +25,9 @@ const routes: RouteRecordRaw[] = [
     meta: { layout: 'main' }, // 标记布局类型（供 App.vue 识别）
     children: [
       { path: '', name: 'Home', component: HomePage, meta: { title: '首页' } },
-      { path: '/album', name: 'Album', component: AlbumPage, meta: { title: 'AI相册' } },
+      { path: '/album', name: 'AlbumList', component: AlbumList, meta: { title: 'AI相册' } },
+      { path: '/album/:id', name: 'AlbumDetail', component: AlbumDetail, meta: { title: '相册详情' } },
+      { path: '/photos', name: 'Photos', component: PhotosPage, meta: { title: '所有照片' } },
       { path: '/ticket', name: 'Ticket', component: TicketPage, meta: { title: '车票', keepAlive: true } },
       { path: '/statistics', name: 'Statistics', component: StatisticsPage, meta: { title: '统计' } },
       { path: '/tools', name: 'Tool', component: ToolPage, meta: { title: '工具' } },

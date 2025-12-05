@@ -1,29 +1,22 @@
 <template>
   <div class="container mx-auto px-4 py-1 pb-24 min-h-screen">
-    <!-- Toolbar & Tabs Area -->
+    <!-- Toolbar & Header -->
     <div class="sticky top-[60px] z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md py-3 -mx-4 px-4 border-b border-gray-100 dark:border-gray-800 shadow-sm transition-all duration-300">
       <div class="flex flex-col md:flex-row items-center justify-between gap-4 max-w-7xl mx-auto">
         
-        <!-- Mode Tabs -->
-        <div class="bg-gray-100 dark:bg-gray-800 p-1 rounded-lg flex space-x-1">
-          <button
-            v-for="tab in tabs"
-            :key="tab.id"
-            @click="currentTab = tab.id"
-            :class="[
-              'px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-200 flex items-center gap-2',
-              currentTab === tab.id
-                ? 'bg-white dark:bg-gray-700 text-primary-500 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-            ]"
-          >
-            <component :is="tab.icon" class="w-4 h-4" />
-            {{ tab.name }}
+        <!-- Back & Title -->
+        <div class="flex items-center gap-3 w-full md:w-auto">
+          <button @click="router.back()" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+            <ArrowLeft class="w-5 h-5 text-gray-600 dark:text-gray-300" />
           </button>
+          <div>
+            <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight">所有照片</h1>
+            <p class="text-xs text-gray-500">{{ images.length }} 张照片</p>
+          </div>
         </div>
 
-        <!-- Controls (Only visible in Timeline mode) -->
-        <div v-if="currentTab === 'timeline'" class="flex items-center gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
+        <!-- Controls -->
+        <div class="flex items-center gap-4 ml-auto animate-in fade-in slide-in-from-right-4 duration-300">
           
           <!-- View Size -->
           <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
@@ -73,6 +66,14 @@
               <LayoutGrid class="w-4 h-4" />
               <span class="text-xs font-medium hidden sm:inline">正方形</span>
             </button>
+            <button 
+              @click="layoutMode = 'list'" 
+              class="p-1.5 rounded hover:bg-white dark:hover:bg-gray-700 transition-colors flex items-center gap-2 px-3"
+              :class="{ 'text-primary-500 bg-white dark:bg-gray-700 shadow-sm': layoutMode === 'list', 'text-gray-500': layoutMode !== 'list' }"
+            >
+              <LayoutList class="w-4 h-4" />
+              <span class="text-xs font-medium hidden sm:inline">列表</span>
+            </button>
           </div>
 
           <!-- Upload Button -->
@@ -91,7 +92,6 @@
 
     <!-- Timeline Navigation Sidebar (Right Sticky) -->
     <AlbumTimeline
-      v-if="currentTab === 'timeline'"
       :dates="Object.keys(groupedImages)"
       :active-date="activeDate"
       @select="scrollToDate"
@@ -101,7 +101,7 @@
     <div class="mt-6 relative min-h-[500px]">
       
       <!-- Timeline View -->
-      <div v-if="currentTab === 'timeline'" class="space-y-8">
+      <div class="space-y-8">
         <div 
           v-for="(group, date) in groupedImages" 
           :key="date" 
@@ -120,81 +120,85 @@
           <!-- Images Grid -->
           <div 
             :class="[
-              'transition-all duration-500 ease-in-out',
-              layoutMode === 'grid' ? 'grid' : 'block',
+              'transition-all duration-300 ease-in-out',
               currentGridClass
             ]"
           >
             <div
               v-for="img in group"
               :key="img.id"
-              class="group relative cursor-zoom-in overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-300 mb-4 break-inside-avoid"
-              :class="{ 'aspect-square': layoutMode === 'grid' }"
+              class="group relative cursor-zoom-in overflow-hidden bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-300 break-inside-avoid"
+              :class="[
+                layoutMode === 'list' 
+                  ? 'flex items-center gap-4 p-3 rounded-xl' 
+                  : 'rounded-xl mb-4',
+                layoutMode === 'grid' ? 'aspect-square mb-0' : ''
+              ]"
               @click="openLightbox(img)"
             >
-              <div v-if="!loadedImageIds.has(img.id)" class="absolute inset-0 flex items-center justify-center z-0">
-                <ImageIcon class="w-8 h-8 text-gray-300 dark:text-gray-600 opacity-50" />
+              <!-- List View: Thumbnail -->
+              <div 
+                v-if="layoutMode === 'list'"
+                class="w-24 h-24 sm:w-32 sm:h-32 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 relative"
+              >
+                <img
+                  v-observe-image="img.id"
+                  :src="loadedImageIds.has(img.id) ? img.thumbnail : ''"
+                  class="w-full h-full object-cover"
+                  :class="{ 'opacity-100': loadedImageIds.has(img.id), 'opacity-0': !loadedImageIds.has(img.id) }"
+                />
               </div>
-              <img
-                v-observe-image="img.id"
-                :src="loadedImageIds.has(img.id) ? img.thumbnail : ''"
-                :srcset="loadedImageIds.has(img.id) ? img.srcset : ''"
-                :alt="img.tags.join(', ')"
-                class="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110 transition-opacity duration-500 relative z-10"
-                :class="{ 'opacity-100': loadedImageIds.has(img.id), 'opacity-0': !loadedImageIds.has(img.id) }"
-              />
-              <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 z-20"></div>
-              
-              <!-- Smart Tags Overlay -->
-              <div class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-y-2 group-hover:translate-y-0 z-20">
+
+              <!-- List View: Info -->
+              <div v-if="layoutMode === 'list'" class="flex-1 min-w-0 py-1">
+                <div class="flex items-start justify-between mb-2">
+                  <div>
+                    <div class="flex items-center gap-2 mb-1">
+                       <span class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">IMG_{{ img.id }}</span>
+                       <span v-if="img.city" class="text-[10px] px-1.5 py-0.5 bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400 rounded-full">{{ img.city }}</span>
+                    </div>
+                    <p class="text-xs text-gray-500 flex items-center gap-1">
+                      <CalendarDays class="w-3 h-3" />
+                      {{ formatTime(img.timestamp) }}
+                    </p>
+                    <p v-if="img.location" class="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                      <MapPin class="w-3 h-3" />
+                      {{ img.location }}
+                    </p>
+                  </div>
+                </div>
+                
                 <div class="flex flex-wrap gap-1.5">
-                  <span v-for="tag in img.tags.slice(0, 2)" :key="tag" class="text-[10px] font-medium text-white bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-md border border-white/10">
+                  <span v-for="tag in img.tags" :key="tag" class="text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
                     {{ tag }}
                   </span>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Category View -->
-      <div v-else class="space-y-10 animate-in slide-in-from-bottom-4 duration-500">
-        <div v-for="(group, category) in categoryImages" :key="category">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200 flex items-center">
-              <span class="w-1.5 h-6 bg-primary-500 rounded-full mr-3"></span>
-              {{ category }}
-              <span class="ml-2 text-sm font-normal text-gray-400">({{ group.length }})</span>
-            </h3>
-            <button class="text-sm text-primary-500 hover:text-primary-600 font-medium flex items-center gap-1">
-              查看全部 <ChevronRight class="w-4 h-4" />
-            </button>
-          </div>
-          
-          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            <div
-              v-for="img in group"
-              :key="img.id"
-              class="aspect-square relative cursor-zoom-in overflow-hidden rounded-xl group bg-gray-100 dark:bg-gray-800 shadow-sm hover:shadow-md transition-all"
-               @click="openLightbox(img)"
-            >
-              <div v-if="!loadedImageIds.has(img.id)" class="absolute inset-0 flex items-center justify-center z-0">
-                <ImageIcon class="w-8 h-8 text-gray-300 dark:text-gray-600 opacity-50" />
-              </div>
-               <img
-                v-observe-image="img.id"
-                :src="loadedImageIds.has(img.id) ? img.thumbnail : ''"
-                :srcset="loadedImageIds.has(img.id) ? img.srcset : ''"
-                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 transition-opacity duration-500 relative z-10"
-                :class="{ 'opacity-100': loadedImageIds.has(img.id), 'opacity-0': !loadedImageIds.has(img.id) }"
-              />
-              <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors z-20"></div>
-              <div class="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                 <div class="bg-black/50 backdrop-blur-sm p-1.5 rounded-full text-white">
-                   <Maximize2 class="w-4 h-4" />
-                 </div>
-              </div>
+              <!-- Grid/Masonry View Content -->
+              <template v-else>
+                <div v-if="!loadedImageIds.has(img.id)" class="absolute inset-0 flex items-center justify-center z-0">
+                  <ImageIcon class="w-8 h-8 text-gray-300 dark:text-gray-600 opacity-50" />
+                </div>
+                <img
+                  v-observe-image="img.id"
+                  :src="loadedImageIds.has(img.id) ? img.thumbnail : ''"
+                  :srcset="loadedImageIds.has(img.id) ? img.srcset : ''"
+                  :alt="img.tags.join(', ')"
+                  class="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110 transition-opacity duration-500 relative z-10"
+                  :class="{ 'opacity-100': loadedImageIds.has(img.id), 'opacity-0': !loadedImageIds.has(img.id) }"
+                />
+                <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 z-20"></div>
+                
+                <!-- Smart Tags Overlay -->
+                <div class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-y-2 group-hover:translate-y-0 z-20">
+                  <div class="flex flex-wrap gap-1.5">
+                    <span v-for="tag in img.tags.slice(0, 2)" :key="tag" class="text-[10px] font-medium text-white bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-md border border-white/10">
+                      {{ tag }}
+                    </span>
+                  </div>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -247,6 +251,9 @@
                </span>
              </div>
              <p class="text-gray-400 font-mono">{{ formatTime(lightboxImage.timestamp) }}</p>
+             <div v-if="lightboxImage.city || lightboxImage.location" class="text-gray-500 text-xs mt-1">
+               {{ lightboxImage.location || lightboxImage.city }}
+             </div>
           </div>
         </div>
       </div>
@@ -256,23 +263,20 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch, reactive } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAlbumStore, type AlbumImage } from '@/stores/albumStore'
 import { 
-  X, Maximize2, Grid3x3, Grid2x2, Maximize, LayoutDashboard, LayoutGrid, 
-  UploadCloud, Loader2, CalendarDays, Clock, Tags, ChevronRight, Image as ImageIcon, Activity
+  X, Maximize2, Grid3x3, Grid2x2, Maximize, LayoutDashboard, LayoutGrid, LayoutList,
+  UploadCloud, Loader2, CalendarDays, ArrowLeft, Image as ImageIcon, Activity, MapPin
 } from 'lucide-vue-next'
 import AlbumTimeline from '@/components/AlbumTimeline.vue'
 import { format } from 'date-fns'
 
-// Types
-interface AlbumImage {
-  id: number
-  url: string
-  thumbnail: string
-  srcset: string
-  timestamp: number
-  category: string
-  tags: string[]
-}
+const router = useRouter()
+const store = useAlbumStore()
+
+// State
+const images = computed(() => store.images)
 
 // Performance & Cache Config
 const MAX_LOADED_IMAGES = 60
@@ -341,49 +345,19 @@ const vObserveImage = {
   }
 }
 
-// State
-const currentTab = ref('timeline')
+// UI State
 const viewSize = ref<'sm' | 'md' | 'lg'>('md')
-const layoutMode = ref<'masonry' | 'grid'>('masonry')
+const layoutMode = ref<'masonry' | 'grid' | 'list'>('masonry')
 const isUploading = ref(false)
 const uploadProgress = ref(0)
 const activeDate = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
-
-const tabs = [
-  { id: 'timeline', name: '时光轴', icon: Clock },
-  { id: 'smart', name: '智能分类', icon: Tags }
-]
-
-// Mock Data
-const categories = ['人物', '风景', '证件', '美食', '建筑', '宠物']
-const tagsPool = ['AI识别', '高清', '夜景', '人像', '自然', '街拍', '旅行', '快乐']
-
-const generateImages = (count: number): AlbumImage[] => {
-  return Array.from({ length: count }).map((_, i) => {
-    const id = i + 1
-    const category = categories[Math.floor(Math.random() * categories.length)]
-    const randomTags = [category, tagsPool[Math.floor(Math.random() * tagsPool.length)]]
-    const baseUrl = `https://picsum.photos/id/${id + 10}`
-    
-    return {
-      id,
-      url: `${baseUrl}/1200/800.webp`,
-      thumbnail: `${baseUrl}/400/300.webp`,
-      srcset: `${baseUrl}/400/300.webp 1x, ${baseUrl}/800/600.webp 2x`,
-      timestamp: Date.now() - Math.floor(Math.random() * 100000000000),
-      category,
-      tags: [...new Set(randomTags)]
-    }
-  })
-}
-
-const images = ref<AlbumImage[]>(generateImages(300))
 const lightboxImage = ref<AlbumImage | null>(null)
 
 // Computed Data
 const groupedImages = computed(() => {
   const groups: Record<string, AlbumImage[]> = {}
+  // Use store images
   const sorted = [...images.value].sort((a, b) => b.timestamp - a.timestamp)
   sorted.forEach(img => {
     const date = format(new Date(img.timestamp), 'yyyy年MM月')
@@ -393,40 +367,30 @@ const groupedImages = computed(() => {
   return groups
 })
 
-const categoryImages = computed(() => {
-  const groups: Record<string, AlbumImage[]> = {}
-  images.value.forEach(img => {
-    if (!groups[img.category]) groups[img.category] = []
-    groups[img.category].push(img)
-  })
-  return groups
-})
-
 // Layout Logic
-// Dynamic Layout Classes
 const getGridClass = (size: string, mode: string) => {
+  if (mode === 'list') return 'flex flex-col gap-3'
+  
   if (mode === 'grid') {
+    const base = 'grid '
     switch (size) {
-      case 'sm': return 'grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2'
-      case 'md': return 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2'
-      case 'lg': return 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4'
+      case 'sm': return base + 'grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2'
+      case 'md': return base + 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2'
+      case 'lg': return base + 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4'
     }
   } else {
     // Masonry (Columns)
+    const base = 'block '
     switch (size) {
-      case 'sm': return 'columns-4 sm:columns-5 md:columns-6 lg:columns-8 gap-2 space-y-2'
-      case 'md': return 'columns-3 sm:columns-4 md:columns-5 lg:columns-6 gap-2 space-y-2'
-      case 'lg': return 'columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-4 space-y-4'
+      case 'sm': return base + 'columns-4 sm:columns-5 md:columns-6 lg:columns-8 gap-2 space-y-2'
+      case 'md': return base + 'columns-3 sm:columns-4 md:columns-5 lg:columns-6 gap-2 space-y-2'
+      case 'lg': return base + 'columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-4 space-y-4'
     }
   }
   return ''
 }
 
-// Update the template to use this function directly or via a computed property per group
-// But wait, we are inside a v-for. So we can just bind :class="getGridClass(viewSize, layoutMode)"
-// We need to make `getGridClass` available to template or use a computed that returns the current class string.
 const currentGridClass = computed(() => getGridClass(viewSize.value, layoutMode.value))
-
 
 // Actions
 const triggerUpload = () => fileInput.value?.click()
@@ -455,9 +419,13 @@ const handleUpload = (e: Event) => {
             srcset: '',
             timestamp: Date.now(),
             category: '上传',
-            tags: ['新照片', '本地上传']
+            tags: ['新照片', '本地上传'],
+            city: '本地',
+            location: '本地上传'
           }
-          images.value.unshift(newImage)
+          
+          // Add to store only (not a custom album)
+          store.addPhoto(newImage)
           
           setTimeout(() => {
             isUploading.value = false
@@ -474,7 +442,6 @@ const handleUpload = (e: Event) => {
 const scrollToDate = (date: string) => {
   const el = document.getElementById(`group-${date}`)
   if (el) {
-    // Offset for sticky headers
     const offset = 180
     const bodyRect = document.body.getBoundingClientRect().top
     const elementRect = el.getBoundingClientRect().top
@@ -501,8 +468,8 @@ const closeLightbox = () => {
 
 const formatTime = (ts: number) => format(new Date(ts), 'yyyy-MM-dd HH:mm')
 
-// Intersection Observer for Timeline Group Header
-let groupObserver: IntersectionObserver | null = null
+// Intersection Observer for Timeline
+let observer: IntersectionObserver | null = null
 
 onMounted(() => {
   // Start FPS Monitor
@@ -519,12 +486,10 @@ onMounted(() => {
         loadImage(id)
       } else {
         visibleImageIds.delete(id)
-        // We don't immediately unload here, we rely on pruneCache() calls 
-        // which happen when new images are loaded.
       }
     })
   }, {
-    rootMargin: '50% 0px 50% 0px', // Preload margin
+    rootMargin: '50% 0px 50% 0px',
     threshold: 0
   })
 
@@ -537,11 +502,11 @@ onMounted(() => {
   // Setup Group Observer
   const options = {
     root: null,
-    rootMargin: '-20% 0px -70% 0px', // Focus area
+    rootMargin: '-20% 0px -70% 0px',
     threshold: 0
   }
   
-  groupObserver = new IntersectionObserver((entries) => {
+  observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         const id = entry.target.id
@@ -557,26 +522,26 @@ onMounted(() => {
   })
 })
 
-watch([groupedImages, currentTab], () => {
+watch(groupedImages, () => {
   nextTick(() => {
     observeGroups()
   })
 })
 
 const observeGroups = () => {
-  if (!groupObserver) return
-  groupObserver.disconnect()
+  if (!observer) return
+  observer.disconnect()
   const groups = document.querySelectorAll('.group-container')
-  groups.forEach(group => groupObserver?.observe(group))
+  groups.forEach(group => observer?.observe(group))
   
-  // Set initial active date if not set
+  // Set initial active date
   if (!activeDate.value && Object.keys(groupedImages.value).length > 0) {
     activeDate.value = Object.keys(groupedImages.value)[0]
   }
 }
 
 onUnmounted(() => {
-  if (groupObserver) groupObserver.disconnect()
+  if (observer) observer.disconnect()
   if (imageObserver) imageObserver.disconnect()
   if (rafId) cancelAnimationFrame(rafId)
 })

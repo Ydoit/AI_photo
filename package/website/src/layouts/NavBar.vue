@@ -5,7 +5,7 @@
       <h1 class="site-title text-gray-800 dark:text-gray-100">拾光物语</h1>
     </div>
 
-    <nav class="nav-bg bg-light-bg dark:bg-gray-800 shadow-md rounded-full px-4 py-1 flex justify-center items-center space-x-2 fixed left-1/2 transform -translate-x-1/2 transition-colors duration-300">
+    <nav class="nav-bg bg-light-bg/80 dark:bg-gray-800/80 backdrop-blur-md shadow-md rounded-full px-4 py-1 flex justify-center items-center space-x-2 fixed left-1/2 transform -translate-x-1/2 transition-colors duration-300">
       <RouterLink
         v-for="(item, index) in navLinks"
         :key="index"
@@ -117,7 +117,7 @@
 import { injectTheme } from '@/composables/useTheme.js'
 import { ref } from 'vue'
 import {
-  Palette, Sun, Moon, Check, Image as ImageIcon, MoreHorizontal, ChevronDown
+  Palette, Sun, Moon, Check, Image as ImageIcon, Images, MoreHorizontal, ChevronDown
 } from 'lucide-vue-next';
 import { useRoute } from 'vue-router'
 import { onClickOutside } from '@vueuse/core' 
@@ -125,7 +125,8 @@ import { onClickOutside } from '@vueuse/core'
 // 导航数据
 const navLinks = [
   { label: '首页', href: '/' },
-  { label: '相册', href: '/album', icon: true },
+  { label: '照片', href: '/photos', icon: Images },
+  { label: '相册', href: '/album', icon: ImageIcon },
 ]
 
 const moreLinks = [
