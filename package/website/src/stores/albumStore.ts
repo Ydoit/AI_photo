@@ -15,10 +15,11 @@ export interface AlbumImage {
   category: string
   tags: string[]
   city?: string
-  location?: string
-  albumId: string
+  location?: any
+  albumIds: string[]
   width?: number
   height?: number
+  filename?: string
 }
 
 export interface Album {
@@ -54,15 +55,23 @@ export const useAlbumStore = defineStore('album', () => {
     
     // Metadata extraction
     const metadata = photo.metadata_info;
-    const timestamp = photo.upload_time ? new Date(photo.upload_time).getTime() : Date.now();
+    // Use photo_time if available, else upload_time, else now
+    let timestamp = Date.now();
+    if (photo.photo_time) {
+        timestamp = new Date(photo.photo_time).getTime();
+    } else if (photo.upload_time) {
+        timestamp = new Date(photo.upload_time).getTime();
+    }
     
     // Try to get city from location or tags
     let city = 'Unknown';
     if (metadata && metadata.location) {
-        // If location is string, try to parse city
+        // If location is string, try to parse city (legacy)
         if (typeof metadata.location === 'string') {
-             // Simple heuristic or just use full string
              city = metadata.location.split('·')[0] || metadata.location;
+        } else if (typeof metadata.location === 'object' && metadata.location.formatted_address) {
+             // New JSON format
+             city = metadata.location.formatted_address.split('·')[0] || 'Unknown';
         }
     }
     
@@ -72,16 +81,17 @@ export const useAlbumStore = defineStore('album', () => {
     return {
       id: photo.id,
       url,
-      thumbnail, // Ideally check if thumbnail exists, but for now assume yes or fallback
-      srcset: `${thumbnail} 400w, ${url} 1200w`, // Simple srcset
+      thumbnail, 
+      srcset: `${thumbnail} 400w, ${thumbnail} 1200w`,
       timestamp,
       category,
       tags,
       city: city !== 'Unknown' ? city : undefined,
-      location: metadata && typeof metadata.location === 'string' ? metadata.location : undefined,
-      albumId: photo.album_id || '',
+      location: metadata?.location,
+      albumIds: photo.album_ids || [],
       width: photo.width,
-      height: photo.height
+      height: photo.height,
+      filename: photo.filename
     }
   }
 
@@ -178,7 +188,7 @@ export const useAlbumStore = defineStore('album', () => {
     }
   }
 
-  // Keep fetchAllData for backward compatibility or initial load if needed
+  // Keep fetchAllData for backward compatibility
   const fetchAllData = async () => {
       await Promise.all([
           fetchAlbums(),
@@ -192,14 +202,14 @@ export const useAlbumStore = defineStore('album', () => {
       return newAlbum.id;
   }
 
-  const deleteCustomAlbum = async (albumId: string) => {
+  const deleteAlbum = async (albumId: string) => {
       await albumService.deleteAlbum(albumId);
       apiAlbums.value = apiAlbums.value.filter(a => a.id !== albumId);
   }
 
   const addPhotoToAlbum = async (albumId: string, file: File) => {
       const photo = await albumService.uploadPhoto(file, albumId);
-      // Only add to local state if we are viewing all photos or this specific album
+      // If viewing this album or all photos, add to list
       if (currentContext.value.type === 'all' || (currentContext.value.type === 'album' && currentContext.value.id === albumId)) {
           images.value.unshift(mapPhotoToImage(photo));
       }
@@ -208,8 +218,19 @@ export const useAlbumStore = defineStore('album', () => {
   const deletePhoto = async (photoId: string) => {
       const photo = images.value.find(p => p.id === photoId);
       if (photo) {
-          await albumService.deletePhoto(photo.albumId, photoId);
+          await albumService.deletePhoto(photoId); // Global delete
           images.value = images.value.filter(p => p.id !== photoId);
+      }
+  }
+  
+  const removePhotoFromAlbum = async (albumId: string, photoId: string) => {
+      await albumService.removePhotoFromAlbum(albumId, photoId);
+      if (currentContext.value.type === 'album' && currentContext.value.id === albumId) {
+          images.value = images.value.filter(p => p.id !== photoId);
+      }
+      const photo = images.value.find(p => p.id === photoId);
+      if (photo) {
+          photo.albumIds = photo.albumIds.filter(id => id !== albumId);
       }
   }
 
@@ -291,10 +312,9 @@ export const useAlbumStore = defineStore('album', () => {
   // 2. Custom Albums (Synced with Backend)
   const userAlbums = computed<Album[]>(() => {
     return apiAlbums.value.map(album => {
-      // Count photos in this album
-      // Note: If paginated, this count is only loaded photos. 
-      // Ideal: backend returns count. For now, we use loaded.
-      const photos = images.value.filter(img => img.albumId === album.id);
+      // This count is only from LOADED photos in memory, which might be inaccurate if paginated.
+      // But since we rely on loaded photos for count in this view...
+      const photos = images.value.filter(img => img.albumIds.includes(album.id));
       const cover = photos.length > 0 ? photos[0].thumbnail : 'https://placehold.co/400x300?text=Empty';
       
       return {
@@ -303,7 +323,7 @@ export const useAlbumStore = defineStore('album', () => {
         type: 'custom',
         cover,
         count: photos.length,
-        description: album.description || `${photos.length}张照片(已加载)`,
+        description: album.description || `${photos.length}张照片`,
         createdAt: new Date(album.create_time).getTime()
       }
     })
@@ -331,16 +351,11 @@ export const useAlbumStore = defineStore('album', () => {
         return images.value;
     }
     
-    return images.value.filter(img => img.albumId === albumId)
+    return images.value.filter(img => img.albumIds.includes(albumId))
   }
   
   const getAlbumDetails = (albumId: string): Album | undefined => {
     return allAlbums.value.find(a => a.id === albumId)
-  }
-
-  const deleteAlbum = async (albumId: string) => {
-    await albumService.deleteAlbum(albumId);
-    apiAlbums.value = apiAlbums.value.filter(a => a.id !== albumId);
   }
 
   return {
@@ -355,11 +370,11 @@ export const useAlbumStore = defineStore('album', () => {
     loadPhotos,
     loadAlbumPhotos,
     createCustomAlbum,
-    deleteCustomAlbum,
+    deleteAlbum,
     addPhotoToAlbum,
     getPhotosByAlbumId,
     getAlbumDetails,
     deletePhoto,
-    deleteAlbum
+    removePhotoFromAlbum
   }
 })

@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel
@@ -6,8 +6,9 @@ from app.db.models.photo import FileType
 
 # Metadata Schemas
 class PhotoMetadataBase(BaseModel):
-    camera_info: Optional[str] = None
-    location: Optional[Dict[str, Any]] = None # {"lat": float, "lng": float}
+    exif_info: Optional[str] = None
+    location: Optional[Union[Dict[str, Any], str]] = None # {"lat": float, "lng": float, "formatted_address": str} or string
+    location_api: Optional[str] = None
     tags: Optional[List[str]] = None
     faces: Optional[List[Dict[str, Any]]] = None
 
@@ -29,25 +30,31 @@ class PhotoBase(BaseModel):
     size: int
     width: Optional[int] = None
     height: Optional[int] = None
+    filename: Optional[str] = None
+    photo_time: Optional[datetime] = None
 
 class PhotoCreate(PhotoBase):
     pass
 
+class PhotoUpdate(BaseModel):
+    filename: Optional[str] = None
+    photo_time: Optional[datetime] = None
+
 class Photo(PhotoBase):
     id: UUID
-    album_id: Optional[UUID] = None
+    # album_id removed from core Photo model, usually returned as separate list or part of details
     file_path: str
     upload_time: datetime
     metadata_info: Optional[PhotoMetadata] = None
+    album_ids: Optional[List[UUID]] = [] # Helper field for API response
 
     class Config:
         from_attributes = True
 
 class BatchPhotoUpdate(BaseModel):
     photo_ids: List[UUID]
-    action: str # 'move_to_album', 'delete'
-    target_album_id: Optional[UUID] = None
-
+    album_id: Optional[UUID] = None # For adding to album
+    action: str # 'add_to_album', 'remove_from_album', 'delete'
 
 # Album Schemas
 class AlbumBase(BaseModel):
@@ -64,7 +71,7 @@ class AlbumUpdate(AlbumBase):
 class Album(AlbumBase):
     id: UUID
     create_time: datetime
-    photos: List[Photo] = []
+    # photos: List[Photo] = [] # Can be heavy if included by default.
 
     class Config:
         from_attributes = True

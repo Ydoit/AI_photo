@@ -27,8 +27,8 @@ class Album(Base):
     create_time = Column(DateTime, default=datetime.now)
     description = Column(Text)
     
-    # 1:N relationship with Photo
-    photos = relationship("Photo", back_populates="album", cascade="all, delete-orphan")
+    # M:N relationship with Photo
+    photos = relationship("Photo", secondary="album_photos", back_populates="albums")
 
 
 if __name__ == '__main__':

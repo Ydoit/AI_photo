@@ -44,8 +44,20 @@ export const albumService = {
     return data;
   },
   
-  async deletePhoto(albumId: string, photoId: string) {
+  // Remove photo from specific album (Association)
+  async removePhotoFromAlbum(albumId: string, photoId: string) {
     await api.delete(`/api/albums/${albumId}/photos/${photoId}`);
+  },
+
+  // Delete photo globally
+  async deletePhoto(photoId: string) {
+    await api.delete(`/api/photos/${photoId}`);
+  },
+
+  // Batch Update
+  async batchUpdatePhotos(data: { photo_ids: string[], action: 'add_tags' | 'remove_tags' | 'add_to_album' | 'remove_from_album' | 'delete', value?: any, target_album_id?: string }) {
+      const { data: res } = await api.post<{count: number}>('/api/photos/batch', data);
+      return res;
   },
 
   // Upload (Simple)
@@ -87,21 +99,21 @@ export const albumService = {
   },
 
   // Metadata
-  async getMetadata(albumId: string, photoId: string) {
-      const { data } = await api.get<PhotoMetadata>(`/api/albums/${albumId}/photos/${photoId}/metadata`);
+  // Note: Using the generic endpoint if available or falling back to album-specific
+  // Ideally backend should provide /api/photos/{id}/metadata
+  async getMetadata(albumId: string | undefined, photoId: string) {
+      const url = albumId 
+        ? `/api/albums/${albumId}/photos/${photoId}/metadata`
+        : `/api/photos/${photoId}/metadata`; // Assuming this exists or will exist
+      const { data } = await api.get<PhotoMetadata>(url);
       return data;
   },
   
-  async updateMetadata(albumId: string, photoId: string, metadata: Partial<PhotoMetadata>) {
-      const { data } = await api.put<PhotoMetadata>(`/api/albums/${albumId}/photos/${photoId}/metadata`, metadata);
+  async updateMetadata(albumId: string | undefined, photoId: string, metadata: Partial<PhotoMetadata>) {
+      const url = albumId
+        ? `/api/albums/${albumId}/photos/${photoId}/metadata`
+        : `/api/photos/${photoId}/metadata`;
+      const { data } = await api.put<PhotoMetadata>(url, metadata);
       return data;
-  },
-
-  async batchUpdatePhotos(photoIds: string[], action: 'move_to_album' | 'delete', targetAlbumId?: string) {
-    await api.post('/api/photos/batch', {
-      photo_ids: photoIds,
-      action,
-      target_album_id: targetAlbumId
-    });
   }
 };

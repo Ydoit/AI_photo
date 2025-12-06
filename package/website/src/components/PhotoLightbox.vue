@@ -87,7 +87,15 @@
                     />
                 </div>
                 <p v-else class="text-sm text-gray-900 dark:text-gray-200">
-                    {{ metadata.location || '无位置信息' }}
+                    {{ 
+                        metadata.location?.formatted_address || 
+                        (typeof metadata.location === 'string' ? metadata.location : 
+                            (metadata.location?.latitude && metadata.location?.longitude ? 
+                                `${metadata.location.latitude.toFixed(6)}, ${metadata.location.longitude.toFixed(6)}` : 
+                                '无位置信息'
+                            )
+                        ) 
+                    }}
                 </p>
             </div>
 
@@ -123,6 +131,22 @@
                 </div>
             </div>
 
+            <!-- Faces -->
+            <div class="space-y-2">
+                <div class="flex items-center justify-between text-gray-500 text-xs font-medium uppercase tracking-wider">
+                    <div class="flex items-center gap-2">
+                        <User class="w-3.5 h-3.5" />
+                        <span>人脸</span>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <span v-if="(!metadata.faces || metadata.faces.length === 0)" class="text-sm text-gray-400 italic">无人脸信息</span>
+                    <span v-for="(face, idx) in metadata.faces" :key="idx" class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full text-xs">
+                        {{ face.name || 'Unknown' }}
+                    </span>
+                </div>
+            </div>
+
             <!-- EXIF (Camera Info) -->
             <div class="space-y-1">
                 <div class="flex items-center gap-2 text-gray-500 text-xs font-medium uppercase tracking-wider">
@@ -130,7 +154,7 @@
                     <span>相机信息</span>
                 </div>
                 <p class="text-sm text-gray-900 dark:text-gray-200 whitespace-pre-wrap">
-                    {{ metadata.camera_info || '无相机信息' }}
+                    {{ metadata.exif_info || '无相机信息' }}
                 </p>
             </div>
 
@@ -214,7 +238,7 @@ const newTagInput = ref('')
 // Watchers
 watch(() => props.image, async (newImg) => {
     if (newImg && props.visible) {
-        await fetchMetadata(newImg.albumId, newImg.id)
+        await fetchMetadata(undefined, newImg.id)
     }
 })
 
@@ -222,7 +246,7 @@ watch(() => props.visible, async (newVal) => {
     if (newVal && props.image) {
         document.body.style.overflow = 'hidden'
         if (!metadata.value || metadata.value.photo_id !== props.image.id) {
-            await fetchMetadata(props.image.albumId, props.image.id)
+            await fetchMetadata(undefined, props.image.id)
         }
     } else {
         document.body.style.overflow = ''
@@ -244,13 +268,13 @@ const formatTime = (ts?: number) => {
     return format(new Date(ts), 'yyyy-MM-dd HH:mm:ss')
 }
 
-const fetchMetadata = async (albumId: string, photoId: string) => {
+const fetchMetadata = async (albumId: string | undefined, photoId: string) => {
     loading.value = true
     try {
         const data = await albumService.getMetadata(albumId, photoId)
         metadata.value = data
         // Initialize edit form
-        editForm.location = typeof data.location === 'string' ? data.location : ''
+        editForm.location = typeof data.location === 'string' ? data.location : (data.location?.formatted_address || '')
         editForm.tags = Array.isArray(data.tags) ? [...data.tags] : []
     } catch (error) {
         console.error("Failed to fetch metadata", error)
@@ -261,7 +285,7 @@ const fetchMetadata = async (albumId: string, photoId: string) => {
 
 const startEdit = () => {
     if (!metadata.value) return
-    editForm.location = typeof metadata.value.location === 'string' ? metadata.value.location : ''
+    editForm.location = typeof metadata.value.location === 'string' ? metadata.value.location : (metadata.value.location?.formatted_address || '')
     editForm.tags = Array.isArray(metadata.value.tags) ? [...metadata.value.tags] : []
     isEditing.value = true
 }
@@ -291,7 +315,7 @@ const saveEdit = async () => {
             location: editForm.location,
             tags: editForm.tags
         }
-        const updated = await albumService.updateMetadata(props.image.albumId, props.image.id, updates)
+        const updated = await albumService.updateMetadata(undefined, props.image.id, updates)
         metadata.value = updated
         isEditing.value = false
         emit('update', { id: props.image.id, ...updates })

@@ -10,8 +10,9 @@ class PhotoMetadata(Base):
     __tablename__ = "photo_metadata"
 
     photo_id = Column(UUID(as_uuid=True), ForeignKey("photos.id", ondelete="CASCADE"), primary_key=True)
-    camera_info = Column(Text)  # EXIF info as text or JSON? Requirement says TEXT.
-    location = Column(JSON)     # Using JSON for flexibility: {"lat": ..., "lng": ...} or POINT string
+    exif_info = Column(Text)    # EXIF info as text
+    location = Column(JSON)     # Using JSON for flexibility: {"lat": ..., "lng": ..., "formatted_address": ...}
+    location_api = Column(String(255)) # API info for location
     tags = Column(JSON)         # List of tags
     faces = Column(JSON)        # List of face info
 

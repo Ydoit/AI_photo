@@ -11,6 +11,7 @@
 from app.db.models.album import Album
 from app.db.models.photo import Photo, FileType
 from app.db.models.photo_metadata import PhotoMetadata
+from app.db.models.album_photos import AlbumPhoto
 from app.db.models.trip import TicketType, TrainTicket
 from app.db.models.user import User
 

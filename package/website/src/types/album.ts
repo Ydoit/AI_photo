@@ -6,15 +6,18 @@ export enum FileType {
 
 export interface PhotoMetadata {
   photo_id: string;
-  camera_info?: string;
+  exif_info?: string;
   location?: any;
-  tags?: any[];
+  location_api?: string;
+  tags?: string[];
   faces?: any[];
 }
 
 export interface Photo {
   id: string;
-  album_id?: string;
+  album_ids?: string[];
+  filename?: string;
+  photo_time?: string;
   file_path: string;
   file_type: FileType;
   upload_time: string;
