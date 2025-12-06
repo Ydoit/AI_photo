@@ -339,17 +339,17 @@ const getGridClass = (size: string, mode: string) => {
   if (mode === 'grid') {
     const base = 'grid '
     switch (size) {
-      case 'sm': return base + 'grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2'
-      case 'md': return base + 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2'
-      case 'lg': return base + 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4'
+      case 'sm': return base + 'grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2'
+      case 'md': return base + 'grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2'
+      case 'lg': return base + 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4'
     }
   } else {
     // Masonry
     const base = 'block '
     switch (size) {
-      case 'sm': return base + 'columns-4 sm:columns-5 md:columns-6 lg:columns-8 gap-2 space-y-2'
-      case 'md': return base + 'columns-3 sm:columns-4 md:columns-5 lg:columns-6 gap-2 space-y-2'
-      case 'lg': return base + 'columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-4 space-y-4'
+      case 'sm': return base + 'columns-4 sm:columns-6 md:columns-8 lg:columns-12 gap-2 space-y-2'
+      case 'md': return base + 'columns-3 sm:columns-5 md:columns-6 lg:columns-8 gap-2 space-y-2'
+      case 'lg': return base + 'columns-2 sm:columns-3 md:columns-4 lg:columns-6 gap-4 space-y-4'
     }
   }
   return ''

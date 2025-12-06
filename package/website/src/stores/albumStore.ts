@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { albumService } from '@/api/album'
 import type { Photo, Album as ApiAlbum } from '@/types/album'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export interface AlbumImage {
   id: string

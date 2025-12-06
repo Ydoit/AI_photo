@@ -125,8 +125,8 @@ import { onClickOutside } from '@vueuse/core'
 // 导航数据
 const navLinks = [
   { label: '首页', href: '/' },
-  { label: '照片', href: '/photos', icon: Images },
-  { label: '相册', href: '/album', icon: ImageIcon },
+  { label: '照片', href: '/photos' },
+  { label: '相册', href: '/album'},
 ]
 
 const moreLinks = [
