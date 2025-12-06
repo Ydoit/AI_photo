@@ -85,7 +85,6 @@
               <UploadCloud class="w-4 h-4" />
               <span class="hidden sm:inline">上传</span>
             </button>
-            <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="handleUpload" />
           </template>
 
         </div>
@@ -225,6 +224,13 @@
             </div>
           </div>
         </div>
+
+        <!-- Sentinel -->
+        <div ref="sentinel" class="h-10 w-full flex justify-center items-center py-4 mt-4">
+           <div v-if="store.loading" class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500"></div>
+           <span v-else-if="!store.hasMore && images.length > 0" class="text-gray-400 text-xs">没有更多照片了</span>
+           <span v-else-if="!store.hasMore && images.length === 0" class="text-gray-400 text-xs">相册为空</span>
+        </div>
       </div>
     </div>
 
@@ -255,32 +261,26 @@
     </Transition>
 
     <!-- Lightbox -->
-    <Transition name="fade">
-      <div v-if="lightboxImage" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm" @click="closeLightbox">
-        <button class="absolute top-6 right-6 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors z-[101]">
-          <X class="w-8 h-8" />
-        </button>
-        
-        <div class="relative max-w-7xl w-full h-full flex flex-col items-center justify-center p-4" @click.stop>
-          <img
-            :src="lightboxImage.url"
-            class="max-w-full max-h-[85vh] object-contain shadow-2xl rounded-lg"
-          />
-          
-          <div class="mt-6 text-center">
-             <div class="flex justify-center gap-2 mb-2">
-               <span v-for="tag in lightboxImage.tags" :key="tag" class="text-xs font-medium text-white bg-primary-500/80 px-3 py-1 rounded-full backdrop-blur-md">
-                 {{ tag }}
-               </span>
-             </div>
-             <p class="text-gray-400 font-mono">{{ formatTime(lightboxImage.timestamp) }}</p>
-             <div v-if="lightboxImage.city || lightboxImage.location" class="text-gray-500 text-xs mt-1">
-               {{ lightboxImage.location || lightboxImage.city }}
-             </div>
-          </div>
+    <PhotoLightbox 
+      :visible="!!lightboxImage"
+      :image="lightboxImage"
+      @close="closeLightbox"
+      @delete="handlePhotoDelete"
+      @update="handlePhotoUpdate"
+    />
+
+    <!-- Upload Modal -->
+    <div v-if="showUploadModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+        <div class="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+            <h3 class="font-bold text-lg text-gray-900 dark:text-white">上传照片</h3>
+            <button @click="showUploadModal = false" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"><X class="w-5 h-5" /></button>
+        </div>
+        <div class="p-6 overflow-y-auto">
+            <MultiFileUpload :albumId="albumId" @upload-complete="handleUploadComplete" />
         </div>
       </div>
-    </Transition>
+    </div>
   </div>
 </template>
 
@@ -293,6 +293,8 @@ import {
   UploadCloud, Loader2, CalendarDays, ArrowLeft, Image as ImageIcon, Activity, Trash2, MapPin
 } from 'lucide-vue-next'
 import AlbumTimeline from '@/components/AlbumTimeline.vue'
+import PhotoLightbox from '@/components/PhotoLightbox.vue'
+import MultiFileUpload from '@/components/MultiFileUpload.vue'
 import { format } from 'date-fns'
 
 const route = useRoute()
@@ -302,15 +304,17 @@ const albumId = route.params.id as string
 
 // State
 const album = computed(() => store.getAlbumDetails(albumId))
-const images = computed(() => store.getPhotosByAlbumId(albumId))
+const images = computed(() => store.images)
 
 // Performance & Cache Config
 const MAX_LOADED_IMAGES = 60
-const loadedImageIds = reactive(new Set<number>())
-const visibleImageIds = new Set<number>()
-const imageCache = new Map<number, number>()
+const loadedImageIds = reactive(new Set<string>())
+const visibleImageIds = new Set<string>()
+const imageCache = new Map<string, number>()
 let imageObserver: IntersectionObserver | null = null
 const pendingImages = new Set<HTMLElement>()
+const sentinel = ref<HTMLElement | null>(null)
+let scrollObserver: IntersectionObserver | null = null
 
 // FPS Monitoring
 const fps = ref(60)
@@ -330,7 +334,7 @@ const updateFps = () => {
 }
 
 // Image LRU Cache Logic
-const loadImage = (id: number) => {
+const loadImage = (id: string) => {
   if (!loadedImageIds.has(id)) {
     loadedImageIds.add(id)
   }
@@ -377,8 +381,9 @@ const layoutMode = ref<'masonry' | 'grid' | 'list'>('masonry')
 const isUploading = ref(false)
 const uploadProgress = ref(0)
 const activeDate = ref('')
-const fileInput = ref<HTMLInputElement | null>(null)
+// const fileInput = ref<HTMLInputElement | null>(null) // Removed
 const lightboxImage = ref<AlbumImage | null>(null)
+const showUploadModal = ref(false)
 
 // Computed Data
 const groupedImages = computed(() => {
@@ -419,53 +424,13 @@ const getGridClass = (size: string, mode: string) => {
 const currentGridClass = computed(() => getGridClass(viewSize.value, layoutMode.value))
 
 // Actions
-const triggerUpload = () => fileInput.value?.click()
+const triggerUpload = () => {
+    showUploadModal.value = true
+}
 
-const handleUpload = (e: Event) => {
-  const input = e.target as HTMLInputElement
-  if (input.files && input.files[0]) {
-    const file = input.files[0]
-    isUploading.value = true
-    uploadProgress.value = 0
-    
-    // Simulate upload
-    const interval = setInterval(() => {
-      uploadProgress.value += 5 + Math.random() * 10
-      if (uploadProgress.value >= 100) {
-        uploadProgress.value = 100
-        clearInterval(interval)
-        
-        // Process file locally
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          const newImage: AlbumImage = {
-            id: Date.now(),
-            url: e.target?.result as string,
-            thumbnail: e.target?.result as string,
-            srcset: '',
-            timestamp: Date.now(),
-            category: '上传',
-            tags: ['新照片', '本地上传'],
-            city: '本地',
-            location: '本地上传'
-          }
-          
-          // Add to store and current album if custom
-          store.addPhoto(newImage)
-          if (album.value?.type === 'custom') {
-            store.addPhotoToAlbum(album.value.id, newImage.id)
-          }
-          
-          setTimeout(() => {
-            isUploading.value = false
-            // Scroll to top
-            window.scrollTo({ top: 0, behavior: 'smooth' })
-          }, 500)
-        }
-        reader.readAsDataURL(file)
-      }
-    }, 200)
-  }
+const handleUploadComplete = () => {
+    showUploadModal.value = false
+    store.loadAlbumPhotos(albumId, true)
 }
 
 const scrollToDate = (date: string) => {
@@ -495,12 +460,23 @@ const closeLightbox = () => {
   document.body.style.overflow = ''
 }
 
-const deletePhoto = (photoId: number) => {
-  if (album.value?.type === 'custom') {
-    if (confirm('确定要从相册中移除这张照片吗？')) {
-      store.removePhotoFromAlbum(album.value.id, photoId)
+const deletePhoto = async (id: string) => {
+    if (confirm('确定要删除这张照片吗？')) {
+        await store.deletePhoto(id)
     }
-  }
+}
+
+const handlePhotoDelete = async (id: string) => {
+    await store.deletePhoto(id)
+    closeLightbox()
+}
+
+const handlePhotoUpdate = (event: { id: string, location?: string, tags?: string[] }) => {
+    const img = store.images.find(i => i.id === event.id)
+    if (img) {
+        if (event.location !== undefined) img.location = event.location
+        if (event.tags !== undefined) img.tags = event.tags
+    }
 }
 
 const formatTime = (ts: number) => format(new Date(ts), 'yyyy-MM-dd HH:mm')
@@ -509,13 +485,32 @@ const formatTime = (ts: number) => format(new Date(ts), 'yyyy-MM-dd HH:mm')
 let observer: IntersectionObserver | null = null
 
 onMounted(() => {
+  // Load data
+  store.fetchAlbums()
+  store.loadAlbumPhotos(albumId, true)
+
+  // Setup Infinite Scroll
+  scrollObserver = new IntersectionObserver((entries) => {
+      const entry = entries[0]
+      if (entry.isIntersecting && store.hasMore && !store.loading) {
+          store.loadAlbumPhotos(albumId)
+      }
+  }, {
+      rootMargin: '200px',
+      threshold: 0.1
+  })
+
+  if (sentinel.value) {
+      scrollObserver.observe(sentinel.value)
+  }
+
   // Start FPS Monitor
   updateFps()
 
   // Setup Image Observer
   imageObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      const id = Number(entry.target.getAttribute('data-id'))
+      const id = entry.target.getAttribute('data-id')
       if (!id) return
 
       if (entry.isIntersecting) {

@@ -1,9 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { format } from 'date-fns'
+import { albumService } from '@/api/album'
+import type { Photo, Album as ApiAlbum } from '@/types/album'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 export interface AlbumImage {
-  id: number
+  id: string
   url: string
   thumbnail: string
   srcset: string
@@ -12,6 +16,9 @@ export interface AlbumImage {
   tags: string[]
   city?: string
   location?: string
+  albumId: string
+  width?: number
+  height?: number
 }
 
 export interface Album {
@@ -25,68 +32,185 @@ export interface Album {
 }
 
 export const useAlbumStore = defineStore('album', () => {
-  // --- Mock Data Generation ---
-  const categories = ['人物', '风景', '证件', '美食', '建筑', '宠物']
-  const tagsPool = ['AI识别', '高清', '夜景', '人像', '自然', '街拍', '旅行', '快乐']
-  const cities = ['北京', '上海', '广州', '深圳', '成都', '杭州', '西安', '重庆', '南京', '武汉', '厦门', '青岛', '大理', '丽江', '三亚', '拉萨', '苏州', '长沙', '天津', '郑州', '昆明', '福州']
-  const locations = ['市中心', '老街', '公园', '海边', '山顶', '博物馆', '艺术区', '古镇', '夜市', '大剧院', '体育馆', '植物园', '动物园', '游乐园', '大学城']
+  // --- State ---
+  const images = ref<AlbumImage[]>([])
+  const apiAlbums = ref<ApiAlbum[]>([])
+  const loading = ref(false)
+  
+  // Pagination State
+  const limit = 50
+  const skip = ref(0)
+  const hasMore = ref(true)
+  const currentContext = ref<{ type: 'all' | 'album', id?: string }>({ type: 'all' })
 
-  const generateImages = (count: number): AlbumImage[] => {
-    return Array.from({ length: count }).map((_, i) => {
-      const id = i + 1
-      const category = categories[Math.floor(Math.random() * categories.length)]
-      const randomTags = [category, tagsPool[Math.floor(Math.random() * tagsPool.length)]]
-      const baseUrl = `https://picsum.photos/id/${(id % 100) + 10}` // Use mod to avoid invalid IDs
-      const city = cities[Math.floor(Math.random() * cities.length)]
-      const location = locations[Math.floor(Math.random() * locations.length)]
-      
-      // Generate timestamp: 40% from current year, 30% last year, 30% 2-3 years ago
-      const now = Date.now()
-      const year = new Date().getFullYear()
-      const r = Math.random()
-      let timestamp
-      
-      if (r < 0.4) {
-        // Current year
-        timestamp = new Date(year, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28)).getTime()
-      } else if (r < 0.7) {
-        // Last year
-        timestamp = new Date(year - 1, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28)).getTime()
-      } else {
-        // 2-3 years ago
-        timestamp = new Date(year - 2 - Math.floor(Math.random() * 2), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28)).getTime()
-      }
+  // --- Helpers ---
+  const mapPhotoToImage = (photo: Photo): AlbumImage => {
+    // Normalize path separator for URL
+    const normalizedPath = photo.file_path.replace(/\\/g, '/');
+    const url = `${API_BASE_URL}/${normalizedPath}`;
+    // Thumbnail: check if exists, else use original
+    // Backend thumbnail logic: uploads/thumbnails/{uuid}.jpg
+    const thumbnail = `${API_BASE_URL}/uploads/thumbnails/${photo.id}.jpg`;
+    
+    // Metadata extraction
+    const metadata = photo.metadata_info;
+    const timestamp = photo.upload_time ? new Date(photo.upload_time).getTime() : Date.now();
+    
+    // Try to get city from location or tags
+    let city = 'Unknown';
+    if (metadata && metadata.location) {
+        // If location is string, try to parse city
+        if (typeof metadata.location === 'string') {
+             // Simple heuristic or just use full string
+             city = metadata.location.split('·')[0] || metadata.location;
+        }
+    }
+    
+    const tags = metadata?.tags || [];
+    const category = tags.length > 0 ? tags[0] : 'Uncategorized';
 
-      return {
-        id,
-        url: `${baseUrl}/1200/800.webp`,
-        thumbnail: `${baseUrl}/400/300.webp`,
-        srcset: `${baseUrl}/400/300.webp 1x, ${baseUrl}/800/600.webp 2x`,
-        timestamp,
-        category,
-        tags: [...new Set(randomTags)],
-        city,
-        location: `${city}·${location}`
-      }
-    })
+    return {
+      id: photo.id,
+      url,
+      thumbnail, // Ideally check if thumbnail exists, but for now assume yes or fallback
+      srcset: `${thumbnail} 400w, ${url} 1200w`, // Simple srcset
+      timestamp,
+      category,
+      tags,
+      city: city !== 'Unknown' ? city : undefined,
+      location: metadata && typeof metadata.location === 'string' ? metadata.location : undefined,
+      albumId: photo.album_id || '',
+      width: photo.width,
+      height: photo.height
+    }
   }
 
-  // --- State ---
-  const images = ref<AlbumImage[]>(generateImages(300))
-  const customAlbums = ref<Map<string, { title: string, photoIds: number[], createdAt: number }>>(new Map())
+  // --- Actions ---
+  const fetchAlbums = async () => {
+      try {
+          const albumsData = await albumService.getAlbums();
+          apiAlbums.value = albumsData;
+      } catch (error) {
+          console.error("Failed to fetch albums", error);
+      }
+  }
 
-  // Initialize some custom albums
-  if (customAlbums.value.size === 0) {
-    customAlbums.value.set('fav-1', {
-      title: '我的收藏',
-      photoIds: [1, 2, 3, 4, 5],
-      createdAt: Date.now()
-    })
-    customAlbums.value.set('trip-2023', {
-      title: '2023毕业旅行',
-      photoIds: [10, 11, 12, 20, 21],
-      createdAt: Date.now() - 1000000000
-    })
+  const loadPhotos = async (reset: boolean = false) => {
+    if (loading.value && !reset) return;
+    
+    if (reset) {
+        skip.value = 0;
+        hasMore.value = true;
+        images.value = [];
+        currentContext.value = { type: 'all' };
+    }
+
+    if (!hasMore.value) return;
+
+    loading.value = true;
+    try {
+        const photosData = await albumService.getAllPhotos(skip.value, limit);
+        
+        if (photosData.length < limit) {
+            hasMore.value = false;
+        }
+        
+        const newImages = photosData.map(mapPhotoToImage);
+        if (reset) {
+             images.value = newImages;
+        } else {
+             images.value.push(...newImages);
+        }
+        skip.value += limit;
+        
+    } catch (error) {
+        console.error("Failed to fetch photos", error);
+    } finally {
+        loading.value = false;
+    }
+  }
+
+  const loadAlbumPhotos = async (albumId: string, reset: boolean = false) => {
+    if (loading.value && !reset) return;
+    
+    if (reset) {
+        skip.value = 0;
+        hasMore.value = true;
+        images.value = [];
+        currentContext.value = { type: 'album', id: albumId };
+    }
+
+    if (!hasMore.value) return;
+
+    loading.value = true;
+    try {
+        let photosData: Photo[] = [];
+        
+        if (albumId.startsWith('city-')) {
+            const city = albumId.replace('city-', '');
+            photosData = await albumService.getAllPhotos(skip.value, limit, { city });
+        } else if (albumId.startsWith('year-')) {
+            const year = albumId.replace('year-', '');
+            photosData = await albumService.getAllPhotos(skip.value, limit, { year });
+        } else if (albumId.startsWith('cat-')) {
+            const cat = albumId.replace('cat-', '');
+            photosData = await albumService.getAllPhotos(skip.value, limit, { tag: cat });
+        } else {
+            photosData = await albumService.getPhotos(albumId, skip.value, limit);
+        }
+        
+        if (photosData.length < limit) {
+            hasMore.value = false;
+        }
+        
+        const newImages = photosData.map(mapPhotoToImage);
+        if (reset) {
+             images.value = newImages;
+        } else {
+             images.value.push(...newImages);
+        }
+        skip.value += limit;
+        
+    } catch (error) {
+        console.error("Failed to fetch album photos", error);
+    } finally {
+        loading.value = false;
+    }
+  }
+
+  // Keep fetchAllData for backward compatibility or initial load if needed
+  const fetchAllData = async () => {
+      await Promise.all([
+          fetchAlbums(),
+          loadPhotos(true)
+      ]);
+  }
+
+  const createCustomAlbum = async (title: string, description?: string) => {
+      const newAlbum = await albumService.createAlbum({ name: title, description: description || '' });
+      apiAlbums.value.push(newAlbum);
+      return newAlbum.id;
+  }
+
+  const deleteCustomAlbum = async (albumId: string) => {
+      await albumService.deleteAlbum(albumId);
+      apiAlbums.value = apiAlbums.value.filter(a => a.id !== albumId);
+  }
+
+  const addPhotoToAlbum = async (albumId: string, file: File) => {
+      const photo = await albumService.uploadPhoto(file, albumId);
+      // Only add to local state if we are viewing all photos or this specific album
+      if (currentContext.value.type === 'all' || (currentContext.value.type === 'album' && currentContext.value.id === albumId)) {
+          images.value.unshift(mapPhotoToImage(photo));
+      }
+  }
+
+  const deletePhoto = async (photoId: string) => {
+      const photo = images.value.find(p => p.id === photoId);
+      if (photo) {
+          await albumService.deletePhoto(photo.albumId, photoId);
+          images.value = images.value.filter(p => p.id !== photoId);
+      }
   }
 
   // --- Computed Albums ---
@@ -164,62 +288,30 @@ export const useAlbumStore = defineStore('album', () => {
     return albums
   })
 
-  // 2. Custom Albums (User managed)
+  // 2. Custom Albums (Synced with Backend)
   const userAlbums = computed<Album[]>(() => {
-    return Array.from(customAlbums.value.entries()).map(([id, data]) => {
-      const photos = images.value.filter(img => data.photoIds.includes(img.id))
-      const cover = photos.length > 0 ? photos[0].thumbnail : 'https://placehold.co/400x300?text=Empty'
+    return apiAlbums.value.map(album => {
+      // Count photos in this album
+      // Note: If paginated, this count is only loaded photos. 
+      // Ideal: backend returns count. For now, we use loaded.
+      const photos = images.value.filter(img => img.albumId === album.id);
+      const cover = photos.length > 0 ? photos[0].thumbnail : 'https://placehold.co/400x300?text=Empty';
+      
       return {
-        id,
-        title: data.title,
+        id: album.id,
+        title: album.name,
         type: 'custom',
         cover,
         count: photos.length,
-        description: `${photos.length}张照片`,
-        createdAt: data.createdAt
+        description: album.description || `${photos.length}张照片(已加载)`,
+        createdAt: new Date(album.create_time).getTime()
       }
     })
   })
 
   const allAlbums = computed(() => [...conditionalAlbums.value, ...userAlbums.value])
 
-  // --- Actions ---
-  const addPhoto = (photo: AlbumImage) => {
-    images.value.unshift(photo)
-  }
-
-  const addPhotoToAlbum = (albumId: string, photoId: number) => {
-    if (customAlbums.value.has(albumId)) {
-      const album = customAlbums.value.get(albumId)!
-      if (!album.photoIds.includes(photoId)) {
-        album.photoIds.unshift(photoId)
-      }
-    }
-  }
-
-  const removePhotoFromAlbum = (albumId: string, photoId: number) => {
-    if (customAlbums.value.has(albumId)) {
-      const album = customAlbums.value.get(albumId)!
-      album.photoIds = album.photoIds.filter(id => id !== photoId)
-    }
-  }
-
-  const createCustomAlbum = (title: string) => {
-    const id = `custom-${Date.now()}`
-    customAlbums.value.set(id, {
-      title,
-      photoIds: [],
-      createdAt: Date.now()
-    })
-    return id
-  }
-
-  const deleteCustomAlbum = (albumId: string) => {
-    if (customAlbums.value.has(albumId)) {
-      customAlbums.value.delete(albumId)
-    }
-  }
-
+  // --- Getters ---
   const getPhotosByAlbumId = (albumId: string): AlbumImage[] => {
     if (albumId.startsWith('city-')) {
       const city = albumId.replace('city-', '')
@@ -233,28 +325,41 @@ export const useAlbumStore = defineStore('album', () => {
       const cat = albumId.replace('cat-', '')
       return images.value.filter(img => img.category === cat)
     }
-    if (customAlbums.value.has(albumId)) {
-      const albumData = customAlbums.value.get(albumId)!
-      return images.value.filter(img => albumData.photoIds.includes(img.id))
+    
+    // Custom Album (UUID)
+    if (currentContext.value.type === 'album' && currentContext.value.id === albumId) {
+        return images.value;
     }
-    return [] // Default or unknown
+    
+    return images.value.filter(img => img.albumId === albumId)
   }
   
   const getAlbumDetails = (albumId: string): Album | undefined => {
     return allAlbums.value.find(a => a.id === albumId)
   }
 
+  const deleteAlbum = async (albumId: string) => {
+    await albumService.deleteAlbum(albumId);
+    apiAlbums.value = apiAlbums.value.filter(a => a.id !== albumId);
+  }
+
   return {
     images,
+    loading,
+    hasMore,
     allAlbums,
     conditionalAlbums,
     userAlbums,
-    addPhoto,
-    addPhotoToAlbum,
-    removePhotoFromAlbum,
+    fetchAllData,
+    fetchAlbums,
+    loadPhotos,
+    loadAlbumPhotos,
     createCustomAlbum,
     deleteCustomAlbum,
+    addPhotoToAlbum,
     getPhotosByAlbumId,
-    getAlbumDetails
+    getAlbumDetails,
+    deletePhoto,
+    deleteAlbum
   }
 })

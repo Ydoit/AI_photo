@@ -18,6 +18,27 @@
         <!-- Controls -->
         <div class="flex items-center gap-4 ml-auto animate-in fade-in slide-in-from-right-4 duration-300">
           
+          <!-- Selection Mode -->
+          <button 
+            @click="toggleSelectionMode"
+            class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            :class="{ 'bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400': isSelectionMode }"
+            title="批量选择"
+          >
+            <CheckSquare class="w-5 h-5" />
+          </button>
+
+          <!-- Upload Button -->
+          <button 
+            @click="showUploadModal = true"
+            class="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg shadow-lg shadow-primary-500/20 transition-all hover:scale-105 active:scale-95"
+          >
+            <Upload class="w-4 h-4" />
+            <span class="text-sm font-medium">上传照片</span>
+          </button>
+
+          <div class="w-px h-6 bg-gray-200 dark:bg-gray-700"></div>
+
           <!-- View Size -->
           <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
             <button 
@@ -75,17 +96,6 @@
               <span class="text-xs font-medium hidden sm:inline">列表</span>
             </button>
           </div>
-
-          <!-- Upload Button -->
-          <button 
-            @click="triggerUpload"
-            class="bg-primary-500 hover:bg-primary-600 text-white px-4 py-1.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all active:scale-95 shadow-md shadow-primary-500/20"
-          >
-            <UploadCloud class="w-4 h-4" />
-            <span class="hidden sm:inline">上传</span>
-          </button>
-          <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="handleUpload" />
-
         </div>
       </div>
     </div>
@@ -127,15 +137,29 @@
             <div
               v-for="img in group"
               :key="img.id"
-              class="group relative cursor-zoom-in overflow-hidden bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-300 break-inside-avoid"
+              class="group relative cursor-pointer overflow-hidden bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-300 break-inside-avoid"
               :class="[
                 layoutMode === 'list' 
                   ? 'flex items-center gap-4 p-3 rounded-xl' 
                   : 'rounded-xl mb-4',
                 layoutMode === 'grid' ? 'aspect-square mb-0' : ''
               ]"
-              @click="openLightbox(img)"
+              :style="layoutMode === 'masonry' && img.width && img.height ? { aspectRatio: `${img.width} / ${img.height}` } : {}"
+              @click="handlePhotoClick(img)"
             >
+              <!-- Selection Checkbox -->
+              <div 
+                v-if="isSelectionMode || selectedPhotoIds.has(img.id)"
+                class="absolute top-2 left-2 z-30 transition-opacity duration-200"
+                @click.stop="togglePhotoSelection(img.id)"
+              >
+                <div 
+                  class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shadow-md"
+                  :class="selectedPhotoIds.has(img.id) ? 'bg-primary-500 border-primary-500' : 'bg-black/20 border-white hover:bg-black/40 backdrop-blur-sm'"
+                >
+                  <Check v-if="selectedPhotoIds.has(img.id)" class="w-3.5 h-3.5 text-white" />
+                </div>
+              </div>
               <!-- List View: Thumbnail -->
               <div 
                 v-if="layoutMode === 'list'"
@@ -203,6 +227,78 @@
           </div>
         </div>
       </div>
+
+      <!-- Infinite Scroll Sentinel -->
+      <div ref="sentinel" class="h-10 w-full flex justify-center items-center py-4 mt-4">
+         <div v-if="store.loading" class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500"></div>
+         <span v-else-if="!store.hasMore && images.length > 0" class="text-gray-400 text-xs">没有更多照片了</span>
+      </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div v-if="showUploadModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="showUploadModal = false">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white">上传照片</h3>
+          <button @click="showUploadModal = false" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+            <X class="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+        <div class="p-6">
+          <MultiFileUpload @upload-complete="handleUploadComplete" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Batch Action Bar -->
+    <div v-if="selectedPhotoIds.size > 0" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white dark:bg-gray-800 shadow-2xl rounded-full px-6 py-3 flex items-center gap-6 border border-gray-100 dark:border-gray-700 animate-in slide-in-from-bottom-4 fade-in duration-300">
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">已选择 {{ selectedPhotoIds.size }} 张</span>
+        <button @click="selectAll" class="text-xs text-primary-500 hover:text-primary-600 whitespace-nowrap ml-1">全选</button>
+      </div>
+      <div class="h-4 w-px bg-gray-200 dark:bg-gray-700"></div>
+      <button @click="deselectAll" class="text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors text-sm whitespace-nowrap">取消</button>
+      <button @click="openAlbumSelectModal" class="flex items-center gap-2 text-gray-700 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-400 transition-colors whitespace-nowrap">
+        <FolderInput class="w-4 h-4" />
+        <span class="text-sm">添加到相册</span>
+      </button>
+      <button @click="batchDelete" class="flex items-center gap-2 text-red-500 hover:text-red-600 transition-colors whitespace-nowrap">
+        <Trash2 class="w-4 h-4" />
+        <span class="text-sm">删除</span>
+      </button>
+    </div>
+
+    <!-- Album Select Modal -->
+    <div v-if="showAlbumSelectModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="showAlbumSelectModal = false">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white">选择相册</h3>
+          <button @click="showAlbumSelectModal = false" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+            <X class="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+        <div class="p-4 max-h-[60vh] overflow-y-auto">
+          <div v-if="albums.length === 0" class="text-center py-8 text-gray-500">
+            暂无相册
+          </div>
+          <div v-else class="space-y-2">
+            <button 
+              v-for="album in albums" 
+              :key="album.id"
+              @click="batchMoveToAlbum(album.id)"
+              class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group"
+            >
+              <div class="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-500 group-hover:scale-110 transition-transform">
+                <Folder class="w-5 h-5" />
+              </div>
+              <div>
+                <h4 class="font-medium text-gray-900 dark:text-white">{{ album.title }}</h4>
+                <p class="text-xs text-gray-500">{{ album.count }} 张照片</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Performance Monitor -->
@@ -215,49 +311,14 @@
       </span>
     </div>
 
-    <!-- Upload Progress Toast -->
-    <Transition name="slide-up">
-      <div v-if="isUploading" class="fixed bottom-6 right-6 z-50 bg-white dark:bg-gray-800 shadow-xl rounded-xl p-4 border border-gray-100 dark:border-gray-700 w-80 flex items-center gap-4">
-        <div class="relative flex items-center justify-center">
-          <Loader2 class="w-8 h-8 text-primary-500 animate-spin" />
-          <span class="absolute text-[10px] font-bold text-primary-600 dark:text-primary-400">{{ uploadProgress }}%</span>
-        </div>
-        <div class="flex-1">
-          <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200">正在上传照片...</h4>
-          <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 mt-2 overflow-hidden">
-            <div class="bg-primary-500 h-full transition-all duration-300" :style="{ width: `${uploadProgress}%` }"></div>
-          </div>
-        </div>
-      </div>
-    </Transition>
-
     <!-- Lightbox -->
-    <Transition name="fade">
-      <div v-if="lightboxImage" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-sm" @click="closeLightbox">
-        <button class="absolute top-6 right-6 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors z-[101]">
-          <X class="w-8 h-8" />
-        </button>
-        
-        <div class="relative max-w-7xl w-full h-full flex flex-col items-center justify-center p-4" @click.stop>
-          <img
-            :src="lightboxImage.url"
-            class="max-w-full max-h-[85vh] object-contain shadow-2xl rounded-lg"
-          />
-          
-          <div class="mt-6 text-center">
-             <div class="flex justify-center gap-2 mb-2">
-               <span v-for="tag in lightboxImage.tags" :key="tag" class="text-xs font-medium text-white bg-primary-500/80 px-3 py-1 rounded-full backdrop-blur-md">
-                 {{ tag }}
-               </span>
-             </div>
-             <p class="text-gray-400 font-mono">{{ formatTime(lightboxImage.timestamp) }}</p>
-             <div v-if="lightboxImage.city || lightboxImage.location" class="text-gray-500 text-xs mt-1">
-               {{ lightboxImage.location || lightboxImage.city }}
-             </div>
-          </div>
-        </div>
-      </div>
-    </Transition>
+    <PhotoLightbox 
+      :visible="!!lightboxImage"
+      :image="lightboxImage"
+      @close="closeLightbox"
+      @delete="handlePhotoDelete"
+      @update="handlePhotoUpdate"
+    />
   </div>
 </template>
 
@@ -267,22 +328,100 @@ import { useRouter } from 'vue-router'
 import { useAlbumStore, type AlbumImage } from '@/stores/albumStore'
 import { 
   X, Maximize2, Grid3x3, Grid2x2, Maximize, LayoutDashboard, LayoutGrid, LayoutList,
-  UploadCloud, Loader2, CalendarDays, ArrowLeft, Image as ImageIcon, Activity, MapPin
+  CalendarDays, ArrowLeft, Image as ImageIcon, Activity, MapPin, Upload,
+  CheckSquare, Check, Trash2, FolderInput, Folder
 } from 'lucide-vue-next'
 import AlbumTimeline from '@/components/AlbumTimeline.vue'
+import PhotoLightbox from '@/components/PhotoLightbox.vue'
+import MultiFileUpload from '@/components/MultiFileUpload.vue'
 import { format } from 'date-fns'
+import { albumService } from '@/api/album'
 
 const router = useRouter()
 const store = useAlbumStore()
 
 // State
 const images = computed(() => store.images)
+const albums = computed(() => store.allAlbums)
+
+// Selection State
+const isSelectionMode = ref(false)
+const selectedPhotoIds = reactive(new Set<string>())
+const showAlbumSelectModal = ref(false)
+
+// Toggle Selection Mode
+const toggleSelectionMode = () => {
+  isSelectionMode.value = !isSelectionMode.value
+  if (!isSelectionMode.value) {
+    selectedPhotoIds.clear()
+  }
+}
+
+// Toggle Single Photo Selection
+const togglePhotoSelection = (id: string) => {
+  if (selectedPhotoIds.has(id)) {
+    selectedPhotoIds.delete(id)
+  } else {
+    selectedPhotoIds.add(id)
+  }
+}
+
+// Handle Photo Click
+const handlePhotoClick = (img: AlbumImage) => {
+  if (isSelectionMode.value) {
+    togglePhotoSelection(img.id)
+  } else {
+    openLightbox(img)
+  }
+}
+
+// Batch Actions
+const selectAll = () => {
+  images.value.forEach(img => selectedPhotoIds.add(img.id))
+}
+
+const deselectAll = () => {
+  selectedPhotoIds.clear()
+  isSelectionMode.value = false
+}
+
+const batchDelete = async () => {
+  if (!confirm(`确定要删除选中的 ${selectedPhotoIds.size} 张照片吗？`)) return
+  
+  try {
+    await albumService.batchUpdatePhotos(Array.from(selectedPhotoIds), 'delete')
+    selectedPhotoIds.clear()
+    isSelectionMode.value = false
+    store.loadPhotos(true) // Reload
+  } catch (error) {
+    console.error('Batch delete failed:', error)
+    alert('删除失败')
+  }
+}
+
+const openAlbumSelectModal = () => {
+  showAlbumSelectModal.value = true
+}
+
+const batchMoveToAlbum = async (targetAlbumId: string) => {
+  try {
+    await albumService.batchUpdatePhotos(Array.from(selectedPhotoIds), 'move_to_album', targetAlbumId)
+    showAlbumSelectModal.value = false
+    selectedPhotoIds.clear()
+    isSelectionMode.value = false
+    store.loadPhotos(true) // Reload
+    alert('移动成功')
+  } catch (error) {
+    console.error('Batch move failed:', error)
+    alert('移动失败')
+  }
+}
 
 // Performance & Cache Config
 const MAX_LOADED_IMAGES = 60
-const loadedImageIds = reactive(new Set<number>())
-const visibleImageIds = new Set<number>()
-const imageCache = new Map<number, number>()
+const loadedImageIds = reactive(new Set<string>())
+const visibleImageIds = new Set<string>()
+const imageCache = new Map<string, number>()
 let imageObserver: IntersectionObserver | null = null
 const pendingImages = new Set<HTMLElement>()
 
@@ -304,7 +443,7 @@ const updateFps = () => {
 }
 
 // Image LRU Cache Logic
-const loadImage = (id: number) => {
+const loadImage = (id: string) => {
   if (!loadedImageIds.has(id)) {
     loadedImageIds.add(id)
   }
@@ -348,11 +487,15 @@ const vObserveImage = {
 // UI State
 const viewSize = ref<'sm' | 'md' | 'lg'>('md')
 const layoutMode = ref<'masonry' | 'grid' | 'list'>('masonry')
-const isUploading = ref(false)
-const uploadProgress = ref(0)
 const activeDate = ref('')
-const fileInput = ref<HTMLInputElement | null>(null)
 const lightboxImage = ref<AlbumImage | null>(null)
+const sentinel = ref<HTMLElement | null>(null)
+const showUploadModal = ref(false)
+
+const handleUploadComplete = () => {
+  showUploadModal.value = false
+  store.loadPhotos(true)
+}
 
 // Computed Data
 const groupedImages = computed(() => {
@@ -392,53 +535,6 @@ const getGridClass = (size: string, mode: string) => {
 
 const currentGridClass = computed(() => getGridClass(viewSize.value, layoutMode.value))
 
-// Actions
-const triggerUpload = () => fileInput.value?.click()
-
-const handleUpload = (e: Event) => {
-  const input = e.target as HTMLInputElement
-  if (input.files && input.files[0]) {
-    const file = input.files[0]
-    isUploading.value = true
-    uploadProgress.value = 0
-    
-    // Simulate upload
-    const interval = setInterval(() => {
-      uploadProgress.value += 5 + Math.random() * 10
-      if (uploadProgress.value >= 100) {
-        uploadProgress.value = 100
-        clearInterval(interval)
-        
-        // Process file locally
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          const newImage: AlbumImage = {
-            id: Date.now(),
-            url: e.target?.result as string,
-            thumbnail: e.target?.result as string,
-            srcset: '',
-            timestamp: Date.now(),
-            category: '上传',
-            tags: ['新照片', '本地上传'],
-            city: '本地',
-            location: '本地上传'
-          }
-          
-          // Add to store only (not a custom album)
-          store.addPhoto(newImage)
-          
-          setTimeout(() => {
-            isUploading.value = false
-            // Scroll to top
-            window.scrollTo({ top: 0, behavior: 'smooth' })
-          }, 500)
-        }
-        reader.readAsDataURL(file)
-      }
-    }, 200)
-  }
-}
-
 const scrollToDate = (date: string) => {
   const el = document.getElementById(`group-${date}`)
   if (el) {
@@ -466,19 +562,37 @@ const closeLightbox = () => {
   document.body.style.overflow = ''
 }
 
+const handlePhotoDelete = async (id: string) => {
+    await store.deletePhoto(id)
+    closeLightbox()
+}
+
+const handlePhotoUpdate = (event: { id: string, location?: string, tags?: string[] }) => {
+    const img = store.images.find(i => i.id === event.id)
+    if (img) {
+        if (event.location !== undefined) img.location = event.location
+        if (event.tags !== undefined) img.tags = event.tags
+    }
+}
+
 const formatTime = (ts: number) => format(new Date(ts), 'yyyy-MM-dd HH:mm')
 
 // Intersection Observer for Timeline
 let observer: IntersectionObserver | null = null
+let scrollObserver: IntersectionObserver | null = null
 
 onMounted(() => {
+  // Initial Load
+  store.fetchAlbums()
+  store.loadPhotos(true)
+  
   // Start FPS Monitor
   updateFps()
 
   // Setup Image Observer
   imageObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      const id = Number(entry.target.getAttribute('data-id'))
+      const id = entry.target.getAttribute('data-id')
       if (!id) return
 
       if (entry.isIntersecting) {
@@ -520,6 +634,21 @@ onMounted(() => {
   nextTick(() => {
     observeGroups()
   })
+  
+  // Setup Infinite Scroll
+  scrollObserver = new IntersectionObserver((entries) => {
+      const entry = entries[0]
+      if (entry.isIntersecting && store.hasMore && !store.loading) {
+          store.loadPhotos()
+      }
+  }, {
+      rootMargin: '200px',
+      threshold: 0.1
+  })
+  
+  if (sentinel.value) {
+      scrollObserver.observe(sentinel.value)
+  }
 })
 
 watch(groupedImages, () => {
@@ -543,6 +672,7 @@ const observeGroups = () => {
 onUnmounted(() => {
   if (observer) observer.disconnect()
   if (imageObserver) imageObserver.disconnect()
+  if (scrollObserver) scrollObserver.disconnect()
   if (rafId) cancelAnimationFrame(rafId)
 })
 

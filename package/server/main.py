@@ -12,16 +12,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException
 import os
 from dotenv import load_dotenv
+from starlette.staticfiles import StaticFiles
 
 if not os.path.exists('./data'):
     os.mkdir('./data')
 load_dotenv('./data/.env')
 
-from app.api import user,train_ticket
+from app.api import user, train_ticket, album
 from railway.api import router as railway_router
 
 app = FastAPI(title="TrailSnap - 足迹相册")
+# Ensure uploads directory exists
+os.makedirs("uploads", exist_ok=True)
 
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # 配置允许跨域的源（生产环境建议指定具体域名，不要用 "*"）
 origins = [
     "http://localhost:8080",  # Vue开发环境地址
@@ -47,6 +51,7 @@ def root():
 app.include_router(user.router, prefix="/users", tags=["Users"])
 app.include_router(train_ticket.router, prefix="/api/train-ticket", tags=["train-ticket"])
 app.include_router(railway_router, prefix="/api/railway", tags=["railway"])
+app.include_router(album.router, prefix="/api", tags=["Albums"])
 
 if __name__ == "__main__":
     import uvicorn

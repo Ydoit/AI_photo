@@ -13,8 +13,6 @@
         <router-view />
       </transition>
     </div>
-    <!-- 页脚（原 App.vue 中的 Footer） -->
-    <Footer />
   </div>
 </template>
 
