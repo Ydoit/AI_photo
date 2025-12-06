@@ -3,34 +3,13 @@
     <!-- Toolbar & Header -->
     <div class="sticky top-[60px] z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md py-3 -mx-4 px-4 border-b border-gray-100 dark:border-gray-800 shadow-sm transition-all duration-300">
       <div class="flex flex-col md:flex-row items-center justify-between gap-4 max-w-7xl mx-auto">
-        
-        <!-- Selection Mode Toolbar -->
-        <div v-if="isSelectionMode" class="flex items-center gap-4 w-full animate-in fade-in slide-in-from-top-2 duration-200">
-          <button @click="exitSelectionMode" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
-            <X class="w-5 h-5 text-gray-600 dark:text-gray-300" />
-          </button>
-          <span class="font-medium text-gray-900 dark:text-white">{{ selectedPhotoIds.size }} 已选择</span>
-          
-          <div class="ml-auto flex items-center gap-2">
-            <button @click="deleteSelectedPhotos" class="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-              <Trash2 class="w-4 h-4" />
-              删除
-            </button>
-            <div class="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
-            <button @click="selectAll" class="text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
-              全选
-            </button>
-          </div>
-        </div>
-
         <!-- Default Title -->
-        <div v-else class="flex items-center gap-2 w-full md:w-auto">
+        <div class="flex items-center gap-2 w-full md:w-auto">
           <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight">全部照片</h1>
           <span class="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{{ images.length }}</span>
         </div>
-
         <!-- Controls -->
-        <div v-if="!isSelectionMode" class="flex items-center gap-4 ml-auto animate-in fade-in slide-in-from-right-4 duration-300">
+        <div class="flex items-center gap-4 ml-auto animate-in fade-in slide-in-from-right-4 duration-300">
           
           <!-- View Size -->
           <div class="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
@@ -94,7 +73,7 @@
 
           <!-- Actions -->
           <button 
-            @click="isSelectionMode = true"
+            @click="enterBatchMode"
             class="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
             title="批量管理"
           >
@@ -129,14 +108,23 @@
         :has-more="store.hasMore"
         :layout-mode="layoutMode"
         :view-size="viewSize"
-        :selectable="isSelectionMode"
-        :selected-ids="selectedPhotoIds"
         :group-by-date="true"
-        @click-photo="handlePhotoClick"
-        @select-photo="togglePhotoSelection"
+        delete-label="删除"
+        @click-photo="openLightbox"
         @load-more="store.loadPhotos"
         @update:active-date="activeDate = $event"
-      />
+        @batch-delete="handleBatchDelete"
+      >
+        <template #batch-actions="{ selectedIds, clearSelection }">
+          <button 
+            @click="prepareAddToAlbum(selectedIds, clearSelection)"
+            class="p-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2"
+            title="添加到相册"
+          >
+            <FolderInput class="w-5 h-5" />
+          </button>
+        </template>
+      </PhotoGallery>
     </div>
 
     <!-- Upload Progress Toast -->
@@ -165,35 +153,70 @@
       @update="handlePhotoUpdate"
     />
 
+    <!-- Album Select Modal -->
+    <div v-if="showAlbumSelectModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeAlbumSelectModal">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white">选择相册</h3>
+          <button @click="closeAlbumSelectModal" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+            <X class="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+        <div class="p-4 max-h-[60vh] overflow-y-auto">
+          <div v-if="albums.length === 0" class="text-center py-8 text-gray-500">
+            暂无相册
+          </div>
+          <div v-else class="space-y-2">
+            <button 
+              v-for="album in albums" 
+              :key="album.id"
+              @click="confirmAddToAlbum(album.id)"
+              class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group"
+            >
+              <div class="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-500 group-hover:scale-110 transition-transform">
+                <Folder class="w-5 h-5" />
+              </div>
+              <div>
+                <h4 class="font-medium text-gray-900 dark:text-white">{{ album.title }}</h4>
+                <p class="text-xs text-gray-500">{{ album.count }} 张照片</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAlbumStore, type AlbumImage } from '@/stores/albumStore'
 import { 
   X, Maximize, Grid3x3, Grid2x2, LayoutDashboard, LayoutGrid, LayoutList,
-  UploadCloud, CheckSquare, Trash2
+  UploadCloud, CheckSquare, FolderInput, Folder
 } from 'lucide-vue-next'
 import AlbumTimeline from '@/components/AlbumTimeline.vue'
 import PhotoLightbox from '@/components/PhotoLightbox.vue'
 import MultiFileUpload from '@/components/MultiFileUpload.vue'
 import PhotoGallery from '@/components/PhotoGallery.vue'
 import { format } from 'date-fns'
+import { ElMessage } from 'element-plus'
 
 const store = useAlbumStore()
 
 // State
 const images = computed(() => store.images)
+const albums = computed(() => store.allAlbums)
 const viewSize = ref<'sm' | 'md' | 'lg'>('md')
 const layoutMode = ref<'masonry' | 'grid' | 'list'>('masonry')
 const activeDate = ref('')
 const showUploadModal = ref(false)
 const lightboxImage = ref<AlbumImage | null>(null)
 
-// Selection Mode
-const isSelectionMode = ref(false)
-const selectedPhotoIds = reactive(new Set<string>())
+// Batch Actions State
+const showAlbumSelectModal = ref(false)
+const tempSelectedIds = ref<string[]>([])
+let clearSelectionCallback: (() => void) | null = null
 
 // Gallery Ref
 const galleryRef = ref<InstanceType<typeof PhotoGallery> | null>(null)
@@ -218,39 +241,43 @@ const triggerUpload = () => {
   showUploadModal.value = true
 }
 
-const handlePhotoClick = (photo: AlbumImage) => {
-  if (isSelectionMode.value) {
-    togglePhotoSelection(photo)
-  } else {
-    openLightbox(photo)
-  }
+const enterBatchMode = () => {
+  galleryRef.value?.enterSelectionMode()
 }
 
-const togglePhotoSelection = (photo: AlbumImage) => {
-  if (selectedPhotoIds.has(photo.id)) {
-    selectedPhotoIds.delete(photo.id)
-  } else {
-    selectedPhotoIds.add(photo.id)
-  }
-}
-
-const selectAll = () => {
-  images.value.forEach(img => selectedPhotoIds.add(img.id))
-}
-
-const exitSelectionMode = () => {
-  isSelectionMode.value = false
-  selectedPhotoIds.clear()
-}
-
-const deleteSelectedPhotos = async () => {
-  if (selectedPhotoIds.size === 0) return
-  if (confirm(`确定要删除选中的 ${selectedPhotoIds.size} 张照片吗？`)) {
-    for (const id of selectedPhotoIds) {
+const handleBatchDelete = async (ids: string[]) => {
+  if (ids.length === 0) return
+  if (confirm(`确定要删除选中的 ${ids.length} 张照片吗？`)) {
+    for (const id of ids) {
       await store.deletePhoto(id)
     }
-    selectedPhotoIds.clear()
-    isSelectionMode.value = false
+    ElMessage.success('删除成功')
+  }
+}
+
+const prepareAddToAlbum = (selectedIds: Set<string>, clearCallback: () => void) => {
+  if (selectedIds.size === 0) return
+  tempSelectedIds.value = Array.from(selectedIds)
+  clearSelectionCallback = clearCallback
+  showAlbumSelectModal.value = true
+}
+
+const closeAlbumSelectModal = () => {
+  showAlbumSelectModal.value = false
+  tempSelectedIds.value = []
+  clearSelectionCallback = null
+}
+
+const confirmAddToAlbum = async (targetAlbumId: string) => {
+  try {
+    await store.addPhotosToAlbum(tempSelectedIds.value, 'add_to_album', targetAlbumId)
+    closeAlbumSelectModal()
+    if (clearSelectionCallback) clearSelectionCallback()
+    store.loadPhotos(true) // Reload
+    ElMessage.success(`成功添加 ${tempSelectedIds.value.length} 张照片到相册`)
+  } catch (error) {
+    console.error('Batch add failed:', error)
+    ElMessage.error('添加失败')
   }
 }
 

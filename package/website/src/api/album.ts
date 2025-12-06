@@ -55,7 +55,7 @@ export const albumService = {
   },
 
   // Batch Update
-  async batchUpdatePhotos(data: { photo_ids: string[], action: 'add_tags' | 'remove_tags' | 'add_to_album' | 'remove_from_album' | 'delete', value?: any, target_album_id?: string }) {
+  async batchUpdatePhotos(data: { photo_ids: string[], action: 'add_tags' | 'remove_tags' | 'add_to_album' | 'remove_from_album' | 'delete', album_id?: string }) {
       const { data: res } = await api.post<{count: number}>('/api/photos/batch', data);
       return res;
   },

@@ -234,6 +234,34 @@ export const useAlbumStore = defineStore('album', () => {
       }
   }
 
+  const removePhotosFromAlbum = async (albumId: string, photoIds: string[]) => {
+      await albumService.batchUpdatePhotos({
+          photo_ids: photoIds,
+          action: 'remove_from_album',
+          album_id: albumId
+      });
+      
+      if (currentContext.value.type === 'album' && currentContext.value.id === albumId) {
+          images.value = images.value.filter(p => !photoIds.includes(p.id));
+      }
+      
+      // Update local state for all affected photos
+      photoIds.forEach(id => {
+          const photo = images.value.find(p => p.id === id);
+          if (photo) {
+              photo.albumIds = photo.albumIds.filter(aid => aid !== albumId);
+          }
+      });
+  }
+
+  const deletePhotos = async (photoIds: string[]) => {
+      await albumService.batchUpdatePhotos({
+          photo_ids: photoIds,
+          action: 'delete'
+      });
+      images.value = images.value.filter(p => !photoIds.includes(p.id));
+  }
+
   // --- Computed Albums ---
   
   // 1. Conditional Albums (Auto-generated)
@@ -358,6 +386,14 @@ export const useAlbumStore = defineStore('album', () => {
     return allAlbums.value.find(a => a.id === albumId)
   }
 
+  const addPhotosToAlbum = async (photoIds: string[], action: 'add_to_album', targetAlbumId: string) => {
+    await albumService.batchUpdatePhotos({
+      photo_ids: photoIds,
+      action,
+      album_id: targetAlbumId
+    })
+  }
+
   return {
     images,
     loading,
@@ -375,6 +411,9 @@ export const useAlbumStore = defineStore('album', () => {
     getPhotosByAlbumId,
     getAlbumDetails,
     deletePhoto,
-    removePhotoFromAlbum
+    deletePhotos,
+    removePhotoFromAlbum,
+    removePhotosFromAlbum,
+    addPhotosToAlbum
   }
 })

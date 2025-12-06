@@ -76,6 +76,15 @@
             </button>
           </div>
 
+          <!-- Batch Select -->
+          <button 
+            @click="enterBatchMode"
+            class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-300"
+            title="批量选择"
+          >
+            <CheckSquare class="w-5 h-5" />
+          </button>
+
           <!-- Upload Button (Only for Custom Albums) -->
           <template v-if="album?.type === 'custom'">
             <button 
@@ -108,9 +117,11 @@
         :layout-mode="layoutMode"
         :view-size="viewSize"
         :group-by-date="true"
+        :delete-label="album?.type === 'custom' ? '从相册中移除' : '删除'"
         @click-photo="openLightbox"
         @load-more="loadMorePhotos"
         @update:active-date="activeDate = $event"
+        @batch-delete="handleBatchDelete"
       >
         <template #overlay-actions="{ photo }">
            <button 
@@ -159,7 +170,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAlbumStore, type AlbumImage } from '@/stores/albumStore'
 import { 
   ArrowLeft, Grid3x3, Grid2x2, Maximize, LayoutDashboard, LayoutGrid, LayoutList,
-  UploadCloud, Trash2, X
+  UploadCloud, Trash2, X, CheckSquare
 } from 'lucide-vue-next'
 import AlbumTimeline from '@/components/AlbumTimeline.vue'
 import PhotoLightbox from '@/components/PhotoLightbox.vue'
@@ -241,6 +252,22 @@ const handlePhotoUpdate = (event: { id: string, location?: string, tags?: string
     if (img) {
         if (event.location !== undefined) img.location = event.location
         if (event.tags !== undefined) img.tags = event.tags
+    }
+}
+
+const enterBatchMode = () => {
+  galleryRef.value?.enterSelectionMode()
+}
+
+const handleBatchDelete = async (ids: string[]) => {
+    if (album.value?.type === 'custom') {
+        if (confirm(`确定要将这 ${ids.length} 张照片从相册中移除吗？`)) {
+            await store.removePhotosFromAlbum(albumId, ids)
+        }
+    } else {
+        if (confirm(`确定要永久删除这 ${ids.length} 张照片吗？此操作无法撤销。`)) {
+            await store.deletePhotos(ids)
+        }
     }
 }
 
