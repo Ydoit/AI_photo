@@ -19,7 +19,7 @@ def _get_thumbnail_path(photo_id: UUID, db: Session, size: str = 'medium') -> st
         return os.path.join(base, f"{compact}-thumb.jpg")
     return os.path.join(base, f"{compact}.jpg")
 
-@router.get('/media/{photo_id}/thumbnail')
+@router.get('/{photo_id}/thumbnail')
 def get_thumbnail(photo_id: UUID, size: str = 'medium', db: Session = Depends(get_db)):
     path = _get_thumbnail_path(photo_id, db, size)
     if not os.path.exists(path):
@@ -28,7 +28,7 @@ def get_thumbnail(photo_id: UUID, size: str = 'medium', db: Session = Depends(ge
         raise HTTPException(status_code=404, detail="Thumbnail not found")
     return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=31536000"})
 
-@router.get('/media/{photo_id}/file')
+@router.get('/{photo_id}/file')
 def get_media_file(
     photo_id: UUID, 
     request: Request, 

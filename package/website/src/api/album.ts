@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Album, CreateAlbumDto, Photo, PhotoMetadata, AlbumStats } from '@/types/album';
+import type { Album, CreateAlbumDto, Photo, PhotoMetadata, TimelineStats } from '@/types/album';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -35,7 +35,7 @@ export const albumService = {
 
   // Stats
   async getTimelineStats() {
-    const { data } = await api.get<AlbumStats>('/api/stats/timeline');
+    const { data } = await api.get<TimelineStats>('/api/stats/timeline');
     return data;
   },
 

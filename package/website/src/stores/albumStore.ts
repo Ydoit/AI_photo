@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { format } from 'date-fns'
 import { albumService } from '@/api/album'
-import type { Photo, Album as ApiAlbum } from '@/types/album'
+import type { Photo, Album as ApiAlbum, TimelineStats } from '@/types/album'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -43,7 +43,7 @@ export const useAlbumStore = defineStore('album', () => {
   const skip = ref(0)
   const hasMore = ref(true)
   const currentContext = ref<{ type: 'all' | 'album', id?: string }>({ type: 'all' })
-  const timelineStats = ref<any>(null)
+  const timelineStats = ref<TimelineStats>()
 
   // --- Helpers ---
   const mapPhotoToImage = (photo: Photo): AlbumImage => {

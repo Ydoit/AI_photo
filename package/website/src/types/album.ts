@@ -35,7 +35,7 @@ export interface TimelineItem {
   count: number;
 }
 
-export interface AlbumStats {
+export interface TimelineStats {
   total_photos: number;
   time_range: {
     start: string | null;

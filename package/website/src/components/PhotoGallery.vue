@@ -78,7 +78,7 @@
               (点击{{ isGroupSelected(group) ? '取消' : '全选' }})
             </span>
           </h3>
-          <div class="h-px bg-gray-200 dark:bg-gray-700 flex-1 ml-4"></div>
+          <!-- <div class="h-px bg-gray-200 dark:bg-gray-700 flex-1 ml-4"></div> -->
         </div>
 
         <!-- Images Grid -->

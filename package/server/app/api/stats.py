@@ -6,7 +6,7 @@ from app.db.models.photo import Photo
 
 router = APIRouter()
 
-@router.get('/stats/timeline')
+@router.get('/timeline')
 def get_timeline_stats(db: Session = Depends(get_db)):
     # Total count
     total = db.query(Photo).count()

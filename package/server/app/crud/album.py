@@ -1,12 +1,18 @@
 from typing import List, Optional
 from uuid import UUID
+import os
+
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import extract, cast, String
+from datetime import datetime
+
 from app.db.models.album import Album
 from app.db.models.photo import Photo
 from app.db.models.photo_metadata import PhotoMetadata
 from app.schemas import album as schemas
-from datetime import datetime
+from app.service import storage
+from app.db.models.photo import FileType
+from app.utils.exif import extract_metadata
 
 # Album CRUD
 def _update_album_photo_count(db: Session, album_id: UUID):
@@ -46,6 +52,41 @@ def update_album(db: Session, album_id: UUID, album: schemas.AlbumCreate):
         db.commit()
         db.refresh(db_album)
     return db_album
+
+
+def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id: Optional[UUID], photo_id: UUID):
+    # Determine file type
+    ext = os.path.splitext(file_name)[1]
+    file_type = FileType.image
+    if ext.lower() in ['.mp4', '.mov', '.avi']:
+        file_type = FileType.video
+
+    storage.generate_thumbnail(file_path, photo_id, db)
+
+    # Get Metadata
+    size = storage.get_file_size(file_path)
+    width, height = storage.get_image_dimensions(file_path)
+
+    extracted_meta = extract_metadata(file_path, file_name)
+
+    # Create Schema for DB
+    photo_create = schemas.PhotoCreate(
+        file_type=file_type,
+        size=size,
+        width=width,
+        height=height,
+        filename=file_name,
+        photo_time=extracted_meta["photo_time"]
+    )
+
+    # Create Metadata Schema
+    metadata_create = schemas.PhotoMetadataCreate(
+        exif_info=extracted_meta["exif_info"],
+        location=extracted_meta["location"]
+    )
+
+    return create_photo(db, photo_create, album_id, file_path, photo_id=photo_id, metadata=metadata_create)
+
 
 # Photo CRUD
 def get_photos(db: Session, album_id: UUID, skip: int = 0, limit: int = 100):

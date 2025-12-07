@@ -28,13 +28,13 @@ def get_external_dirs(db: Session) -> list[str]:
             return []
     return []
 
-@router.get('/settings/directories')
+@router.get('/directories')
 def get_directories(db: Session = Depends(get_db)):
     primary = get_storage_root(db)
     external = get_external_dirs(db)
     return {'primary': primary, 'external': external}
 
-@router.post('/settings/directories')
+@router.post('/directories')
 def add_directory(payload: dict, db: Session = Depends(get_db)):
     path = payload.get('path')
     if not path or not isinstance(path, str):
@@ -61,7 +61,7 @@ def add_directory(payload: dict, db: Session = Depends(get_db)):
     
     return {'primary': get_storage_root(db), 'external': current}
 
-@router.delete('/settings/directories')
+@router.delete('/directories')
 def remove_directory(payload: dict, db: Session = Depends(get_db)):
     path = payload.get('path')
     if not path:
@@ -96,11 +96,11 @@ def remove_directory(payload: dict, db: Session = Depends(get_db)):
         
     return {'primary': get_storage_root(db), 'external': current}
 
-@router.get('/settings/storage-root')
+@router.get('/storage-root')
 def read_storage_root(db: Session = Depends(get_db)):
     return {'storage_root': get_storage_root(db)}
 
-@router.put('/settings/storage-root')
+@router.put('/storage-root')
 def update_storage_root(payload: dict, db: Session = Depends(get_db)):
     path = payload.get('storage_root')
     if not path or not isinstance(path, str):

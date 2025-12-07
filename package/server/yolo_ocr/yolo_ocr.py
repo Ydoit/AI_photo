@@ -12,7 +12,7 @@ def process_ticket_recognition():
     # 初始化 YOLO 模型
     yolo_model = YOLO(model=r'best.pt')
     # 使用 YOLO 进行车票提取
-    yolo_results = yolo_model.predict(source=r'1111.png',save=False,show=False)
+    yolo_results = yolo_model.predict(source=r'./test_data/ticket_single/ticket_024.png',save=False,show=False)
     # 初始化 PaddleOCR 实例
     ocr = PaddleOCR(use_doc_orientation_classify=False, use_doc_unwarping=False, use_textline_orientation=False, lang='ch')
     # 用于存储所有解析结果

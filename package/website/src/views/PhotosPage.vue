@@ -371,6 +371,7 @@ const handlePhotoUpdate = (event: { id: string, location?: string, tags?: string
 }
 
 onMounted(() => {
+  store.fetchTimelineStats()
   store.fetchAlbums()
   store.loadPhotos(true)
 })
