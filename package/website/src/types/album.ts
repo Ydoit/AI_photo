@@ -18,7 +18,9 @@ export interface Photo {
   album_ids?: string[];
   filename?: string;
   photo_time?: string;
-  file_path: string;
+  // file_path: string; // Deprecated/Excluded
+  url: string;
+  thumbnail_url: string;
   file_type: FileType;
   upload_time: string;
   size: number;
@@ -27,11 +29,29 @@ export interface Photo {
   metadata_info?: PhotoMetadata;
 }
 
+export interface TimelineItem {
+  year: number;
+  month: number;
+  count: number;
+}
+
+export interface AlbumStats {
+  total_photos: number;
+  time_range: {
+    start: string | null;
+    end: string | null;
+  };
+  timeline: TimelineItem[];
+}
+
 export interface Album {
   id: string;
   name: string;
   create_time: string;
   description?: string;
+  cover?: Photo;
+  type: string;
+  num_photos: number;
   photos?: Photo[];
 }
 

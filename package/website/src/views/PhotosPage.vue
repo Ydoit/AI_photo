@@ -249,6 +249,14 @@ const galleryRef = ref<InstanceType<typeof PhotoGallery> | null>(null)
 
 // Timeline Dates
 const timelineDates = computed(() => {
+  if (store.timelineStats?.timeline) {
+    // Use full stats from backend
+    return store.timelineStats.timeline.map((item: any) => 
+      `${item.year}年${String(item.month).padStart(2, '0')}月`
+    )
+  }
+  
+  // Fallback to loaded images
   const dates = new Set<string>()
   const sorted = [...images.value].sort((a, b) => b.timestamp - a.timestamp)
   sorted.forEach(img => {
@@ -261,6 +269,7 @@ const timelineDates = computed(() => {
 const handleUploadComplete = () => {
   showUploadModal.value = false
   store.loadPhotos(true)
+  store.fetchTimelineStats()
 }
 
 const triggerUpload = () => {

@@ -58,7 +58,7 @@
 
         <div class="relative w-full h-full flex items-center justify-center overflow-hidden" @wheel.prevent="handleWheel">
             <img
-              v-if="image"
+              v-if="image && (!image.file_type || image.file_type === 'image' || image.file_type === 'live_photo')"
               :src="image.url"
               class="max-w-full max-h-full object-contain transition-transform duration-200 ease-out origin-center select-none"
               :style="{ transform: `scale(${scale}) translate(${translateX}px, ${translateY}px)` }"
@@ -66,6 +66,28 @@
               @mousedown="startDrag"
               @touchstart="startTouch"
             />
+            
+            <div
+              v-else-if="image && image.file_type === 'video'"
+              class="relative w-full h-full flex items-center justify-center"
+              @click.stop
+            >
+              <video
+                ref="videoPlayer"
+                class="video-js vjs-big-play-centered vjs-theme-forest"
+                controls
+                preload="auto"
+                :poster="image.thumbnail"
+                data-setup="{}"
+              >
+                <source :src="image.url" type="video/mp4" />
+                <p class="vjs-no-js">
+                  To view this video please enable JavaScript, and consider upgrading to a
+                  web browser that
+                  <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+                </p>
+              </video>
+            </div>
         </div>
       </div>
 
@@ -232,11 +254,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, reactive, computed } from 'vue'
+import { ref, watch, reactive, computed, onUnmounted, nextTick } from 'vue'
 import { 
     X, CalendarDays, MapPin, Tags, Camera, PanelRightClose, PanelRightOpen,
-    Loader2, Trash2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, FolderPlus, Info
+    Loader2, Trash2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, FolderPlus, Info, User
 } from 'lucide-vue-next'
+import videojs from 'video.js'
+import 'video.js/dist/video-js.css'
 import { format } from 'date-fns'
 import { albumService } from '@/api/album'
 import type { AlbumImage } from '@/stores/albumStore'
@@ -283,11 +307,63 @@ const editForm = reactive({
 })
 const newTagInput = ref('')
 
+// Video Player State
+const videoPlayer = ref<HTMLElement | null>(null)
+const player = ref<any>(null)
+
+const initPlayer = () => {
+    if (videoPlayer.value && !player.value) {
+        player.value = videojs(videoPlayer.value, {
+            controls: true,
+            autoplay: true,
+            preload: 'auto',
+            fluid: true, // Responsive
+            controlBar: {
+                children: [
+                    'playToggle',
+                    'volumePanel',
+                    'currentTimeDisplay',
+                    'timeDivider',
+                    'durationDisplay',
+                    'progressControl',
+                    'fullscreenToggle',
+                ]
+            }
+        })
+    }
+}
+
+const disposePlayer = () => {
+    if (player.value) {
+        player.value.dispose()
+        player.value = null
+    }
+}
+
+onUnmounted(() => {
+    disposePlayer()
+})
+
 // Watchers
-watch(() => props.image, async (newImg) => {
+watch(() => props.image, async (newImg, oldImg) => {
     if (newImg && props.visible) {
         resetZoom()
+        
+        // Dispose old player if switching from video
+        if (oldImg?.file_type === 'video') {
+            disposePlayer()
+        }
+        
+        // Init new player if switching to video
+        if (newImg.file_type === 'video') {
+            await nextTick()
+            initPlayer()
+        }
+        
         await fetchMetadata(undefined, newImg.id)
+    } else {
+        // If image is null (closed or cleared), dispose
+        disposePlayer()
     }
 })
 
@@ -295,12 +371,19 @@ watch(() => props.visible, async (newVal) => {
     if (newVal && props.image) {
         document.body.style.overflow = 'hidden'
         resetZoom()
+        
+        if (props.image.file_type === 'video') {
+            await nextTick()
+            initPlayer()
+        }
+        
         if (!metadata.value || metadata.value.photo_id !== props.image.id) {
             await fetchMetadata(undefined, props.image.id)
         }
     } else {
         document.body.style.overflow = ''
         isEditing.value = false
+        disposePlayer()
     }
 })
 

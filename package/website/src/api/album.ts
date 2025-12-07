@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Album, CreateAlbumDto, Photo, PhotoMetadata } from '@/types/album';
+import type { Album, CreateAlbumDto, Photo, PhotoMetadata, AlbumStats } from '@/types/album';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -25,8 +25,18 @@ export const albumService = {
     const { data } = await api.put<Album>(`/api/albums/${id}`, album);
     return data;
   },
+  async setAlbumCover(id: string, photoId: string) {
+    const { data } = await api.put<Album>(`/api/albums/${id}/cover`, { photo_id: photoId })
+    return data
+  },
   async deleteAlbum(id: string) {
     await api.delete(`/api/albums/${id}`);
+  },
+
+  // Stats
+  async getTimelineStats() {
+    const { data } = await api.get<AlbumStats>('/api/stats/timeline');
+    return data;
   },
 
   // Photos

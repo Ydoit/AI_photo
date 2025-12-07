@@ -9,11 +9,19 @@ from app.schemas import album as schemas
 from datetime import datetime
 
 # Album CRUD
+def _update_album_photo_count(db: Session, album_id: UUID):
+    album = db.query(Album).filter(Album.id == album_id).first()
+    if album:
+        count = db.query(Photo).join(Photo.albums).filter(Album.id == album_id).count()
+        album.num_photos = count
+        db.add(album)
+        db.commit()
+
 def get_album(db: Session, album_id: UUID):
-    return db.query(Album).filter(Album.id == album_id).first()
+    return db.query(Album).options(joinedload(Album.cover)).filter(Album.id == album_id).first()
 
 def get_albums(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Album).offset(skip).limit(limit).all()
+    return db.query(Album).options(joinedload(Album.cover)).offset(skip).limit(limit).all()
 
 def create_album(db: Session, album: schemas.AlbumCreate):
     db_album = Album(name=album.name, description=album.description)
@@ -61,7 +69,8 @@ def get_all_photos(db: Session, skip: int = 0, limit: int = 100,
         
     if tag:
         query = query.filter(cast(PhotoMetadata.tags, String).ilike(f"%{tag}%"))
-        
+    #  按时间排序
+    query = query.order_by(Photo.photo_time.desc())
     return query.offset(skip).limit(limit).all()
 
 def get_photo(db: Session, photo_id: UUID):
@@ -88,6 +97,9 @@ def create_photo(db: Session, photo: schemas.PhotoCreate, album_id: Optional[UUI
     db.add(db_photo)
     db.commit()
     db.refresh(db_photo)
+    
+    if album_id:
+        _update_album_photo_count(db, album_id)
     
     # Initialize metadata
     db_metadata = PhotoMetadata(photo_id=db_photo.id)
@@ -122,8 +134,11 @@ def update_photo(db: Session, photo_id: UUID, photo_update: schemas.PhotoUpdate)
 def delete_photo(db: Session, photo_id: UUID):
     db_photo = get_photo(db, photo_id)
     if db_photo:
+        affected_album_ids = [album.id for album in db_photo.albums]
         db.delete(db_photo)
         db.commit()
+        for album_id in affected_album_ids:
+            _update_album_photo_count(db, album_id)
     return db_photo
 
 def get_photos_by_ids(db: Session, photo_ids: List[UUID]):
@@ -152,14 +167,29 @@ def batch_update_album_association(db: Session, photo_ids: List[UUID], album_id:
         pass
         
     db.commit()
+
+    if album_id and count > 0:
+        _update_album_photo_count(db, album_id)
+
     return count
 
 def batch_delete_photos_db(db: Session, photo_ids: List[UUID]):
-    photos = get_photos_by_ids(db, photo_ids)
+    # Get photos with albums to know which albums to update
+    photos = db.query(Photo).options(joinedload(Photo.albums)).filter(Photo.id.in_(photo_ids)).all()
+    affected_album_ids = set()
+    for photo in photos:
+        for album in photo.albums:
+            affected_album_ids.add(album.id)
+
     count = len(photos)
     for photo in photos:
         db.delete(photo)
     db.commit()
+    
+    # Update counts
+    for album_id in affected_album_ids:
+        _update_album_photo_count(db, album_id)
+        
     return count
 
 # Metadata CRUD

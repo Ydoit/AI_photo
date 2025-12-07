@@ -162,8 +162,7 @@ def _save_and_create_photo(db: Session, file_path: str, file_name: str, album_id
     if ext.lower() in ['.mp4', '.mov', '.avi']:
         file_type = FileType.video
     
-    # Generate thumbnail
-    storage.generate_thumbnail(file_path, photo_id)
+    storage.generate_thumbnail(file_path, photo_id, db)
     
     # Get Metadata
     size = storage.get_file_size(file_path)
@@ -204,6 +203,20 @@ def read_album(album_id: UUID, db: Session = Depends(get_db)):
     db_album = crud.get_album(db, album_id=album_id)
     if db_album is None:
         raise HTTPException(status_code=404, detail="Album not found")
+    
+    # Check if cover is set (relationship or ID)
+    if db_album.cover_id is None:
+        photos = crud.get_photos(db, album_id)
+        if photos:
+            earliest = min(photos, key=lambda p: p.photo_time or p.upload_time)
+            try:
+                # Assign ID and refresh or assign object
+                db_album.cover_id = earliest.id
+                db_album.cover = earliest
+                db.add(db_album)
+                db.commit()
+            except Exception:
+                pass
     return db_album
 
 @router.delete("/albums/{album_id}", response_model=schemas.Album)
@@ -218,6 +231,23 @@ def update_album(album_id: UUID, album: schemas.AlbumCreate, db: Session = Depen
     db_album = crud.update_album(db, album_id=album_id, album=album)
     if db_album is None:
         raise HTTPException(status_code=404, detail="Album not found")
+    return db_album
+
+@router.put("/albums/{album_id}/cover", response_model=schemas.Album)
+def set_album_cover(album_id: UUID, payload: dict, db: Session = Depends(get_db)):
+    photo_id = payload.get('photo_id')
+    if not photo_id:
+        raise HTTPException(status_code=400, detail="photo_id required")
+    db_album = crud.get_album(db, album_id=album_id)
+    if not db_album:
+        raise HTTPException(status_code=404, detail="Album not found")
+    photo = crud.get_photo(db, UUID(str(photo_id)))
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    db_album.cover_id = photo.id
+    db_album.cover = photo
+    db.commit()
+    db.refresh(db_album)
     return db_album
 
 # Photo Endpoints
@@ -255,7 +285,7 @@ def batch_update_photos(
         # Get photos to delete files
         photos = crud.get_photos_by_ids(db, batch_data.photo_ids)
         for photo in photos:
-            storage.delete_file(photo.file_path, photo.id)
+            storage.delete_file(photo.file_path, photo.id, db)
             
         crud.batch_delete_photos_db(db, batch_data.photo_ids)
         return {"message": "Photos deleted successfully"}
@@ -279,7 +309,7 @@ async def upload_photo_generic(
     photo_id = uuid.uuid4()
     
     # Save file
-    file_path = storage.save_upload_file(file, photo_id)
+    file_path = storage.save_upload_file(file, photo_id, db)
     
     # Create and Save
     return _save_and_create_photo(db, file_path, file.filename, album_id, photo_id)
@@ -313,7 +343,7 @@ def delete_photo_global(photo_id: UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Photo not found")
     
     # Delete file from storage
-    storage.delete_file(db_photo.file_path, db_photo.id)
+    storage.delete_file(db_photo.file_path, db_photo.id, db)
     
     return db_photo
 
@@ -390,13 +420,18 @@ def finish_upload_generic(
         
     photo_id = uuid.uuid4()
     ext = os.path.splitext(file_name)[1]
-    final_path = os.path.join(storage.UPLOAD_DIR, f"{photo_id}{ext}")
-    
-    with open(final_path, "wb") as outfile:
+    # Save to storage_root/year/month with conflict resolution
+    class _Tmp:
+        filename = file_name
+        file = None
+    with open(os.path.join("uploads", "chunks", str(upload_id), "merged"), "wb") as outfile:
         for chunk_idx in chunks:
             chunk_path = os.path.join(chunk_dir, str(chunk_idx))
             with open(chunk_path, "rb") as infile:
                 outfile.write(infile.read())
+    with open(os.path.join("uploads", "chunks", str(upload_id), "merged"), "rb") as merged:
+        _Tmp.file = merged
+        final_path = storage.save_upload_file(_Tmp, photo_id, db)
     
     # Clean up chunks
     shutil.rmtree(chunk_dir)

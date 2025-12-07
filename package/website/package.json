@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/video.js": "^7.3.58",
     "@vueuse/core": "^14.0.0",
     "axios": "^1.12.2",
     "date-fns": "^4.1.0",
@@ -19,6 +20,7 @@
     "lucide-vue-next": "^0.555.0",
     "mingcute_icon": "^2.9.6",
     "pinia": "^3.0.3",
+    "video.js": "^8.23.4",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },

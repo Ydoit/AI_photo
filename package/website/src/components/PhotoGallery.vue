@@ -111,6 +111,10 @@
                       <Check v-if="localSelectedIds.has(img.id)" class="w-4 h-4 text-white" />
                     </div>
                   </div>
+                  <!-- Video Indicator (List View) -->
+                  <div v-if="img.file_type === 'video'" class="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                    <PlayCircle class="w-8 h-8 text-white drop-shadow-md opacity-90" />
+                  </div>
               </div>
               <div class="flex-1 py-1">
                  <div class="flex justify-between items-start">
@@ -141,6 +145,13 @@
                 loading="lazy"
               />
               
+              <!-- Video Indicator -->
+              <div v-if="img.file_type === 'video'" class="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                <div class="bg-black/20 backdrop-blur-[2px] rounded-full p-3 group-hover:bg-black/40 transition-colors">
+                  <PlayCircle class="w-8 h-8 text-white opacity-90" />
+                </div>
+              </div>
+
               <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 z-20"></div>
               
               <!-- Selection Checkbox -->
@@ -201,6 +212,14 @@
             class="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110 transition-opacity duration-500 relative z-10"
             :class="{ 'opacity-100': loadedImageIds.has(img.id), 'opacity-0': !loadedImageIds.has(img.id) }"
           />
+          
+          <!-- Video Indicator -->
+          <div v-if="img.file_type === 'video'" class="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+            <div class="bg-black/20 backdrop-blur-[2px] rounded-full p-3 group-hover:bg-black/40 transition-colors">
+              <PlayCircle class="w-8 h-8 text-white opacity-90" />
+            </div>
+          </div>
+
            <!-- Selection Checkbox -->
           <div 
             class="absolute top-2 left-2 z-30 transition-all duration-200"
@@ -232,7 +251,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch, reactive } from 'vue'
-import { CalendarDays, Image as ImageIcon, MapPin, Check, X, Download, Trash2, FolderMinus, Loader2 } from 'lucide-vue-next'
+import { CalendarDays, Image as ImageIcon, MapPin, Check, X, Download, Trash2, FolderMinus, Loader2, PlayCircle } from 'lucide-vue-next'
 import { format } from 'date-fns'
 import type { AlbumImage } from '@/stores/albumStore'
 

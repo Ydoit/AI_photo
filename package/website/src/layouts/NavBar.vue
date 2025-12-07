@@ -132,7 +132,7 @@ const navLinks = [
 const moreLinks = [
   { label: '车票', href: '/ticket' },
   { label: '统计', href: '/statistics' },
-  { label: '工具', href: '/tools' },
+  { label: '设置', href: '/settings' },
   { label: '关于', href: '/about' },
 ]
 

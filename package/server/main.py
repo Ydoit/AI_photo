@@ -18,14 +18,32 @@ if not os.path.exists('./data'):
     os.mkdir('./data')
 load_dotenv('./data/.env')
 
-from app.api import user, train_ticket, album
+from app.api import user, train_ticket, album, index, settings
 from railway.api import router as railway_router
+from app.db.session import engine, SessionLocal
+from app.db.models.app_setting import AppSetting
+from app.api import user, album, settings, index, media, stats
 
 app = FastAPI(title="TrailSnap - 足迹相册")
+
+@app.on_event("startup")
+async def startup_event():
+    pass
+
 # Ensure uploads directory exists
 os.makedirs("uploads", exist_ok=True)
 
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Ensure uploads directory exists
+os.makedirs("uploads", exist_ok=True)
+def _mount_uploads():
+    db = SessionLocal()
+    try:
+        setting = db.query(AppSetting).filter(AppSetting.key == 'storage_root').first()
+        root = setting.value if setting and setting.value else 'uploads'
+    finally:
+        db.close()
+    app.mount("/uploads", StaticFiles(directory=root), name="uploads")
+_mount_uploads()
 # 配置允许跨域的源（生产环境建议指定具体域名，不要用 "*"）
 origins = [
     "http://localhost:8080",  # Vue开发环境地址
@@ -52,6 +70,10 @@ app.include_router(user.router, prefix="/users", tags=["Users"])
 app.include_router(train_ticket.router, prefix="/api/train-ticket", tags=["train-ticket"])
 app.include_router(railway_router, prefix="/api/railway", tags=["railway"])
 app.include_router(album.router, prefix="/api", tags=["Albums"])
+app.include_router(settings.router, prefix="/api", tags=["Settings"])
+app.include_router(index.router, prefix="/api", tags=["Index"])
+app.include_router(media.router, prefix="/api", tags=["Media"])
+app.include_router(stats.router, prefix="/api", tags=["Stats"])
 
 if __name__ == "__main__":
     import uvicorn

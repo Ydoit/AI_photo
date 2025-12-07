@@ -11,7 +11,7 @@
           </button>
           <div class="pr-2">
             <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight">{{ album?.title || '相册详情' }}</h1>
-            <p class="text-xs text-gray-500">{{ images.length }} 张照片</p>
+            <p class="text-xs text-gray-500">{{ images.length }} 个项目</p>
           </div>
         </div>
 
@@ -141,13 +141,19 @@
         @batch-delete="handleBatchDelete"
       >
         <template #overlay-actions="{ photo }">
-           <button 
-             v-if="album?.type === 'custom'"
+           <button
              @click.stop="deletePhotoFromAlbum(photo.id)"
              class="bg-red-500/80 hover:bg-red-600 text-white p-1.5 rounded-full backdrop-blur-md transition-colors"
              title="移出相册"
            >
              <Trash2 class="w-4 h-4" />
+           </button>
+           <button
+             @click.stop="setCover(photo.id)"
+             class="bg-primary-500 hover:bg-primary-600 text-white p-1.5 rounded-full backdrop-blur-md transition-colors"
+             title="设为封面"
+           >
+             <Folder class="w-4 h-4" />
            </button>
         </template>
       </PhotoGallery>
@@ -186,7 +192,7 @@
     />
 
     <!-- Album Select Modal -->
-    <div v-if="showAlbumSelectModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeAlbumSelectModal">
+    <div v-if="showAlbumSelectModal" class="fixed z-[1000] inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeAlbumSelectModal">
       <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
           <h3 class="text-lg font-bold text-gray-900 dark:text-white">选择相册</h3>
@@ -199,8 +205,8 @@
             暂无相册
           </div>
           <div v-else class="space-y-2">
-            <button 
-              v-for="alb in albums" 
+            <button
+              v-for="alb in albums"
               :key="alb.id"
               @click="confirmAddToAlbum(alb.id)"
               class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group"
@@ -210,7 +216,7 @@
               </div>
               <div>
                 <h4 class="font-medium text-gray-900 dark:text-white">{{ alb.title }}</h4>
-                <p class="text-xs text-gray-500">{{ alb.count }} 张照片</p>
+                <p class="text-xs text-gray-500">{{ alb.count }} 个项目</p>
               </div>
             </button>
           </div>
@@ -224,6 +230,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAlbumStore, type AlbumImage } from '@/stores/albumStore'
+import { albumService } from '@/api/album'
 import { 
   ArrowLeft, Grid3x3, Grid2x2, Maximize, LayoutDashboard, LayoutGrid, LayoutList,
   UploadCloud, Trash2, X, CheckSquare, Settings2, Folder
@@ -248,7 +255,7 @@ const albums = computed(() => store.allAlbums)
 
 // UI State
 const viewSize = ref<'sm' | 'md' | 'lg'>('md')
-const layoutMode = ref<'masonry' | 'grid' | 'list'>('masonry')
+const layoutMode = ref<'masonry' | 'grid' | 'list'>('grid')
 const activeDate = ref('')
 const lightboxImage = ref<AlbumImage | null>(null)
 const showUploadModal = ref(false)
@@ -309,6 +316,15 @@ const deletePhotoFromAlbum = async (id: string) => {
     }
 }
 
+const setCover = async (id: string) => {
+  try {
+    await albumService.setAlbumCover(albumId, id)
+    ElMessage.success('封面已更新')
+  } catch (e) {
+    ElMessage.error('封面更新失败')
+  }
+}
+
 const lightboxDeleteTitle = computed(() => {
   return album.value?.type === 'custom' ? '移出相册' : '删除确认'
 })
@@ -362,7 +378,7 @@ const confirmAddToAlbum = async (targetAlbumId: string) => {
     await store.addPhotosToAlbum(tempSelectedIds.value, 'add_to_album', targetAlbumId)
     closeAlbumSelectModal()
     store.loadAlbumPhotos(albumId, true) // Reload
-    ElMessage.success(`成功添加 ${tempSelectedIds.value.length} 张照片到相册`)
+    ElMessage.success(`成功添加到相册`)
   } catch (error) {
     console.error('Batch add failed:', error)
     ElMessage.error('添加失败')

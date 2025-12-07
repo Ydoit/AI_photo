@@ -10,6 +10,7 @@ const PhotosPage = () => import('@/views/PhotosPage.vue');
 const TicketPage = () => import('@/views/TicketPage.vue');
 const StatisticsPage = () => import('@/views/StatisticsPage.vue');
 const More = () => import('@/views/More.vue');
+const Settings = () => import('@/views/Settings.vue');
 const Responsive = () => import('@/views/tools/Responsive.vue');
 const ToolPage = () => import('@/views/tools/ToolPage.vue');
 
@@ -30,9 +31,8 @@ const routes: RouteRecordRaw[] = [
       { path: '/photos', name: 'Photos', component: PhotosPage, meta: { title: '所有照片' } },
       { path: '/ticket', name: 'Ticket', component: TicketPage, meta: { title: '车票', keepAlive: true } },
       { path: '/statistics', name: 'Statistics', component: StatisticsPage, meta: { title: '统计' } },
-      { path: '/tools', name: 'Tool', component: ToolPage, meta: { title: '工具' } },
-      { path: '/tools/responsive', name: 'Responsive', component: Responsive, meta: { title: '响应式测试' } },
       { path: '/more', name: 'More', component: More, meta: { title: '更多' } },
+      { path: '/settings', name: 'Settings', component: Settings, meta: { title: '设置' } },
       { path: '/about', name: 'About', component: AboutPage, meta: { title: '关于' } }, // 新增 About 路由
     ],
   },

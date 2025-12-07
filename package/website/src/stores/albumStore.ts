@@ -20,12 +20,13 @@ export interface AlbumImage {
   width?: number
   height?: number
   filename?: string
+  file_type: 'image' | 'video' | 'live_photo'
 }
 
 export interface Album {
   id: string
   title: string
-  type: 'conditional' | 'custom'
+  type: string
   cover: string
   count: number
   description?: string
@@ -37,21 +38,18 @@ export const useAlbumStore = defineStore('album', () => {
   const images = ref<AlbumImage[]>([])
   const apiAlbums = ref<ApiAlbum[]>([])
   const loading = ref(false)
-  
   // Pagination State
   const limit = 50
   const skip = ref(0)
   const hasMore = ref(true)
   const currentContext = ref<{ type: 'all' | 'album', id?: string }>({ type: 'all' })
+  const timelineStats = ref<any>(null)
 
   // --- Helpers ---
   const mapPhotoToImage = (photo: Photo): AlbumImage => {
-    // Normalize path separator for URL
-    const normalizedPath = photo.file_path.replace(/\\/g, '/');
-    const url = `${API_BASE_URL}/${normalizedPath}`;
-    // Thumbnail: check if exists, else use original
-    // Backend thumbnail logic: uploads/thumbnails/{uuid}.jpg
-    const thumbnail = `${API_BASE_URL}/uploads/thumbnails/${photo.id}.jpg`;
+    // New API returns relative URLs in url and thumbnail_url fields
+    const url = `${API_BASE_URL}${photo.url}`;
+    const thumbnail = `${API_BASE_URL}${photo.thumbnail_url}`;
     
     // Metadata extraction
     const metadata = photo.metadata_info;
@@ -81,8 +79,8 @@ export const useAlbumStore = defineStore('album', () => {
     return {
       id: photo.id,
       url,
-      thumbnail, 
-      srcset: `${thumbnail} 400w, ${thumbnail} 1200w`,
+      thumbnail,
+      srcset: '', // No separate sizes for now, handled by backend dynamic sizing if needed
       timestamp,
       category,
       tags,
@@ -91,7 +89,8 @@ export const useAlbumStore = defineStore('album', () => {
       albumIds: photo.album_ids || [],
       width: photo.width,
       height: photo.height,
-      filename: photo.filename
+      filename: photo.filename,
+      file_type: photo.file_type
     }
   }
 
@@ -100,9 +99,18 @@ export const useAlbumStore = defineStore('album', () => {
       try {
           const albumsData = await albumService.getAlbums();
           apiAlbums.value = albumsData;
-      } catch (error) {
-          console.error("Failed to fetch albums", error);
+      } catch (e) {
+          console.error("Failed to fetch albums", e)
       }
+  }
+
+  const fetchTimelineStats = async () => {
+    try {
+      const stats = await albumService.getTimelineStats()
+      timelineStats.value = stats
+    } catch (e) {
+      console.error("Failed to fetch timeline stats", e)
+    }
   }
 
   const loadPhotos = async (reset: boolean = false) => {
@@ -156,18 +164,7 @@ export const useAlbumStore = defineStore('album', () => {
     try {
         let photosData: Photo[] = [];
         
-        if (albumId.startsWith('city-')) {
-            const city = albumId.replace('city-', '');
-            photosData = await albumService.getAllPhotos(skip.value, limit, { city });
-        } else if (albumId.startsWith('year-')) {
-            const year = albumId.replace('year-', '');
-            photosData = await albumService.getAllPhotos(skip.value, limit, { year });
-        } else if (albumId.startsWith('cat-')) {
-            const cat = albumId.replace('cat-', '');
-            photosData = await albumService.getAllPhotos(skip.value, limit, { tag: cat });
-        } else {
-            photosData = await albumService.getPhotos(albumId, skip.value, limit);
-        }
+        photosData = await albumService.getPhotos(albumId, skip.value, limit);
         
         if (photosData.length < limit) {
             hasMore.value = false;
@@ -263,117 +260,23 @@ export const useAlbumStore = defineStore('album', () => {
   }
 
   // --- Computed Albums ---
-  
-  // 1. Conditional Albums (Auto-generated)
-  const conditionalAlbums = computed<Album[]>(() => {
-    const albums: Album[] = []
-    
-    // By City
-    const cityGroups: Record<string, AlbumImage[]> = {}
-    images.value.forEach(img => {
-      if (img.city) {
-        if (!cityGroups[img.city]) cityGroups[img.city] = []
-        cityGroups[img.city].push(img)
-      }
-    })
-    
-    Object.entries(cityGroups).forEach(([city, photos]) => {
-      if (photos.length > 0) {
-        albums.push({
-          id: `city-${city}`,
-          title: city,
-          type: 'conditional',
-          cover: photos[0].thumbnail,
-          count: photos.length,
-          description: `${city}的足迹`,
-          createdAt: photos[0].timestamp
-        })
-      }
-    })
-
-    // By Year
-    const yearGroups: Record<string, AlbumImage[]> = {}
-    images.value.forEach(img => {
-      const year = format(new Date(img.timestamp), 'yyyy')
-      if (!yearGroups[year]) yearGroups[year] = []
-      yearGroups[year].push(img)
-    })
-
-    Object.entries(yearGroups).forEach(([year, photos]) => {
-      if (photos.length > 0) {
-        albums.push({
-          id: `year-${year}`,
-          title: `${year}年`,
-          type: 'conditional',
-          cover: photos[0].thumbnail,
-          count: photos.length,
-          description: `${year}年的回忆`,
-          createdAt: photos[0].timestamp
-        })
-      }
-    })
-
-    // By Category
-    const categoryGroups: Record<string, AlbumImage[]> = {}
-    images.value.forEach(img => {
-      if (!categoryGroups[img.category]) categoryGroups[img.category] = []
-      categoryGroups[img.category].push(img)
-    })
-
-    Object.entries(categoryGroups).forEach(([cat, photos]) => {
-       if (photos.length > 0) {
-        albums.push({
-          id: `cat-${cat}`,
-          title: cat,
-          type: 'conditional',
-          cover: photos[0].thumbnail,
-          count: photos.length,
-          description: `${cat}精选`,
-          createdAt: photos[0].timestamp
-        })
-      }
-    })
-
-    return albums
-  })
-
-  // 2. Custom Albums (Synced with Backend)
-  const userAlbums = computed<Album[]>(() => {
+  const allAlbums = computed<Album[]>(() => {
     return apiAlbums.value.map(album => {
-      // This count is only from LOADED photos in memory, which might be inaccurate if paginated.
-      // But since we rely on loaded photos for count in this view...
-      const photos = images.value.filter(img => img.albumIds.includes(album.id));
-      const cover = photos.length > 0 ? photos[0].thumbnail : 'https://placehold.co/400x300?text=Empty';
-      
+      const cover = album.cover ? `${API_BASE_URL}${album.cover.thumbnail_url}` : 'https://placehold.co/400x300?text=Empty';
       return {
         id: album.id,
         title: album.name,
-        type: 'custom',
+        type: album.type,
         cover,
-        count: photos.length,
-        description: album.description || `${photos.length}张照片`,
+        count: album.num_photos,
+        description: album.description || `${album.num_photos}张照片`,
         createdAt: new Date(album.create_time).getTime()
       }
     })
   })
 
-  const allAlbums = computed(() => [...conditionalAlbums.value, ...userAlbums.value])
-
   // --- Getters ---
   const getPhotosByAlbumId = (albumId: string): AlbumImage[] => {
-    if (albumId.startsWith('city-')) {
-      const city = albumId.replace('city-', '')
-      return images.value.filter(img => img.city === city)
-    }
-    if (albumId.startsWith('year-')) {
-      const year = albumId.replace('year-', '')
-      return images.value.filter(img => format(new Date(img.timestamp), 'yyyy') === year)
-    }
-    if (albumId.startsWith('cat-')) {
-      const cat = albumId.replace('cat-', '')
-      return images.value.filter(img => img.category === cat)
-    }
-    
     // Custom Album (UUID)
     if (currentContext.value.type === 'album' && currentContext.value.id === albumId) {
         return images.value;
@@ -399,8 +302,6 @@ export const useAlbumStore = defineStore('album', () => {
     loading,
     hasMore,
     allAlbums,
-    conditionalAlbums,
-    userAlbums,
     fetchAllData,
     fetchAlbums,
     loadPhotos,
@@ -414,6 +315,8 @@ export const useAlbumStore = defineStore('album', () => {
     deletePhotos,
     removePhotoFromAlbum,
     removePhotosFromAlbum,
-    addPhotosToAlbum
+    addPhotosToAlbum,
+    timelineStats,
+    fetchTimelineStats
   }
 })

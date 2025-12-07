@@ -1,7 +1,7 @@
 from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, computed_field
 from app.db.models.photo import FileType
 
 # Metadata Schemas
@@ -24,6 +24,8 @@ class PhotoMetadata(PhotoMetadataBase):
     class Config:
         from_attributes = True
 
+from pydantic import BaseModel, Field, computed_field
+
 # Photo Schemas
 class PhotoBase(BaseModel):
     file_type: FileType
@@ -43,10 +45,18 @@ class PhotoUpdate(BaseModel):
 class Photo(PhotoBase):
     id: UUID
     # album_id removed from core Photo model, usually returned as separate list or part of details
-    file_path: str
+    file_path: str = Field(exclude=True)
     upload_time: datetime
     metadata_info: Optional[PhotoMetadata] = None
     album_ids: Optional[List[UUID]] = [] # Helper field for API response
+
+    @computed_field
+    def url(self) -> str:
+        return f"/api/media/{self.id}/file"
+
+    @computed_field
+    def thumbnail_url(self) -> str:
+        return f"/api/media/{self.id}/thumbnail"
 
     class Config:
         from_attributes = True
@@ -71,6 +81,9 @@ class AlbumUpdate(AlbumBase):
 class Album(AlbumBase):
     id: UUID
     create_time: datetime
+    cover: Optional[Photo] = None
+    type: str = "user"
+    num_photos: int = 0
     # photos: List[Photo] = [] # Can be heavy if included by default.
 
     class Config:
