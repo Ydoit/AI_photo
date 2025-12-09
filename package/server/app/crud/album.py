@@ -89,28 +89,88 @@ def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id:
 
 
 # Photo CRUD
-def get_photos(db: Session, album_id: UUID, skip: int = 0, limit: int = 100):
-    return db.query(Photo).join(Photo.albums).filter(Album.id == album_id).options(joinedload(Photo.albums)).offset(skip).limit(limit).all()
+def get_photos(db: Session, album_id: UUID, skip: int = 0, limit: int = 100, year: Optional[str] = None, month: Optional[str] = None, day: Optional[str] = None):
+    query = db.query(Photo).join(Photo.albums).filter(Album.id == album_id).options(joinedload(Photo.albums))
 
-def get_all_photos(db: Session, skip: int = 0, limit: int = 100, 
-                   year: Optional[str] = None, 
-                   city: Optional[str] = None, 
-                   tag: Optional[str] = None):
-    query = db.query(Photo).options(joinedload(Photo.albums)).outerjoin(PhotoMetadata)
-    
-    if year:
+    if year is not None:
         try:
-            year_int = int(year)
-            query = query.filter(extract('year', Photo.photo_time) == year_int) # changed upload_time to photo_time
+            y = int(year)
+            query = query.filter(extract("year", Photo.photo_time) == y)
         except ValueError:
             pass
-            
-    if city:
-        query = query.filter(cast(PhotoMetadata.location, String).ilike(f"%{city}%"))
-        
-    if tag:
-        query = query.filter(cast(PhotoMetadata.tags, String).ilike(f"%{tag}%"))
-    #  按时间排序
+
+    if month is not None:
+        try:
+            m = int(month)
+            if 1 <= m <= 12:
+                query = query.filter(extract("month", Photo.photo_time) == m)
+        except ValueError:
+            pass
+
+    if day is not None:
+        try:
+            d = int(day)
+            if 1 <= d <= 31:
+                query = query.filter(extract("day", Photo.photo_time) == d)
+        except ValueError:
+            pass
+
+    # 按拍摄时间倒序
+    query = query.order_by(Photo.photo_time.desc())
+
+    if limit == 0:
+        # 不限制数量，返回所有照片
+        return query.offset(skip).all()
+    return query.offset(skip).limit(limit).all()
+
+def get_all_photos(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    year: Optional[str] = None,
+    month: Optional[str] = None,
+    day: Optional[str] = None,
+    city: Optional[str] = None,
+    tag: Optional[str] = None,
+    album_id: Optional[UUID] = None
+):
+    if album_id == None:
+        query = db.query(Photo).options(joinedload(Photo.albums)).outerjoin(PhotoMetadata)
+    else:
+        query = db.query(Photo).join(Photo.albums).filter(Album.id == album_id).options(joinedload(Photo.albums)).outerjoin(PhotoMetadata)
+    # 年月日筛选优化：支持单独或组合筛选
+    if year is not None:
+        try:
+            y = int(year)
+            query = query.filter(extract("year", Photo.photo_time) == y)
+        except ValueError:
+            pass  # 非法年份忽略
+
+    if month is not None:
+        try:
+            m = int(month)
+            if 1 <= m <= 12:
+                query = query.filter(extract("month", Photo.photo_time) == m)
+        except ValueError:
+            pass  # 非法月份忽略
+
+    if day is not None:
+        try:
+            d = int(day)
+            if 1 <= d <= 31:
+                query = query.filter(extract("day", Photo.photo_time) == d)
+        except ValueError:
+            pass  # 非法日期忽略
+
+    # 城市模糊匹配
+    if city is not None and city.strip():
+        query = query.filter(cast(PhotoMetadata.location, String).ilike(f"%{city.strip()}%"))
+
+    # 标签模糊匹配
+    if tag is not None and tag.strip():
+        query = query.filter(cast(PhotoMetadata.tags, String).ilike(f"%{tag.strip()}%"))
+
+    # 按拍摄时间倒序
     query = query.order_by(Photo.photo_time.desc())
     return query.offset(skip).limit(limit).all()
 
@@ -188,16 +248,17 @@ def get_photos_by_ids(db: Session, photo_ids: List[UUID]):
 def batch_update_album_association(db: Session, photo_ids: List[UUID], album_id: UUID, action: str):
     photos = get_photos_by_ids(db, photo_ids)
     album = get_album(db, album_id) if album_id else None
-    
     if not photos:
         return 0
-        
+
     count = 0
     if action == 'add_to_album' and album:
         for photo in photos:
             if album not in photo.albums:
                 photo.albums.append(album)
                 count += 1
+        if not album.cover_id and count > 0:
+            album.cover_id = photos[0].id
     elif action == 'remove_from_album' and album:
         for photo in photos:
             if album in photo.albums:

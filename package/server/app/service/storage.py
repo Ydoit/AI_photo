@@ -13,16 +13,50 @@ try:
 except ImportError:
     cv2 = None
 
-def _get_storage_root(db: Session) -> str:
-    setting = db.query(AppSetting).filter(AppSetting.key == 'storage_root').first()
-    if setting and setting.value:
-        root = setting.value
+# Global cache for storage root
+_STORAGE_ROOT_CACHE = None
+
+def _get_storage_root(db: Session = None) -> str:
+    global _STORAGE_ROOT_CACHE
+    if _STORAGE_ROOT_CACHE:
+        return _STORAGE_ROOT_CACHE
+        
+    if db:
+        setting = db.query(AppSetting).filter(AppSetting.key == 'storage_root').first()
+        if setting and setting.value:
+            root = setting.value
+        else:
+            root = 'uploads'
     else:
+        # Fallback if no DB session provided and cache empty
+        # This might happen if called outside of request context before initialization
+        # Ideally shouldn't happen if we initialize properly
         root = 'uploads'
-    os.makedirs(root, exist_ok=True)
-    os.makedirs(os.path.join(root, 'uploads'), exist_ok=True)
-    os.makedirs(os.path.join(root, 'thumbnails'), exist_ok=True)
+
+    # Ensure directories exist
+    # Optimization: We could move this out of the hot path, 
+    # but for safety we keep it or move it to setter.
+    # Given the user instruction is about avoiding DB query, caching the path is the main goal.
+    try:
+        os.makedirs(root, exist_ok=True)
+        os.makedirs(os.path.join(root, 'uploads'), exist_ok=True)
+        os.makedirs(os.path.join(root, 'thumbnails'), exist_ok=True)
+    except Exception as e:
+        logging.error(f"Failed to create directories for {root}: {e}")
+
+    _STORAGE_ROOT_CACHE = root
     return root
+
+def update_storage_root_cache(new_root: str):
+    """Update the global storage root cache and ensure directories exist."""
+    global _STORAGE_ROOT_CACHE
+    _STORAGE_ROOT_CACHE = new_root
+    try:
+        os.makedirs(new_root, exist_ok=True)
+        os.makedirs(os.path.join(new_root, 'uploads'), exist_ok=True)
+        os.makedirs(os.path.join(new_root, 'thumbnails'), exist_ok=True)
+    except Exception as e:
+        logging.error(f"Failed to create directories for {new_root}: {e}")
 
 def _ensure_unique_path(dir_path: str, filename: str) -> str:
     base, ext = os.path.splitext(filename)

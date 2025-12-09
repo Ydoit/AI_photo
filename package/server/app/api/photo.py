@@ -9,10 +9,11 @@
 @Description : 
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, Form
 from sqlalchemy.orm import Session
+from itertools import groupby
 
 from app.crud.album import save_and_create_photo
 from app.dependencies import get_db
@@ -31,12 +32,16 @@ router = APIRouter()
 def read_all_photos(
         skip: int = 0,
         limit: int = 100,
+        album_id: Optional[UUID] = None,
         year: Optional[str] = None,
+        month: Optional[str] = None,
+        day: Optional[str] = None,
         city: Optional[str] = None,
         tag: Optional[str] = None,
         db: Session = Depends(get_db)
 ):
-    return crud.get_all_photos(db, skip=skip, limit=limit, year=year, city=city, tag=tag)
+    photos = crud.get_all_photos(db, skip=skip, limit=limit, year=year, month=month, day=day, city=city, tag=tag, album_id=album_id)
+    return photos
 
 
 @router.post("/batch")

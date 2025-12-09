@@ -1,5 +1,6 @@
 import { ref, computed, watch, type Ref } from 'vue'
 import type { TimelineStats, TimelineItem } from '@/types/album'
+import type { AlbumImage } from '@/stores/photoStore'
 
 export interface DayBlock {
   key: string // YYYY-MM-DD
@@ -27,12 +28,13 @@ export interface MonthBlock {
 interface UseVirtualLayoutOptions {
   timelineStats: Ref<TimelineStats | undefined>
   containerWidth: Ref<number>
-  layoutMode: Ref<'grid' | 'masonry' | 'list'>
+  layoutMode: Ref<'grid' | 'masonry' | 'waterfall' | 'list'> // Added 'waterfall'
   viewSize: Ref<'sm' | 'md' | 'lg'>
+  photos: Ref<AlbumImage[]> // Added photos dependency
 }
 
 export function useVirtualLayout(options: UseVirtualLayoutOptions) {
-  const { timelineStats, containerWidth, layoutMode, viewSize } = options
+  const { timelineStats, containerWidth, layoutMode, viewSize, photos } = options
 
   const monthBlocks = ref<MonthBlock[]>([])
   const totalHeight = ref(0)
@@ -43,8 +45,8 @@ export function useVirtualLayout(options: UseVirtualLayoutOptions) {
   const gapVal = ref(0)
 
   // Configuration constants
-  const HEADER_HEIGHT = 60 // Month header height
-  const DAY_HEADER_HEIGHT = 40 // Day header height (New)
+  const HEADER_HEIGHT = 0 
+  const DAY_HEADER_HEIGHT = 50
   
   const getGap = () => {
     return viewSize.value === 'lg' ? 16 : 8
@@ -71,6 +73,7 @@ export function useVirtualLayout(options: UseVirtualLayoutOptions) {
         return b.day - a.day
     })
 
+    const mode = layoutMode.value
     const cols = getColumns()
     const gap = getGap()
     const width = containerWidth.value || 1000 
@@ -79,13 +82,36 @@ export function useVirtualLayout(options: UseVirtualLayoutOptions) {
     colCount.value = cols
     gapVal.value = gap
 
-    const colWidth = (width - (cols - 1) * gap) / cols
-    const rowHeight = colWidth / 1.5 // 3:2 Aspect Ratio
+    let rowHeight = 0
+    if (mode === 'grid' || mode === 'masonry') {
+         const colWidth = (width - (cols - 1) * gap) / cols
+         // Grid: Square (1:1) if mode is 'grid', else 3:2 if 'masonry' (legacy default)
+         // But user wants 'Square' as one mode. Let's assume 'grid' = Square.
+         // And 'waterfall' = Justified.
+         // If user selects 'Square', we use 1:1.
+         // If user selects 'Waterfall', we handle below.
+         // Let's assume 'grid' is the default Square mode now as per request "Square layout".
+         const aspectRatio = (mode === 'grid') ? 1 : 1.5 
+         rowHeight = colWidth / aspectRatio
+    } else if (mode === 'waterfall') {
+         rowHeight = 220 // Target Row Height for Waterfall
+    }
+    
     rowHeightVal.value = rowHeight
     
-    // Group by Month
+    // Group photos by day for Waterfall calculation
+    const photosByDay = new Map<string, AlbumImage[]>()
+    if (mode === 'waterfall') {
+        photos.value.forEach(p => {
+             const d = new Date(p.timestamp)
+             const key = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+             if (!photosByDay.has(key)) photosByDay.set(key, [])
+             photosByDay.get(key)!.push(p)
+        })
+    }
+
+    // Group Timeline by Month
     const months = new Map<string, { year: number, month: number, days: TimelineItem[] }>()
-    
     timeline.forEach(item => {
         const key = `${item.year}-${item.month}`
         if (!months.has(key)) {
@@ -100,15 +126,47 @@ export function useVirtualLayout(options: UseVirtualLayoutOptions) {
 
     months.forEach((data, key) => {
         const dayBlocks: DayBlock[] = []
-        let currentMonthTop = HEADER_HEIGHT // Start after Month Header
+        let currentMonthTop = HEADER_HEIGHT 
         let monthCount = 0
 
         data.days.forEach(dayItem => {
-            const rows = Math.ceil(dayItem.count / cols)
-            // Height = Header + (Rows * RowHeight) + (Gaps between rows)
-            // Note: Gaps are between rows. If rows=1, gap=0.
-            const contentHeight = rows * rowHeight + Math.max(0, rows - 1) * gap
-            // Add margin bottom to day block? Say gap
+            let rows = 0
+            let contentHeight = 0
+            
+            if (mode === 'waterfall') {
+                // Calculate rows for Justified Layout
+                const dayKey = `${dayItem.year}-${dayItem.month}-${dayItem.day}`
+                const dayPhotos = photosByDay.get(dayKey) || []
+                
+                let currentWidth = 0
+                rows = 1
+                
+                // We need to iterate 'dayItem.count' times
+                for (let i = 0; i < dayItem.count; i++) {
+                    // Try to get photo
+                    let ar = 1.5
+                    if (i < dayPhotos.length) {
+                        const p = dayPhotos[i]
+                        if (p.width && p.height) ar = p.width / p.height
+                    }
+                    
+                    const itemWidth = rowHeight * ar
+                    
+                    if (currentWidth + itemWidth > width) {
+                        rows++
+                        currentWidth = itemWidth + gap
+                    } else {
+                        currentWidth += (currentWidth > 0 ? gap : 0) + itemWidth
+                    }
+                }
+                
+                contentHeight = rows * rowHeight + Math.max(0, rows - 1) * gap
+            } else {
+                // Standard Grid / Square
+                rows = Math.ceil(dayItem.count / cols)
+                contentHeight = rows * rowHeight + Math.max(0, rows - 1) * gap
+            }
+
             const dayHeight = DAY_HEADER_HEIGHT + contentHeight + gap 
             
             dayBlocks.push({
@@ -128,8 +186,6 @@ export function useVirtualLayout(options: UseVirtualLayoutOptions) {
             globalIndex += dayItem.count
         })
 
-        // Month total height = currentMonthTop (which includes header and all days)
-        // Check if we want extra padding at bottom of month
         const monthHeight = currentMonthTop 
         
         blocks.push({
@@ -151,11 +207,11 @@ export function useVirtualLayout(options: UseVirtualLayoutOptions) {
   }
 
   // Watchers
-  watch([() => timelineStats.value, containerWidth, layoutMode, viewSize], () => {
+  // Added photos to watch list
+  watch([() => timelineStats.value, containerWidth, layoutMode, viewSize, () => photos.value.length], () => {
     recalculateLayout()
   }, { immediate: true })
 
-  // Helper to find visible blocks
   const getVisibleBlocks = (scrollTop: number, viewportHeight: number, buffer = 1000) => {
     const startY = scrollTop - buffer
     const endY = scrollTop + viewportHeight + buffer

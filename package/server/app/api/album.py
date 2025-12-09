@@ -85,8 +85,8 @@ async def upload_photo(
 
 
 @router.get("/{album_id}/photos", response_model=List[schemas.Photo])
-def read_photos(album_id: UUID, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_photos(db, album_id=album_id, skip=skip, limit=limit)
+def read_photos(album_id: UUID, skip: int = 0, limit: int = 100, year: Optional[str] = None, month: Optional[str] = None, day: Optional[str] = None, db: Session = Depends(get_db)):
+    return crud.get_photos(db, album_id=album_id, skip=skip, limit=limit, year=year, month=month, day=day)
 
 
 @router.delete("/{album_id}/photos/{photo_id}", response_model=schemas.Photo)

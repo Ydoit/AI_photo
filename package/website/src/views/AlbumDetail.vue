@@ -11,7 +11,7 @@
           </button>
           <div class="pr-2">
             <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight">{{ album?.title || '相册详情' }}</h1>
-            <p class="text-xs text-gray-500">{{ images.length }} 个项目</p>
+            <p class="text-xs text-gray-500">{{ album?.count }} 个项目</p>
           </div>
         </div>
 
@@ -63,13 +63,13 @@
                      <p class="text-xs font-medium text-gray-500 px-1">布局模式</p>
                      <div class="grid grid-cols-1 gap-1">
                         <button
-                         @click="layoutMode = 'masonry'"
-                         class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-sm"
-                         :class="{ 'bg-primary-50 dark:bg-primary-900/20 text-primary-600': layoutMode === 'masonry', 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300': layoutMode !== 'masonry' }"
-                       >
-                         <LayoutDashboard class="w-4 h-4" />
-                         <span>瀑布流</span>
-                       </button>
+                        @click="layoutMode = 'waterfall'"
+                        class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-sm"
+                        :class="{ 'bg-primary-50 dark:bg-primary-900/20 text-primary-600': layoutMode === 'waterfall', 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300': layoutMode !== 'waterfall' }"
+                      >
+                        <LayoutDashboard class="w-4 h-4" />
+                        <span>瀑布流</span>
+                      </button>
                        <button
                          @click="layoutMode = 'grid'"
                          class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-sm"
@@ -77,14 +77,6 @@
                        >
                          <LayoutGrid class="w-4 h-4" />
                          <span>正方形</span>
-                       </button>
-                       <button
-                         @click="layoutMode = 'list'"
-                         class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-sm"
-                         :class="{ 'bg-primary-50 dark:bg-primary-900/20 text-primary-600': layoutMode === 'list', 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300': layoutMode !== 'list' }"
-                       >
-                         <LayoutList class="w-4 h-4" />
-                         <span>列表</span>
                        </button>
                      </div>
                    </div>
@@ -119,7 +111,7 @@
 
     <!-- Timeline Navigation Sidebar (Right Sticky) -->
     <AlbumTimeline
-      :items="store.timelineStats?.timeline || []"
+      :items="photoStore.timelineStats?.timeline || []"
       :active-date="activeDate"
       @select="scrollToDate"
     />
@@ -129,9 +121,9 @@
       <PhotoGallery
         ref="galleryRef"
         :photos="images"
-        :timeline-stats="store.timelineStats"
-        :loading="store.loading"
-        :has-more="store.hasMore"
+        :timeline-stats="photoStore.timelineStats"
+        :loading="photoStore.loading"
+        :has-more="photoStore.hasMore"
         :layout-mode="layoutMode"
         :view-size="viewSize"
         :group-by-date="true"
@@ -141,9 +133,11 @@
         @load-more="loadMorePhotos"
         @load-range="handleLoadRange"
         @batch-delete="handleBatchDelete"
+        @remove-from-album="handleBatchRemoveFromAlbum"
+        @set-album-cover="setCover"
       >
         <template #overlay-actions="{ photo }">
-           <button
+           <!-- <button
              @click.stop="deletePhotoFromAlbum(photo.id)"
              class="bg-red-500/80 hover:bg-red-600 text-white p-1.5 rounded-full backdrop-blur-md transition-colors"
              title="移出相册"
@@ -156,7 +150,7 @@
              title="设为封面"
            >
              <Folder class="w-4 h-4" />
-           </button>
+           </button> -->
         </template>
       </PhotoGallery>
     </div>
@@ -194,11 +188,12 @@
     />
 
     <!-- Album Select Modal -->
-    <div v-if="showAlbumSelectModal" class="fixed z-[1000] inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeAlbumSelectModal">
+     <!-- 置顶 -->
+    <div v-if="showAlbumSelectModal" class="z-[1000] fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeAlbumSelectModal">
       <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
           <h3 class="text-lg font-bold text-gray-900 dark:text-white">选择相册</h3>
-          <button @click="closeAlbumSelectModal" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+          <button @click="closeAlbumSelectModal" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors bg-transparent">
             <X class="w-5 h-5 text-gray-500" />
           </button>
         </div>
@@ -208,17 +203,17 @@
           </div>
           <div v-else class="space-y-2">
             <button
-              v-for="alb in albums"
-              :key="alb.id"
-              @click="confirmAddToAlbum(alb.id)"
-              class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group"
+              v-for="album in albums"
+              :key="album.id"
+              @click="confirmAddToAlbum(album.id)"
+              class="w-full flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/80 backdrop-blur-md rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group"
             >
               <div class="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-500 group-hover:scale-110 transition-transform">
                 <Folder class="w-5 h-5" />
               </div>
               <div>
-                <h4 class="font-medium text-gray-900 dark:text-white">{{ alb.title }}</h4>
-                <p class="text-xs text-gray-500">{{ alb.count }} 个项目</p>
+                <h4 class="font-medium text-gray-900 dark:text-white">{{ album.title }}</h4>
+                <p class="text-xs text-gray-500">{{ album.count }} 张照片</p>
               </div>
             </button>
           </div>
@@ -229,11 +224,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAlbumStore, type AlbumImage } from '@/stores/albumStore'
+import { useAlbumStore } from '@/stores/albumStore'
+import { usePhotoStore, type AlbumImage } from '@/stores/photoStore'
 import { albumService } from '@/api/album'
-import { 
+import {
   ArrowLeft, Grid3x3, Grid2x2, Maximize, LayoutDashboard, LayoutGrid, LayoutList,
   UploadCloud, Trash2, X, CheckSquare, Settings2, Folder
 } from 'lucide-vue-next'
@@ -248,16 +244,17 @@ import { ElMessage } from 'element-plus'
 const route = useRoute()
 const router = useRouter()
 const store = useAlbumStore()
+const photoStore = usePhotoStore()
 const albumId = route.params.id as string
 
 // State
 const album = computed(() => store.getAlbumDetails(albumId))
-const images = computed(() => store.images)
+const images = computed(() => photoStore.images)
 const albums = computed(() => store.allAlbums)
 
 // UI State
 const viewSize = ref<'sm' | 'md' | 'lg'>('md')
-const layoutMode = ref<'masonry' | 'grid' | 'list'>('grid')
+const layoutMode = ref<'masonry' | 'grid' | 'list' | 'waterfall'>('grid')
 const activeDate = ref('')
 const lightboxImage = ref<AlbumImage | null>(null)
 const showUploadModal = ref(false)
@@ -275,8 +272,8 @@ const galleryRef = ref<InstanceType<typeof PhotoGallery> | null>(null)
 
 // Timeline Dates
 const timelineDates = computed(() => {
-  if (store.timelineStats?.timeline) {
-    return store.timelineStats.timeline
+  if (photoStore.timelineStats?.timeline) {
+    return photoStore.timelineStats.timeline
       .filter((t: any) => t.count > 0)
       .sort((a: any, b: any) => {
           if (a.year !== b.year) return b.year - a.year
@@ -302,11 +299,11 @@ const triggerUpload = () => {
 
 const handleUploadComplete = () => {
     showUploadModal.value = false
-    store.loadAlbumPhotos(albumId, true)
+    photoStore.loadAlbumPhotos(albumId, true)
 }
 
 const loadMorePhotos = () => {
-    store.loadAlbumPhotos(albumId)
+    photoStore.loadAlbumPhotos(albumId)
 }
 
 const scrollToDate = (date: string) => {
@@ -324,21 +321,6 @@ const closeLightbox = () => {
   document.body.style.overflow = ''
 }
 
-const deletePhotoFromAlbum = async (id: string) => {
-    if (confirm('确定要将这张照片移出相册吗？')) {
-        await store.removePhotoFromAlbum(albumId, id)
-    }
-}
-
-const setCover = async (id: string) => {
-  try {
-    await albumService.setAlbumCover(albumId, id)
-    ElMessage.success('封面已更新')
-  } catch (e) {
-    ElMessage.error('封面更新失败')
-  }
-}
-
 const lightboxDeleteTitle = computed(() => {
   return album.value?.type === 'custom' ? '移出相册' : '删除确认'
 })
@@ -352,14 +334,20 @@ const lightboxDeleteMessage = computed(() => {
 const handlePhotoDelete = async (id: string) => {
     if (album.value?.type === 'custom') {
         await store.removePhotoFromAlbum(albumId, id)
+
+        ElMessage.success('已移出相册')
     } else {
-        await store.deletePhoto(id)
+        await photoStore.deletePhoto(id)
     }
+    galleryRef.value?.enterSelectionMode()
+    galleryRef.value?.exitSelectionMode()
+    photoStore.removeLocalPhoto(id)
+    photoStore.loadAlbumPhotos(albumId, true)
     closeLightbox()
 }
 
 const handlePhotoUpdate = (event: { id: string, location?: string, tags?: string[] }) => {
-    const img = store.images.find(i => i.id === event.id)
+    const img = photoStore.images.find(i => i.id === event.id)
     if (img) {
         if (event.location !== undefined) img.location = event.location
         if (event.tags !== undefined) img.tags = event.tags
@@ -370,15 +358,32 @@ const enterBatchMode = () => {
   galleryRef.value?.enterSelectionMode()
 }
 
+const setCover = async (ids: string[]) => {
+  try {
+    await albumService.setAlbumCover(albumId, ids[0])
+    ElMessage.success('封面已更新')
+  } catch (e) {
+    ElMessage.error('封面更新失败')
+  }
+}
+
 const handleBatchDelete = async (ids: string[]) => {
     if (album.value?.type === 'custom') {
-        if (confirm(`确定要将这 ${ids.length} 张照片从相册中移除吗？`)) {
-            await store.removePhotosFromAlbum(albumId, ids)
-        }
+        await store.removePhotosFromAlbum(albumId, ids)
     } else {
-        if (confirm(`确定要永久删除这 ${ids.length} 张照片吗？此操作无法撤销。`)) {
-            await store.deletePhotos(ids)
-        }
+        await photoStore.deletePhotos(ids)
+    }
+}
+
+const handleBatchRemoveFromAlbum = async (ids: string[]) => {
+    if (ids.length === 0) return
+    try {
+        await store.removePhotosFromAlbum(albumId, ids)
+        galleryRef.value?.exitSelectionMode()
+        photoStore.loadAlbumPhotos(albumId, true)
+        ElMessage.success('已移出相册')
+    } catch (e) {
+        ElMessage.error('移出失败')
     }
 }
 
@@ -391,7 +396,7 @@ const confirmAddToAlbum = async (targetAlbumId: string) => {
   try {
     await store.addPhotosToAlbum(tempSelectedIds.value, 'add_to_album', targetAlbumId)
     closeAlbumSelectModal()
-    store.loadAlbumPhotos(albumId, true) // Reload
+    photoStore.loadAlbumPhotos(albumId, true) // Reload
     ElMessage.success(`成功添加到相册`)
   } catch (error) {
     console.error('Batch add failed:', error)
@@ -426,9 +431,16 @@ const handleAddToAlbumFromLightbox = (img: AlbumImage) => {
 }
 
 onMounted(() => {
+    photoStore.resetAll()
     store.fetchAlbums()
-    store.fetchTimelineStats(albumId)
-    store.loadAlbumPhotos(albumId, true)
+    photoStore.loadAlbumPhotos(albumId, true)
+    nextTick(() => {
+        galleryRef.value?.updateVisibleBlocks()
+    })
+})
+
+onUnmounted(() => {
+    photoStore.resetAll()
 })
 </script>
 

@@ -7,17 +7,14 @@ import json
 from app.dependencies import get_db
 from app.db.models.app_setting import AppSetting
 from app.db.models.photo import Photo
-from app.service.storage import delete_thumbnails
+from app.service.storage import delete_thumbnails, update_storage_root_cache, _get_storage_root
 from app.service.indexer import rebuild_index as service_rebuild_index, status as index_status
 from app.db.models.index_log import IndexLog
 
 router = APIRouter()
 
 def get_storage_root(db: Session) -> str:
-    setting = db.query(AppSetting).filter(AppSetting.key == 'storage_root').first()
-    if setting and setting.value:
-        return setting.value
-    return 'uploads'
+    return _get_storage_root(db)
 
 def get_external_dirs(db: Session) -> list[str]:
     setting = db.query(AppSetting).filter(AppSetting.key == 'external_directories').first()
@@ -120,5 +117,9 @@ def update_storage_root(payload: dict, db: Session = Depends(get_db)):
     else:
         setting.value = path
     db.commit()
+    
+    # Update global cache
+    update_storage_root_cache(path)
+    
     return {'storage_root': path}
 

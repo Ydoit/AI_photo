@@ -263,7 +263,7 @@ import videojs from 'video.js'
 import 'video.js/dist/video-js.css'
 import { format } from 'date-fns'
 import { albumService } from '@/api/album'
-import type { AlbumImage } from '@/stores/albumStore'
+import type { AlbumImage } from '@/stores/photoStore'
 import type { PhotoMetadata } from '@/types/album'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
@@ -317,7 +317,8 @@ const initPlayer = () => {
             controls: true,
             autoplay: true,
             preload: 'auto',
-            fluid: true, // Responsive
+            fluid: false, // Responsive
+            fill: true,
             controlBar: {
                 children: [
                     'playToggle',
@@ -608,6 +609,10 @@ const handleDelete = () => {
 </script>
 
 <style scoped>
-.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+:deep(.video-js .vjs-tech) {
+  object-fit: contain;
+}
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

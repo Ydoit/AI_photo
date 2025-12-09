@@ -6,7 +6,7 @@
         <!-- Default Title -->
         <div class="flex items-center gap-2 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
           <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight">全部照片</h1>
-          <span class="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{{ store.timelineStats?.total_photos || images.length }}</span>
+          <span class="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{{ photoStore.timelineStats?.total_photos || images.length }}</span>
         </div>
         <!-- Controls -->
         <div class="flex items-center gap-2 ml-auto animate-in fade-in slide-in-from-right-4 duration-300">
@@ -55,9 +55,9 @@
                     <p class="text-xs font-medium text-gray-500 px-1">布局模式</p>
                     <div class="grid grid-cols-1 gap-1">
                        <button
-                        @click="layoutMode = 'masonry'"
+                        @click="layoutMode = 'waterfall'"
                         class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-sm"
-                        :class="{ 'bg-primary-50 dark:bg-primary-900/20 text-primary-600': layoutMode === 'masonry', 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300': layoutMode !== 'masonry' }"
+                        :class="{ 'bg-primary-50 dark:bg-primary-900/20 text-primary-600': layoutMode === 'waterfall', 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300': layoutMode !== 'waterfall' }"
                       >
                         <LayoutDashboard class="w-4 h-4" />
                         <span>瀑布流</span>
@@ -69,14 +69,6 @@
                       >
                         <LayoutGrid class="w-4 h-4" />
                         <span>正方形</span>
-                      </button>
-                      <button
-                        @click="layoutMode = 'list'"
-                        class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-sm"
-                        :class="{ 'bg-primary-50 dark:bg-primary-900/20 text-primary-600': layoutMode === 'list', 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300': layoutMode !== 'list' }"
-                      >
-                        <LayoutList class="w-4 h-4" />
-                        <span>列表</span>
                       </button>
                     </div>
                   </div>
@@ -108,7 +100,7 @@
 
     <!-- Timeline Navigation Sidebar (Right Sticky) -->
     <AlbumTimeline
-      :items="store.timelineStats?.timeline || []"
+      :items="photoStore.timelineStats?.timeline || []"
       :active-date="activeDate"
       @select="scrollToDate"
     />
@@ -118,26 +110,17 @@
       <PhotoGallery
         ref="galleryRef"
         :photos="images"
-        :timeline-stats="store.timelineStats"
-        :loading="store.loading"
-        :has-more="store.hasMore"
+        :timeline-stats="photoStore.timelineStats"
+        :loading="photoStore.loading"
+        :has-more="photoStore.hasMore"
         :layout-mode="layoutMode"
         :view-size="viewSize"
         v-model:active-date="activeDate"
-        @load-more="store.loadPhotos"
+        @load-more="photoStore.loadPhotos"
         @click-photo="openLightbox"
         @batch-delete="handleBatchDelete"
-      >
-        <template #batch-actions="{ selectedIds, clearSelection }">
-          <button
-            @click="prepareAddToAlbum(selectedIds, clearSelection)"
-            class="p-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2"
-            title="添加到相册"
-          >
-            <FolderInput class="w-5 h-5" />
-          </button>
-        </template>
-      </PhotoGallery>
+        @add-to-album="handleBatchAddToAlbum"
+      />
     </div>
 
     <!-- Upload Progress Toast -->
@@ -176,7 +159,7 @@
       <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
           <h3 class="text-lg font-bold text-gray-900 dark:text-white">选择相册</h3>
-          <button @click="closeAlbumSelectModal" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+          <button @click="closeAlbumSelectModal" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors bg-transparent">
             <X class="w-5 h-5 text-gray-500" />
           </button>
         </div>
@@ -185,11 +168,11 @@
             暂无相册
           </div>
           <div v-else class="space-y-2">
-            <button 
-              v-for="album in albums" 
+            <button
+              v-for="album in albums"
               :key="album.id"
               @click="confirmAddToAlbum(album.id)"
-              class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group"
+              class="w-full flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/80 backdrop-blur-md rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group"
             >
               <div class="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-500 group-hover:scale-110 transition-transform">
                 <Folder class="w-5 h-5" />
@@ -207,8 +190,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useAlbumStore, type AlbumImage } from '@/stores/albumStore'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useAlbumStore } from '@/stores/albumStore'
+import { usePhotoStore, type AlbumImage } from '@/stores/photoStore'
 import { 
   X, Maximize, Grid3x3, Grid2x2, LayoutDashboard, LayoutGrid, LayoutList,
   UploadCloud, CheckSquare, FolderInput, Folder, Settings2
@@ -222,12 +206,13 @@ import { format } from 'date-fns'
 import { ElMessage } from 'element-plus'
 
 const store = useAlbumStore()
+const photoStore = usePhotoStore()
 
 // State
-const images = computed(() => store.images)
+const images = computed(() => photoStore.images)
 const albums = computed(() => store.allAlbums)
 const viewSize = ref<'sm' | 'md' | 'lg'>('md')
-const layoutMode = ref<'masonry' | 'grid' | 'list'>('grid')
+const layoutMode = ref<'masonry' | 'grid' | 'list' | 'waterfall'>('grid')
 const activeDate = ref('')
 const showUploadModal = ref(false)
 const lightboxImage = ref<AlbumImage | null>(null)
@@ -241,7 +226,6 @@ onClickOutside(viewOptionsRef, () => {
 // Batch Actions State
 const showAlbumSelectModal = ref(false)
 const tempSelectedIds = ref<string[]>([])
-let clearSelectionCallback: (() => void) | null = null
 
 // Gallery Ref
 const galleryRef = ref<InstanceType<typeof PhotoGallery> | null>(null)
@@ -250,8 +234,8 @@ const galleryRef = ref<InstanceType<typeof PhotoGallery> | null>(null)
 // Methods
 const handleUploadComplete = () => {
   showUploadModal.value = false
-  store.loadPhotos(true)
-  store.fetchTimelineStats()
+  photoStore.loadPhotos(true)
+  photoStore.fetchTimelineStats()
 }
 
 const triggerUpload = () => {
@@ -264,33 +248,26 @@ galleryRef.value?.enterSelectionMode()
 
 const handleBatchDelete = async (ids: string[]) => {
   if (ids.length === 0) return
-  if (confirm(`确定要删除选中的 ${ids.length} 张照片吗？`)) {
-    for (const id of ids) {
-      await store.deletePhoto(id)
-    }
-    ElMessage.success('删除成功')
-  }
+  await photoStore.deletePhotos(ids)
 }
 
-const prepareAddToAlbum = (selectedIds: Set<string>, clearCallback: () => void) => {
-  if (selectedIds.size === 0) return
-  tempSelectedIds.value = Array.from(selectedIds)
-  clearSelectionCallback = clearCallback
+const handleBatchAddToAlbum = (ids: string[]) => {
+  if (ids.length === 0) return
+  tempSelectedIds.value = ids
   showAlbumSelectModal.value = true
 }
 
 const closeAlbumSelectModal = () => {
   showAlbumSelectModal.value = false
   tempSelectedIds.value = []
-  clearSelectionCallback = null
 }
 
 const confirmAddToAlbum = async (targetAlbumId: string) => {
   try {
     await store.addPhotosToAlbum(tempSelectedIds.value, 'add_to_album', targetAlbumId)
     closeAlbumSelectModal()
-    if (clearSelectionCallback) clearSelectionCallback()
-    store.loadPhotos(true) // Reload
+    galleryRef.value?.exitSelectionMode()
+    photoStore.loadPhotos(true) // Reload
     ElMessage.success(`成功添加到相册`)
   } catch (error) {
     console.error('Batch add failed:', error)
@@ -341,12 +318,12 @@ const closeLightbox = () => {
 }
 
 const handlePhotoDelete = async (id: string) => {
-  await store.deletePhoto(id)
+  await photoStore.deletePhoto(id)
   closeLightbox()
 }
 
 const handlePhotoUpdate = (event: { id: string, location?: string, tags?: string[] }) => {
-  const img = store.images.find(i => i.id === event.id)
+  const img = photoStore.images.find(i => i.id === event.id)
   if (img) {
     if (event.location !== undefined) img.location = event.location
     if (event.tags !== undefined) img.tags = event.tags
@@ -354,10 +331,14 @@ const handlePhotoUpdate = (event: { id: string, location?: string, tags?: string
 }
 
 onMounted(() => {
+  photoStore.resetAll()
   // Initial Load
   store.fetchAlbums()
-  store.fetchTimelineStats()
-  store.loadPhotos(true)
+  photoStore.fetchTimelineStats()
+  photoStore.loadPhotos(true)
+})
+onUnmounted(() => {
+  photoStore.resetAll()
 })
 </script>
 

@@ -1,47 +1,81 @@
 <template>
   <div class="photo-gallery min-h-screen relative" ref="galleryEl">
-    <!-- Selection Header (Floating) -->
+    <!-- Batch Action Bar -->
     <transition
-      enter-active-class="transform ease-out duration-300 transition"
-      enter-from-class="translate-y-[-100%] opacity-0"
-      enter-to-class="translate-y-0 opacity-100"
-      leave-active-class="transition ease-in duration-200"
-      leave-from-class="translate-y-0 opacity-100"
-      leave-to-class="translate-y-[-100%] opacity-0"
+      enter-active-class="transition duration-300 ease-out"
+      enter-from-class="transform -translate-y-full opacity-0"
+      enter-to-class="transform translate-y-0 opacity-100"
+      leave-active-class="transition duration-200 ease-in"
+      leave-from-class="transform translate-y-0 opacity-100"
+      leave-to-class="transform -translate-y-full opacity-0"
     >
-      <div 
-        v-if="isSelectionMode || localSelectedIds.size > 0"
-        class="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-lg border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between"
-      >
-        <div class="flex items-center gap-4">
-          <button 
-            @click="exitSelectionMode"
-            class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
-          >
-            <X class="w-5 h-5 text-gray-600 dark:text-gray-300" />
-          </button>
-          <span class="text-sm font-medium text-gray-700 dark:text-gray-200">
-            已选择 {{ localSelectedIds.size }} 张照片
-          </span>
-        </div>
-        
-        <div class="flex items-center gap-2">
-          <!-- Action Buttons -->
+      <div v-if="isSelectionMode" class="fixed bottom-[20px] left-0 right-0 z-40 flex justify-center pointer-events-none">
+        <div class="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200 dark:border-gray-700 shadow-lg rounded-full px-3 py-1 flex items-center gap-6 pointer-events-auto min-w-[320px]">
+          <div class="flex items-center gap-3">
+            <button @click="exitSelectionMode" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors dark:text-gray-300 bg-transparent" title="取消选择">
+              <X class="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            </button>
+            <span class="font-medium text-gray-900 dark:text-white whitespace-nowrap">
+              已选择 {{ localSelectedIds.size }} 张
+            </span>
+          </div>
+
+          <div class="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
+
           <div class="flex items-center gap-2">
-             <button 
-              @click="handleDownload" 
+            <button @click="toggleSelectAll" class="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors bg-transparent">
+              {{ isAllSelected ? '取消全选' : '全选' }}
+            </button>
+            
+            <!-- Custom Batch Actions Slot -->
+            <slot name="batch-actions" :selected-ids="localSelectedIds" :clear-selection="exitSelectionMode"></slot>
+            <button
+                @click="$emit('add-to-album', Array.from(localSelectedIds))"
+                :disabled="localSelectedIds.size === 0"
+                class="bg-transparent flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                title="添加到相册"
+                >
+                <ImagePlusIcon class="w-5 h-5" />
+            </button>
+
+            <button
+                v-if="store.currentContext.type === 'album'"
+                @click="$emit('remove-from-album', Array.from(localSelectedIds))"
+                :disabled="localSelectedIds.size === 0"
+                class="bg-transparent flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                title="移出相册"
+                >
+                <ImageMinusIcon class="w-5 h-5" />
+            </button>
+
+            <button
+                v-if="store.currentContext.type === 'album' && localSelectedIds.size===1"
+                @click="$emit('set-album-cover', Array.from(localSelectedIds))"
+                class="bg-transparent flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                title="设为封面"
+                >
+                <ImageIcon class="w-5 h-5" />
+            </button>
+            <!-- Download Action -->
+            <button
+              @click="handleDownload"
               :disabled="localSelectedIds.size === 0 || isDownloading"
-              class="p-2 text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              title="下载选中"
+              class="bg-transparent p-2 text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed relative group"
+              title="保存到本地"
             >
               <Loader2 v-if="isDownloading" class="w-5 h-5 animate-spin" />
               <Download v-else class="w-5 h-5" />
+              <!-- Progress Tooltip -->
+              <div v-if="isDownloading" class="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                {{ downloadProgress }}%
+              </div>
             </button>
-            
+
+            <!-- Delete/Remove Action -->
             <button 
               @click="handleDelete" 
               :disabled="localSelectedIds.size === 0"
-              class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              class="bg-transparent p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               :title="deleteLabel"
             >
               <Trash2 v-if="deleteLabel.includes('删除')" class="w-5 h-5" />
@@ -51,7 +85,6 @@
         </div>
       </div>
     </transition>
-
     <!-- Virtual Scroll Container -->
     <div :style="{ height: totalHeight + 'px', position: 'relative' }">
       <div
@@ -69,17 +102,6 @@
       >
         <!-- Render month content only if visible -->
         <template v-if="visibleBlockKeys.has(block.key)">
-            <!-- Month Header -->
-            <div class="flex items-center h-[60px] absolute top-0 left-4 right-4 z-20 pointer-events-none">
-                <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm border border-gray-100 dark:border-gray-800 flex items-center gap-2 pointer-events-auto cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                    @click="toggleMonthSelection(block.key)">
-                    <CalendarDays class="w-4 h-4 text-primary-500" />
-                    {{ block.year }}年{{ block.month }}月
-                    <span class="text-xs text-gray-400 font-normal ml-1">{{ block.count }}张</span>
-                </h3>
-                <div class="h-px bg-gray-200 dark:bg-gray-700 flex-1 ml-4 opacity-50"></div>
-            </div>
-
             <!-- Days Container -->
             <div
                 v-for="day in block.days"
@@ -95,21 +117,32 @@
             >
                 <template v-if="visibleDayRanges.has(day.key)">
                      <!-- Day Header -->
-                    <div class="h-[40px] flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 pl-1">
-                        {{ day.day }}日
+                    <div class="h-[50px] flex items-center mb-0 sticky top-[100px] z-20 py-2 transition-opacity duration-300 pointer-events-none">
+                        <div class="flex items-center gap-3 group cursor-pointer text-sm font-bold text-gray-800 dark:text-gray-200 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm px-4 py-1.5 rounded-full shadow-sm border border-gray-100 dark:border-gray-800 flex items-center gap-2 pointer-events-auto cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800" @click="toggleDaySelection(day)">
+                             <div 
+                                class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200"
+                                :class="isDaySelected(day) ? 'bg-primary-500 border-primary-500' : 'border-gray-300 dark:border-gray-600 group-hover:border-primary-400'"
+                             >
+                                <Check v-if="isDaySelected(day)" class="w-3 h-3 text-white" />
+                             </div>
+                             <span class="">
+                                {{ day.year }}-{{ String(day.month).padStart(2, '0') }}-{{ String(day.day).padStart(2, '0') }}
+                             </span>
+                            <CalendarDays class="w-4 h-4 text-primary-500" />
+                        </div>
                     </div>
-                    
+
                     <!-- Photos Grid -->
                     <div 
-                        class="grid w-full" 
-                        :style="{
+                        :class="layoutMode === 'waterfall' ? 'flex flex-wrap' : 'grid w-full'" 
+                        :style="layoutMode === 'waterfall' ? { gap: gap + 'px' } : {
                             gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))`,
                             gap: gap + 'px'
                         }"
                     >
                         <!-- Top Spacer -->
                         <div v-if="getRange(day.key).topH > 0" 
-                             :style="{ gridColumn: '1 / -1', height: getRange(day.key).topH + 'px' }">
+                             :style="layoutMode === 'waterfall' ? { width: '100%', height: getRange(day.key).topH + 'px' } : { gridColumn: '1 / -1', height: getRange(day.key).topH + 'px' }">
                         </div>
 
                         <!-- Actual Photos -->
@@ -117,7 +150,17 @@
                             <div
                                 v-for="img in getPhotos(day.key).slice(getRange(day.key).start, getRange(day.key).end)"
                                 :key="img.id"
-                                class="relative group aspect-[3/2] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:z-10 flex items-center justify-center"
+                                class="relative group rounded-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:z-10 flex items-center justify-center"
+                                :class="{
+                                  'aspect-square bg-gray-100 dark:bg-gray-800': layoutMode === 'grid',
+                                  'aspect-[3/2] bg-gray-100 dark:bg-gray-800': layoutMode === 'masonry',
+                                  'flex-grow bg-gray-100 dark:bg-gray-800': layoutMode === 'waterfall'
+                                }"
+                                :style="layoutMode === 'waterfall' ? {
+                                    height: rowHeight + 'px',
+                                    width: (img.width && img.height ? (img.width / img.height * rowHeight) : (rowHeight * 1.5)) + 'px',
+                                    minWidth: '50px',maxWidth: '400px'
+                                } : {}"
                                 @click="handlePhotoClick(img)"
                                 @mouseenter="enterSelectionMode(img)"
                                 @vue:mounted="loadImage(img)"
@@ -129,20 +172,32 @@
                                     :alt="img.category" 
                                 />
                                 
-                                <!-- Selection Overlay -->
+                                <!-- Selection Checkbox (Top Left) -->
                                 <div 
-                                    v-if="isSelectionMode || localSelectedIds.has(img.id)"
-                                    class="absolute inset-0 bg-black/20 transition-opacity duration-200 flex items-center justify-center z-20"
+                                    class="absolute top-2 left-2 z-30 transition-opacity duration-200 cursor-pointer"
+                                    :class="(isSelectionMode || localSelectedIds.has(img.id)) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
                                     @click.stop="toggleSelection(img)"
                                 >
                                     <div 
-                                    class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200"
-                                    :class="localSelectedIds.has(img.id) ? 'bg-primary-500 border-primary-500' : 'bg-black/20 border-white/70 hover:bg-black/40 backdrop-blur-sm'"
+                                    class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 backdrop-blur-sm shadow-sm"
+                                    :class="localSelectedIds.has(img.id) ? 'bg-primary-500 border-primary-500' : 'bg-black/10 border-white/70 hover:bg-black/40'"
                                     >
                                     <Check v-if="localSelectedIds.has(img.id)" class="w-3.5 h-3.5 text-white" />
                                     </div>
                                 </div>
-
+                                
+                                <!-- Selected Overlay (Darken) -->
+                                <div 
+                                    v-if="localSelectedIds.has(img.id)"
+                                    class="absolute inset-0 bg-black/10 z-10 pointer-events-none"
+                                ></div>
+                                <!-- Video Indicator (List View) -->
+                                <div v-if="img.file_type === 'video'" class="flex mb-1 absolute top-1 right-2 justify-center pointer-events-none z-10 items-center">
+                                  <div class="text-white text-sm">
+                                    00:00{{getPhotos(day.key).length}}
+                                  </div>
+                                  <PlayCircle class="w-4 h-4 text-white drop-shadow-md opacity-90" />
+                                </div>
                                 <!-- Info Overlay -->
                                 <div class="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex justify-between items-end">
                                     <p class="text-white text-xs font-medium truncate flex items-center gap-1">
@@ -190,14 +245,16 @@
 import {
   ref, computed, watch, onMounted, onUnmounted, nextTick, toRef, reactive
 } from 'vue'
-import { CalendarDays, Image as ImageIcon, MapPin, Check, X, Download, Trash2, FolderMinus, Loader2 } from 'lucide-vue-next'
+import { ElMessageBox, ElMessage } from 'element-plus'
+import { CalendarDays, PlayCircle, Image as ImageIcon, MapPin, Check, X, Download, Trash2, FolderMinus, Loader2, PlaySquare, Play, PlayIcon, PlayCircleIcon, Plus, FolderPlus, PhoneOutgoingIcon, PictureInPicture, CloverIcon, ImageMinusIcon, ImagePlusIcon } from 'lucide-vue-next'
 import { format } from 'date-fns'
-import { useAlbumStore, type AlbumImage } from '@/stores/albumStore'
+import { useAlbumStore } from '@/stores/albumStore'
+import { usePhotoStore, type AlbumImage } from '@/stores/photoStore'
 import type { TimelineStats } from '@/types/album'
 import { useVirtualLayout, type MonthBlock, type DayBlock } from '@/composables/useVirtualLayout'
 import { useWindowScroll, useDebounceFn } from '@vueuse/core'
 
-const store = useAlbumStore()
+const store = usePhotoStore()
 
 // Props
 interface Props {
@@ -205,7 +262,7 @@ interface Props {
   timelineStats?: TimelineStats
   loading?: boolean
   hasMore?: boolean
-  layoutMode?: 'grid' | 'masonry' | 'list'
+  layoutMode?: 'grid' | 'masonry' | 'waterfall' | 'list'
   viewSize?: 'sm' | 'md' | 'lg'
   groupByDate?: boolean
   deleteLabel?: string
@@ -221,9 +278,9 @@ const props = withDefaults(defineProps<Props>(), {
   hasMore: false
 })
 
-const emit = defineEmits(['click-photo', 'load-more', 'load-range', 'update:activeDate', 'batch-delete'])
+const emit = defineEmits(['click-photo', 'load-more', 'load-range', 'update:activeDate', 'batch-delete', 'add-to-album', 'remove-from-album', 'set-album-cover'])
 
-// --- Selection State ---
+    // --- Selection State ---
 const isSelectionMode = ref(false)
 const localSelectedIds = ref(new Set<string>())
 
@@ -268,6 +325,7 @@ const cancelImageLoad = (imageId: string) => {
 onUnmounted(() => {
     imageLoaders.forEach(c => c.abort())
     imageLoaders.clear()
+    if (resizeObserver) resizeObserver.disconnect()
 })
 // --- End Image Loading Logic ---
 
@@ -282,7 +340,8 @@ const layoutOptions = {
     timelineStats: toRef(props, 'timelineStats'),
     containerWidth,
     layoutMode: toRef(props, 'layoutMode'),
-    viewSize: toRef(props, 'viewSize')
+    viewSize: toRef(props, 'viewSize'),
+    photos: toRef(props, 'photos')
 }
 
 const { monthBlocks, totalHeight, getVisibleBlocks, recalculateLayout, colCount, rowHeight, gap } = useVirtualLayout(layoutOptions)
@@ -297,17 +356,17 @@ const visibleBlocksList = ref<MonthBlock[]>([])
 const DAY_HEADER_HEIGHT = 40
 
 const getRange = (key: string) => {
-    return visibleDayRanges.value.get(key) || { start: 0, end: 0, topH: 0, bottomH: 0 }
+  return visibleDayRanges.value.get(key) || { start: 0, end: 0, topH: 0, bottomH: 0 }
 }
 
 const updateVisibleBlocks = () => {
     const buffer = 1000 // Month Buffer
     const visibleMonths = getVisibleBlocks(scrollTop.value, viewportHeight.value, buffer)
     visibleBlocksList.value = visibleMonths
-    
+
     const newMonthKeys = new Set<string>()
     const newDayRanges = new Map<string, { start: number, end: number, topH: number, bottomH: number }>()
-    
+
     // Dynamic Buffer for Rows: (hn + 2 + 2) * wn -> 2 rows buffer
     // But here we calculate based on pixels
     const rHeight = rowHeight.value || 200
@@ -337,21 +396,26 @@ const updateVisibleBlocks = () => {
                 const relStart = startY - photosTopAbs
                 const relEnd = endY - photosTopAbs
                 
-                let startRow = Math.floor(relStart / rowUnit)
-                let endRow = Math.ceil(relEnd / rowUnit)
-                
-                // Clamp rows
-                startRow = Math.max(0, startRow)
-                endRow = Math.min(d.rows, endRow) // d.rows is total rows in day
-                
-                if (startRow < d.rows && endRow > 0) {
-                     const startIndex = startRow * colCount.value
-                     const endIndex = Math.min(d.count, endRow * colCount.value)
-                     
-                     const topH = startRow * rowUnit
-                     const bottomH = Math.max(0, d.rows - endRow) * rowUnit
-                     
-                     newDayRanges.set(d.key, { start: startIndex, end: endIndex, topH, bottomH })
+                if (props.layoutMode === 'waterfall') {
+                     // In waterfall mode, disable row virtualization within day for simplicity
+                     newDayRanges.set(d.key, { start: 0, end: d.count, topH: 0, bottomH: 0 })
+                } else {
+                    let startRow = Math.floor(relStart / rowUnit)
+                    let endRow = Math.ceil(relEnd / rowUnit)
+                    
+                    // Clamp rows
+                    startRow = Math.max(0, startRow)
+                    endRow = Math.min(d.rows, endRow) // d.rows is total rows in day
+                    
+                    if (startRow < d.rows && endRow > 0) {
+                         const startIndex = startRow * colCount.value
+                         const endIndex = Math.min(d.count, endRow * colCount.value)
+                         
+                         const topH = startRow * rowUnit
+                         const bottomH = Math.max(0, d.rows - endRow) * rowUnit
+                         
+                         newDayRanges.set(d.key, { start: startIndex, end: endIndex, topH, bottomH })
+                    }
                 }
             }
         })
@@ -364,14 +428,12 @@ const updateVisibleBlocks = () => {
 // Throttle scroll updates
 const handleScroll = useDebounceFn(() => {
     updateVisibleBlocks()
-    
     // Update active date based on first visible block
     if (visibleBlocksList.value.length > 0) {
         const center = scrollTop.value + viewportHeight.value / 2
         const current = visibleBlocksList.value.find(b => {
              return (b.top <= center) && (b.top + b.height >= center)
         }) || visibleBlocksList.value[0]
-
         const dateStr = `${current.year}年${String(current.month).padStart(2, '0')}月`
         if (props.activeDate !== dateStr) {
             emit('update:activeDate', dateStr)
@@ -380,6 +442,12 @@ const handleScroll = useDebounceFn(() => {
 }, 50, { maxWait: 100 }) // More aggressive update for row virtualization
 
 watch(scrollTop, handleScroll)
+
+// Watch for layout changes to update visibility immediately
+watch(monthBlocks, () => {
+    updateVisibleBlocks()
+    checkAndLoadVisibleMonths()
+}, { deep: true })
 
 // Resize Observer for Container Width
 let resizeObserver: ResizeObserver | null = null
@@ -398,27 +466,23 @@ onMounted(() => {
     }
     viewportHeight.value = window.innerHeight
     window.addEventListener('resize', () => { viewportHeight.value = window.innerHeight })
-    
-    // Initial calculation
     updateVisibleBlocks()
-})
-
-onUnmounted(() => {
-    if (resizeObserver) resizeObserver.disconnect()
+    setTimeout(() => {
+      updateVisibleBlocks()
+    }, 1000);
 })
 
 // --- Data Fetching Logic ---
-const checkAndLoadVisibleMonths = () => {
+const checkAndLoadVisibleMonths = (refresh = false) => {
     const context = store.currentContext
     const albumId = context.type === 'album' ? context.id : undefined
-    
     visibleBlocksList.value.forEach(block => {
         const key = `${block.year}-${block.month}`
         // Check if we have photos for this month
         // store uses "YYYY-MM" format in loadPhotosByMonth
         // Note: hasPhotos(key) checks props.photos. 
-        if (!hasPhotosForMonth(key)) {
-             store.loadPhotosByMonth(block.year, block.month, albumId)
+        if (!hasPhotosForMonth(key) || refresh) {
+             store.loadPhotosByMonth(block.year, block.month, albumId, refresh)
         }
     })
 }
@@ -444,7 +508,6 @@ const groupedPhotos = computed(() => {
 const hasPhotosForMonth = (monthKey: string) => {
     const block = monthBlocks.value.find(b => b.key === monthKey)
     if (!block || block.count === 0) return true // No need to load
-    
     // Check if we have at least one photo for this month
     return props.photos.some(p => {
         const d = new Date(p.timestamp)
@@ -492,22 +555,23 @@ const toggleSelection = (photo: AlbumImage) => {
   }
 }
 
-const toggleMonthSelection = (monthKey: string) => {
-    // Select all photos in this month
-    const block = monthBlocks.value.find(b => b.key === monthKey)
-    if (!block) return
+const isDaySelected = (day: DayBlock) => {
+    const photos = getPhotos(day.key)
+    if (photos.length === 0) return false
+    return photos.every(p => localSelectedIds.value.has(p.id))
+}
 
-    let allPhotos: AlbumImage[] = []
-    block.days.forEach(day => {
-        allPhotos.push(...getPhotos(day.key))
-    })
-    
-    const allSelected = allPhotos.every(p => localSelectedIds.value.has(p.id))
+const toggleDaySelection = (day: DayBlock) => {
+    const photos = getPhotos(day.key)
+    if (photos.length === 0) return
+
+    const allSelected = isDaySelected(day)
     
     if (allSelected) {
-        allPhotos.forEach(p => localSelectedIds.value.delete(p.id))
+        photos.forEach(p => localSelectedIds.value.delete(p.id))
+        if (localSelectedIds.value.size === 0) isSelectionMode.value = false
     } else {
-        allPhotos.forEach(p => localSelectedIds.value.add(p.id))
+        photos.forEach(p => localSelectedIds.value.add(p.id))
         isSelectionMode.value = true
     }
 }
@@ -520,10 +584,37 @@ const handlePhotoClick = (photo: AlbumImage) => {
   }
 }
 
-const handleDelete = () => {
+const isAllSelected = computed(() => {
+    return props.photos.length > 0 && props.photos.every(p => localSelectedIds.value.has(p.id))
+})
+
+const toggleSelectAll = () => {
+    if (isAllSelected.value) {
+        exitSelectionMode()
+    } else {
+        props.photos.forEach(p => localSelectedIds.value.add(p.id))
+        isSelectionMode.value = true
+    }
+}
+
+const handleDelete = async () => {
     if (localSelectedIds.value.size === 0) return
-    emit('batch-delete', Array.from(localSelectedIds.value))
-    exitSelectionMode()
+    
+    try {
+        await ElMessageBox.confirm(
+            `确定要${props.deleteLabel}${localSelectedIds.value.size}张照片吗？`,
+            '提示',
+            {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning',
+            }
+        )
+        emit('batch-delete', Array.from(localSelectedIds.value))
+        exitSelectionMode()
+    } catch {
+        // Cancelled
+    }
 }
 
 const handleDownload = async () => {
@@ -538,22 +629,22 @@ const handleDownload = async () => {
     try {
       const photo = props.photos.find(p => p.id === id)
       if (!photo) continue
-      
+
       const response = await fetch(photo.url)
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       // Extract filename or default
-      a.download = photo.url.split('/').pop() || `photo-${photo.id}.jpg`
+      a.download = photo.url.split('/').pop() || `${photo.filename || photo.id}.jpg`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-      
+
       completed++
       downloadProgress.value = Math.round((completed / total) * 100)
-      
+
       // Small delay to ensure browser registers the download
       await new Promise(resolve => setTimeout(resolve, 200))
     } catch (error) {
@@ -570,7 +661,9 @@ const handleDownload = async () => {
 defineExpose({
   scrollToDate,
   enterSelectionMode,
-  exitSelectionMode
+  exitSelectionMode,
+  updateVisibleBlocks,
+  checkAndLoadVisibleMonths
 })
 </script>
 

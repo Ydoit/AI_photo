@@ -56,8 +56,13 @@
           </div>
         </div>
         <!-- Info -->
-        <h3 class="font-medium text-gray-900 dark:text-gray-100 truncate group-hover:text-primary-500 transition-colors">{{ album.title }}</h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ album.count }} 个项目</p>
+        <div class="mt-2">
+          <h3 class="font-bold text-gray-900 dark:text-white truncate">{{ album.title }}</h3>
+          <div class="flex justify-between items-center mt-1">
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ album.count }} 个项目</p>
+            <p class="text-xs text-gray-400">{{ formatDate(album.createdAt) }}</p>
+          </div>
+        </div>
       </div>
     </div>
     <!-- Empty State -->
@@ -126,10 +131,15 @@ import { useRouter } from 'vue-router'
 import { useAlbumStore, Album } from '@/stores/albumStore'
 import { Plus, Sparkles, Edit2, Trash2 } from 'lucide-vue-next'
 import { albumService } from '@/api/album'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { format } from 'date-fns'
 
 const router = useRouter()
 const store = useAlbumStore()
+
+const formatDate = (timestamp: number) => {
+  return format(new Date(timestamp), 'yyyy-MM-dd')
+}
 
 const navigateToAlbum = (id: string) => {
   router.push(`/album/${id}`)
@@ -193,10 +203,20 @@ const submitForm = async () => {
 }
 
 const confirmDelete = async (album: Album) => {
-  if (confirm(`确定要删除相册 "${album.title}" 吗？里面的照片也会被删除。`)) {
-    try {
-      await store.deleteAlbum(album.id)
-    } catch (error) {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除相册 "${album.title}" 吗？里面的照片也会被删除。`,
+      '删除相册',
+      {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    await store.deleteAlbum(album.id)
+    ElMessage.success('相册已删除')
+  } catch (error) {
+    if (error !== 'cancel') {
       console.error("Delete failed", error)
       ElMessage.error("删除失败")
     }

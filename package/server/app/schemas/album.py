@@ -24,7 +24,6 @@ class PhotoMetadata(PhotoMetadataBase):
     class Config:
         from_attributes = True
 
-from pydantic import BaseModel, Field, computed_field
 
 # Photo Schemas
 class PhotoBase(BaseModel):
@@ -61,6 +60,10 @@ class Photo(PhotoBase):
     class Config:
         from_attributes = True
 
+class PhotoGroup(BaseModel):
+    date: str
+    items: List[Photo]
+
 class BatchPhotoUpdate(BaseModel):
     photo_ids: List[UUID]
     album_id: Optional[UUID] = None # For adding to album
@@ -88,3 +91,14 @@ class Album(AlbumBase):
 
     class Config:
         from_attributes = True
+
+class TimelineItem(BaseModel):
+    year: int
+    month: int
+    day: int
+    count: int
+
+class TimelineStats(BaseModel):
+    total_photos: int
+    time_range: Optional[Dict[str, datetime]] = None
+    timeline: List[TimelineItem] = []

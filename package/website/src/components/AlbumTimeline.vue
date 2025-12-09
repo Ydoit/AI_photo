@@ -165,7 +165,7 @@ const handleItemClick = (e: MouseEvent) => {
 
 // Pointer / Tooltip style
 const pointerStyle = computed(() => ({
-  transform: `translateY(${pointerTop.value}px)`
+  transform: `translateY(${pointerTop.value-15}px)`
 }))
 
 const tooltipStyle = computed(() => ({
