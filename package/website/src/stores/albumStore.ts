@@ -107,6 +107,10 @@ export const useAlbumStore = defineStore('album', () => {
     // 新 API 在 url 和 thumbnail_url 字段中返回相对地址
     const url = `${API_BASE_URL}${photo.url}`;
     const thumbnail = `${API_BASE_URL}${photo.thumbnail_url}`;
+    let p1 = photo.id.slice(0, 2)
+    let p2 = photo.id.slice(2, 4)
+    let file_name = photo.id.replace('-','')+'-thumb.jpg'
+    // const thumbnail = `${API_BASE_URL}api/thumbnails/${p1}/${p2}/${file_name}`;
     // 提取元数据
     const metadata = photo.metadata_info;
     // 优先使用 photo_time，其次 upload_time，最后取当前时间

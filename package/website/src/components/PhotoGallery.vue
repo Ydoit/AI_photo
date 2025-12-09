@@ -93,12 +93,12 @@
                 }"
                 class="day-block"
             >
-                <template v-if="visibleDayKeys.has(day.key)">
+                <template v-if="visibleDayRanges.has(day.key)">
                      <!-- Day Header -->
-                    <div class="h-[40px] flex sticky top-[130px] left-4 right-4 z-20 items-center text-xs font-medium text-gray-500 dark:text-gray-400 pl-1">
-                        {{ block.year }}-{{ block.month }}-{{ day.day }}
+                    <div class="h-[40px] flex items-center text-xs font-medium text-gray-500 dark:text-gray-400 pl-1">
+                        {{ day.day }}日
                     </div>
-
+                    
                     <!-- Photos Grid -->
                     <div 
                         class="grid w-full" 
@@ -107,51 +107,66 @@
                             gap: gap + 'px'
                         }"
                     >
-                        <!-- Actual Photos -->
-                        <div
-                            v-for="img in getPhotos(day.key)"
-                            :key="img.id"
-                            class="relative group aspect-[3/2] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:z-10"
-                            @click="handlePhotoClick(img)"
-                            @mouseenter="enterSelectionMode(img)"
-                        >
-                            <img 
-                                :src="img.thumbnail" 
-                                loading="lazy"
-                                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                :alt="img.category" 
-                            />
-                            
-                            <!-- Selection Overlay -->
-                            <div 
-                                v-if="isSelectionMode || localSelectedIds.has(img.id)"
-                                class="absolute inset-0 bg-black/20 transition-opacity duration-200 flex items-center justify-center z-20"
-                                @click.stop="toggleSelection(img)"
-                            >
-                                <div 
-                                class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200"
-                                :class="localSelectedIds.has(img.id) ? 'bg-primary-500 border-primary-500' : 'bg-black/20 border-white/70 hover:bg-black/40 backdrop-blur-sm'"
-                                >
-                                <Check v-if="localSelectedIds.has(img.id)" class="w-3.5 h-3.5 text-white" />
-                                </div>
-                            </div>
-
-                            <!-- Info Overlay -->
-                            <div class="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex justify-between items-end">
-                                <p class="text-white text-xs font-medium truncate flex items-center gap-1">
-                                <MapPin v-if="img.location" class="w-3 h-3 text-white/80" />
-                                {{ img.location || formatTime(img.timestamp) }}
-                                </p>
-                                <slot name="overlay-actions" :photo="img"></slot>
-                            </div>
+                        <!-- Top Spacer -->
+                        <div v-if="getRange(day.key).topH > 0" 
+                             :style="{ gridColumn: '1 / -1', height: getRange(day.key).topH + 'px' }">
                         </div>
 
+                        <!-- Actual Photos -->
+                        <template v-if="getPhotos(day.key).length > 0">
+                            <div
+                                v-for="img in getPhotos(day.key).slice(getRange(day.key).start, getRange(day.key).end)"
+                                :key="img.id"
+                                class="relative group aspect-[3/2] bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:z-10 flex items-center justify-center"
+                                @click="handlePhotoClick(img)"
+                                @mouseenter="enterSelectionMode(img)"
+                                @vue:mounted="loadImage(img)"
+                                @vue:unmounted="cancelImageLoad(img.id)"
+                            >
+                                <img 
+                                    :src="loadedImages[img.id] || placeholderSrc" 
+                                    class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                    :alt="img.category" 
+                                />
+                                
+                                <!-- Selection Overlay -->
+                                <div 
+                                    v-if="isSelectionMode || localSelectedIds.has(img.id)"
+                                    class="absolute inset-0 bg-black/20 transition-opacity duration-200 flex items-center justify-center z-20"
+                                    @click.stop="toggleSelection(img)"
+                                >
+                                    <div 
+                                    class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200"
+                                    :class="localSelectedIds.has(img.id) ? 'bg-primary-500 border-primary-500' : 'bg-black/20 border-white/70 hover:bg-black/40 backdrop-blur-sm'"
+                                    >
+                                    <Check v-if="localSelectedIds.has(img.id)" class="w-3.5 h-3.5 text-white" />
+                                    </div>
+                                </div>
+
+                                <!-- Info Overlay -->
+                                <div class="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex justify-between items-end">
+                                    <p class="text-white text-xs font-medium truncate flex items-center gap-1">
+                                    <MapPin v-if="img.location" class="w-3 h-3 text-white/80" />
+                                    {{ img.location || formatTime(img.timestamp) }}
+                                    </p>
+                                    <slot name="overlay-actions" :photo="img"></slot>
+                                </div>
+                            </div>
+                        </template>
+
                         <!-- Placeholders for missing photos -->
-                         <div
-                            v-for="n in Math.max(0, day.count - getPhotos(day.key).length)"
-                            :key="`ph-${day.key}-${n}`"
-                            class="aspect-[3/2] bg-gray-50 dark:bg-gray-900/50 rounded-lg animate-pulse"
-                        ></div>
+                         <template v-else>
+                             <div
+                                v-for="n in (getRange(day.key).end - getRange(day.key).start)"
+                                :key="`ph-${day.key}-${getRange(day.key).start + n}`"
+                                class="aspect-[3/2] bg-gray-50 dark:bg-gray-900/50 rounded-lg animate-pulse"
+                            ></div>
+                         </template>
+                         
+                         <!-- Bottom Spacer -->
+                        <div v-if="getRange(day.key).bottomH > 0" 
+                             :style="{ gridColumn: '1 / -1', height: getRange(day.key).bottomH + 'px' }">
+                        </div>
                     </div>
                 </template>
             </div>
@@ -172,7 +187,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, toRef } from 'vue'
+import {
+  ref, computed, watch, onMounted, onUnmounted, nextTick, toRef, reactive
+} from 'vue'
 import { CalendarDays, Image as ImageIcon, MapPin, Check, X, Download, Trash2, FolderMinus, Loader2 } from 'lucide-vue-next'
 import { format } from 'date-fns'
 import { useAlbumStore, type AlbumImage } from '@/stores/albumStore'
@@ -213,6 +230,47 @@ const localSelectedIds = ref(new Set<string>())
 const isDownloading = ref(false)
 const downloadProgress = ref(0)
 
+// --- Image Loading Logic ---
+const loadedImages = reactive<Record<string, string>>({})
+const imageLoaders = new Map<string, AbortController>()
+const placeholderSrc = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+
+const loadImage = async (image: AlbumImage) => {
+    if (loadedImages[image.id]) return 
+    if (imageLoaders.has(image.id)) return 
+
+    const controller = new AbortController()
+    imageLoaders.set(image.id, controller)
+
+    try {
+        const response = await fetch(image.thumbnail, { signal: controller.signal })
+        if (response.ok) {
+            loadedImages[image.id] = image.thumbnail
+        }
+    } catch (e: any) {
+        if (e.name !== 'AbortError') {
+            // console.error('Image load failed', e)
+        }
+    } finally {
+        imageLoaders.delete(image.id)
+    }
+}
+
+const cancelImageLoad = (imageId: string) => {
+    const controller = imageLoaders.get(imageId)
+    if (controller) {
+        controller.abort()
+        imageLoaders.delete(imageId)
+    }
+}
+
+// Ensure cleanup on component unmount
+onUnmounted(() => {
+    imageLoaders.forEach(c => c.abort())
+    imageLoaders.clear()
+})
+// --- End Image Loading Logic ---
+
 // --- Virtual Scroll & Layout ---
 const galleryEl = ref<HTMLElement | null>(null)
 const containerWidth = ref(1000)
@@ -231,9 +289,16 @@ const { monthBlocks, totalHeight, getVisibleBlocks, recalculateLayout, colCount,
 
 // Visible Blocks Calculation
 const visibleBlockKeys = ref(new Set<string>())
-const visibleDayKeys = ref(new Set<string>())
+// Map<dayKey, { start: number, end: number, topH: number, bottomH: number }>
+const visibleDayRanges = ref(new Map<string, { start: number, end: number, topH: number, bottomH: number }>())
 // We keep a reference to visible blocks for active date calculation
 const visibleBlocksList = ref<MonthBlock[]>([])
+
+const DAY_HEADER_HEIGHT = 40
+
+const getRange = (key: string) => {
+    return visibleDayRanges.value.get(key) || { start: 0, end: 0, topH: 0, bottomH: 0 }
+}
 
 const updateVisibleBlocks = () => {
     const buffer = 1000 // Month Buffer
@@ -241,11 +306,14 @@ const updateVisibleBlocks = () => {
     visibleBlocksList.value = visibleMonths
     
     const newMonthKeys = new Set<string>()
-    const newDayKeys = new Set<string>()
+    const newDayRanges = new Map<string, { start: number, end: number, topH: number, bottomH: number }>()
     
     // Dynamic Buffer for Rows: (hn + 2 + 2) * wn -> 2 rows buffer
     // But here we calculate based on pixels
-    const rowBuffer = (rowHeight.value || 200) * 2 
+    const rHeight = rowHeight.value || 200
+    const rGap = gap.value || 0
+    const rowUnit = rHeight + rGap
+    const rowBuffer = rowUnit * 2 
     
     const startY = scrollTop.value - rowBuffer
     const endY = scrollTop.value + viewportHeight.value + rowBuffer
@@ -255,16 +323,42 @@ const updateVisibleBlocks = () => {
         
         // Check Days visibility
         m.days.forEach(d => {
-            const dayTop = m.top + d.top
-            const dayBottom = dayTop + d.height
-            if (dayBottom > startY && dayTop < endY) {
-                newDayKeys.add(d.key)
+            // Calculate absolute top of the day block
+            const dayTopAbs = m.top + d.top
+            const dayBottomAbs = dayTopAbs + d.height
+            
+            // Check if day is within buffer
+            if (dayBottomAbs > startY && dayTopAbs < endY) {
+                // Calculate visible rows within the day
+                // The photos start after the header
+                const photosTopAbs = dayTopAbs + DAY_HEADER_HEIGHT
+                
+                // Relative to photos start
+                const relStart = startY - photosTopAbs
+                const relEnd = endY - photosTopAbs
+                
+                let startRow = Math.floor(relStart / rowUnit)
+                let endRow = Math.ceil(relEnd / rowUnit)
+                
+                // Clamp rows
+                startRow = Math.max(0, startRow)
+                endRow = Math.min(d.rows, endRow) // d.rows is total rows in day
+                
+                if (startRow < d.rows && endRow > 0) {
+                     const startIndex = startRow * colCount.value
+                     const endIndex = Math.min(d.count, endRow * colCount.value)
+                     
+                     const topH = startRow * rowUnit
+                     const bottomH = Math.max(0, d.rows - endRow) * rowUnit
+                     
+                     newDayRanges.set(d.key, { start: startIndex, end: endIndex, topH, bottomH })
+                }
             }
         })
     })
 
     visibleBlockKeys.value = newMonthKeys
-    visibleDayKeys.value = newDayKeys
+    visibleDayRanges.value = newDayRanges
 }
 
 // Throttle scroll updates
