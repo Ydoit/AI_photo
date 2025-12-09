@@ -6,7 +6,7 @@
         <!-- Default Title -->
         <div class="flex items-center gap-2 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
           <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight">全部照片</h1>
-          <span class="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{{ images.length }}</span>
+          <span class="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{{ store.timelineStats?.total_photos || images.length }}</span>
         </div>
         <!-- Controls -->
         <div class="flex items-center gap-2 ml-auto animate-in fade-in slide-in-from-right-4 duration-300">
@@ -108,7 +108,7 @@
 
     <!-- Timeline Navigation Sidebar (Right Sticky) -->
     <AlbumTimeline
-      :dates="timelineDates"
+      :items="store.timelineStats?.timeline || []"
       :active-date="activeDate"
       @select="scrollToDate"
     />
@@ -118,19 +118,18 @@
       <PhotoGallery
         ref="galleryRef"
         :photos="images"
+        :timeline-stats="store.timelineStats"
         :loading="store.loading"
         :has-more="store.hasMore"
         :layout-mode="layoutMode"
         :view-size="viewSize"
-        :group-by-date="true"
-        delete-label="删除"
-        @click-photo="openLightbox"
+        v-model:active-date="activeDate"
         @load-more="store.loadPhotos"
-        @update:active-date="activeDate = $event"
+        @click-photo="openLightbox"
         @batch-delete="handleBatchDelete"
       >
         <template #batch-actions="{ selectedIds, clearSelection }">
-          <button 
+          <button
             @click="prepareAddToAlbum(selectedIds, clearSelection)"
             class="p-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex items-center gap-2"
             title="添加到相册"
@@ -247,23 +246,6 @@ let clearSelectionCallback: (() => void) | null = null
 // Gallery Ref
 const galleryRef = ref<InstanceType<typeof PhotoGallery> | null>(null)
 
-// Timeline Dates
-const timelineDates = computed(() => {
-  if (store.timelineStats?.timeline) {
-    // Use full stats from backend
-    return store.timelineStats.timeline.map((item: any) => 
-      `${item.year}年${String(item.month).padStart(2, '0')}月`
-    )
-  }
-  
-  // Fallback to loaded images
-  const dates = new Set<string>()
-  const sorted = [...images.value].sort((a, b) => b.timestamp - a.timestamp)
-  sorted.forEach(img => {
-    dates.add(format(new Date(img.timestamp), 'yyyy年MM月'))
-  })
-  return Array.from(dates)
-})
 
 // Methods
 const handleUploadComplete = () => {
@@ -277,7 +259,7 @@ const triggerUpload = () => {
 }
 
 const enterBatchMode = () => {
-  galleryRef.value?.enterSelectionMode()
+galleryRef.value?.enterSelectionMode()
 }
 
 const handleBatchDelete = async (ids: string[]) => {
@@ -317,6 +299,7 @@ const confirmAddToAlbum = async (targetAlbumId: string) => {
 }
 
 const scrollToDate = (date: string) => {
+  console.log('Scroll to date:', date)
   galleryRef.value?.scrollToDate(date)
   activeDate.value = date
 }
@@ -371,8 +354,9 @@ const handlePhotoUpdate = (event: { id: string, location?: string, tags?: string
 }
 
 onMounted(() => {
-  store.fetchTimelineStats()
+  // Initial Load
   store.fetchAlbums()
+  store.fetchTimelineStats()
   store.loadPhotos(true)
 })
 </script>

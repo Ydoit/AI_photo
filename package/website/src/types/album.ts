@@ -1,3 +1,6 @@
+// src/types/album.ts
+// 定义相册相关的类型
+
 export enum FileType {
   Image = 'image',
   Video = 'video',
@@ -29,9 +32,15 @@ export interface Photo {
   metadata_info?: PhotoMetadata;
 }
 
+export interface PhotoGroup {
+  date: string;
+  items: Photo[];
+}
+
 export interface TimelineItem {
   year: number;
   month: number;
+  day: number;
   count: number;
 }
 

@@ -119,7 +119,7 @@
 
     <!-- Timeline Navigation Sidebar (Right Sticky) -->
     <AlbumTimeline
-      :dates="timelineDates"
+      :items="store.timelineStats?.timeline || []"
       :active-date="activeDate"
       @select="scrollToDate"
     />
@@ -129,15 +129,17 @@
       <PhotoGallery
         ref="galleryRef"
         :photos="images"
+        :timeline-stats="store.timelineStats"
         :loading="store.loading"
         :has-more="store.hasMore"
         :layout-mode="layoutMode"
         :view-size="viewSize"
         :group-by-date="true"
         :delete-label="album?.type === 'custom' ? '从相册中移除' : '删除'"
+        v-model:active-date="activeDate"
         @click-photo="openLightbox"
         @load-more="loadMorePhotos"
-        @update:active-date="activeDate = $event"
+        @load-range="handleLoadRange"
         @batch-delete="handleBatchDelete"
       >
         <template #overlay-actions="{ photo }">
@@ -273,6 +275,15 @@ const galleryRef = ref<InstanceType<typeof PhotoGallery> | null>(null)
 
 // Timeline Dates
 const timelineDates = computed(() => {
+  if (store.timelineStats?.timeline) {
+    return store.timelineStats.timeline
+      .filter((t: any) => t.count > 0)
+      .sort((a: any, b: any) => {
+          if (a.year !== b.year) return b.year - a.year
+          return b.month - a.month
+      })
+      .map((t: any) => `${t.year}年${String(t.month).padStart(2, '0')}月`)
+  }
   const dates = new Set<string>()
   const sorted = [...images.value].sort((a, b) => b.timestamp - a.timestamp)
   sorted.forEach(img => {
@@ -280,6 +291,9 @@ const timelineDates = computed(() => {
   })
   return Array.from(dates)
 })
+
+const handleLoadRange = (offset: number) => {
+}
 
 // Actions
 const triggerUpload = () => {
@@ -412,8 +426,9 @@ const handleAddToAlbumFromLightbox = (img: AlbumImage) => {
 }
 
 onMounted(() => {
-  store.fetchAlbums()
-  store.loadAlbumPhotos(albumId, true)
+    store.fetchAlbums()
+    store.fetchTimelineStats(albumId)
+    store.loadAlbumPhotos(albumId, true)
 })
 </script>
 

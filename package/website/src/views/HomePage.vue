@@ -43,36 +43,10 @@
       <i class="mgc_down_line text-3xl inline-block"></i>
     </span>
   </div>
-
-  <!-- 卡片容器（深色模式下卡片背景和阴影调整） -->
-  <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 justify-center dark:bg-gray-900/50 p-4 rounded-xl">
-    <ToolCard
-      icon="/icon/EasyBox.png"
-      title="EasyBox"
-      desc="PC 端通用工具合集软件，致力于打造一款生活、工作、学习、娱乐等多方面功能集合的软件"
-      linkText="查看详情"
-      link="https://github.com/LC044/EasyBox"
-    />
-    <ToolCard
-      icon="/icon/TraceBoard.png"
-      title="TraceBoard"
-      desc="统计键盘使用情况，可视化按键点击情况——记录打工人日常"
-      linkText="查看详情"
-      link="https://github.com/LC044/TraceBoard"
-    />
-    <ToolCard
-      icon="/icon/PostgreSQL.svg"
-      title="BenchMarkSQL"
-      desc="基于BenchmarkSQL5.0开发，新增自动化测试脚本以及测试报告查看服务"
-      linkText="查看详情"
-      link="https://github.com/LC044/BenchmarkSQL"
-    />
-  </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import ToolCard from "../components/ToolCard.vue"; // 引入卡片组件
 defineProps({
   msg: String,
 })

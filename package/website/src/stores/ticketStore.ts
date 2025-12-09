@@ -12,7 +12,7 @@ export const useTicketStore = defineStore('ticket', () => {
   const filterType = useStorage<'all' | 'highspeed' | 'normal'>('ticket-filter-type', 'all');
   const sortType = useStorage<'date' | 'distance' | 'duration' | 'price'>('ticket-sort-type', 'date');
   const selectedPassenger = useStorage<string>('ticket-selected-passenger', '');
-  
+
   // 搜索状态
   const searchQuery = useStorage<string>('ticket-search-query', '');
 
@@ -26,7 +26,7 @@ export const useTicketStore = defineStore('ticket', () => {
   const CACHE_DURATION = 5 * 60 * 1000; // 5分钟缓存
 
   // --- Actions ---
-  
+
   /**
    * 获取车票数据
    * @param force 是否强制刷新

@@ -10,12 +10,12 @@
     @click="handleItemClick"
   >
     <div
-      v-for="item in timelineItems"
+      v-for="item in displayItems"
       :key="item.key"
       :ref="el => setItemRef(el, item.key)"
       class="flex items-center justify-end group relative transition-all duration-200 w-12 md:w-24"
       :class="[
-        item.isYearStart ? 'mt-2 mb-1' : 'my-[2px]'
+        item.isYearStart ? 'mt-4 mb-1' : 'my-[2px]'
       ]"
     >
 
@@ -30,14 +30,22 @@
         {{ item.year }}
       </div>
 
+      <!-- Month Label (Hover) -->
+      <div
+        v-if="!item.isYearStart"
+        class="absolute right-6 md:right-8 text-[9px] font-mono text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        {{ item.month }}
+      </div>
+
       <!-- Marker Line -->
       <div 
-        class="h-px transition-all duration-300 rounded-full hover:w-10"
+        class="h-1 rounded-full transition-all duration-300"
         :class="[
           item.isYearStart
-            ? 'w-6 bg-gray-400 dark:bg-gray-400'
+            ? 'w-4 bg-gray-400 dark:bg-gray-400'
             : 'w-2 bg-gray-300 dark:bg-gray-600',
-          item.isActive ? '!w-8 !bg-primary-500 shadow-[0_0_8px_rgba(var(--primary-500),0.6)]' : '',
+          item.isActive ? '!w-6 !bg-primary-500 shadow-[0_0_8px_rgba(var(--primary-500),0.6)]' : '',
         ]"
       ></div>
     </div>
@@ -52,7 +60,7 @@
     </div>
   </div>
 
-  <!-- Tooltip (teleported to body 防止被裁剪) -->
+  <!-- Tooltip (teleported to body) -->
   <teleport to="body">
     <div 
       v-show="isHovering && hoveredDate"
@@ -64,13 +72,12 @@
   </teleport>
 </template>
 
-
-
 <script setup lang="ts">
-import { computed, ref, onUnmounted } from 'vue'
+import { computed, ref, onUnmounted, watch } from 'vue'
+import type { TimelineItem as ApiTimelineItem } from '@/types/album'
 
 const props = defineProps<{
-  dates: string[]
+  items: ApiTimelineItem[]
   activeDate: string
 }>()
 
@@ -90,75 +97,70 @@ const setItemRef = (el: any, key: string) => {
   else itemRefs.value.delete(key)
 }
 
-interface TimelineItem {
+interface DisplayItem {
   key: string
   year: number
   month: number
   dateStr: string
   isYearStart: boolean
-  hasData: boolean
   isActive: boolean
   isActiveYear: boolean
 }
 
-// Build items
-const timelineItems = computed(() => {
-  if (!props.dates.length) return []
+// Build items (Group by Month)
+const displayItems = computed(() => {
+  if (!props.items?.length) return []
 
-  const activeYear = props.activeDate ? parseInt(props.activeDate.split('年')[0]) : null
-  const parsedDates = props.dates.map(d => {
-    const parts = d.split('年')
-    return {
-      year: parseInt(parts[0]),
-      month: parseInt(parts[1].replace('月', ''))
-    }
+  // Parse active date (format: "YYYY年MM月" or "YYYY-MM")
+  const activeMatch = props.activeDate ? (props.activeDate.match(/(\d+)年(\d+)月/) || props.activeDate.match(/(\d+)-(\d+)/)) : null
+  const activeYear = activeMatch ? parseInt(activeMatch[1]) : null
+  const activeMonth = activeMatch ? parseInt(activeMatch[2]) : null
+  
+  // Aggregate by Month
+  const monthMap = new Map<string, { year: number, month: number }>()
+  
+  props.items.forEach(item => {
+      const key = `${item.year}-${item.month}`
+      if (!monthMap.has(key)) {
+          monthMap.set(key, { year: item.year, month: item.month })
+      }
   })
 
-  const minYear = Math.min(...parsedDates.map(d => d.year))
-  const maxYear = Math.max(...parsedDates.map(d => d.year))
-  const maxMonth = Math.max(...parsedDates.filter(d => d.year === maxYear).map(d => d.month))
-  const minMonth = Math.min(...parsedDates.filter(d => d.year === minYear).map(d => d.month))
+  // Sort Descending
+  const sortedMonths = Array.from(monthMap.values()).sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year
+      return b.month - a.month
+  })
 
-  const items: TimelineItem[] = []
+  const items: DisplayItem[] = []
+  let lastYear = -1
 
-  for (let y = maxYear; y >= minYear; y--) {
-    const startM = (y === maxYear) ? maxMonth : 12
-    const endM = (y === minYear) ? minMonth : 1
-    
-    for (let m = startM; m >= endM; m--) {
-      const dateStr = `${y}年${String(m).padStart(2, '0')}月`
-      const hasData = props.dates.includes(dateStr)
-      const isYearStart = (y === maxYear && m === startM) || m === 12
+  sortedMonths.forEach((p) => {
+      const isYearStart = p.year !== lastYear
+      if (isYearStart) lastYear = p.year
 
+      const dateStr = `${p.year}年${String(p.month).padStart(2, '0')}月`
+      
       items.push({
-        key: `${y}-${m}`,
-        year: y,
-        month: m,
-        dateStr,
-        isYearStart,
-        hasData,
-        isActive: props.activeDate === dateStr,
-        isActiveYear: activeYear === y
+        key: dateStr,
+        year: p.year,
+        month: p.month,
+        dateStr: dateStr,
+        isYearStart: isYearStart,
+        isActive: activeYear === p.year && activeMonth === p.month,
+        isActiveYear: activeYear === p.year
       })
-    }
-  }
+  })
+
   return items
 })
 
-// Utility: find next active date
-const findNextActive = (dateStr: string | null) => {
-  if (!dateStr) return null
-  const all = [...props.dates].sort()
-  for (const d of all) {
-    if (d >= dateStr) return d
-  }
-  return all[all.length - 1]
-}
-
 // Click logic
 const handleItemClick = (e: MouseEvent) => {
-  const next = findNextActive(hoveredDate.value)
-  emit('select', next)
+  updatePosition(e.clientY)
+  if (hoveredDate.value) {
+    emit('select', hoveredDate.value)
+  }
 }
 
 // Pointer / Tooltip style
@@ -167,15 +169,14 @@ const pointerStyle = computed(() => ({
 }))
 
 const tooltipStyle = computed(() => ({
-  top: `${tooltipTop.value+5}px`,
-  left: `calc(100vw - 160px)`,
+  top: `${tooltipTop.value}px`,
+  left: `calc(100vw - 140px)`,
 }))
 
 // Find closest item
 const findClosestItem = (y: number) => {
   let closestKey: string | null = null
   let minDistance = Infinity
-  let closestItemCenter = 0
 
   for (const [key, el] of itemRefs.value.entries()) {
     const rect = el.getBoundingClientRect()
@@ -186,19 +187,18 @@ const findClosestItem = (y: number) => {
     if (dist < minDistance) {
       minDistance = dist
       closestKey = key
-      closestItemCenter = itemCenter
     }
   }
-  return { key: closestKey, center: closestItemCenter }
+  return { key: closestKey }
 }
 
-// Instant update hovered date（无延迟）
+// Instant update hovered date
 const updateHoveredDate = (key: string | null) => {
   if (!key) {
     hoveredDate.value = null
     return
   }
-  const item = timelineItems.value.find(i => i.key === key)
+  const item = displayItems.value.find(i => i.key === key)
   hoveredDate.value = item ? item.dateStr : null
 }
 
@@ -216,8 +216,8 @@ const updatePosition = (clientY: number) => {
   }
 
   isHovering.value = true
-  pointerTop.value = y- 18 // 指针在鼠标之上
-  tooltipTop.value = containerRect.top + y - 16
+  pointerTop.value = y
+  tooltipTop.value = clientY - 10
 
   const { key } = findClosestItem(y)
   updateHoveredDate(key)
@@ -252,10 +252,12 @@ onUnmounted(() => {
 })
 </script>
 
-
 <style scoped>
-/* Optimize performance */
-.will-change-transform {
-  will-change: transform;
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 </style>

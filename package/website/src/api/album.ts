@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Album, CreateAlbumDto, Photo, PhotoMetadata, TimelineStats } from '@/types/album';
+import type { Album, CreateAlbumDto, Photo, PhotoMetadata, TimelineStats, PhotoGroup } from '@/types/album';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -34,22 +34,24 @@ export const albumService = {
   },
 
   // Stats
-  async getTimelineStats() {
-    const { data } = await api.get<TimelineStats>('/api/stats/timeline');
+  async getTimelineStats(albumId?: string) {
+    const { data } = await api.get<TimelineStats>('/api/stats/timeline', {
+      params: { album_id: albumId }
+    });
     return data;
   },
 
   // Photos
-  async getAllPhotos(skip: number = 0, limit: number = 100, filters?: { year?: string, city?: string, tag?: string }) {
+  async getAllPhotos(skip: number = 0, limit: number = 100, filters?: { year?: string, month?: string, day?: string, city?: string, tag?: string}) {
     const { data } = await api.get<Photo[]>('/api/photos', {
       params: { skip, limit, ...filters }
     });
     return data;
   },
 
-  async getPhotos(albumId: string, skip: number = 0, limit: number = 100) {
+  async getPhotos(albumId: string, skip: number = 0, limit: number = 100, filters?: { year?: string, month?: string, day?: string }) {
     const { data } = await api.get<Photo[]>(`/api/albums/${albumId}/photos`, {
-      params: { skip, limit }
+      params: { skip, limit, ...filters }
     });
     return data;
   },
