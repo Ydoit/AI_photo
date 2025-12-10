@@ -44,12 +44,35 @@ def read_all_photos(
     return photos
 
 
+@router.post("/batch/create")
+def batch_create_photos(
+    batch_data: schemas.BatchPhotoCreate,
+    db: Session = Depends(get_db)
+):
+    # Convert schema to dict list expected by crud
+    photos_data = []
+    for item in batch_data.items:
+        photos_data.append({
+            'photo': item.photo,
+            'file_path': item.file_path,
+            'photo_id': item.photo_id,
+            'metadata': item.metadata
+        })
+    
+    try:
+        count = crud.batch_create_photos(db, photos_data)
+        return {"message": f"Successfully created {count} photos"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/batch")
 def batch_update_photos(
         batch_data: schemas.BatchPhotoUpdate,
         db: Session = Depends(get_db)
 ):
     if batch_data.action in ['add_to_album', 'remove_from_album']:
+
         if not batch_data.album_id:
             raise HTTPException(status_code=400, detail="Album ID required for this action")
 

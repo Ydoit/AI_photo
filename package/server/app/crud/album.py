@@ -314,3 +314,63 @@ def update_photo_metadata(db: Session, photo_id: UUID, metadata: schemas.PhotoMe
     db.commit()
     db.refresh(db_metadata)
     return db_metadata
+
+def batch_create_photos(db: Session, photos_data: List[dict]):
+    """
+    Batch create photos.
+    photos_data list of dict with keys:
+    - photo: schemas.PhotoCreate
+    - album_id: Optional[UUID]
+    - file_path: str
+    - photo_id: UUID
+    - metadata: Optional[schemas.PhotoMetadataCreate]
+    """
+    if not photos_data:
+        return 0
+
+    db_photos = []
+    db_metadatas = []
+    
+    for item in photos_data:
+        photo = item['photo']
+        file_path = item['file_path']
+        photo_id = item['photo_id']
+        metadata = item.get('metadata')
+        
+        db_photo = Photo(
+            id=photo_id,
+            file_path=file_path,
+            file_type=photo.file_type,
+            size=photo.size,
+            width=photo.width,
+            height=photo.height,
+            duration=photo.duration,
+            filename=photo.filename,
+            photo_time=photo.photo_time or datetime.now()
+        )
+        # Skipping album association for batch insert as it's typically for scanning
+        
+        db_photos.append(db_photo)
+        
+        db_metadata = PhotoMetadata(photo_id=photo_id)
+        if metadata:
+            if metadata.exif_info:
+                db_metadata.exif_info = metadata.exif_info
+            if metadata.location:
+                db_metadata.location = metadata.location
+            if metadata.location_api:
+                db_metadata.location_api = metadata.location_api
+            if metadata.tags:
+                db_metadata.tags = metadata.tags
+            if metadata.faces:
+                db_metadata.faces = metadata.faces
+        db_metadatas.append(db_metadata)
+        
+    try:
+        db.add_all(db_photos)
+        db.add_all(db_metadatas)
+        db.commit()
+        return len(db_photos)
+    except Exception as e:
+        db.rollback()
+        raise e

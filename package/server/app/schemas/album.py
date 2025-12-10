@@ -70,6 +70,15 @@ class BatchPhotoUpdate(BaseModel):
     album_id: Optional[UUID] = None # For adding to album
     action: str # 'add_to_album', 'remove_from_album', 'delete'
 
+class PhotoCreateItem(BaseModel):
+    photo: PhotoCreate
+    file_path: str
+    metadata: Optional[PhotoMetadataCreate] = None
+    photo_id: UUID
+
+class BatchPhotoCreate(BaseModel):
+    items: List[PhotoCreateItem]
+
 # Album Schemas
 class AlbumBase(BaseModel):
     name: str

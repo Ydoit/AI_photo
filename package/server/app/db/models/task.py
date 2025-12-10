@@ -12,11 +12,12 @@ class TaskStatus(str, enum.Enum):
     FAILED = "failed"
 
 class TaskType(str, enum.Enum):
-    SCAN_FOLDER = "scan_folder"
-    PROCESS_IMAGE = "process_image"
-    # Future types
-    EXTRACT_LOCATION = "extract_location"
-    CLASSIFY_IMAGE = "classify_image"
+    SCAN_FOLDER = "SCAN_FOLDER"
+    PROCESS_IMAGE = "PROCESS_IMAGE"
+    GENERATE_THUMBNAIL = "GENERATE_THUMBNAIL"
+    EXTRACT_METADATA = "EXTRACT_METADATA"
+    CLASSIFY_IMAGE = "CLASSIFY_IMAGE"
+    RECOGNIZE_FACE = "RECOGNIZE_FACE"
 
 class Task(Base):
     __tablename__ = "tasks"

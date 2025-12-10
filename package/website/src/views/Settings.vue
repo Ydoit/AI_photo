@@ -49,8 +49,9 @@
           <div class="mt-4 w-full" v-if="indexStatus.running || indexStatus.progress > 0">
             <div class="flex justify-between text-sm mb-1">
               <span>进度: {{ Math.round(indexStatus.progress*100) }}%</span>
-              <span v-if="indexStatus.running" class="text-blue-600 animate-pulse">正在扫描...</span>
+              <span v-if="indexStatus.running" class="text-blue-600 animate-pulse">正在扫描... {{ indexStatus.message }}</span>
             </div>
+            <div v-if="indexStatus.current_task" class="text-xs text-gray-500 mb-1">当前任务: {{ indexStatus.current_task }}</div>
             <el-progress :percentage="Math.round(indexStatus.progress*100)" :status="indexStatus.running ? undefined : 'success'" :stroke-width="15" />
             <div class="grid grid-cols-3 gap-4 mt-2 text-sm text-center bg-gray-50 p-2 rounded">
               <div class="text-green-600">新增: {{ indexStatus.added }}</div>
@@ -86,7 +87,7 @@ import { settingsApi } from '@/api/settings'
 
 const form = ref({ storageRoot: '' })
 const pathValid = ref<boolean | null>(null)
-const indexStatus = ref({ running: false, progress: 0, added: 0, deleted: 0, errors: 0 })
+const indexStatus = ref({ running: false, progress: 0, added: 0, deleted: 0, errors: 0, message: '', current_task: '' })
 const logs = ref<any[]>([])
 const directories = ref<{ primary: string, external: string[] }>({ primary: '', external: [] })
 const newDir = ref('')

@@ -11,9 +11,11 @@ def rebuild(db: Session = Depends(get_db)):
     indexer.rebuild_index(db)
     return {'started': True}
 
+from app.service.task_manager import TaskManager
+
 @router.get('/status')
 def status():
-    return indexer.status
+    return TaskManager.get_instance().get_status()
 
 @router.get('/logs')
 def logs(limit: int = 100, db: Session = Depends(get_db)):

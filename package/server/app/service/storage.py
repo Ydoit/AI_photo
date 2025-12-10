@@ -119,15 +119,20 @@ def _save_thumbnails(img: Image.Image, file_id: UUID, db: Session) -> str:
     s.save(s_path, "JPEG", quality=75)
     return m_path
 
-def generate_thumbnail(file_path: str, file_id: UUID, db: Session):
+from typing import Optional
+
+def generate_thumbnail(file_path: str, file_id: UUID, db: Session, image_obj: Optional[Image.Image] = None):
     try:
         ext = os.path.splitext(file_path)[1].lower()
         if ext in ('.mp4', '.mov', '.avi', '.mkv', '.webm'):
             return generate_video_thumbnail(file_path, file_id, db)
             
         if ext in ('.png', '.jpg', '.jpeg', '.webp'):
-            with Image.open(file_path) as img:
-                return _save_thumbnails(img, file_id, db)
+            if image_obj:
+                return _save_thumbnails(image_obj, file_id, db)
+            else:
+                with Image.open(file_path) as img:
+                    return _save_thumbnails(img, file_id, db)
     except Exception as e:
         logging.error(f"Error generating thumbnail for {file_path}: {e}")
     return None
@@ -135,12 +140,15 @@ def generate_thumbnail(file_path: str, file_id: UUID, db: Session):
 def get_file_size(file_path: str) -> int:
     return os.path.getsize(file_path)
 
-def get_image_dimensions(file_path: str):
+def get_image_dimensions(file_path: str, image_obj: Optional[Image.Image] = None):
     try:
         ext = os.path.splitext(file_path)[1].lower()
         if ext in ('.png', '.jpg', '.jpeg', '.webp'):
-            with Image.open(file_path) as img:
-                return img.width, img.height, None
+            if image_obj:
+                return image_obj.width, image_obj.height, None
+            else:
+                with Image.open(file_path) as img:
+                    return img.width, img.height, None
         elif ext in ('.mp4', '.mov', '.avi', '.mkv', '.webm'):
             if cv2 is None:
                 return None, None, None

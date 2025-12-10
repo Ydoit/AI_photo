@@ -17,6 +17,8 @@ from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
 import json
 
+from app.utils.filename import extract_datetime_from_filename
+
 # Helper Functions for Metadata
 
 def _convert_to_degrees(value):
@@ -95,7 +97,7 @@ def get_exif_data(image: Image.Image) -> Dict[str, Any]:
     return exif_data
 
 
-def extract_metadata(file_path: str, filename: str) -> Dict[str, Any]:
+def extract_metadata(file_path: str, filename: str, image_obj: Optional[Image.Image] = None) -> Dict[str, Any]:
     """
     Extracts photo_time, exif_info, and location from the file.
     Priority:
@@ -112,43 +114,45 @@ def extract_metadata(file_path: str, filename: str) -> Dict[str, Any]:
     # 1. Try EXIF
     try:
         if file_path.lower().endswith(('.jpg', '.jpeg', '.tiff', '.webp')):
-            with Image.open(file_path) as img:
-                # Extract full EXIF
-                exif_dict = get_exif_data(img)
-                if exif_dict:
-                    # Serialize for storage
-                    # Convert non-serializable objects to string
-                    def default_serializer(obj):
-                        if isinstance(obj, (bytes, bytearray)):
-                            return str(obj)
+            exif_dict = None
+            if image_obj:
+                exif_dict = get_exif_data(image_obj)
+            else:
+                with Image.open(file_path) as img:
+                    # Extract full EXIF
+                    exif_dict = get_exif_data(img)
+
+            if exif_dict:
+                # Serialize for storage
+                # Convert non-serializable objects to string
+                def default_serializer(obj):
+                    if isinstance(obj, (bytes, bytearray)):
                         return str(obj)
+                    return str(obj)
 
-                    metadata["exif_info"] = json.dumps(exif_dict, default=default_serializer, ensure_ascii=False)
+                metadata["exif_info"] = json.dumps(exif_dict, default=default_serializer, ensure_ascii=False)
 
-                    # Extract Date (DateTimeOriginal)
-                    date_str = exif_dict.get("DateTimeOriginal")
-                    if date_str:
-                        try:
-                            metadata["photo_time"] = datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S')
-                        except ValueError:
-                            pass
+                # Extract Date (DateTimeOriginal)
+                date_str = exif_dict.get("DateTimeOriginal")
+                if date_str:
+                    try:
+                        metadata["photo_time"] = datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S')
+                    except ValueError:
+                        pass
 
-                    # Extract GPS
-                    metadata["location"] = get_gps_info(exif_dict)
+                # Extract GPS
+                metadata["location"] = get_gps_info(exif_dict)
 
     except Exception as e:
+
         print(f"Error extracting metadata: {e}")
 
     # 2. If photo_time is still None, try Filename
     if metadata["photo_time"] is None:
         try:
-            match = re.search(r'(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})', filename)
-            if match:
-                metadata["photo_time"] = datetime(*map(int, match.groups()))
-            else:
-                match = re.search(r'(\d{4})(\d{2})(\d{2})', filename)
-                if match:
-                    metadata["photo_time"] = datetime(*map(int, match.groups()))
+            photo_time = extract_datetime_from_filename(filename)
+            if photo_time:
+                metadata["photo_time"] = photo_time
         except Exception:
             pass
 

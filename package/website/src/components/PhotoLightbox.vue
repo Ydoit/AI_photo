@@ -111,6 +111,17 @@
         </div>
 
         <div v-else-if="metadata" class="p-4 space-y-6">
+            <!-- File Name -->
+            <div class="space-y-1">
+                <div class="flex items-center gap-2 text-gray-500 text-xs font-medium uppercase tracking-wider">
+                    <Info class="w-3.5 h-3.5" />
+                    <span>文件名</span>
+                </div>
+                <!-- 文件名过长时自动换行 -->
+                <p class="text-sm text-gray-900 dark:text-gray-200 font-mono break-all">
+                    {{ image?.filename || '无文件名' }}
+                </p>
+            </div>
             <!-- Date & Time -->
             <div class="space-y-1">
                 <div class="flex items-center gap-2 text-gray-500 text-xs font-medium uppercase tracking-wider">
@@ -257,7 +268,11 @@
 import { ref, watch, reactive, computed, onUnmounted, nextTick } from 'vue'
 import { 
     X, CalendarDays, MapPin, Tags, Camera, PanelRightClose, PanelRightOpen,
-    Loader2, Trash2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, FolderPlus, Info, User
+    Loader2, Trash2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, FolderPlus, Info, User,
+    FileArchiveIcon,
+    FilePen,
+    FileArchive,
+    FileBadgeIcon
 } from 'lucide-vue-next'
 import videojs from 'video.js'
 import 'video.js/dist/video-js.css'
