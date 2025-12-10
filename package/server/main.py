@@ -22,13 +22,19 @@ from app.api import user, train_ticket, album, index, settings
 from railway.api import router as railway_router
 from app.db.session import engine, SessionLocal
 from app.db.models.app_setting import AppSetting
-from app.api import user, album, settings, index, media, stats, photo
+from app.api import user, album, settings, index, media, stats, photo, tasks
 
 app = FastAPI(title="TrailSnap - 足迹相册")
 
+from app.service.task_manager import TaskManager
+
 @app.on_event("startup")
 async def startup_event():
-    pass
+    TaskManager.get_instance().start()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    TaskManager.get_instance().stop()
 
 # 配置允许跨域的源（生产环境建议指定具体域名，不要用 "*"）
 origins = [
@@ -59,10 +65,11 @@ app.include_router(photo.router, prefix="/photos", tags=["Photos"])
 app.include_router(album.router,prefix="/albums", tags=["Albums"])
 app.include_router(settings.router, prefix="/settings", tags=["Settings"])
 app.include_router(index.router, prefix="/index", tags=["Index"])
-app.include_router(media.router, prefix="/media", tags=["Media"])
+app.include_router(media.router, prefix="/medias", tags=["Media"])
 app.include_router(stats.router, prefix="/stats", tags=["Stats"])
+app.include_router(tasks.router, prefix="/tasks", tags=["Tasks"])
 
 if __name__ == "__main__":
     import uvicorn
     # http://127.0.0.1:8000/docs
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000, timeout_keep_alive=60)

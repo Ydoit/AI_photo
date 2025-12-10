@@ -120,12 +120,16 @@ export const albumService = {
       const { data } = await api.get<PhotoMetadata>(url);
       return data;
   },
-  
+
   async updateMetadata(albumId: string | undefined, photoId: string, metadata: Partial<PhotoMetadata>) {
       const url = albumId
         ? `/api/albums/${albumId}/photos/${photoId}/metadata`
         : `/api/photos/${photoId}/metadata`;
       const { data } = await api.put<PhotoMetadata>(url, metadata);
       return data;
+  },
+
+  async getThumbnail(photoId: string) {
+    const { data } = await api.get<{ thumbnail: string }>(`/api/medias/${photoId}/thumbnail`);
   }
 };

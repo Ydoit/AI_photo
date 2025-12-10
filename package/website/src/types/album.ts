@@ -30,6 +30,7 @@ export interface Photo {
   width?: number;
   height?: number;
   metadata_info?: PhotoMetadata;
+  duration?: number;
 }
 
 export interface PhotoGroup {

@@ -23,6 +23,7 @@ export interface AlbumImage {
   height?: number
   filename?: string
   file_type: 'image' | 'video' | 'live_photo'
+  duration?: string
 }
 
 // --- 缓存工具 ---
@@ -75,6 +76,14 @@ const setLocalCache = <T>(key: string, data: T) => {
        }
     }
   }
+}
+
+const formatDuration = (duration: number | null) => {
+  if (!duration) return '00:00';
+  const hours = Math.floor(duration / 3600);
+  const minutes = Math.floor((duration % 3600) / 60);
+  const seconds = Math.floor(duration % 60);
+  return `${hours > 0 ? `${hours}:` : ''}${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
 }
 
 export const usePhotoStore = defineStore('photo', () => {
@@ -130,7 +139,8 @@ export const usePhotoStore = defineStore('photo', () => {
       width: photo.width || 300,
       height: photo.height || 300,
       filename: photo.filename || '',
-      file_type: photo.file_type
+      file_type: photo.file_type || 'image',
+      duration: formatDuration(photo.duration ?? null) || '00:00'
     }
   }
 
@@ -323,6 +333,11 @@ export const usePhotoStore = defineStore('photo', () => {
       photoOffsetMap.clear();
       loadedDates.clear();
       currentContext.value = { type: 'all' };
+  }
+
+  const fetchThumbnail = async (photoId: string) => {
+    const thumbnail = await albumService.getThumbnail(photoId);
+    return thumbnail;
   }
 
   return {

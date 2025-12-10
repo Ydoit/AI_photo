@@ -31,6 +31,7 @@ class PhotoBase(BaseModel):
     size: int
     width: Optional[int] = None
     height: Optional[int] = None
+    duration: Optional[float] = None
     filename: Optional[str] = None
     photo_time: Optional[datetime] = None
 
@@ -51,11 +52,11 @@ class Photo(PhotoBase):
 
     @computed_field
     def url(self) -> str:
-        return f"/api/media/{self.id}/file"
+        return f"/api/medias/{self.id}/file"
 
     @computed_field
     def thumbnail_url(self) -> str:
-        return f"/api/media/{self.id}/thumbnail"
+        return f"/api/medias/{self.id}/thumbnail"
 
     class Config:
         from_attributes = True

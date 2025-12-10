@@ -65,7 +65,7 @@ def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id:
 
     # Get Metadata
     size = storage.get_file_size(file_path)
-    width, height = storage.get_image_dimensions(file_path)
+    width, height, duration = storage.get_image_dimensions(file_path)
 
     extracted_meta = extract_metadata(file_path, file_name)
 
@@ -75,6 +75,7 @@ def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id:
         size=size,
         width=width,
         height=height,
+        duration=duration,
         filename=file_name,
         photo_time=extracted_meta["photo_time"]
     )
@@ -186,6 +187,7 @@ def create_photo(db: Session, photo: schemas.PhotoCreate, album_id: Optional[UUI
         size=photo.size,
         width=photo.width,
         height=photo.height,
+        duration=photo.duration,
         filename=photo.filename,
         photo_time=photo.photo_time or datetime.now()
     )

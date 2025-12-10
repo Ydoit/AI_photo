@@ -6,16 +6,16 @@ from app.db.models.index_log import IndexLog
 
 router = APIRouter()
 
-@router.post('/index/rebuild')
+@router.post('/rebuild')
 def rebuild(db: Session = Depends(get_db)):
     indexer.rebuild_index(db)
     return {'started': True}
 
-@router.get('/index/status')
+@router.get('/status')
 def status():
     return indexer.status
 
-@router.get('/index/logs')
+@router.get('/logs')
 def logs(limit: int = 100, db: Session = Depends(get_db)):
     q = db.query(IndexLog).order_by(IndexLog.id.desc()).limit(limit).all()
     return [

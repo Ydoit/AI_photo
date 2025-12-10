@@ -137,12 +137,26 @@ def get_file_size(file_path: str) -> int:
 
 def get_image_dimensions(file_path: str):
     try:
-        if file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext in ('.png', '.jpg', '.jpeg', '.webp'):
             with Image.open(file_path) as img:
-                return img.width, img.height
+                return img.width, img.height, None
+        elif ext in ('.mp4', '.mov', '.avi', '.mkv', '.webm'):
+            if cv2 is None:
+                return None, None, None
+            cap = cv2.VideoCapture(file_path)
+            if not cap.isOpened():
+                return None, None, None
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            duration = frame_count / fps if fps else 0
+            cap.release()
+            return width, height, duration
     except:
         pass
-    return None, None
+    return None, None, None
 
 def delete_thumbnails(file_id: UUID, db: Session):
     try:

@@ -194,7 +194,7 @@
                                 <!-- Video Indicator (List View) -->
                                 <div v-if="img.file_type === 'video'" class="flex mb-1 absolute top-1 right-2 justify-center pointer-events-none z-10 items-center">
                                   <div class="text-white text-sm">
-                                    00:00{{getPhotos(day.key).length}}
+                                    {{ img.duration}}
                                   </div>
                                   <PlayCircle class="w-4 h-4 text-white drop-shadow-md opacity-90" />
                                 </div>
@@ -291,27 +291,42 @@ const downloadProgress = ref(0)
 const loadedImages = reactive<Record<string, string>>({})
 const imageLoaders = new Map<string, AbortController>()
 const placeholderSrc = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+// 缓存Request对象，避免重复创建导致连接重建
+const requestCache = new Map<string, Request>();
 
 const loadImage = async (image: AlbumImage) => {
-    if (loadedImages[image.id]) return 
-    if (imageLoaders.has(image.id)) return 
+    if (loadedImages[image.id]) return;
+    if (imageLoaders.has(image.id)) return;
 
-    const controller = new AbortController()
-    imageLoaders.set(image.id, controller)
+    // 复用Request对象
+    let request = requestCache.get(image.id);
+    if (!request) {
+        request = new Request(image.thumbnail, {
+            method: 'GET',
+            headers: {
+                'Connection': 'keep-alive'  // 显式要求keep-alive
+            }
+        });
+        requestCache.set(image.id, request);
+    }
+
+    const controller = new AbortController();
+    imageLoaders.set(image.id, controller);
 
     try {
-        const response = await fetch(image.thumbnail, { signal: controller.signal })
-        if (response.ok) {
-            loadedImages[image.id] = image.thumbnail
-        }
+      // loadedImages[image.id] = image.thumbnail;
+      const response = await fetch(request, { signal: controller.signal });
+      if (response.ok) {
+          loadedImages[image.id] = image.thumbnail;
+      }
     } catch (e: any) {
         if (e.name !== 'AbortError') {
-            // console.error('Image load failed', e)
+            console.error('Image load failed', e);
         }
     } finally {
-        imageLoaders.delete(image.id)
+        imageLoaders.delete(image.id);
     }
-}
+};
 
 const cancelImageLoad = (imageId: string) => {
     const controller = imageLoaders.get(imageId)
