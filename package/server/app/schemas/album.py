@@ -11,6 +11,14 @@ class PhotoMetadataBase(BaseModel):
     location_api: Optional[str] = None
     tags: Optional[List[str]] = None
     faces: Optional[List[Dict[str, Any]]] = None
+    
+    # Enhanced location fields
+    longitude: Optional[float] = None
+    latitude: Optional[float] = None
+    city: Optional[str] = None
+    province: Optional[str] = None
+    country: Optional[str] = None
+    address: Optional[str] = None
 
 class PhotoMetadataCreate(PhotoMetadataBase):
     pass

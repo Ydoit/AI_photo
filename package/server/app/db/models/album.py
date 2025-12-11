@@ -26,7 +26,7 @@ class Album(Base):
     name = Column(String(100), nullable=False)
     create_time = Column(DateTime, default=datetime.now)
     description = Column(Text)
-    
+
     # Relationships
     cover_id = Column("cover", UUID(as_uuid=True), ForeignKey("photos.id"), nullable=True)
     cover = relationship("Photo", foreign_keys=[cover_id])

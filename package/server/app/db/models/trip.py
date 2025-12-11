@@ -46,5 +46,5 @@ class TrainTicket(Base):
     total_running_time = Column(Integer, nullable=False, default=0, comment="累计运行时间（分钟）")
     stop_stations = Column(Text, nullable=True, default="[]", comment="经停站列表，JSON格式存储")
     comments = Column(Text, nullable=True, comment="备注信息")
-    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment="更新时间")
+    created_at = Column(DateTime, default=datetime.now, comment="创建时间")
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")

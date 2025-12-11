@@ -211,7 +211,7 @@ const initMap = async () => {
     const response = await fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json');
     const chinaJson = await response.json();
     echarts.registerMap('china', chinaJson);
-    
+
     renderMap();
   } catch (e) {
     console.error("Map load failed", e);

@@ -2688,6 +2688,16 @@ wheels = [
 ]
 
 [[package]]
+name = "reverse-geocoder"
+version = "1.5.1"
+source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "scipy" },
+]
+sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/0b/0f/b7d5d4b36553731f11983e19e1813a1059ad0732c5162c01b3220c927d31/reverse_geocoder-1.5.1.tar.gz", hash = "sha256:2a2e781b5f69376d922b78fe8978f1350c84fce0ddb07e02c834ecf98b57c75c", size = 2246559, upload-time = "2016-09-15T16:46:46.277Z" }
+
+[[package]]
 name = "ruamel-yaml"
 version = "0.18.16"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
@@ -2921,6 +2931,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "requests" },
+    { name = "reverse-geocoder" },
     { name = "sqlalchemy" },
     { name = "ultralytics" },
     { name = "uvicorn" },
@@ -2942,6 +2953,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "python-multipart", specifier = ">=0.0.20" },
     { name = "requests", specifier = ">=2.32.5" },
+    { name = "reverse-geocoder", specifier = ">=1.5.1" },
     { name = "sqlalchemy", specifier = ">=2.0.44" },
     { name = "ultralytics", specifier = ">=8.3.232" },
     { name = "uvicorn", specifier = ">=0.38.0" },

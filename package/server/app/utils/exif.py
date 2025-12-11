@@ -16,6 +16,7 @@ from typing import Dict, Any, Optional
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
 import json
+import reverse_geocoder as rg
 
 from app.utils.filename import extract_datetime_from_filename
 
@@ -141,7 +142,24 @@ def extract_metadata(file_path: str, filename: str, image_obj: Optional[Image.Im
                         pass
 
                 # Extract GPS
-                metadata["location"] = get_gps_info(exif_dict)
+                gps = get_gps_info(exif_dict)
+                metadata["location"] = gps
+                
+                if gps:
+                    try:
+                        results = rg.search([(gps["latitude"], gps["longitude"])])
+                        if results:
+                            res = results[0]
+                            metadata["location_details"] = {
+                                "latitude": gps["latitude"],
+                                "longitude": gps["longitude"],
+                                "city": res.get("name", ""),
+                                "province": res.get("admin1", ""),
+                                "country": res.get("cc", ""),
+                                "address": f"{res.get('name', '')}, {res.get('admin1', '')}, {res.get('cc', '')}"
+                            }
+                    except Exception as e:
+                        print(f"Reverse geocoding error: {e}")
 
     except Exception as e:
 

@@ -28,13 +28,12 @@ def is_within_range(dt, start, end):
 
 
 def valid_time(dt):
-    if start_time <= dt <= end_time:
+    if start_time <= dt <= datetime.now():
         return dt
     else:
         return None
 
-
-def extract_datetime_from_filename(filename) -> datetime | None:
+def _extract_datetime_from_filename(filename)-> datetime | None:
     # 定义正则表达式，匹配常见的时间格式
     patterns = [
         r"(\d{4})[ _\.-](\d{2})[ _\.-](\d{2})[ _\.-](\d{2})[ _\.-](\d{2})[ _\.-](\d{2})",  # 格式：YYYY_MM_DD_HH-MM-SS
@@ -42,7 +41,7 @@ def extract_datetime_from_filename(filename) -> datetime | None:
         r"(\d{2})[ _\.-](\d{2})[ _\.-](\d{4})[ _\.-](\d{6})",  # 格式：DD-MM-YYYY_HHMMSS
         r"(\d{8})[ _\.-](\d{2})[ _\.-](\d{2})[ _\.-](\d{2})",  # 格式：YYYYMMDD_HH-MM-SS
         r"(\d{8})[ _T\.-](\d{6})",  # 格式：YYYYMMDD_HHMMSS
-        r"(\d{14})",         # 格式：YYYYMMDDHHMMSS
+        r"(\d{14})",  # 格式：YYYYMMDDHHMMSS
         r"(\d{13}|\d{10})",  # 格式：TIMESTAMP (13位毫秒级时间戳)
     ]
     try:
@@ -96,6 +95,13 @@ def extract_datetime_from_filename(filename) -> datetime | None:
         print('文件名解析失败:', filename)
         return None  # 如果没有匹配到任何模式，返回 None
     except:
-        print('文件名解析失败:',filename)
+        print('文件名解析失败:', filename)
         return None  # 如果没有匹配到任何模式，返回 None
+
+
+def extract_datetime_from_filename(filename) -> datetime | None:
+    file_time = _extract_datetime_from_filename(filename)
+    if file_time and is_within_range(file_time, start_time, end_time):
+        return file_time
+    return None
 

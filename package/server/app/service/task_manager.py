@@ -43,18 +43,18 @@ def process_image_cpu_job(file_path: str, file_id: UUID, storage_root: str):
 
         # 1. Generate thumbnail
         thumb_path = storage.generate_thumbnail(file_path, file_id, db=None, image_obj=image_obj)
-        
+
         # 2. Extract metadata
         file_name = os.path.basename(file_path)
         meta = exif.extract_metadata(file_path, file_name, image_obj=image_obj)
-        
+
         # 3. Get dimensions/size
         size = storage.get_file_size(file_path)
         width, height, duration = storage.get_image_dimensions(file_path, image_obj=image_obj)
-        
+
         if image_obj:
             image_obj.close()
-            
+
         return {
             "success": True,
             "thumb_path": thumb_path,

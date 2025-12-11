@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from sqlalchemy import Column, String, ForeignKey, Text, JSON
+from sqlalchemy import Column, String, ForeignKey, Text, JSON, DECIMAL, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.base import Base
@@ -9,9 +9,25 @@ from app.db.base import Base
 class PhotoMetadata(Base):
     __tablename__ = "photo_metadata"
 
+    __table_args__ = (
+        Index('idx_location_lat_lng', 'latitude', 'longitude'),
+        Index('idx_location_city', 'city'),
+        Index('idx_location_province', 'province'),
+        Index('idx_location_country', 'country'),
+    )
+
     photo_id = Column(UUID(as_uuid=True), ForeignKey("photos.id", ondelete="CASCADE"), primary_key=True)
     exif_info = Column(Text)    # EXIF info as text
     location = Column(JSON)     # Using JSON for flexibility: {"lat": ..., "lng": ..., "formatted_address": ...}
+    
+    # Enhanced location fields
+    longitude = Column(DECIMAL(10, 7))
+    latitude = Column(DECIMAL(10, 7))
+    city = Column(String(100))
+    province = Column(String(100))
+    country = Column(String(100))
+    address = Column(Text)
+
     location_api = Column(String(255)) # API info for location
     tags = Column(JSON)         # List of tags
     faces = Column(JSON)        # List of face info

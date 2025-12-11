@@ -37,10 +37,24 @@ def read_all_photos(
         month: Optional[str] = None,
         day: Optional[str] = None,
         city: Optional[str] = None,
+        province: Optional[str] = None,
+        country: Optional[str] = None,
         tag: Optional[str] = None,
+        lat_min: Optional[float] = None,
+        lat_max: Optional[float] = None,
+        lng_min: Optional[float] = None,
+        lng_max: Optional[float] = None,
+        radius: Optional[float] = None,
+        center_lat: Optional[float] = None,
+        center_lng: Optional[float] = None,
         db: Session = Depends(get_db)
 ):
-    photos = crud.get_all_photos(db, skip=skip, limit=limit, year=year, month=month, day=day, city=city, tag=tag, album_id=album_id)
+    photos = crud.get_all_photos(
+        db, skip=skip, limit=limit, year=year, month=month, day=day, 
+        city=city, province=province, country=country, tag=tag, album_id=album_id,
+        lat_min=lat_min, lat_max=lat_max, lng_min=lng_min, lng_max=lng_max,
+        radius=radius, center_lat=center_lat, center_lng=center_lng
+    )
     return photos
 
 

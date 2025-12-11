@@ -3,7 +3,7 @@ from uuid import UUID
 import os
 
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import extract, cast, String
+from sqlalchemy import extract, cast, String, func
 from datetime import datetime
 
 from app.db.models.album import Album
@@ -81,9 +81,16 @@ def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id:
     )
 
     # Create Metadata Schema
+    loc_details = extracted_meta.get("location_details", {})
     metadata_create = schemas.PhotoMetadataCreate(
         exif_info=extracted_meta["exif_info"],
-        location=extracted_meta["location"]
+        location=extracted_meta["location"],
+        longitude=loc_details.get("longitude"),
+        latitude=loc_details.get("latitude"),
+        city=loc_details.get("city"),
+        province=loc_details.get("province"),
+        country=loc_details.get("country"),
+        address=loc_details.get("address")
     )
 
     return create_photo(db, photo_create, album_id, file_path, photo_id=photo_id, metadata=metadata_create)
@@ -132,8 +139,17 @@ def get_all_photos(
     month: Optional[str] = None,
     day: Optional[str] = None,
     city: Optional[str] = None,
+    province: Optional[str] = None,
+    country: Optional[str] = None,
     tag: Optional[str] = None,
-    album_id: Optional[UUID] = None
+    album_id: Optional[UUID] = None,
+    lat_min: Optional[float] = None,
+    lat_max: Optional[float] = None,
+    lng_min: Optional[float] = None,
+    lng_max: Optional[float] = None,
+    radius: Optional[float] = None,
+    center_lat: Optional[float] = None,
+    center_lng: Optional[float] = None
 ):
     if album_id == None:
         query = db.query(Photo).options(joinedload(Photo.albums)).outerjoin(PhotoMetadata)
@@ -165,7 +181,34 @@ def get_all_photos(
 
     # 城市模糊匹配
     if city is not None and city.strip():
-        query = query.filter(cast(PhotoMetadata.location, String).ilike(f"%{city.strip()}%"))
+        query = query.filter(PhotoMetadata.city.ilike(f"%{city.strip()}%"))
+
+    # Province/Country
+    if province:
+        query = query.filter(PhotoMetadata.province.ilike(f"%{province.strip()}%"))
+    if country:
+        query = query.filter(PhotoMetadata.country.ilike(f"%{country.strip()}%"))
+
+    # Coordinates
+    if lat_min is not None:
+        query = query.filter(PhotoMetadata.latitude >= lat_min)
+    if lat_max is not None:
+        query = query.filter(PhotoMetadata.latitude <= lat_max)
+    if lng_min is not None:
+        query = query.filter(PhotoMetadata.longitude >= lng_min)
+    if lng_max is not None:
+        query = query.filter(PhotoMetadata.longitude <= lng_max)
+        
+    # Radius (km)
+    if radius is not None and center_lat is not None and center_lng is not None:
+        distance_expr = 6371 * func.acos(
+            func.cos(func.radians(PhotoMetadata.latitude)) * 
+            func.cos(func.radians(center_lat)) * 
+            func.cos(func.radians(PhotoMetadata.longitude) - func.radians(center_lng)) + 
+            func.sin(func.radians(PhotoMetadata.latitude)) * 
+            func.sin(func.radians(center_lat))
+        )
+        query = query.filter(distance_expr <= radius)
 
     # 标签模糊匹配
     if tag is not None and tag.strip():
@@ -217,6 +260,20 @@ def create_photo(db: Session, photo: schemas.PhotoCreate, album_id: Optional[UUI
             db_metadata.tags = metadata.tags
         if metadata.faces:
             db_metadata.faces = metadata.faces
+            
+        # Enhanced location fields
+        if metadata.longitude is not None:
+            db_metadata.longitude = metadata.longitude
+        if metadata.latitude is not None:
+            db_metadata.latitude = metadata.latitude
+        if metadata.city:
+            db_metadata.city = metadata.city
+        if metadata.province:
+            db_metadata.province = metadata.province
+        if metadata.country:
+            db_metadata.country = metadata.country
+        if metadata.address:
+            db_metadata.address = metadata.address
 
     db.add(db_metadata)
     db.commit()
