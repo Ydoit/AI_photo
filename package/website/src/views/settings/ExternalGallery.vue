@@ -1,7 +1,7 @@
 <template>
-  <div class="p-6 bg-white rounded-lg shadow-sm border border-gray-100">
-      <h2 class="text-lg font-semibold mb-4 border-b pb-2">外部图库管理</h2>
-      <p class="text-sm text-gray-500 mb-4">
+  <div class="p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
+      <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">外部图库管理</h2>
+      <p class="text-sm text-gray-500 mb-4 dark:text-gray-400">
         添加外部文件夹路径，系统将扫描这些文件夹中的图片（只读模式）。
         <br>外部文件夹中的图片不会被移动或修改，生成的缩略图将存储在主目录中。
       </p>

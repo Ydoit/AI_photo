@@ -1,11 +1,11 @@
 <template>
   <div>
-    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
       <div class="flex justify-between items-center mb-6">
-        <h2 class="text-lg font-semibold">任务列表</h2>
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-white">任务列表</h2>
         <el-button type="primary" @click="showCreateTaskDialog">新建任务</el-button>
       </div>
-      <el-table :data="tasks" style="width: 100%" border>
+      <el-table :data="tasks" style="width: 100%" border class="dark:border-gray-700 dark:text-white dark:bg-gray-800">
         <el-table-column prop="type" label="任务类型" width="180">
              <template #default="{ row }">
                  {{ formatTaskType(row.type) }}
@@ -20,7 +20,7 @@
           <template #default="{ row }">
             <div v-if="row.total_items > 0">
                 <el-progress :percentage="Math.round((row.processed_items / row.total_items) * 100)" />
-                <span class="text-xs text-gray-500">{{ row.processed_items }} / {{ row.total_items }}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{ row.processed_items }} / {{ row.total_items }}</span>
             </div>
             <div v-else-if="row.status === 'completed'">
                  <el-progress :percentage="100" status="success" />
@@ -49,16 +49,16 @@
     </div>
 
     <!-- Create Task Dialog -->
-    <el-dialog v-model="createTaskVisible" title="新建任务" width="500px">
-        <el-form :model="newTaskForm" label-width="120px">
-            <el-form-item label="任务类型">
-                <el-select v-model="newTaskForm.type" placeholder="选择任务类型">
+    <el-dialog v-model="createTaskVisible" title="新建任务" width="500px" class="dark:bg-gray-800 dark:text-white">
+        <el-form :model="newTaskForm" label-width="120px" class="dark:text-white">
+            <el-form-item label="任务类型" class="dark:text-white">
+                <el-select v-model="newTaskForm.type" placeholder="选择任务类型" class="dark:text-white">
                     <el-option label="重建缩略图" value="REBUILD_THUMBNAILS" />
                     <el-option label="重建元数据" value="REBUILD_METADATA" />
                 </el-select>
             </el-form-item>
-             <el-form-item label="范围">
-                <el-select v-model="newTaskForm.scope" placeholder="选择范围">
+             <el-form-item label="范围" class="dark:text-white">
+                <el-select v-model="newTaskForm.scope" placeholder="选择范围" class="dark:text-white">
                     <el-option label="所有图片" value="all" />
                 </el-select>
             </el-form-item>

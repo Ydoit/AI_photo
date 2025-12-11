@@ -1,12 +1,12 @@
 <template>
   <div>
-    <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100">
-      <h2 class="text-lg font-semibold mb-4 border-b pb-2">主存储设置</h2>
+    <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
+      <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">主存储设置</h2>
       <el-form :model="form" label-width="140px" class="max-w-3xl">
         <el-form-item label="图片存储根目录">
           <div class="flex gap-2 w-full">
             <el-input v-model="form.storageRoot" placeholder="例如 C:/TrailSnap/uploads" />
-            <el-button type="primary" @click="validatePath">验证路径</el-button>
+            <el-button type="primary" @click="validatePath" class="bg-primary-600 text-white">验证路径</el-button>
             <el-button @click="saveRoot">保存</el-button>
           </div>
           <p class="text-sm mt-2 text-gray-500">主目录用于存储上传的照片和所有缩略图。</p>
@@ -15,8 +15,8 @@
       </el-form>
     </div>
 
-    <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100">
-      <h2 class="text-lg font-semibold mb-4 border-b pb-2">索引维护</h2>
+    <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
+      <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">索引维护</h2>
       <el-form label-width="140px" class="max-w-3xl">
         <el-form-item label="重建索引">
           <el-button type="danger" @click="rebuildIndex" :disabled="indexStatus.running">立即重建索引</el-button>
@@ -86,7 +86,7 @@ const validatePath = async () => {
     await settingsApi.updateStorageRoot(form.value.storageRoot)
     pathValid.value = true
     ElMessage.success('主目录路径已更新')
-    await loadData()
+    // await loadData()
   } catch {
     pathValid.value = false
     ElMessage.error('路径无效')

@@ -6,6 +6,11 @@
   color: inherit !important;
 }
 
+html.dark {
+  /* 自定义深色背景颜色 */
+  --el-bg-color: #111827;
+}
+
 /* 定义动态颜色类，映射到 JS 注入的变量 */
 .text-primary-600 { color: var(--theme-primary); }
 .text-primary-500 { color: var(--theme-primary); } /* 近似处理 */
