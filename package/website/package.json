@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
     "@types/video.js": "^7.3.58",
     "@vueuse/core": "^14.0.0",
     "axios": "^1.12.2",

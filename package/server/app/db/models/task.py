@@ -10,6 +10,7 @@ class TaskStatus(str, enum.Enum):
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 class TaskType(str, enum.Enum):
     SCAN_FOLDER = "SCAN_FOLDER"
@@ -18,6 +19,8 @@ class TaskType(str, enum.Enum):
     EXTRACT_METADATA = "EXTRACT_METADATA"
     CLASSIFY_IMAGE = "CLASSIFY_IMAGE"
     RECOGNIZE_FACE = "RECOGNIZE_FACE"
+    REBUILD_THUMBNAILS = "REBUILD_THUMBNAILS"
+    REBUILD_METADATA = "REBUILD_METADATA"
 
 class Task(Base):
     __tablename__ = "tasks"
@@ -31,3 +34,7 @@ class Task(Base):
     error = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+    
+    # Progress tracking
+    total_items = Column(Integer, default=0)
+    processed_items = Column(Integer, default=0)

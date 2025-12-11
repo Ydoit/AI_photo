@@ -1,0 +1,225 @@
+import asyncio
+import logging
+import os
+import concurrent.futures
+from typing import Set
+from uuid import UUID, uuid4
+from PIL import Image
+from sqlalchemy.orm import Session
+
+from app.db.models.task import Task, TaskType, TaskStatus
+from app.db.models.photo import Photo, FileType
+from app.db.models.app_setting import AppSetting
+from app.db.models.index_log import IndexLog
+from app.service import storage
+from app.utils import exif
+from app.schemas import album as album_schemas
+
+def process_image_cpu_job(file_path: str, file_id: UUID, storage_root: str):
+    """
+    CPU-intensive task running in a separate process.
+    Generates thumbnails and extracts metadata.
+    """
+    try:
+        # Initialize storage root cache in this process
+        storage.update_storage_root_cache(storage_root)
+        
+        # Open image once if possible to reduce IO
+        image_obj = None
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext in ('.png', '.jpg', '.jpeg', '.webp'):
+             try:
+                 image_obj = Image.open(file_path)
+             except Exception:
+                 pass
+
+        # 1. Generate thumbnail
+        thumb_path = storage.generate_thumbnail(file_path, file_id, db=None, image_obj=image_obj)
+
+        # 2. Extract metadata
+        file_name = os.path.basename(file_path)
+        meta = exif.extract_metadata(file_path, file_name, image_obj=image_obj)
+
+        # 3. Get dimensions/size
+        size = storage.get_file_size(file_path)
+        width, height, duration = storage.get_image_dimensions(file_path, image_obj=image_obj)
+
+        if image_obj:
+            image_obj.close()
+
+        return {
+            "success": True,
+            "thumb_path": thumb_path,
+            "meta": meta,
+            "size": size,
+            "width": width,
+            "height": height,
+            "duration": duration,
+            "file_name": file_name
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+def scan_directory_recursive(path: str, exts: Set[str]) -> Set[str]:
+    found = set()
+    try:
+        with os.scandir(path) as it:
+            for entry in it:
+                if entry.is_file():
+                    if os.path.splitext(entry.name)[1].lower() in exts:
+                        found.add(entry.path)
+                elif entry.is_dir():
+                    found.update(scan_directory_recursive(entry.path, exts))
+    except OSError:
+        pass
+    return found
+
+async def handle_scan_folder(task_manager, task: Task, db: Session):
+    task_manager.scan_status['message'] = "Scanning folders..."
+    scan_roots = task.payload.get('scan_roots')
+    if not scan_roots:
+            root = storage._get_storage_root(db)
+            primary_uploads = os.path.join(root, 'uploads')
+            ext_setting = db.query(AppSetting).filter(AppSetting.key == 'external_directories').first()
+            external_dirs = []
+            if ext_setting and ext_setting.value:
+                import json
+                try:
+                    external_dirs = json.loads(ext_setting.value)
+                except:
+                    pass
+            scan_roots = [primary_uploads] + external_dirs
+
+    EXTS = {'.png', '.jpg', '.jpeg', '.webp', '.tiff', '.gif', '.mp4', '.mov', '.avi'}
+    loop = asyncio.get_running_loop()
+    
+    def parallel_scan_wrapper():
+        found_files = set()
+        work_items = []
+        for root in scan_roots:
+            if not os.path.exists(root):
+                continue
+            work_items.append(root)
+            try:
+                with os.scandir(root) as it:
+                    for entry in it:
+                        if entry.is_dir():
+                            work_items.append(entry.path)
+            except OSError:
+                pass
+        work_items = list(set(work_items))
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = {executor.submit(scan_directory_recursive, item, EXTS): item for item in work_items}
+            for future in concurrent.futures.as_completed(futures):
+                found_files.update(future.result())
+        return found_files
+
+    files_on_disk = await loop.run_in_executor(None, parallel_scan_wrapper)
+    
+    existing_files = set()
+    for p in db.query(Photo.file_path).all():
+        existing_files.add(p[0])
+        
+    # Determine new and deleted
+    new_files = files_on_disk - existing_files
+    deleted_files = existing_files - files_on_disk
+    
+    logging.info(f"Scan result: {len(new_files)} new, {len(deleted_files)} deleted")
+    task_manager.scan_status['message'] = f"Found {len(new_files)} new, {len(deleted_files)} deleted"
+    task_manager.scan_status['total_files'] += len(new_files)
+
+    # Queue process tasks for new files
+    new_tasks = []
+    for fp in new_files:
+        new_tasks.append(Task(
+            type=TaskType.PROCESS_IMAGE,
+            payload={'file_path': fp},
+            priority=10, 
+            status=TaskStatus.PENDING
+        ))
+        
+    if new_tasks:
+        chunk_size = 1000
+        for i in range(0, len(new_tasks), chunk_size):
+            db.bulk_save_objects(new_tasks[i:i+chunk_size])
+            db.commit()
+            
+    # Handle deleted
+    if deleted_files:
+        deleted_list = list(deleted_files)
+        chunk_size = 500
+        for i in range(0, len(deleted_list), chunk_size):
+            chunk = deleted_list[i:i+chunk_size]
+            photos_to_delete = db.query(Photo).filter(Photo.file_path.in_(chunk)).all()
+            for ph in photos_to_delete:
+                storage.delete_thumbnails(ph.id, db)
+                db.delete(ph)
+                db.add(IndexLog(action='deleted', file_path=ph.file_path, photo_id=ph.id))
+            db.commit()
+            task_manager.scan_status['deleted'] += len(photos_to_delete)
+
+    return {'new_files': len(new_files), 'deleted_files': len(deleted_files)}
+
+async def handle_process_image(task_manager, task: Task, db: Session):
+    file_path = task.payload.get('file_path')
+    if not file_path or not os.path.exists(file_path):
+        return {'status': 'skipped', 'reason': 'file not found'}
+        
+    photo_id = uuid4()
+    storage_root = storage._get_storage_root(db)
+    
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(
+        task_manager.process_pool, 
+        process_image_cpu_job, 
+        file_path, 
+        photo_id, 
+        storage_root
+    )
+    
+    if not result['success']:
+        raise Exception(result.get('error', 'Unknown error'))
+        
+    meta = result['meta']
+    ext = os.path.splitext(result['file_name'])[1]
+    file_type = FileType.image
+    if ext.lower() in ['.mp4', '.mov', '.avi', '.mkv', '.webm']:
+        file_type = FileType.video
+
+    photo_create = album_schemas.PhotoCreate(
+        file_type=file_type,
+        size=result['size'],
+        width=result['width'],
+        height=result['height'],
+        duration=result['duration'],
+        filename=result['file_name'],
+        photo_time=meta["photo_time"]
+    )
+
+    metadata_create = album_schemas.PhotoMetadataCreate(
+        exif_info=meta["exif_info"],
+        location=meta["location"]
+    )
+    
+    # Add enhanced location details if available
+    loc_details = meta.get("location_details", {})
+    if loc_details:
+        metadata_create.longitude = loc_details.get("longitude")
+        metadata_create.latitude = loc_details.get("latitude")
+        metadata_create.city = loc_details.get("city")
+        metadata_create.province = loc_details.get("province")
+        metadata_create.country = loc_details.get("country")
+        metadata_create.address = loc_details.get("address")
+    
+    # Prepare data for batch insert instead of writing to DB directly
+    return {
+        'photo_create_data': {
+            'photo': photo_create,
+            'file_path': file_path,
+            'photo_id': photo_id,
+            'metadata': metadata_create
+        }
+    }
