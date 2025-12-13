@@ -4,7 +4,7 @@
 *.pyc
 node_modules
 temp*
-*log*
+*.log*
 dist
 .trae
 *uploads*
