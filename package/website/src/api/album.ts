@@ -42,20 +42,20 @@ export const albumService = {
   },
 
   // Photos
-  async getAllPhotos(skip: number = 0, limit: number = 100, filters?: { year?: string, month?: string, day?: string, city?: string, tag?: string}) {
+  async getAllPhotos(skip: number = 0, limit: number = 100, filters?: { start_time?: string, end_time?: string, city?: string, tag?: string}) {
     const { data } = await api.get<Photo[]>('/api/photos', {
       params: { skip, limit, ...filters }
     });
     return data;
   },
 
-  async getPhotos(albumId: string, skip: number = 0, limit: number = 100, filters?: { year?: string, month?: string, day?: string }) {
+  async getPhotos(albumId: string, skip: number = 0, limit: number = 100, filters?: { start_time?: string, end_time?: string }) {
     const { data } = await api.get<Photo[]>(`/api/albums/${albumId}/photos`, {
       params: { skip, limit, ...filters }
     });
     return data;
   },
-  
+
   // Remove photo from specific album (Association)
   async removePhotoFromAlbum(albumId: string, photoId: string) {
     await api.delete(`/api/albums/${albumId}/photos/${photoId}`);
@@ -84,13 +84,13 @@ export const albumService = {
     });
     return data;
   },
-  
+
   // Chunk Upload
   async initUpload() {
       const { data } = await api.post<{upload_id: string}>('/api/upload/init');
       return data.upload_id;
   },
-  
+
   async uploadChunk(uploadId: string, chunkIndex: number, chunk: Blob) {
       const formData = new FormData();
       formData.append('upload_id', uploadId);
@@ -98,7 +98,7 @@ export const albumService = {
       formData.append('file', chunk);
       await api.post('/api/upload/chunk', formData);
   },
-  
+
   async finishUpload(uploadId: string, fileName: string, albumId?: string) {
       const formData = new FormData();
       formData.append('upload_id', uploadId);

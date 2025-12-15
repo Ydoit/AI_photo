@@ -71,12 +71,6 @@ def root():
 def startup_event():
     global log_listener
     log_listener = setup_logging()
-    
-    with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE albums ADD COLUMN IF NOT EXISTS cover UUID"))
-        conn.execute(text("ALTER TABLE albums ADD COLUMN IF NOT EXISTS type VARCHAR(20) DEFAULT 'user'"))
-        conn.execute(text("ALTER TABLE albums ADD COLUMN IF NOT EXISTS num_photos INTEGER DEFAULT 0"))
-    
     # Start Task Manager
     from app.service.task_manager import TaskManager
     TaskManager.get_instance().start()
@@ -86,7 +80,7 @@ def shutdown_event():
     global log_listener
     from app.service.task_manager import TaskManager
     TaskManager.get_instance().stop()
-    
+
     if log_listener:
         log_listener.stop()
 

@@ -9,10 +9,15 @@
 @Description : 
 """
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, HTTPException
+from starlette.middleware.gzip import GZipMiddleware, GZipResponder
+from fastapi import FastAPI, HTTPException, Request
 import os
+import logging
+import time
 from dotenv import load_dotenv
 from starlette.staticfiles import StaticFiles
+from starlette.datastructures import Headers
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 if not os.path.exists('./data'):
     os.mkdir('./data')
@@ -23,18 +28,78 @@ from railway.api import router as railway_router
 from app.db.session import engine, SessionLocal
 from app.db.models.app_setting import AppSetting
 from app.api import user, album, settings, index, media, stats, photo, tasks
+from app.core.logger import setup_logging
 
 app = FastAPI(title="TrailSnap - 足迹相册")
 
 from app.service.task_manager import TaskManager
 
+# Initialize logging listener
+log_listener = None
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    operation = f"{request.method} {request.url.path}"
+    params = dict(request.query_params)
+    try:
+        response = await call_next(request)
+        process_time = (time.time() - start_time) * 1000
+        extra = {
+            "operation": operation,
+            "params": params,
+            "result": response.status_code,
+            "duration_ms": f"{process_time:.2f}"
+        }
+        logging.getLogger("app.middleware").info("Request processed", extra=extra)
+        return response
+    except Exception as e:
+        process_time = (time.time() - start_time) * 1000
+        extra = {
+            "operation": operation,
+            "params": params,
+            "result": "Error",
+            "duration_ms": f"{process_time:.2f}"
+        }
+        logging.getLogger("app.middleware").error(f"Request failed: {str(e)}", exc_info=e, extra=extra)
+        raise e
+# 自定义 GZip 中间件
+class CustomGZipMiddleware(GZipMiddleware):
+    def __init__(
+        self, app, minimum_size: int = 500, compresslevel: int = 9, exclude_paths=None
+    ) -> None:
+        super().__init__(app, minimum_size, compresslevel)
+        self.exclude_paths = exclude_paths or []
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http":
+            headers = Headers(scope=scope)
+            request = Request(scope, receive)
+            if "gzip" in headers.get("Accept-Encoding", "") and not any(request.url.path.endswith(suffix) for suffix in self.exclude_paths):
+                responder = GZipResponder(
+                    self.app, self.minimum_size, compresslevel=self.compresslevel
+                )
+                await responder(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+# 添加 GZip 中间件
+exclude_paths = ['/ai_communication/AiCommunicationThemesRecord/chat']
+app.add_middleware(CustomGZipMiddleware, minimum_size=1000, compresslevel=9, exclude_paths=exclude_paths)
+
 @app.on_event("startup")
 async def startup_event():
+    global log_listener
+    log_listener = setup_logging()
+    # Start Task Manager
     TaskManager.get_instance().start()
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    global log_listener
     TaskManager.get_instance().stop()
+    if log_listener:
+        log_listener.stop()
 
 # 配置允许跨域的源（生产环境建议指定具体域名，不要用 "*"）
 origins = [

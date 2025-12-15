@@ -144,10 +144,9 @@ def extract_metadata(file_path: str, filename: str, image_obj: Optional[Image.Im
                 # Extract GPS
                 gps = get_gps_info(exif_dict)
                 metadata["location"] = gps
-                
                 if gps:
                     try:
-                        results = rg.search([(gps["latitude"], gps["longitude"])])
+                        results = rg.search([(gps["latitude"], gps["longitude"])], mode=1)
                         if results:
                             res = results[0]
                             metadata["location_details"] = {

@@ -4,10 +4,10 @@
     <div class="sticky top-[60px] z-30 pointer-events-none">
       <div class="flex md:flex-row items-center justify-between gap-4 max-w-7xl mx-auto px-4 py-3 pointer-events-auto">
         <!-- Default Title -->
-        <div class="flex items-center gap-2 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
-          <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight">全部照片</h1>
+        <!-- <div class="flex items-center gap-2 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
+          <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight">照片</h1>
           <span class="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{{ photoStore.timelineStats?.total_photos || images.length }}</span>
-        </div>
+        </div> -->
         <!-- Controls -->
         <div class="flex items-center gap-2 ml-auto animate-in fade-in slide-in-from-right-4 duration-300">
           <!-- View Options Menu -->

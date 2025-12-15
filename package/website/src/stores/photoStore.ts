@@ -240,7 +240,22 @@ export const usePhotoStore = defineStore('photo', () => {
 
     try {
         let photosData: Photo[] = [];
-        const filters = { year: String(year), month: String(month) };
+        
+        // Calculate start and end time for the month
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0, 23, 59, 59, 999); // Last day of month
+        
+        // Format to YYYY-MM-DD HH:mm:ss
+        const formatDate = (d: Date) => {
+             const pad = (n: number) => n.toString().padStart(2, '0');
+             return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        };
+
+        const filters = { 
+            start_time: formatDate(startDate),
+            end_time: formatDate(endDate)
+        };
+        
         const count = offsetInfo.count;
 
         if (albumId) {

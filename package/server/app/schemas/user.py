@@ -4,7 +4,7 @@
 """
 @Time        : 2025/5/10 22:33 
 @Author      : SiYuan 
-@Email       : siyuan044@qq.com 
+@Email       : sixyuan044@gmail.com 
 @File        : backend-user.py 
 @Description : 
 """
@@ -21,4 +21,4 @@ class UserRead(BaseModel):
     email: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True

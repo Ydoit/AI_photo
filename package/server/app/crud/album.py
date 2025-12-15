@@ -97,31 +97,14 @@ def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id:
 
 
 # Photo CRUD
-def get_photos(db: Session, album_id: UUID, skip: int = 0, limit: int = 100, year: Optional[str] = None, month: Optional[str] = None, day: Optional[str] = None):
+def get_photos(db: Session, album_id: UUID, skip: int = 0, limit: int = 100, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None):
     query = db.query(Photo).join(Photo.albums).filter(Album.id == album_id).options(joinedload(Photo.albums))
 
-    if year is not None:
-        try:
-            y = int(year)
-            query = query.filter(extract("year", Photo.photo_time) == y)
-        except ValueError:
-            pass
-
-    if month is not None:
-        try:
-            m = int(month)
-            if 1 <= m <= 12:
-                query = query.filter(extract("month", Photo.photo_time) == m)
-        except ValueError:
-            pass
-
-    if day is not None:
-        try:
-            d = int(day)
-            if 1 <= d <= 31:
-                query = query.filter(extract("day", Photo.photo_time) == d)
-        except ValueError:
-            pass
+    if start_time:
+        query = query.filter(Photo.photo_time >= start_time)
+    
+    if end_time:
+        query = query.filter(Photo.photo_time <= end_time)
 
     # 按拍摄时间倒序
     query = query.order_by(Photo.photo_time.desc())
@@ -135,9 +118,8 @@ def get_all_photos(
     db: Session,
     skip: int = 0,
     limit: int = 100,
-    year: Optional[str] = None,
-    month: Optional[str] = None,
-    day: Optional[str] = None,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
     city: Optional[str] = None,
     province: Optional[str] = None,
     country: Optional[str] = None,
@@ -151,45 +133,38 @@ def get_all_photos(
     center_lat: Optional[float] = None,
     center_lng: Optional[float] = None
 ):
-    if album_id == None:
-        query = db.query(Photo).options(joinedload(Photo.albums)).outerjoin(PhotoMetadata)
-    else:
-        query = db.query(Photo).join(Photo.albums).filter(Album.id == album_id).options(joinedload(Photo.albums)).outerjoin(PhotoMetadata)
-    # 年月日筛选优化：支持单独或组合筛选
-    if year is not None:
-        try:
-            y = int(year)
-            query = query.filter(extract("year", Photo.photo_time) == y)
-        except ValueError:
-            pass  # 非法年份忽略
+    # 先筛选 Photo，减少后续连表的数据量
+    photo_query = db.query(Photo.id).distinct()
 
-    if month is not None:
-        try:
-            m = int(month)
-            if 1 <= m <= 12:
-                query = query.filter(extract("month", Photo.photo_time) == m)
-        except ValueError:
-            pass  # 非法月份忽略
+    # 时间范围过滤（Photo 表）
+    if start_time:
+        photo_query = photo_query.filter(Photo.photo_time >= start_time)
+    if end_time:
+        photo_query = photo_query.filter(Photo.photo_time <= end_time)
 
-    if day is not None:
-        try:
-            d = int(day)
-            if 1 <= d <= 31:
-                query = query.filter(extract("day", Photo.photo_time) == d)
-        except ValueError:
-            pass  # 非法日期忽略
+    # 如果指定 album_id，先过滤出该相册下的 photo_id
+    if album_id is not None:
+        photo_query = photo_query.join(Photo.albums).filter(Album.id == album_id)
 
-    # 城市模糊匹配
+    # 得到候选 photo_id 子查询
+    photo_subquery = photo_query.subquery()
+
+    # 主查询：仅对候选照片做连表与剩余过滤
+    query = (
+        db.query(Photo)
+        .join(photo_subquery, Photo.id == photo_subquery.c.id)
+        .options(joinedload(Photo.albums))
+        .outerjoin(PhotoMetadata)
+    )
+
+    # 地理位置与标签过滤（PhotoMetadata 表）
     if city is not None and city.strip():
         query = query.filter(PhotoMetadata.city.ilike(f"%{city.strip()}%"))
-
-    # Province/Country
     if province:
         query = query.filter(PhotoMetadata.province.ilike(f"%{province.strip()}%"))
     if country:
         query = query.filter(PhotoMetadata.country.ilike(f"%{country.strip()}%"))
 
-    # Coordinates
     if lat_min is not None:
         query = query.filter(PhotoMetadata.latitude >= lat_min)
     if lat_max is not None:
@@ -198,19 +173,17 @@ def get_all_photos(
         query = query.filter(PhotoMetadata.longitude >= lng_min)
     if lng_max is not None:
         query = query.filter(PhotoMetadata.longitude <= lng_max)
-        
-    # Radius (km)
+
     if radius is not None and center_lat is not None and center_lng is not None:
         distance_expr = 6371 * func.acos(
-            func.cos(func.radians(PhotoMetadata.latitude)) * 
-            func.cos(func.radians(center_lat)) * 
-            func.cos(func.radians(PhotoMetadata.longitude) - func.radians(center_lng)) + 
-            func.sin(func.radians(PhotoMetadata.latitude)) * 
+            func.cos(func.radians(PhotoMetadata.latitude)) *
+            func.cos(func.radians(center_lat)) *
+            func.cos(func.radians(PhotoMetadata.longitude) - func.radians(center_lng)) +
+            func.sin(func.radians(PhotoMetadata.latitude)) *
             func.sin(func.radians(center_lat))
         )
         query = query.filter(distance_expr <= radius)
 
-    # 标签模糊匹配
     if tag is not None and tag.strip():
         query = query.filter(cast(PhotoMetadata.tags, String).ilike(f"%{tag.strip()}%"))
 

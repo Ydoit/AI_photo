@@ -44,7 +44,8 @@ class TaskManager:
         if self.running:
             return
         self.running = True
-        self.process_pool = concurrent.futures.ProcessPoolExecutor()
+        self._recover_unfinished_tasks()
+        self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=4)
         self.worker_task = asyncio.create_task(self.worker_loop())
         self.result_task = asyncio.create_task(self.result_loop())
         logging.info("TaskManager started")
@@ -73,16 +74,13 @@ class TaskManager:
     async def worker_loop(self):
         logging.info("TaskManager worker loop started")
         active_tasks = set()
-        
         while self.running:
             try:
                 # Clean up finished tasks
                 active_tasks = {t for t in active_tasks if not t.done()}
-                
                 # Update status
                 if active_tasks:
-                     self.scan_status['running'] = True
-                
+                    self.scan_status['running'] = True
                 # Limit concurrency
                 if len(active_tasks) >= 5:
                     await asyncio.sleep(0.1)
@@ -94,14 +92,11 @@ class TaskManager:
                     task = db.query(Task).filter(Task.status == TaskStatus.PENDING)\
                         .order_by(Task.priority.desc(), Task.created_at.asc())\
                         .first()
-                    
                     if task:
                         # Lock task
                         task.status = TaskStatus.PROCESSING
                         db.commit()
-                        
                         self.scan_status['current_task'] = f"{task.type} - {task.id}"
-                        
                         # Launch async wrapper
                         future = asyncio.create_task(self.execute_task_wrapper(task.id, task.type))
                         active_tasks.add(future)
@@ -110,7 +105,6 @@ class TaskManager:
                             self.scan_status['running'] = False
                             self.scan_status['message'] = "Idle"
                         await asyncio.sleep(1)
-                        
                 except Exception as e:
                     logging.error(f"Error in worker loop: {e}")
                     await asyncio.sleep(5)
@@ -128,10 +122,8 @@ class TaskManager:
             task = db.query(Task).filter(Task.id == task_id).first()
             if not task:
                 return
-                
             try:
                 result = await self.process_task(task, db)
-                
                 # Enqueue success result
                 await self.result_queue.put({
                     'task_id': task_id,
@@ -139,7 +131,6 @@ class TaskManager:
                     'status': TaskStatus.COMPLETED,
                     'result': result
                 })
-                
             except Exception as e:
                 logging.error(f"Task {task_id} failed: {e}", exc_info=True)
                 # Enqueue failure result
@@ -149,7 +140,6 @@ class TaskManager:
                     'status': TaskStatus.FAILED,
                     'error': str(e)
                 })
-            
         except Exception as e:
             logging.error(f"Error in task wrapper for {task_id}: {e}")
         finally:
@@ -159,7 +149,6 @@ class TaskManager:
         logging.info("TaskManager result loop started")
         pending_items = []
         last_flush = datetime.now()
-        
         while self.running:
             try:
                 try:
@@ -168,21 +157,49 @@ class TaskManager:
                     pending_items.append(item)
                 except asyncio.TimeoutError:
                     pass
-                
                 now = datetime.now()
                 should_flush = len(pending_items) >= 50 or ((now - last_flush).total_seconds() > 1 and pending_items)
-                
                 if should_flush:
                     self._flush_results(pending_items)
                     pending_items = []
                     last_flush = now
-                    
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logging.error(f"Error in result loop: {e}")
                 await asyncio.sleep(1)
-                
+    def _recover_unfinished_tasks(self):
+        """启动时恢复未完成的任务：重置PROCESSING为PENDING，统计未完成任务数"""
+        db = SessionLocal()
+        try:
+            # 1. 统计未完成任务（PENDING + PROCESSING）
+            pending_tasks = db.query(Task).filter(Task.status == TaskStatus.PENDING).count()
+            processing_tasks = db.query(Task).filter(Task.status == TaskStatus.PROCESSING).count()
+            total_unfinished = pending_tasks + processing_tasks
+
+            if total_unfinished == 0:
+                logging.info("No unfinished tasks to recover")
+                return
+
+            # 2. 重置PROCESSING任务为PENDING（服务重启后，PROCESSING的任务已中断）
+            if processing_tasks > 0:
+                updated = db.query(Task).filter(Task.status == TaskStatus.PROCESSING)\
+                    .update({Task.status: TaskStatus.PENDING})
+                db.commit()
+                logging.info(f"Reset {updated} PROCESSING tasks to PENDING (recovered)")
+
+            # 3. 初始化扫描状态（标记有未完成任务，更新统计）
+            self.scan_status['running'] = True
+            self.scan_status['message'] = f"Recovered {total_unfinished} unfinished tasks"
+            self.scan_status['total_files'] = max(self.scan_status['total_files'], total_unfinished)  # 可选：根据实际业务调整
+            logging.info(f"Recovered total {total_unfinished} unfinished tasks (pending: {pending_tasks}, processing: {processing_tasks})")
+
+        except Exception as e:
+            logging.error(f"Failed to recover unfinished tasks: {e}", exc_info=True)
+            db.rollback()
+        finally:
+            db.close()
+
     def _flush_results(self, items: List[Dict]):
         db = SessionLocal()
         try:

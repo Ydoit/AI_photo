@@ -1,5 +1,13 @@
 <template>
   <div>
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border border-red-100 dark:border-red-900/30">
+            <h3 class="text-sm font-medium text-red-800 dark:text-red-300">数据库新增失败</h3>
+            <p class="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">{{ stats.failed_process_tasks }}</p>
+        </div>
+    </div>
+
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-lg font-semibold text-gray-800 dark:text-white">任务列表</h2>
@@ -79,6 +87,7 @@ import { tasksApi, type Task } from '@/api/tasks'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const tasks = ref<Task[]>([])
+const stats = ref({ failed_process_tasks: 0 })
 const createTaskVisible = ref(false)
 const newTaskForm = ref({
     type: '',
@@ -89,6 +98,7 @@ let taskPollTimer: number | null = null
 const fetchTasks = async () => {
     try {
         tasks.value = await tasksApi.listTasks()
+        stats.value = await tasksApi.getTaskStats()
     } catch (e) {
         console.error("Failed to fetch tasks", e)
     }

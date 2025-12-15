@@ -38,5 +38,10 @@ export const tasksApi = {
   async cancelTask(taskId: string) {
     const { data } = await api.post<Task>(`/api/tasks/${taskId}/cancel`)
     return data
+  },
+
+  async getTaskStats() {
+    const { data } = await api.get<{ failed_process_tasks: number }>('/api/tasks/stats')
+    return data
   }
 }

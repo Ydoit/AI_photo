@@ -21,9 +21,8 @@ class TaskSchema(BaseModel):
     payload: Optional[Dict[str, Any]]
     total_items: Optional[int]
     processed_items: Optional[int]
-    
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class TaskCreate(BaseModel):
     type: str
@@ -35,6 +34,14 @@ def list_tasks(status: str = None, limit: int = 50, db: Session = Depends(get_db
     if status:
         query = query.filter(Task.status == status)
     return query.limit(limit).all()
+
+@router.get("/stats")
+def get_task_stats(db: Session = Depends(get_db)):
+    failed_count = db.query(Task).filter(
+        Task.type == TaskType.PROCESS_IMAGE,
+        Task.status == TaskStatus.FAILED
+    ).count()
+    return {"failed_process_tasks": failed_count}
 
 @router.get("/{task_id}", response_model=TaskSchema)
 def get_task(task_id: UUID, db: Session = Depends(get_db)):

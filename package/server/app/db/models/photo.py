@@ -19,7 +19,7 @@ class Photo(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     filename = Column(String(255))
-    photo_time = Column(DateTime)
+    photo_time = Column(DateTime, index=True)
     file_path = Column(String(255), nullable=False)
     file_type = Column(Enum(FileType), nullable=False)
     upload_time = Column(DateTime, default=datetime.now)
