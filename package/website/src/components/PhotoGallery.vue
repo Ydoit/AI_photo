@@ -1,5 +1,27 @@
 <template>
   <div class="photo-gallery min-h-screen relative" ref="galleryEl">
+    <!-- Skeleton Loader (Initial Load) -->
+    <div v-if="loading && photos.length === 0" class="absolute inset-0 z-10 bg-white dark:bg-gray-950 p-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div v-for="i in 20" :key="i" class="aspect-[3/2] bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse"></div>
+        </div>
+    </div>
+
+    <!-- Error State -->
+    <div v-if="error" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white dark:bg-gray-950">
+        <div class="text-center space-y-4">
+            <p class="text-red-500 font-medium">{{ error }}</p>
+            <button 
+                @click="$emit('retry')"
+                class="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors group relative overflow-hidden"
+            >
+                <div class="absolute inset-0 rounded-lg animate-[pulse_2s_cubic-bezier(0.4,0,0.6,1)_infinite] bg-white/20"></div>
+                <RefreshCcw class="w-4 h-4 group-hover:animate-[spin_1s_ease-in-out]" />
+                <span class="relative z-10">重试</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Batch Action Bar -->
     <transition
       enter-active-class="transition duration-300 ease-out"
@@ -154,7 +176,8 @@
                                 :class="{
                                   'aspect-square bg-gray-100 dark:bg-gray-800': layoutMode === 'grid',
                                   'aspect-[3/2] bg-gray-100 dark:bg-gray-800': layoutMode === 'masonry',
-                                  'flex-grow bg-gray-100 dark:bg-gray-800': layoutMode === 'waterfall'
+                                  'flex-grow bg-gray-100 dark:bg-gray-800': layoutMode === 'waterfall',
+                                  'shrink-animation grayscale opacity-70': pendingRemoveIds.has(img.id)
                                 }"
                                 :style="layoutMode === 'waterfall' ? {
                                     height: rowHeight + 'px',
@@ -246,7 +269,7 @@ import {
   ref, computed, watch, onMounted, onUnmounted, nextTick, toRef, reactive
 } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { CalendarDays, PlayCircle, Image as ImageIcon, MapPin, Check, X, Download, Trash2, FolderMinus, Loader2, PlaySquare, Play, PlayIcon, PlayCircleIcon, Plus, FolderPlus, PhoneOutgoingIcon, PictureInPicture, CloverIcon, ImageMinusIcon, ImagePlusIcon } from 'lucide-vue-next'
+import { CalendarDays, PlayCircle, Image as ImageIcon, MapPin, Check, X, Download, Trash2, FolderMinus, Loader2, PlaySquare, Play, PlayIcon, PlayCircleIcon, Plus, FolderPlus, PhoneOutgoingIcon, PictureInPicture, CloverIcon, ImageMinusIcon, ImagePlusIcon, RefreshCcw } from 'lucide-vue-next'
 import { format } from 'date-fns'
 import { useAlbumStore } from '@/stores/albumStore'
 import { usePhotoStore, type AlbumImage } from '@/stores/photoStore'
@@ -267,6 +290,8 @@ interface Props {
   groupByDate?: boolean
   deleteLabel?: string
   activeDate?: string // v-model
+  pendingRemoveIds?: Set<string>
+  error?: string | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -275,10 +300,12 @@ const props = withDefaults(defineProps<Props>(), {
   groupByDate: true,
   deleteLabel: '删除',
   loading: false,
-  hasMore: false
+  hasMore: false,
+  pendingRemoveIds: () => new Set(),
+  error: null
 })
 
-const emit = defineEmits(['click-photo', 'load-more', 'load-range', 'update:activeDate', 'batch-delete', 'add-to-album', 'remove-from-album', 'set-album-cover'])
+const emit = defineEmits(['click-photo', 'load-more', 'load-range', 'update:activeDate', 'batch-delete', 'add-to-album', 'remove-from-album', 'set-album-cover', 'retry'])
 
     // --- Selection State ---
 const isSelectionMode = ref(false)
@@ -612,23 +639,14 @@ const toggleSelectAll = () => {
     }
 }
 
-const handleDelete = async () => {
+const handleDelete = () => {
     if (localSelectedIds.value.size === 0) return
     
-    try {
-        await ElMessageBox.confirm(
-            `确定要${props.deleteLabel}${localSelectedIds.value.size}张照片吗？`,
-            '提示',
-            {
-                confirmButtonText: '确定',
-                cancelButtonText: '取消',
-                type: 'warning',
-            }
-        )
-        emit('batch-delete', Array.from(localSelectedIds.value))
-        exitSelectionMode()
-    } catch {
-        // Cancelled
+    const ids = Array.from(localSelectedIds.value)
+    if (props.deleteLabel.includes('移除')) {
+        emit('remove-from-album', ids)
+    } else {
+        emit('batch-delete', ids)
     }
 }
 
@@ -651,7 +669,7 @@ const handleDownload = async () => {
       const a = document.createElement('a')
       a.href = url
       // Extract filename or default
-      a.download = photo.url.split('/').pop() || `${photo.filename || photo.id}.jpg`
+      a.download = `${photo.filename}` || `${photo.id}.jpg`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -659,7 +677,7 @@ const handleDownload = async () => {
 
       completed++
       downloadProgress.value = Math.round((completed / total) * 100)
-
+      console.log(`Downloaded ${completed}/${total} (${downloadProgress.value}%) ${photo.filename || photo.id}`)
       // Small delay to ensure browser registers the download
       await new Promise(resolve => setTimeout(resolve, 200))
     } catch (error) {
@@ -684,4 +702,13 @@ defineExpose({
 
 <style scoped>
 /* No scrollbar style needed as we use window scroll */
+  /* Existing styles */
+  .shrink-animation {
+    animation: shrink 0.25s forwards ease-in-out;
+  }
+  
+  @keyframes shrink {
+    0% { transform: scale(1); }
+    100% { transform: scale(0.8); opacity: 0.5; }
+  }
 </style>

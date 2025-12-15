@@ -112,14 +112,16 @@
         :photos="images"
         :timeline-stats="photoStore.timelineStats"
         :loading="photoStore.loading"
-        :has-more="photoStore.hasMore"
-        :layout-mode="layoutMode"
+      :has-more="photoStore.hasMore"
+      :error="photoStore.error"
+      :layout-mode="layoutMode"
         :view-size="viewSize"
         v-model:active-date="activeDate"
         @load-more="photoStore.loadPhotos"
         @click-photo="openLightbox"
         @batch-delete="handleBatchDelete"
         @add-to-album="handleBatchAddToAlbum"
+        @retry="photoStore.loadPhotos(true)"
       />
     </div>
 
@@ -172,20 +174,32 @@
               v-for="album in albums"
               :key="album.id"
               @click="confirmAddToAlbum(album.id)"
-              class="w-full flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/80 backdrop-blur-md rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group"
+              class="w-full flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/80 backdrop-blur-md rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group relative overflow-hidden"
+              :class="{ 'shake-animation border border-red-500': errorAlbumId === album.id }"
             >
               <div class="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-500 group-hover:scale-110 transition-transform">
-                <Folder class="w-5 h-5" />
+                 <Loader2 v-if="loadingAlbumId === album.id" class="w-5 h-5 animate-spin" />
+                 <Check v-else-if="successAlbumId === album.id" class="w-5 h-5 animate-in zoom-in duration-300" />
+                 <Folder v-else class="w-5 h-5" />
               </div>
               <div>
                 <h4 class="font-medium text-gray-900 dark:text-white">{{ album.title }}</h4>
                 <p class="text-xs text-gray-500">{{ album.count }} 张照片</p>
               </div>
+               <!-- Success Fade Overlay -->
+               <div v-if="successAlbumId === album.id" class="absolute inset-0 bg-green-500/10 animate-in fade-in duration-300 pointer-events-none"></div>
             </button>
           </div>
         </div>
       </div>
     </div>
+    <ConfirmDialog
+      v-model:visible="showDeleteConfirm"
+      title="确认删除"
+      message="确定要删除选中的照片吗？此操作无法撤销。"
+      @confirm="confirmDelete"
+    />
+    <ParticleExplosion :active="showParticle" @complete="showParticle = false" />
   </div>
 </template>
 
@@ -195,13 +209,15 @@ import { useAlbumStore } from '@/stores/albumStore'
 import { usePhotoStore, type AlbumImage } from '@/stores/photoStore'
 import { 
   X, Maximize, Grid3x3, Grid2x2, LayoutDashboard, LayoutGrid, LayoutList,
-  UploadCloud, CheckSquare, FolderInput, Folder, Settings2
+  UploadCloud, CheckSquare, FolderInput, Folder, Settings2, Loader2, Check
 } from 'lucide-vue-next'
 import { onClickOutside } from '@vueuse/core'
 import AlbumTimeline from '@/components/AlbumTimeline.vue'
 import PhotoLightbox from '@/components/PhotoLightbox.vue'
 import MultiFileUpload from '@/components/MultiFileUpload.vue'
 import PhotoGallery from '@/components/PhotoGallery.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import ParticleExplosion from '@/components/ParticleExplosion.vue'
 import { format } from 'date-fns'
 import { ElMessage } from 'element-plus'
 
@@ -219,6 +235,11 @@ const lightboxImage = ref<AlbumImage | null>(null)
 const showViewOptions = ref(false)
 const viewOptionsRef = ref<HTMLElement | null>(null)
 
+// Animation State
+const loadingAlbumId = ref<string | null>(null)
+const successAlbumId = ref<string | null>(null)
+const errorAlbumId = ref<string | null>(null)
+
 onClickOutside(viewOptionsRef, () => {
   showViewOptions.value = false
 })
@@ -226,6 +247,11 @@ onClickOutside(viewOptionsRef, () => {
 // Batch Actions State
 const showAlbumSelectModal = ref(false)
 const tempSelectedIds = ref<string[]>([])
+
+// Delete Confirmation & Animation
+const showDeleteConfirm = ref(false)
+const showParticle = ref(false)
+const idsToDelete = ref<string[]>([])
 
 // Gallery Ref
 const galleryRef = ref<InstanceType<typeof PhotoGallery> | null>(null)
@@ -248,7 +274,22 @@ galleryRef.value?.enterSelectionMode()
 
 const handleBatchDelete = async (ids: string[]) => {
   if (ids.length === 0) return
-  await photoStore.deletePhotos(ids)
+  idsToDelete.value = ids
+  showDeleteConfirm.value = true
+}
+
+const confirmDelete = async () => {
+  try {
+    await photoStore.deletePhotos(idsToDelete.value)
+    galleryRef.value?.exitSelectionMode()
+    photoStore.loadPhotos(true)
+    
+    // Play particle animation
+    showParticle.value = true
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('删除失败')
+  }
 }
 
 const handleBatchAddToAlbum = (ids: string[]) => {
@@ -263,15 +304,35 @@ const closeAlbumSelectModal = () => {
 }
 
 const confirmAddToAlbum = async (targetAlbumId: string) => {
+  if (loadingAlbumId.value) return
+  
+  loadingAlbumId.value = targetAlbumId
+  errorAlbumId.value = null
+
   try {
     await store.addPhotosToAlbum(tempSelectedIds.value, 'add_to_album', targetAlbumId)
-    closeAlbumSelectModal()
-    galleryRef.value?.exitSelectionMode()
-    photoStore.loadPhotos(true) // Reload
-    ElMessage.success(`成功添加到相册`)
+    
+    loadingAlbumId.value = null
+    successAlbumId.value = targetAlbumId
+    
+    // Play success animation (300ms)
+    setTimeout(() => {
+        closeAlbumSelectModal()
+        galleryRef.value?.exitSelectionMode()
+        photoStore.loadPhotos(true) // Reload
+        ElMessage.success(`成功添加到相册`)
+        successAlbumId.value = null
+    }, 300)
   } catch (error) {
     console.error('Batch add failed:', error)
-    ElMessage.error('添加失败')
+    loadingAlbumId.value = null
+    errorAlbumId.value = targetAlbumId
+    // ElMessage.error('添加失败') // Handled by shake animation visual cue
+    
+    // Reset error state after shake animation
+    setTimeout(() => {
+        errorAlbumId.value = null
+    }, 500)
   }
 }
 
@@ -348,4 +409,22 @@ onUnmounted(() => {
 
 .slide-up-enter-active, .slide-up-leave-active { transition: all 0.3s ease; }
 .slide-up-enter-from, .slide-up-leave-to { transform: translateY(20px); opacity: 0; }
+
+.shake-animation {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shake-animation {
+    animation: none;
+    border: 2px solid red; /* Visual cue instead of motion */
+  }
+}
 </style>

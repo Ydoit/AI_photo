@@ -55,7 +55,7 @@ class Photo(PhotoBase):
     # album_id removed from core Photo model, usually returned as separate list or part of details
     file_path: str = Field(exclude=True)
     upload_time: datetime
-    metadata_info: Optional[PhotoMetadata] = None
+    # metadata_info: Optional[PhotoMetadata] = None
     album_ids: Optional[List[UUID]] = [] # Helper field for API response
 
     @computed_field

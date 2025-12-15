@@ -541,7 +541,7 @@ const downloadImage = async () => {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `photo_${props.image.id}.jpg` // Simple filename
+        a.download = `${props.image.filename}` || `photo_${props.image.id}.jpg` // Simple filename
         document.body.appendChild(a)
         a.click()
         window.URL.revokeObjectURL(url)

@@ -6,7 +6,7 @@
         
         <!-- Back & Title -->
         <div class="flex items-center gap-3 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
-          <button @click="router.back()" class="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+          <button @click="router.back()" class="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors bg-white dark:bg-gray-900">
             <ArrowLeft class="w-5 h-5 text-gray-600 dark:text-gray-300" />
           </button>
           <div class="pr-2">
@@ -20,14 +20,14 @@
           
           <!-- View Options Menu -->
           <div class="relative">
-             <button 
+             <button
                @click="showViewOptions = !showViewOptions"
                class="p-2 text-gray-700 dark:text-gray-200 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md hover:bg-white dark:hover:bg-gray-900 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50 transition-all"
                title="视图设置"
              >
                <Settings2 class="w-5 h-5" />
              </button>
- 
+
              <!-- Secondary Menu Dropdown -->
              <Transition
                enter-active-class="transition duration-200 ease-out"
@@ -37,7 +37,7 @@
                leave-from-class="transform scale-100 opacity-100"
                leave-to-class="transform scale-95 opacity-0"
              >
-               <div v-if="showViewOptions" 
+               <div v-if="showViewOptions"
                     ref="viewOptionsRef"
                     class="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 p-2 z-50 origin-top-right"
                >
@@ -57,7 +57,7 @@
                        </button>
                      </div>
                    </div>
- 
+
                    <!-- Layout Mode -->
                    <div class="space-y-2">
                      <p class="text-xs font-medium text-gray-500 px-1">布局模式</p>
@@ -124,10 +124,12 @@
         :timeline-stats="photoStore.timelineStats"
         :loading="photoStore.loading"
         :has-more="photoStore.hasMore"
+        :error="photoStore.error"
         :layout-mode="layoutMode"
         :view-size="viewSize"
         :group-by-date="true"
         :delete-label="album?.type === 'custom' ? '从相册中移除' : '删除'"
+        :pending-remove-ids="pendingRemoveIds"
         v-model:active-date="activeDate"
         @click-photo="openLightbox"
         @load-more="loadMorePhotos"
@@ -135,6 +137,7 @@
         @batch-delete="handleBatchDelete"
         @remove-from-album="handleBatchRemoveFromAlbum"
         @set-album-cover="setCover"
+        @retry="photoStore.loadAlbumPhotos(albumId, true)"
       >
         <template #overlay-actions="{ photo }">
            <!-- <button
@@ -206,20 +209,42 @@
               v-for="album in albums"
               :key="album.id"
               @click="confirmAddToAlbum(album.id)"
-              class="w-full flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/80 backdrop-blur-md rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group"
+              class="w-full flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/80 backdrop-blur-md rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group relative overflow-hidden"
+              :class="{ 'shake-animation border border-red-500': errorAlbumId === album.id }"
             >
               <div class="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-500 group-hover:scale-110 transition-transform">
-                <Folder class="w-5 h-5" />
+                <Loader2 v-if="loadingAlbumId === album.id" class="w-5 h-5 animate-spin" />
+                <Check v-else-if="successAlbumId === album.id" class="w-5 h-5 animate-in zoom-in duration-300" />
+                <Folder v-else class="w-5 h-5" />
               </div>
               <div>
                 <h4 class="font-medium text-gray-900 dark:text-white">{{ album.title }}</h4>
                 <p class="text-xs text-gray-500">{{ album.count }} 张照片</p>
               </div>
+              <!-- Success Fade Overlay -->
+              <div v-if="successAlbumId === album.id" class="absolute inset-0 bg-green-500/10 animate-in fade-in duration-300 pointer-events-none"></div>
             </button>
           </div>
         </div>
       </div>
     </div>
+    <!-- Delete Confirmation -->
+    <ConfirmDialog
+      v-model:visible="showDeleteConfirm"
+      title="确认删除"
+      :message="`确定要${album?.type === 'custom' ? '移除' : '删除'}选中的 ${idsToDelete.length} 张照片吗？`"
+      confirm-text="确定"
+      cancel-text="取消"
+      type="danger"
+      @confirm="confirmDelete"
+    />
+
+    <!-- Particle Effect -->
+    <ParticleExplosion
+      v-if="showParticle"
+      :active="showParticle"
+      @complete="showParticle = false"
+    />
   </div>
 </template>
 
@@ -231,13 +256,15 @@ import { usePhotoStore, type AlbumImage } from '@/stores/photoStore'
 import { albumService } from '@/api/album'
 import {
   ArrowLeft, Grid3x3, Grid2x2, Maximize, LayoutDashboard, LayoutGrid, LayoutList,
-  UploadCloud, Trash2, X, CheckSquare, Settings2, Folder
+  UploadCloud, Trash2, X, CheckSquare, Settings2, Folder, Loader2, Check
 } from 'lucide-vue-next'
 import { onClickOutside } from '@vueuse/core'
 import AlbumTimeline from '@/components/AlbumTimeline.vue'
 import PhotoLightbox from '@/components/PhotoLightbox.vue'
 import MultiFileUpload from '@/components/MultiFileUpload.vue'
 import PhotoGallery from '@/components/PhotoGallery.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import ParticleExplosion from '@/components/ParticleExplosion.vue'
 import { format } from 'date-fns'
 import { ElMessage } from 'element-plus'
 
@@ -262,6 +289,17 @@ const showViewOptions = ref(false)
 const viewOptionsRef = ref<HTMLElement | null>(null)
 const showAlbumSelectModal = ref(false)
 const tempSelectedIds = ref<string[]>([])
+const pendingRemoveIds = ref(new Set<string>())
+
+// Delete Confirmation & Animation
+const showDeleteConfirm = ref(false)
+const showParticle = ref(false)
+const idsToDelete = ref<string[]>([])
+
+// Album Add Animation
+const loadingAlbumId = ref<string | null>(null)
+const successAlbumId = ref<string | null>(null)
+const errorAlbumId = ref<string | null>(null)
 
 onClickOutside(viewOptionsRef, () => {
   showViewOptions.value = false
@@ -368,22 +406,63 @@ const setCover = async (ids: string[]) => {
 }
 
 const handleBatchDelete = async (ids: string[]) => {
-    if (album.value?.type === 'custom') {
-        await store.removePhotosFromAlbum(albumId, ids)
-    } else {
-        await photoStore.deletePhotos(ids)
+    if (ids.length === 0) return
+    idsToDelete.value = ids
+    showDeleteConfirm.value = true
+}
+
+const confirmDelete = async () => {
+    try {
+        if (album.value?.type === 'custom') {
+            await store.removePhotosFromAlbum(albumId, idsToDelete.value)
+        } else {
+            await photoStore.deletePhotos(idsToDelete.value)
+            // Play particle animation
+            showParticle.value = true
+        }
+        galleryRef.value?.exitSelectionMode()
+        photoStore.loadAlbumPhotos(albumId, true)
+    } catch (e) {
+        console.error(e)
+        ElMessage.error('操作失败')
     }
 }
 
 const handleBatchRemoveFromAlbum = async (ids: string[]) => {
     if (ids.length === 0) return
+    
+    // Optimistic UI: Mark as pending remove (shrink animation)
+    ids.forEach(id => pendingRemoveIds.value.add(id))
+
+    // Timeout Promise (3s)
+    const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 3000)
+    )
+
     try {
-        await store.removePhotosFromAlbum(albumId, ids)
+        await Promise.race([
+            store.removePhotosFromAlbum(albumId, ids),
+            timeout
+        ])
+        
         galleryRef.value?.exitSelectionMode()
         photoStore.loadAlbumPhotos(albumId, true)
         ElMessage.success('已移出相册')
-    } catch (e) {
-        ElMessage.error('移出失败')
+        
+        // Clear pending IDs after successful removal and reload
+        // We delay slightly to ensure the list update has processed
+        setTimeout(() => {
+             ids.forEach(id => pendingRemoveIds.value.delete(id))
+        }, 500)
+    } catch (e: any) {
+        if (e.message === 'Timeout') {
+            ElMessage.warning('操作超时，标记为待删除')
+            // Keep in pendingRemoveIds to maintain visual state
+        } else {
+            ElMessage.error('移出失败')
+            // Revert optimistic update on error
+            ids.forEach(id => pendingRemoveIds.value.delete(id))
+        }
     }
 }
 
@@ -393,14 +472,35 @@ const closeAlbumSelectModal = () => {
 }
 
 const confirmAddToAlbum = async (targetAlbumId: string) => {
+  if (loadingAlbumId.value) return
+  
+  loadingAlbumId.value = targetAlbumId
+  errorAlbumId.value = null
+
   try {
     await store.addPhotosToAlbum(tempSelectedIds.value, 'add_to_album', targetAlbumId)
-    closeAlbumSelectModal()
-    photoStore.loadAlbumPhotos(albumId, true) // Reload
-    ElMessage.success(`成功添加到相册`)
+    
+    loadingAlbumId.value = null
+    successAlbumId.value = targetAlbumId
+    
+    // Play success animation (300ms)
+    setTimeout(() => {
+        closeAlbumSelectModal()
+        galleryRef.value?.exitSelectionMode()
+        // photoStore.loadAlbumPhotos(albumId, true) // Don't reload current album, just add to other
+        ElMessage.success(`成功添加到相册`)
+        successAlbumId.value = null
+    }, 300)
   } catch (error) {
     console.error('Batch add failed:', error)
-    ElMessage.error('添加失败')
+    loadingAlbumId.value = null
+    errorAlbumId.value = targetAlbumId
+    // ElMessage.error('添加失败') // Handled by shake animation visual cue
+    
+    // Reset error state after shake animation
+    setTimeout(() => {
+        errorAlbumId.value = null
+    }, 500)
   }
 }
 
@@ -450,4 +550,22 @@ onUnmounted(() => {
 
 .slide-up-enter-active, .slide-up-leave-active { transition: all 0.3s ease; }
 .slide-up-enter-from, .slide-up-leave-to { transform: translateY(20px); opacity: 0; }
+
+.shake-animation {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shake-animation {
+    animation: none;
+    border: 2px solid red; /* Visual cue instead of motion */
+  }
+}
 </style>

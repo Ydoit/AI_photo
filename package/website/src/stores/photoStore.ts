@@ -91,6 +91,7 @@ export const usePhotoStore = defineStore('photo', () => {
   const images = ref<AlbumImage[]>([])
   const loading = ref(false)
   const hasMore = ref(true)
+  const error = ref<string | null>(null)
   const currentContext = ref<{ type: 'all' | 'album', id?: string }>({ type: 'all' })
   const timelineStats = ref<TimelineStats>()
 
@@ -232,6 +233,7 @@ export const usePhotoStore = defineStore('photo', () => {
     };
 
     loading.value = true;
+    error.value = null;
     loadedDates.add(dateKey);
 
     const requestId = ++currentRequestId;
@@ -270,12 +272,13 @@ export const usePhotoStore = defineStore('photo', () => {
         }
         processPhotos(photosData);
 
-    } catch (error) {
+    } catch (err) {
         loadedDates.delete(dateKey);
-        if (error instanceof Error && error.name === 'AbortError') {
+        if (err instanceof Error && err.name === 'AbortError') {
            console.log('请求已取消');
         } else {
-           console.error("按月获取照片失败", error);
+           console.error("按月获取照片失败", err);
+           error.value = '加载失败，请重试';
         }
     } finally {
         activeRequests.delete(requestId);
@@ -370,6 +373,7 @@ export const usePhotoStore = defineStore('photo', () => {
     deletePhoto,
     deletePhotos,
     cancelAllPendingLoads,
-    resetAll
+    resetAll,
+    error
   }
 })

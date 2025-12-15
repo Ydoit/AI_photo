@@ -5,6 +5,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 5000, // Default timeout 5s
 });
 
 export const albumService = {

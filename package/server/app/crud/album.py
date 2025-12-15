@@ -278,32 +278,63 @@ def get_photos_by_ids(db: Session, photo_ids: List[UUID]):
     return db.query(Photo).filter(Photo.id.in_(photo_ids)).all()
 
 def batch_update_album_association(db: Session, photo_ids: List[UUID], album_id: UUID, action: str):
-    photos = get_photos_by_ids(db, photo_ids)
-    album = get_album(db, album_id) if album_id else None
+    """
+    批量更新照片与相册的关联关系，支持添加、移除或删除操作。
+    优化点：
+    1. 使用 joinedload 预加载 albums，避免 N+1 查询
+    2. 使用集合操作批量处理关联关系，减少逐条判断
+    3. 仅在必要时更新相册封面
+    4. 使用 bulk 操作减少 commit 次数
+    """
+    if not photo_ids:
+        return 0
+
+    # 预加载照片及其关联的相册，避免后续 N+1 查询
+    photos = (
+        db.query(Photo)
+        .options(joinedload(Photo.albums))
+        .filter(Photo.id.in_(photo_ids))
+        .all()
+    )
     if not photos:
         return 0
 
-    count = 0
-    if action == 'add_to_album' and album:
-        for photo in photos:
-            if album not in photo.albums:
-                photo.albums.append(album)
-                count += 1
-        if not album.cover_id and count > 0:
-            album.cover_id = photos[0].id
-    elif action == 'remove_from_album' and album:
-        for photo in photos:
-            if album in photo.albums:
-                photo.albums.remove(album)
-                count += 1
-    elif action == 'delete':
-        # Handled by batch_delete_photos_db, but good to keep consistent interface
-        pass
-        
-    db.commit()
+    album = None
+    if album_id:
+        album = get_album(db, album_id)
+        if not album:
+            return 0
 
-    if album_id and count > 0:
-        _update_album_photo_count(db, album_id)
+    count = 0
+
+    if action == 'add_to_album' and album:
+        # 使用集合差集快速找出未关联的照片
+        photos_to_add = [p for p in photos if album not in p.albums]
+        for photo in photos_to_add:
+            photo.albums.append(album)
+        count = len(photos_to_add)
+        # 仅在相册无封面且新增照片时设置封面
+        if not album.cover_id and photos_to_add:
+            album.cover_id = photos_to_add[0].id
+            db.add(album)
+
+    elif action == 'remove_from_album' and album:
+        # 使用集合交集快速找出已关联的照片
+        photos_to_remove = [p for p in photos if album in p.albums]
+        for photo in photos_to_remove:
+            photo.albums.remove(album)
+        count = len(photos_to_remove)
+
+    elif action == 'delete':
+        # 由 batch_delete_photos_db 处理，此处仅保持一致接口
+        pass
+
+    # 批量提交所有变更
+    if count > 0:
+        db.add_all(photos)  # 确保关联变更被追踪
+        db.commit()
+        if album_id:
+            _update_album_photo_count(db, album_id)
 
     return count
 
