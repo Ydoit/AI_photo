@@ -6,7 +6,7 @@
     @mouseleave="handleMouseLeave"
     @touchstart="handleTouchStart"
     @touchmove="handleTouchMove"
-    @touchend="handleMouseLeave"
+    @touchend="handleTouchEnd"
     @click="handleItemClick"
   >
     <div
@@ -245,6 +245,19 @@ const handleTouchMove = (e: TouchEvent) => {
   rafId = requestAnimationFrame(() => {
     if (e.touches.length > 0) updatePosition(e.touches[0].clientY)
   })
+}
+
+const handleTouchEnd = (e: TouchEvent) => {
+  e.preventDefault()
+  if (hoveredDate.value) {
+    emit('select', hoveredDate.value)
+  }
+  
+  // Small delay before hiding to provide visual feedback
+  setTimeout(() => {
+    isHovering.value = false
+    hoveredDate.value = null
+  }, 200)
 }
 
 onUnmounted(() => {
