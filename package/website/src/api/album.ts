@@ -43,14 +43,14 @@ export const albumService = {
 
   // Photos
   async getAllPhotos(skip: number = 0, limit: number = 100, filters?: { start_time?: string, end_time?: string, city?: string, tag?: string}) {
-    const { data } = await api.get<{items: Photo[], total: number}>('/api/photos', {
+    const { data } = await api.get<Photo[]>('/api/photos', {
       params: { skip, limit, ...filters }
     });
     return data;
   },
 
   async getPhotos(albumId: string, skip: number = 0, limit: number = 100, filters?: { start_time?: string, end_time?: string }) {
-    const { data } = await api.get<{items: Photo[], total: number}>(`/api/albums/${albumId}/photos`, {
+    const { data } = await api.get<Photo[]>(`/api/albums/${albumId}/photos`, {
       params: { skip, limit, ...filters }
     });
     return data;

@@ -109,12 +109,10 @@ def get_photos(db: Session, album_id: UUID, skip: int = 0, limit: int = 100, sta
     # 按拍摄时间倒序
     query = query.order_by(Photo.photo_time.desc())
 
-    total = query.count()
-
     if limit == 0:
         # 不限制数量，返回所有照片
-        return query.offset(skip).all(), total
-    return query.offset(skip).limit(limit).all(), total
+        return query.offset(skip).all()
+    return query.offset(skip).limit(limit).all()
 
 def get_all_photos(
     db: Session,
@@ -191,10 +189,7 @@ def get_all_photos(
 
     # 按拍摄时间倒序
     query = query.order_by(Photo.photo_time.desc())
-    
-    total = query.count()
-    
-    return query.offset(skip).limit(limit).all(), total
+    return query.offset(skip).limit(limit).all()
 
 def get_photo(db: Session, photo_id: UUID):
     return db.query(Photo).options(joinedload(Photo.albums)).filter(Photo.id == photo_id).first()
