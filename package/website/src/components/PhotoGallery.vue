@@ -453,6 +453,18 @@ const handleScroll = useDebounceFn(() => {
         if (props.activeDate !== dateStr) {
             emit('update:activeDate', dateStr)
         }
+
+        // Infinite Scroll Check
+        // If we are near the bottom of the page, try to load more for the last visible month
+        const docHeight = document.documentElement.scrollHeight
+        if (scrollTop.value + viewportHeight.value > docHeight - 1000) {
+             const lastBlock = visibleBlocksList.value[visibleBlocksList.value.length - 1]
+             if (lastBlock) {
+                 const context = store.currentContext
+                 const albumId = context.type === 'album' ? context.id : undefined
+                 store.loadPhotosByMonth(lastBlock.year, lastBlock.month, albumId)
+             }
+        }
     }
 }, 50, { maxWait: 100 }) // More aggressive update for row virtualization
 
@@ -492,13 +504,8 @@ const checkAndLoadVisibleMonths = (refresh = false) => {
     const context = store.currentContext
     const albumId = context.type === 'album' ? context.id : undefined
     visibleBlocksList.value.forEach(block => {
-        const key = `${block.year}-${block.month}`
-        // Check if we have photos for this month
-        // store uses "YYYY-MM" format in loadPhotosByMonth
-        // Note: hasPhotos(key) checks props.photos. 
-        if (!hasPhotosForMonth(key) || refresh) {
-             store.loadPhotosByMonth(block.year, block.month, albumId, refresh)
-        }
+        // Always try to load. The store handles deduplication and pagination checks.
+        store.loadPhotosByMonth(block.year, block.month, albumId, refresh)
     })
 }
 

@@ -155,7 +155,9 @@ export const usePhotoStore = defineStore('photo', () => {
   }
 
   const activeOffsets = new Set<number>();
-  const loadedDates = reactive(new Set<string>());
+  // loadedDates replaced by monthPaginationState
+  // Key: "YYYY-MM", Value: { loaded: number, total: number, loading: boolean }
+  const monthPaginationState = reactive(new Map<string, { loaded: number, total: number, loading: boolean }>());
   const photoOffsetMap = reactive(new Map<number, AlbumImage>());
 
   // 追踪活跃请求以支持取消
@@ -191,7 +193,7 @@ export const usePhotoStore = defineStore('photo', () => {
   }
 
   const pruneCache = (centerOffset: number) => {
-      const KEEP_RADIUS = 300; // 保留中心前后 300 张
+      const KEEP_RADIUS = 500; // Increased radius
       const min = centerOffset - KEEP_RADIUS;
       const max = centerOffset + KEEP_RADIUS;
       // 清理 Map
@@ -202,21 +204,40 @@ export const usePhotoStore = defineStore('photo', () => {
       }
   }
 
-  const loadPhotosByMonth = async (year: number, month: number, albumId?: string, refresh = false) => {
+  const loadPhotosByMonth = async (
+      year: number, 
+      month: number, 
+      albumId?: string, 
+      refresh: boolean = false,
+      skip?: number, 
+      limit: number = 100
+  ) => {
     const dateKey = `${year}-${String(month).padStart(2, '0')}`;
-    // Check if already loaded or loading
-    if (loadedDates.has(dateKey) && !refresh) return;
+    
+    // Initialize or get state
+    if (!monthPaginationState.has(dateKey) || refresh) {
+        monthPaginationState.set(dateKey, { loaded: 0, total: -1, loading: false });
+    }
+    const state = monthPaginationState.get(dateKey)!;
 
-    // Get offset info for the whole month
+    // Determine actual skip
+    const currentSkip = skip !== undefined ? skip : state.loaded;
+
+    // Checks
+    if (state.loading) return;
+    if (state.total !== -1 && currentSkip >= state.total) return; // Fully loaded
+
+    // Get offset info for the whole month (to map to global index)
     const offsetInfo = getOffsetRangeForMonth(year, month);
-    if (!offsetInfo || offsetInfo.count === 0) return;
+    if (!offsetInfo) return;
 
-    const processPhotos = (photos: Photo[]) => {
+    const processPhotos = (photos: Photo[], total: number) => {
         const newImages = photos.map(mapPhotoToImage);
 
         // Populate PhotoOffsetMap
+        // Global Index = MonthStartOffset + LocalSkip + IndexInPage
         newImages.forEach((img, index) => {
-            photoOffsetMap.set(offsetInfo.start + index, img);
+            photoOffsetMap.set(offsetInfo.start + currentSkip + index, img);
         });
 
         // Sync main list
@@ -227,19 +248,25 @@ export const usePhotoStore = defineStore('photo', () => {
             images.value.push(...toAdd);
             images.value.sort((a, b) => b.timestamp - a.timestamp);
         }
+        
+        // Update State
+        state.loaded = currentSkip + photos.length;
+        state.total = total;
+        state.loading = false;
+
         // Prune cache around the loaded area
-        pruneCache(offsetInfo.start + offsetInfo.count / 2);
+        pruneCache(offsetInfo.start + currentSkip);
     };
 
     loading.value = true;
-    loadedDates.add(dateKey);
+    state.loading = true;
 
     const requestId = ++currentRequestId;
     const controller = new AbortController();
     activeRequests.set(requestId, controller);
 
     try {
-        let photosData: Photo[] = [];
+        let response: { items: Photo[], total: number } = { items: [], total: 0 };
         
         // Calculate start and end time for the month
         const startDate = new Date(year, month - 1, 1);
@@ -256,22 +283,20 @@ export const usePhotoStore = defineStore('photo', () => {
             end_time: formatDate(endDate)
         };
         
-        const count = offsetInfo.count;
-
         if (albumId) {
-             photosData = await albumService.getPhotos(albumId, 0, count, filters);
+             response = await albumService.getPhotos(albumId, currentSkip, limit, filters);
         } else {
-             photosData = await albumService.getAllPhotos(0, count, filters);
+             response = await albumService.getAllPhotos(currentSkip, limit, filters);
         }
 
         if (!activeRequests.has(requestId)) {
-            loadedDates.delete(dateKey); 
+            state.loading = false; 
             return;
         }
-        processPhotos(photosData);
+        processPhotos(response.items, response.total);
 
     } catch (error) {
-        loadedDates.delete(dateKey);
+        state.loading = false;
         if (error instanceof Error && error.name === 'AbortError') {
            console.log('请求已取消');
         } else {
@@ -297,7 +322,7 @@ export const usePhotoStore = defineStore('photo', () => {
       if (reset) {
           images.value = [];
           photoOffsetMap.clear();
-          loadedDates.clear();
+          monthPaginationState.clear();
           currentContext.value = { type: 'all' };
       }
       await fetchTimelineStats();
@@ -308,7 +333,7 @@ export const usePhotoStore = defineStore('photo', () => {
       if (reset) {
           images.value = [];
           photoOffsetMap.clear();
-          loadedDates.clear();
+          monthPaginationState.clear();
       }
       currentContext.value = { type: 'album', id: albumId };
       await fetchTimelineStats(albumId);
@@ -346,7 +371,9 @@ export const usePhotoStore = defineStore('photo', () => {
       timelineStats.value = { total_photos: 0, time_range: {start: null, end: null}, timeline: [] };
       images.value = [];
       photoOffsetMap.clear();
-      loadedDates.clear();
+      monthPaginationState.clear();
+      activeOffsets.clear();
+      cancelAllPendingLoads();
       currentContext.value = { type: 'all' };
   }
 

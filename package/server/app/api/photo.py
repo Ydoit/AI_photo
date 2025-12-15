@@ -29,7 +29,7 @@ router = APIRouter()
 
 # Photo Endpoints
 
-@router.get("", response_model=List[schemas.Photo])
+@router.get("", response_model=schemas.PhotoPage)
 def read_all_photos(
         skip: int = 0,
         limit: int = 100,
@@ -49,13 +49,13 @@ def read_all_photos(
         center_lng: Optional[float] = None,
         db: Session = Depends(get_db)
 ):
-    photos = crud.get_all_photos(
+    photos, total = crud.get_all_photos(
         db, skip=skip, limit=limit, start_time=start_time, end_time=end_time,
         city=city, province=province, country=country, tag=tag, album_id=album_id,
         lat_min=lat_min, lat_max=lat_max, lng_min=lng_min, lng_max=lng_max,
         radius=radius, center_lat=center_lat, center_lng=center_lng
     )
-    return photos
+    return {"items": photos, "total": total}
 
 
 @router.post("/batch/create")

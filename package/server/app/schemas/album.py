@@ -69,6 +69,10 @@ class Photo(PhotoBase):
     class Config:
         from_attributes = True
 
+class PhotoPage(BaseModel):
+    items: List[Photo]
+    total: int
+
 class PhotoGroup(BaseModel):
     date: str
     items: List[Photo]
