@@ -9,6 +9,8 @@ from datetime import datetime
 from app.db.models.album import Album
 from app.db.models.photo import Photo
 from app.db.models.photo_metadata import PhotoMetadata
+from app.db.models.face import Face
+from app.db.models.tag import PhotoTag
 from app.schemas import album as schemas
 from app.service import storage
 from app.db.models.photo import FileType
@@ -84,10 +86,10 @@ def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id:
     loc_details = extracted_meta.get("location_details", {})
     metadata_create = schemas.PhotoMetadataCreate(
         exif_info=extracted_meta["exif_info"],
-        location=extracted_meta["location"],
         longitude=loc_details.get("longitude"),
         latitude=loc_details.get("latitude"),
         city=loc_details.get("city"),
+        district=loc_details.get("district"),
         province=loc_details.get("province"),
         country=loc_details.get("country"),
         address=loc_details.get("address")
@@ -125,6 +127,8 @@ def get_all_photos(
     country: Optional[str] = None,
     tag: Optional[str] = None,
     album_id: Optional[UUID] = None,
+    face_id: Optional[UUID] = None,
+    tag_id: Optional[UUID] = None,
     lat_min: Optional[float] = None,
     lat_max: Optional[float] = None,
     lng_min: Optional[float] = None,
@@ -145,6 +149,18 @@ def get_all_photos(
     # 如果指定 album_id，先过滤出该相册下的 photo_id
     if album_id is not None:
         photo_query = photo_query.join(Photo.albums).filter(Album.id == album_id)
+        
+    # Face Identity Filter
+    if face_id is not None:
+        photo_query = photo_query.join(Photo.faces).filter(Face.face_identity_id == face_id)
+
+    # Tag ID Filter
+    if tag_id is not None:
+        photo_query = photo_query.join(Photo.tags).filter(PhotoTag.id == tag_id)
+        
+    # Tag Name Filter (if tag string provided)
+    if tag is not None and tag.strip():
+        photo_query = photo_query.join(Photo.tags).filter(PhotoTag.tag_name.ilike(f"%{tag.strip()}%"))
 
     # 得到候选 photo_id 子查询
     photo_subquery = photo_query.subquery()
@@ -183,9 +199,6 @@ def get_all_photos(
             func.sin(func.radians(center_lat))
         )
         query = query.filter(distance_expr <= radius)
-
-    if tag is not None and tag.strip():
-        query = query.filter(cast(PhotoMetadata.tags, String).ilike(f"%{tag.strip()}%"))
 
     # 按拍摄时间倒序
     query = query.order_by(Photo.photo_time.desc())

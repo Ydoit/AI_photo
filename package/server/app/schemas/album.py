@@ -7,15 +7,13 @@ from app.db.models.photo import FileType
 # Metadata Schemas
 class PhotoMetadataBase(BaseModel):
     exif_info: Optional[str] = None
-    location: Optional[Union[Dict[str, Any], str]] = None # {"lat": float, "lng": float, "formatted_address": str} or string
     location_api: Optional[str] = None
-    tags: Optional[List[str]] = None
-    faces: Optional[List[Dict[str, Any]]] = None
     
     # Enhanced location fields
     longitude: Optional[float] = None
     latitude: Optional[float] = None
     city: Optional[str] = None
+    district: Optional[str] = None
     province: Optional[str] = None
     country: Optional[str] = None
     address: Optional[str] = None

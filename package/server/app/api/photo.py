@@ -34,6 +34,8 @@ def read_all_photos(
         skip: int = 0,
         limit: int = 100,
         album_id: Optional[UUID] = None,
+        face_id: Optional[UUID] = None,
+        tag_id: Optional[UUID] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         city: Optional[str] = None,
@@ -52,6 +54,7 @@ def read_all_photos(
     photos = crud.get_all_photos(
         db, skip=skip, limit=limit, start_time=start_time, end_time=end_time,
         city=city, province=province, country=country, tag=tag, album_id=album_id,
+        face_id=face_id, tag_id=tag_id,
         lat_min=lat_min, lat_max=lat_max, lng_min=lng_min, lng_max=lng_max,
         radius=radius, center_lat=center_lat, center_lng=center_lng
     )

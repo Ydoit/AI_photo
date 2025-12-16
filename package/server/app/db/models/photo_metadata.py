@@ -18,18 +18,15 @@ class PhotoMetadata(Base):
 
     photo_id = Column(UUID(as_uuid=True), ForeignKey("photos.id", ondelete="CASCADE"), primary_key=True)
     exif_info = Column(Text)    # EXIF info as text
-    location = Column(JSON)     # Using JSON for flexibility: {"lat": ..., "lng": ..., "formatted_address": ...}
-    
     # Enhanced location fields
     longitude = Column(DECIMAL(10, 7))
     latitude = Column(DECIMAL(10, 7))
     city = Column(String(100))
+    district = Column(String(100))
     province = Column(String(100))
     country = Column(String(100))
     address = Column(Text)
 
     location_api = Column(String(255)) # API info for location
-    tags = Column(JSON)         # List of tags
-    faces = Column(JSON)        # List of face info
 
     photo = relationship("Photo", back_populates="metadata_info")

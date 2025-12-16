@@ -17,6 +17,8 @@ from app.db.models.user import User
 from app.db.models.app_setting import AppSetting
 from app.db.models.index_log import IndexLog
 from app.db.models.task import Task, TaskStatus, TaskType
+from app.db.models.face import Face, FaceIdentity
+from app.db.models.tag import PhotoTag, PhotoTagRelation
 
 if __name__ == '__main__':
     pass
