@@ -11,11 +11,10 @@ from app.db.models.task import Task, TaskType, TaskStatus
 from app.db.models.index_log import IndexLog
 from app.crud import album as album_crud
 
-from app.service.tasks import thumbnail, metadata, scan
+from app.service.tasks import thumbnail, metadata, scan, face
 
 class TaskManager:
     _instance = None
-    
     def __init__(self):
         self.running = False
         self.worker_task = None
@@ -262,5 +261,7 @@ class TaskManager:
             return await thumbnail.handle_rebuild_thumbnails(self, task, db)
         elif task.type == TaskType.REBUILD_METADATA:
             return await metadata.handle_rebuild_metadata(self, task, db)
+        elif task.type == TaskType.RECOGNIZE_FACE:
+            return await face.handle_face_recognition(self, task, db)
         else:
             return {'status': 'not_implemented', 'type': task.type}

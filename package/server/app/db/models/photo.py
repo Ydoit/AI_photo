@@ -4,7 +4,7 @@
 import uuid
 import enum
 from datetime import datetime
-from sqlalchemy import Column, String, ForeignKey, DateTime, BigInteger, Integer, Enum, Float
+from sqlalchemy import Column, String, ForeignKey, DateTime, BigInteger, Integer, Enum, Float, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.db.base import Base
@@ -27,6 +27,9 @@ class Photo(Base):
     width = Column(Integer)
     height = Column(Integer)
     duration = Column(Float, default=0)
+    
+    # Task Status Tracking: {"thumbnail": true, "metadata": true, "face": false}
+    processed_tasks = Column(JSON, default={})
 
     # Relationships
     albums = relationship("Album", secondary="album_photos", back_populates="photos")

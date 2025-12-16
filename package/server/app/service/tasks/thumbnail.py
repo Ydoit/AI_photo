@@ -17,13 +17,25 @@ def rebuild_thumbnail_cpu_job(file_path: str, file_id: UUID, storage_root: str):
 
 async def handle_rebuild_thumbnails(task_manager, task: Task, db: Session):
     scope = task.payload.get('scope', 'all')
+    force = task.payload.get('force', False)
     
     # Determine photos to process
     query = db.query(Photo)
     if scope != 'all':
         pass
         
-    photos = query.all()
+    all_photos = query.all()
+    photos = []
+    
+    # Filter by processed status
+    for p in all_photos:
+        if force:
+            photos.append(p)
+        else:
+            tasks_status = p.processed_tasks or {}
+            if not tasks_status.get('thumbnail'):
+                photos.append(p)
+    
     task.total_items = len(photos)
     task.processed_items = 0
     db.commit()
@@ -56,7 +68,13 @@ async def handle_rebuild_thumbnails(task_manager, task: Task, db: Session):
                 storage_root
             )
             
-            if not res['success']:
+            if res['success']:
+                # Mark as processed
+                tasks_status = dict(photo.processed_tasks or {})
+                tasks_status['thumbnail'] = True
+                photo.processed_tasks = tasks_status
+                db.add(photo)
+            else:
                 errors += 1
                 logging.error(f"Thumbnail rebuild failed for {photo.id}: {res.get('error')}")
         except Exception as e:

@@ -63,12 +63,17 @@
                 <el-select v-model="newTaskForm.type" placeholder="选择任务类型" class="dark:text-white">
                     <el-option label="重建缩略图" value="REBUILD_THUMBNAILS" />
                     <el-option label="重建元数据" value="REBUILD_METADATA" />
+                    <el-option label="人脸识别" value="RECOGNIZE_FACE" />
                 </el-select>
             </el-form-item>
              <el-form-item label="范围" class="dark:text-white">
                 <el-select v-model="newTaskForm.scope" placeholder="选择范围" class="dark:text-white">
                     <el-option label="所有图片" value="all" />
                 </el-select>
+            </el-form-item>
+            <el-form-item label="强制处理" class="dark:text-white">
+                <el-switch v-model="newTaskForm.force" active-text="是" inactive-text="否" />
+                <span class="text-xs text-gray-400 ml-2">是否处理已标记为完成的项目</span>
             </el-form-item>
         </el-form>
         <template #footer>
@@ -91,7 +96,8 @@ const stats = ref({ failed_process_tasks: 0 })
 const createTaskVisible = ref(false)
 const newTaskForm = ref({
     type: '',
-    scope: 'all'
+    scope: 'all',
+    force: false
 })
 let taskPollTimer: number | null = null
 
@@ -105,7 +111,7 @@ const fetchTasks = async () => {
 }
 
 const showCreateTaskDialog = () => {
-    newTaskForm.value = { type: '', scope: 'all' }
+    newTaskForm.value = { type: '', scope: 'all', force: false }
     createTaskVisible.value = true
 }
 
@@ -115,7 +121,10 @@ const submitCreateTask = async () => {
         return
     }
     try {
-        await tasksApi.createTask(newTaskForm.value.type, { scope: newTaskForm.value.scope })
+        await tasksApi.createTask(newTaskForm.value.type, { 
+            scope: newTaskForm.value.scope,
+            force: newTaskForm.value.force
+        })
         ElMessage.success('任务创建成功')
         createTaskVisible.value = false
         fetchTasks()
@@ -142,7 +151,8 @@ const formatTaskType = (type: string) => {
         'GENERATE_THUMBNAIL': '生成缩略图',
         'EXTRACT_METADATA': '提取元数据',
         'REBUILD_THUMBNAILS': '重建缩略图',
-        'REBUILD_METADATA': '重建元数据'
+        'REBUILD_METADATA': '重建元数据',
+        'RECOGNIZE_FACE': '人脸识别'
     }
     return map[type] || type
 }

@@ -55,6 +55,7 @@ class Photo(PhotoBase):
     upload_time: datetime
     # metadata_info: Optional[PhotoMetadata] = None
     album_ids: Optional[List[UUID]] = [] # Helper field for API response
+    processed_tasks: Optional[Dict[str, bool]] = {}
 
     @computed_field
     def url(self) -> str:
