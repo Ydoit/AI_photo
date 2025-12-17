@@ -31,7 +31,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { faceApi, type FaceIdentity } from '@/api/face'
+import { faceApi, type FaceIdentity, type CoverPhotoInfo } from '@/api/face'
 import UnifiedPhotoPage from '@/components/UnifiedPhotoPage.vue'
 import { Folder as FolderIcon } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
@@ -47,8 +47,6 @@ const images = ref<AlbumImage[]>([])
 const loading = ref(true)
 const timeline = ref<any[]>([])
 const pendingRemoveIds = ref(new Set<string>())
-
-// --- Logic ---
 
 const fetchIdentity = async () => {
   try {
@@ -188,6 +186,29 @@ const handleSetCover = async (ids: string[]) => {
   } catch (e) {
     ElMessage.error('设置封面失败')
   }
+}
+
+const getCoverPhotoUrl = (photoId: string) => {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+    return `${API_BASE_URL}/api/medias/${photoId}/thumbnail`
+}
+
+const getFaceStyle = (cover: CoverPhotoInfo) => {
+    if (!cover.face_rect || !cover.width || !cover.height) return {}
+
+    // face_rect is [x1, y1, x2, y2]
+    const [x1, y1, x2, y2] = cover.face_rect
+    
+    // 计算人脸中心点在图片中的百分比位置
+    const faceCenterX = (x1 + x2) / 2
+    const faceCenterY = (y1 + y2) / 2
+    
+    const xPct = (faceCenterX / cover.width) * 100
+    const yPct = (faceCenterY / cover.height) * 100
+    
+    return {
+        objectPosition: `${xPct.toFixed(1)}% ${yPct.toFixed(1)}%`
+    }
 }
 
 onMounted(() => {

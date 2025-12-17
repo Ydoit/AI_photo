@@ -3,12 +3,19 @@ import axios from 'axios'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 const api = axios.create({ baseURL: API_BASE_URL })
 
+export interface CoverPhotoInfo {
+  photo_id: string
+  width: number | null
+  height: number | null
+  face_rect: number[] | null
+}
+
 export interface FaceIdentity {
   id: string
   identity_name: string
   default_face_id: number | null
   face_count: number
-  cover_photo: string | null
+  cover_photo: CoverPhotoInfo | null
 }
 
 export const faceApi = {
