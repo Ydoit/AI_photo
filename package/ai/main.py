@@ -17,4 +17,5 @@ app.include_router(object_detection.router, prefix="/object-detection", tags=["O
 app.include_router(tickets.router, prefix="/tickets", tags=["Ticket Recognition"])
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=settings.PORT, reload=True)
+    # docs：http://localhost:8001/docs
+    uvicorn.run(app, host="0.0.0.0", port=settings.PORT)

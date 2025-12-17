@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from sqlalchemy import Column, String, ForeignKey, DateTime, Boolean, DECIMAL, JSON, Integer
+from sqlalchemy import Column, String, ForeignKey, DateTime, Boolean, DECIMAL, JSON, Integer, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -39,3 +39,13 @@ class Face(Base):
     # Relationships
     photo = relationship("Photo", back_populates="faces")
     identity = relationship("FaceIdentity", back_populates="faces", foreign_keys=[face_identity_id])
+
+    # 索引定义（核心新增）
+    __table_args__ = (
+        # 为photo_id加索引：命名规范「idx_表名_字段名」
+        Index("idx_face_photo_id", "photo_id"),
+        # 为face_identity_id加索引
+        Index("idx_face_identity_id", "face_identity_id"),
+        # 可选：添加常用联合索引（如按用户+身份查询，需结合user_id字段，若有）
+        # Index("idx_face_user_identity", "user_id", "face_identity_id"),
+    )

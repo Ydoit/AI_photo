@@ -23,7 +23,7 @@ async def handle_rebuild_metadata(task_manager, task: Task, db: Session):
     query = db.query(Photo)
     all_photos = query.all()
     photos = []
-    
+
     # Filter by processed status
     for p in all_photos:
         if force:
@@ -32,7 +32,7 @@ async def handle_rebuild_metadata(task_manager, task: Task, db: Session):
             tasks_status = p.processed_tasks or {}
             if not tasks_status.get('metadata'):
                 photos.append(p)
-    
+
     task.total_items = len(photos)
     task.processed_items = 0
     db.commit()
