@@ -161,7 +161,7 @@ const getPhotoUrl = (photoId: string) => {
     // Assuming backend serves thumbnails at this path
     // Or we can use the photo store utility if available
     const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-    return `${API_BASE_URL}/api/photos/${photoId}/thumbnail`
+    return `${API_BASE_URL}/api/medias/${photoId}/thumbnail`
 }
 
 const toggleMergeMode = () => {

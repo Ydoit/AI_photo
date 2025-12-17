@@ -7,148 +7,271 @@ from app.db.models.photo import Photo
 import logging
 import uuid
 from datetime import datetime
+from sqlalchemy.exc import PendingRollbackError, SQLAlchemyError
 
+# 配置日志
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class FaceClusterService:
+    # 可配置参数（集中管理，方便调优）
+    SIMILARITY_THRESHOLD = 0.6  # 业务要求的相似度阈值
+    DISTANCE_THRESHOLD = 1.0 - SIMILARITY_THRESHOLD  # 对应余弦距离阈值
+    DBSCAN_EPS = DISTANCE_THRESHOLD  # DBSCAN距离阈值（对齐业务要求）
+    DBSCAN_MIN_SAMPLES = 1  # 初始宽松值，后续可调至2/3
+    CLUSTER_MERGE_THRESHOLD = DISTANCE_THRESHOLD  # 簇合并的距离阈值
+    MIN_CLUSTER_SIZE_FOR_IDENTITY = 2  # 新建Identity的最小簇大小
+
     def __init__(self, db: Session):
         self.db = db
 
-    def assign_face_to_identity(self, face_id: int, embedding: list):
+    @staticmethod
+    def normalize_embedding(embedding: list | np.ndarray) -> np.ndarray:
         """
-        Assign a new face to an existing identity or mark for clustering.
-        Real-time simplified logic: Compare with existing identities.
+        向量L2归一化（全链路统一，避免距离计算失真）
+        :param embedding: 人脸特征向量（列表/数组）
+        :return: 归一化后的向量
         """
-        # Threshold for cosine distance (1 - cosine_similarity)
-        # User requested similarity threshold 0.6. 
-        # If using distance, distance < (1 - 0.6) = 0.4
-        THRESHOLD = 0.4 
-        
-        # 1. Get all identities with their representative embedding (e.g. mean of their faces)
-        # For simplicity/performance, maybe we pick the default face of each identity?
-        # Better: Average embedding of the identity. 
-        # But calculating average on the fly is expensive.
-        # Let's fetch all faces? No, too many.
-        # Let's fetch default_face's embedding for each identity.
-        
-        identities = self.db.query(FaceIdentity).filter(FaceIdentity.is_deleted == False).all()
-        
-        best_match_id = None
-        min_dist = 2.0 # Max cosine distance is 2.0
-        
-        target_emb = np.array(embedding)
-        # Normalize
-        target_emb = target_emb / np.linalg.norm(target_emb)
-        
-        for identity in identities:
-            # We need a representative embedding. 
-            # If default_face_id is set, use it.
-            if identity.default_face_id:
-                default_face = self.db.query(Face).filter(Face.id == identity.default_face_id).first()
-                if default_face and default_face.face_feature:
-                    ref_emb = np.array(default_face.face_feature)
-                    ref_emb = ref_emb / np.linalg.norm(ref_emb)
-                    
-                    # Cosine distance = 1 - dot(a, b) (if normalized)
-                    dist = 1.0 - np.dot(target_emb, ref_emb)
-                    
-                    if dist < min_dist:
-                        min_dist = dist
-                        best_match_id = identity.id
-
-        if best_match_id and min_dist < THRESHOLD:
-            # Assign to existing identity
-            face = self.db.query(Face).get(face_id)
-            face.face_identity_id = best_match_id
-            face.recognize_confidence = 1.0 - min_dist
-            self.db.commit()
-            logger.info(f"Assigned face {face_id} to identity {best_match_id} (dist={min_dist:.4f})")
-            return best_match_id
+        if isinstance(embedding, list):
+            emb = np.array(embedding)
         else:
-            # No match found. 
-            # Check if we should trigger a clustering on unassigned faces?
-            # Or just leave it unassigned.
-            # User requirement: "New cluster marked as 'Unnamed', Quantity threshold detection (default 10)"
-            # This suggests we should check if there are enough unassigned faces to form a NEW cluster.
-            self._try_create_new_cluster(face_id, embedding)
-            return None
+            emb = embedding.copy()
 
-    def _try_create_new_cluster(self, current_face_id, current_embedding):
-        """
-        Try to find if this face belongs to a group of unassigned faces.
-        """
-        # Fetch unassigned faces
-        # Limit to recent ones or some reasonable number to avoid full scan
-        unassigned = self.db.query(Face).filter(
-            Face.face_identity_id == None,
-            Face.is_deleted == False
-        ).limit(1000).all()
-        
-        if len(unassigned) < 3: # min_samples=3
-            return
+        # 避免除以0
+        norm = np.linalg.norm(emb)
+        if norm == 0:
+            logger.warning("空向量（范数为0），返回原向量")
+            return emb
+        return emb / norm
 
-        embeddings = []
-        ids = []
-        
-        for f in unassigned:
-            if f.face_feature:
-                embeddings.append(f.face_feature)
-                ids.append(f.id)
-                
-        # Include current if not in DB list yet (it should be though)
-        
-        X = np.array(embeddings)
-        # Normalize
-        norms = np.linalg.norm(X, axis=1, keepdims=True)
-        X_normalized = X / norms
-        
-        # DBSCAN
-        # eps=0.5 (distance threshold). If similarity > 0.6, distance < 0.4.
-        # User said eps=0.5.
-        clustering = DBSCAN(eps=0.5, min_samples=3, metric='cosine').fit(X_normalized)
-        
-        labels = clustering.labels_
-        # labels: -1 is noise, 0, 1, 2... are clusters
-        
-        # Check if any cluster has enough members (> 10 is default threshold, but min_samples=3 allows formation)
-        # User said "Quantity threshold detection (default 10)". Maybe only create Identity if count > 10?
-        # Or maybe create identity immediately but hide it?
-        # Let's assume create if > 3 (min_samples) but maybe user meant "notify" if > 10?
-        # Let's stick to DBSCAN parameters: if a cluster is formed, it's valid.
-        
-        unique_labels = set(labels)
-        for label in unique_labels:
-            if label == -1:
-                continue
-                
-            # Get members of this cluster
-            cluster_indices = np.where(labels == label)[0]
-            if len(cluster_indices) >= 3: # Strict adherence to DBSCAN min_samples
-                # Create new identity
-                # Check if these faces already have an identity (should be None as we filtered)
-                
-                # Double check if we should really create an identity for just 3 faces?
-                # Maybe. "New cluster marked as 'Unnamed'"
-                
+    def assign_face_to_identity(self, face_id: int, embedding: list) -> uuid.UUID | None:
+        """
+        优化版：用Identity下所有人脸的均值向量匹配，而非单个default_face
+        将新人脸分配到已有Identity，无匹配则触发聚类
+        :param face_id: 人脸ID
+        :param embedding: 人脸特征向量
+        :return: 匹配的Identity ID / None（无匹配）
+        """
+        target_emb = self.normalize_embedding(embedding)
+        best_match_id = None
+        min_dist = 2.0  # 余弦距离最大值为2
+
+        try:
+            # 1. 查询所有未删除的Identity
+            identities = self.db.query(FaceIdentity).filter(
+                FaceIdentity.is_deleted == False
+            ).all()
+
+            if not identities:
+                logger.info("无已存在的Identity，触发新聚类")
+                self._try_create_new_cluster(face_id, embedding)
+                return None
+
+            # 2. 遍历Identity，计算均值向量并匹配
+            for identity in identities:
+                # 查询该Identity下所有有效人脸向量
+                face_embeddings = self.db.query(Face.face_feature).filter(
+                    Face.face_identity_id == identity.id,
+                    Face.is_deleted == False,
+                    Face.face_feature.isnot(None)
+                ).all()
+
+                if not face_embeddings:
+                    logger.warning(f"Identity {identity.id} 无有效人脸向量，跳过")
+                    continue
+
+                # 计算均值向量（核心优化：替代单个default_face）
+                emb_list = [self.normalize_embedding(emb[0]) for emb in face_embeddings]
+                mean_emb = np.mean(emb_list, axis=0)
+                mean_emb = self.normalize_embedding(mean_emb)  # 二次归一化
+
+                # 计算余弦距离（1 - 点积，归一化后等价）
+                dist = 1.0 - np.dot(target_emb, mean_emb)
+
+                # 更新最优匹配
+                if dist < min_dist:
+                    min_dist = dist
+                    best_match_id = identity.id
+
+            # 3. 判断是否匹配成功
+            if best_match_id and min_dist < self.DISTANCE_THRESHOLD:
+                # 分配到已有Identity
+                face = self.db.query(Face).get(face_id)
+                if not face:
+                    logger.error(f"人脸ID {face_id} 不存在")
+                    return None
+
+                face.face_identity_id = best_match_id
+                # 转换为原生float，避免np.float64导致的数据库错误
+                face.recognize_confidence = float(1.0 - min_dist)
+                face.update_time = datetime.now()
+
+                self.db.commit()
+                logger.info(
+                    f"人脸 {face_id} 匹配到Identity {best_match_id}，"
+                    f"余弦距离={min_dist:.4f}，相似度={1 - min_dist:.4f}"
+                )
+                return best_match_id
+            else:
+                logger.info(
+                    f"无匹配的Identity（最小距离={min_dist:.4f} > 阈值={self.DISTANCE_THRESHOLD}），触发新聚类"
+                )
+                self._try_create_new_cluster(face_id, embedding)
+                return None
+
+        except PendingRollbackError:
+            # 事务已回滚，重置Session
+            self.db.rollback()
+            logger.error("事务回滚，重置Session后重试")
+            raise
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            logger.error(f"分配Identity失败：{str(e)}", exc_info=True)
+            raise
+        except Exception as e:
+            logger.error(f"分配Identity异常：{str(e)}", exc_info=True)
+            raise
+
+    def _try_create_new_cluster(self, current_face_id: int, current_embedding: list):
+        """
+        优化版：调整DBSCAN参数 + 簇合并逻辑，解决聚类分散问题
+        对未分配的人脸做DBSCAN聚类，合并相似簇后创建新Identity
+        """
+        try:
+            # 1. 查询未分配的人脸（含当前人脸）
+            unassigned_faces = self.db.query(Face).filter(
+                Face.face_identity_id == None,
+                Face.is_deleted == False,
+                Face.face_feature.isnot(None)
+            ).limit(1000).all()  # 限制数量，避免全表扫描
+
+            # 包含当前人脸（若未在查询结果中）
+            current_face = self.db.query(Face).get(current_face_id)
+            if current_face and current_face not in unassigned_faces:
+                unassigned_faces.append(current_face)
+
+            face_count = len(unassigned_faces)
+            if face_count < self.DBSCAN_MIN_SAMPLES:
+                logger.info(f"未分配人脸数 {face_count} < 最小样本数 {self.DBSCAN_MIN_SAMPLES}，不聚类")
+                return
+
+            # 2. 提取并归一化向量
+            embeddings = []
+            face_ids = []
+            for face in unassigned_faces:
+                emb = self.normalize_embedding(face.face_feature)
+                embeddings.append(emb)
+                face_ids.append(face.id)
+
+            X = np.array(embeddings)
+
+            # 3. DBSCAN聚类（宽松参数，避免拆分）
+            clustering = DBSCAN(
+                eps=self.DBSCAN_EPS,
+                min_samples=self.DBSCAN_MIN_SAMPLES,
+                metric='cosine'
+            ).fit(X)
+
+            labels = clustering.labels_
+            logger.info(f"DBSCAN聚类完成，共生成 {len(set(labels)) - (1 if -1 in labels else 0)} 个簇")
+
+            # 4. 计算簇中心，合并相似簇（核心：解决同一人拆分为多个簇）
+            cluster_centers = {}  # label -> 簇中心向量
+            cluster_members = {}  # label -> 成员face ID列表
+
+            # 4.1 计算每个簇的中心（均值向量）
+            unique_labels = set(labels)
+            for label in unique_labels:
+                if label == -1:  # 噪声点，跳过
+                    continue
+
+                cluster_indices = np.where(labels == label)[0]
+                if len(cluster_indices) < 1:
+                    continue
+
+                # 簇内向量的均值作为中心
+                cluster_emb = X[cluster_indices]
+                center = np.mean(cluster_emb, axis=0)
+                center = self.normalize_embedding(center)
+
+                cluster_centers[label] = center
+                cluster_members[label] = [face_ids[idx] for idx in cluster_indices]
+
+            # 4.2 合并相似簇（中心距离 < 阈值）
+            merged_clusters = []
+            used_labels = set()
+
+            for label1 in cluster_centers:
+                if label1 in used_labels:
+                    continue
+
+                # 初始合并当前簇
+                merged_members = cluster_members[label1].copy()
+                used_labels.add(label1)
+
+                # 遍历其他簇，判断是否合并
+                for label2 in cluster_centers:
+                    if label1 == label2 or label2 in used_labels:
+                        continue
+
+                    # 计算簇中心的余弦距离
+                    dist = 1.0 - np.dot(cluster_centers[label1], cluster_centers[label2])
+                    if dist < self.CLUSTER_MERGE_THRESHOLD:
+                        merged_members += cluster_members[label2]
+                        used_labels.add(label2)
+                        logger.info(f"合并簇 {label1} 和 {label2}（中心距离={dist:.4f}）")
+
+                merged_clusters.append(merged_members)
+
+            # 5. 为合并后的簇创建新Identity
+            for cluster in merged_clusters:
+                cluster_size = len(cluster)
+                if cluster_size < self.MIN_CLUSTER_SIZE_FOR_IDENTITY:
+                    logger.info(f"簇大小 {cluster_size} < 阈值 {self.MIN_CLUSTER_SIZE_FOR_IDENTITY}，跳过创建Identity")
+                    continue
+
+                # 创建新Identity
                 new_identity = FaceIdentity(
-                    identity_name=f"Unknown Person {uuid.uuid4().hex[:8]}",
-                    create_time=datetime.now()
+                    identity_name="未命名",
+                    create_time=datetime.now(),
+                    update_time=datetime.now()
                 )
                 self.db.add(new_identity)
-                self.db.flush() # Get ID
-                
-                # Assign faces
+                self.db.flush()  # 获取新Identity的ID
+
+                # 分配人脸到新Identity
                 first_face_id = None
-                for idx in cluster_indices:
-                    f_id = ids[idx]
+                for f_id in cluster:
                     face = self.db.query(Face).get(f_id)
+                    if not face:
+                        continue
+
                     face.face_identity_id = new_identity.id
-                    face.recognize_confidence = 0.9 # Placeholder
+                    face.recognize_confidence = float(0.9)  # 占位值，可后续优化
+                    face.update_time = datetime.now()
+
                     if not first_face_id:
                         first_face_id = face.id
-                
-                # Set default face
-                new_identity.default_face_id = first_face_id
-                self.db.commit()
-                logger.info(f"Created new identity {new_identity.id} with {len(cluster_indices)} faces")
 
+                # 设置默认人脸
+                if first_face_id:
+                    new_identity.default_face_id = first_face_id
+
+                self.db.commit()
+                logger.info(
+                    f"创建新Identity {new_identity.id}，包含 {cluster_size} 个人脸（合并后）"
+                )
+
+        except PendingRollbackError:
+            self.db.rollback()
+            logger.error("聚类时事务回滚，重置Session", exc_info=True)
+            raise
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            logger.error(f"聚类数据库错误：{str(e)}", exc_info=True)
+            raise
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"聚类异常：{str(e)}", exc_info=True)
+            raise
