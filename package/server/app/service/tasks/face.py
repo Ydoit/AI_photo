@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.db.models.task import Task
 from app.db.models.photo import Photo, FileType
 from app.db.models.face import Face
+from app.service.face_cluster import FaceClusterService
 from app.db.models.task import TaskType
 from typing import Dict, Any
 
@@ -18,6 +19,7 @@ async def handle_face_recognition(task_manager, task: Task, db: Session) -> Dict
     """
     try:
         force = task.payload.get('force', False)
+        cluster_service = FaceClusterService(db)
         # Get all photos that need face recognition
         # Filter logic:
         # 1. If payload has photo_id, process that photo
@@ -108,6 +110,14 @@ async def handle_face_recognition(task_manager, task: Task, db: Session) -> Dict
                                     face_confidence=face_data['det_score']
                                 )
                                 db.add(face)
+                                db.flush() # Get ID
+
+                                # Trigger clustering
+                                if face.face_feature:
+                                    try:
+                                        cluster_service.assign_face_to_identity(face.id, face.face_feature)
+                                    except Exception as ce:
+                                        logging.error(f"Clustering failed for face {face.id}: {ce}")
                             # 4. Update Photo Status
                             tasks_status = dict(photo.processed_tasks or {})
                             tasks_status['face'] = True

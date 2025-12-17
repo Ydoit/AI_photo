@@ -6,6 +6,8 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
+from pgvector.sqlalchemy import VECTOR
+
 from app.db.base import Base
 
 class FaceIdentity(Base):

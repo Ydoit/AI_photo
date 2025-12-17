@@ -182,10 +182,21 @@ class TaskManager:
 
             # 2. 重置PROCESSING任务为PENDING（服务重启后，PROCESSING的任务已中断）
             if processing_tasks > 0:
-                updated = db.query(Task).filter(Task.status == TaskStatus.PROCESSING)\
-                    .update({Task.status: TaskStatus.PENDING})
+                # 获取所有PROCESSING状态的任务
+                processing_task_list = db.query(Task).filter(Task.status == TaskStatus.PROCESSING).all()
+                for task in processing_task_list:
+                    # 检查payload中是否包含force=True
+                    if task.payload and task.payload.get('force') is True:
+                        # 如果是强制任务，重置时移除force标记，避免无限循环重复处理
+                        new_payload = task.payload.copy()
+                        new_payload['force'] = False
+                        task.payload = new_payload
+                        logging.info(f"Reset task {task.id} payload: removed force=True")
+                    
+                    task.status = TaskStatus.PENDING
+                
                 db.commit()
-                logging.info(f"Reset {updated} PROCESSING tasks to PENDING (recovered)")
+                logging.info(f"Reset {processing_tasks} PROCESSING tasks to PENDING (recovered)")
 
             # 3. 初始化扫描状态（标记有未完成任务，更新统计）
             self.scan_status['running'] = True

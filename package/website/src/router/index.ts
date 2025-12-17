@@ -4,15 +4,15 @@ import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
 // 路由懒加载（优化首屏性能，TS 自动推断类型）
 const HomePage = () => import('@/views/HomePage.vue');
 // const AlbumPage = () => import('@/views/AlbumPage.vue');
-const AlbumList = () => import('@/views/AlbumList.vue');
-const AlbumDetail = () => import('@/views/AlbumDetail.vue');
+const AlbumList = () => import('@/views/album/AlbumList.vue');
+const AlbumDetail = () => import('@/views/album/AlbumDetail.vue');
 const PhotosPage = () => import('@/views/PhotosPage.vue');
 const TicketPage = () => import('@/views/TicketPage.vue');
 const StatisticsPage = () => import('@/views/StatisticsPage.vue');
 const More = () => import('@/views/More.vue');
 const Settings = () => import('@/views/Settings.vue');
-const Responsive = () => import('@/views/tools/Responsive.vue');
-const ToolPage = () => import('@/views/tools/ToolPage.vue');
+const PeopleList = () => import('@/views/album/people/PeopleList.vue');
+const PeopleDetail = () => import('@/views/album/people/PeopleDetail.vue');
 
 const NotFound = () => import('@/views/NotFound.vue');
 const AboutPage = () => import('@/views/AboutPage.vue');
@@ -28,6 +28,8 @@ const routes: RouteRecordRaw[] = [
       { path: '', name: 'Home', component: HomePage, meta: { title: '首页' } },
       { path: '/album', name: 'AlbumList', component: AlbumList, meta: { title: 'AI相册' } },
       { path: '/album/:id', name: 'AlbumDetail', component: AlbumDetail, meta: { title: '相册详情' } },
+      { path: '/people', name: 'PeopleList', component: PeopleList, meta: { title: '人物相册' } },
+      { path: '/people/:id', name: 'PeopleDetail', component: PeopleDetail, meta: { title: '人物详情' } },
       { path: '/photos', name: 'Photos', component: PhotosPage, meta: { title: '所有照片' } },
       { path: '/ticket', name: 'Ticket', component: TicketPage, meta: { title: '车票', keepAlive: true } },
       { path: '/statistics', name: 'Statistics', component: StatisticsPage, meta: { title: '统计' } },

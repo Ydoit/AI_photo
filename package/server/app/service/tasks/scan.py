@@ -118,15 +118,15 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
         return found_files
 
     files_on_disk = await loop.run_in_executor(None, parallel_scan_wrapper)
-    
+
     existing_files = set()
     for p in db.query(Photo.file_path).all():
         existing_files.add(p[0])
-        
+
     # Determine new and deleted
     new_files = files_on_disk - existing_files
     deleted_files = existing_files - files_on_disk
-    
+
     logging.info(f"Scan result: {len(new_files)} new, {len(deleted_files)} deleted")
     task_manager.scan_status['message'] = f"Found {len(new_files)} new, {len(deleted_files)} deleted"
     task_manager.scan_status['total_files'] += len(new_files)
@@ -140,13 +140,13 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
             priority=10, 
             status=TaskStatus.PENDING
         ))
-        
+
     if new_tasks:
         chunk_size = 1000
         for i in range(0, len(new_tasks), chunk_size):
             db.bulk_save_objects(new_tasks[i:i+chunk_size])
             db.commit()
-            
+
     # Handle deleted
     if deleted_files:
         deleted_list = list(deleted_files)
@@ -167,10 +167,10 @@ async def handle_process_image(task_manager, task: Task, db: Session):
     file_path = task.payload.get('file_path')
     if not file_path or not os.path.exists(file_path):
         return {'status': 'skipped', 'reason': 'file not found'}
-        
+
     photo_id = uuid4()
     storage_root = storage._get_storage_root(db)
-    
+
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(
         task_manager.process_pool, 
@@ -201,9 +201,8 @@ async def handle_process_image(task_manager, task: Task, db: Session):
 
     metadata_create = album_schemas.PhotoMetadataCreate(
         exif_info=meta["exif_info"],
-        location=meta["location"]
     )
-    
+
     # Add enhanced location details if available
     loc_details = meta.get("location_details", {})
     if loc_details:
@@ -213,7 +212,7 @@ async def handle_process_image(task_manager, task: Task, db: Session):
         metadata_create.province = loc_details.get("province")
         metadata_create.country = loc_details.get("country")
         metadata_create.address = loc_details.get("address")
-    
+
     # Prepare data for batch insert instead of writing to DB directly
     return {
         'photo_create_data': {

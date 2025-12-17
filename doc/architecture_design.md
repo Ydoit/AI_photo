@@ -57,7 +57,7 @@ graph TD
 - **数据库迁移**: Alembic 1.17.2
 - **数据库驱动**: psycopg2 (PostgreSQL)
 - **任务调度**: APScheduler 3.11.1
-- **AI/CV**: 
+- **AI/CV**:
   - PaddleOCR 3.3.2 (OCR文字识别)
   - Ultralytics 8.3.232 (YOLO对象检测)
   - OpenCV (图像处理)

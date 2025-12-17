@@ -157,7 +157,7 @@ def get_all_photos(
     # Tag ID Filter
     if tag_id is not None:
         photo_query = photo_query.join(Photo.tags).filter(PhotoTag.id == tag_id)
-        
+
     # Tag Name Filter (if tag string provided)
     if tag is not None and tag.strip():
         photo_query = photo_query.join(Photo.tags).filter(PhotoTag.tag_name.ilike(f"%{tag.strip()}%"))
@@ -238,15 +238,8 @@ def create_photo(db: Session, photo: schemas.PhotoCreate, album_id: Optional[UUI
     if metadata:
         if metadata.exif_info:
             db_metadata.exif_info = metadata.exif_info
-        if metadata.location:
-            db_metadata.location = metadata.location
         if metadata.location_api:
             db_metadata.location_api = metadata.location_api
-        if metadata.tags:
-            db_metadata.tags = metadata.tags
-        if metadata.faces:
-            db_metadata.faces = metadata.faces
-            
         # Enhanced location fields
         if metadata.longitude is not None:
             db_metadata.longitude = metadata.longitude
@@ -258,6 +251,8 @@ def create_photo(db: Session, photo: schemas.PhotoCreate, album_id: Optional[UUI
             db_metadata.province = metadata.province
         if metadata.country:
             db_metadata.country = metadata.country
+        if metadata.district:
+            db_metadata.district = metadata.district
         if metadata.address:
             db_metadata.address = metadata.address
 
@@ -430,16 +425,24 @@ def batch_create_photos(db: Session, photos_data: List[dict]):
         if metadata:
             if metadata.exif_info:
                 db_metadata.exif_info = metadata.exif_info
-            if metadata.location:
-                db_metadata.location = metadata.location
             if metadata.location_api:
                 db_metadata.location_api = metadata.location_api
-            if metadata.tags:
-                db_metadata.tags = metadata.tags
-            if metadata.faces:
-                db_metadata.faces = metadata.faces
+            if metadata.longitude is not None:
+                db_metadata.longitude = metadata.longitude
+            if metadata.latitude is not None:
+                db_metadata.latitude = metadata.latitude
+            if metadata.city:
+                db_metadata.city = metadata.city
+            if metadata.province:
+                db_metadata.province = metadata.province
+            if metadata.country:
+                db_metadata.country = metadata.country
+            if metadata.district:
+                db_metadata.district = metadata.district
+            if metadata.address:
+                db_metadata.address = metadata.address
         db_metadatas.append(db_metadata)
-        
+
     try:
         db.add_all(db_photos)
         db.add_all(db_metadatas)

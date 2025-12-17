@@ -100,7 +100,7 @@ export const usePhotoStore = defineStore('photo', () => {
     // 新 API 在 url 和 thumbnail_url 字段中返回相对地址
     const url = `${API_BASE_URL}${photo.url}`;
     const thumbnail = `${API_BASE_URL}${photo.thumbnail_url}`;
-    
+
     // 提取元数据
     const metadata = photo.metadata_info;
     // 优先使用 photo_time，其次 upload_time，最后取当前时间
@@ -110,7 +110,7 @@ export const usePhotoStore = defineStore('photo', () => {
     } else if (photo.upload_time) {
         timestamp = new Date(photo.upload_time).getTime();
     }
-    
+
     // 尝试从 location 或 tags 中解析城市
     let city = 'Unknown';
     if (metadata && metadata.location) {
@@ -122,7 +122,7 @@ export const usePhotoStore = defineStore('photo', () => {
              city = metadata.location.formatted_address.split('·')[0] || 'Unknown';
         }
     }
-    
+
     const tags = metadata?.tags || [];
     const category = tags.length > 0 ? tags[0] : 'Uncategorized';
 
