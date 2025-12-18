@@ -80,6 +80,8 @@ def list_identities(
     
     results = []
     for identity, count, default_face, photo in query.all():
+        if count<=5:
+            continue
         cover = None
         if default_face and photo:
             cover = CoverPhotoInfo(

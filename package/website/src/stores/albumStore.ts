@@ -21,7 +21,6 @@ export interface Album {
 export const useAlbumStore = defineStore('album', () => {
   // --- 状态 ---
   const apiAlbums = ref<ApiAlbum[]>([])
-  
   // --- 动作 ---
   const fetchAlbums = async () => {
       try {

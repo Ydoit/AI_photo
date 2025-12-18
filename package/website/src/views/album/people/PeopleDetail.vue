@@ -35,7 +35,9 @@ import { faceApi, type FaceIdentity, type CoverPhotoInfo } from '@/api/face'
 import UnifiedPhotoPage from '@/components/UnifiedPhotoPage.vue'
 import { Folder as FolderIcon } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
-import type { AlbumImage } from '@/stores/photoStore'
+import { usePhotoStore, type AlbumImage } from '@/stores/photoStore'
+
+const photoStore = usePhotoStore()
 
 const route = useRoute()
 const router = useRouter()
@@ -55,46 +57,6 @@ const fetchIdentity = async () => {
   } catch (e) {
     console.error('Failed to fetch identity info', e)
   }
-}
-
-const mapPhotoToImage = (photo: any): AlbumImage => {
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-    const url = `${API_BASE_URL}${photo.url}`;
-    const thumbnail = `${API_BASE_URL}${photo.thumbnail_url}`;
-
-    const metadata = photo.metadata_info;
-    let timestamp = Date.now();
-    if (photo.photo_time) {
-        timestamp = new Date(photo.photo_time).getTime();
-    } else if (photo.upload_time) {
-        timestamp = new Date(photo.upload_time).getTime();
-    }
-
-    let city = 'Unknown';
-    if (metadata) {
-        city = metadata.city || metadata.province || metadata.country || 'Unknown';
-    }
-
-    const tags = metadata?.tags || [];
-    const category = tags.length > 0 ? tags[0] : 'Uncategorized';
-
-    return {
-      id: photo.id,
-      url,
-      thumbnail,
-      srcset: '',
-      timestamp,
-      category,
-      tags,
-      city: city !== 'Unknown' ? city : undefined,
-      location: metadata?.location,
-      albumIds: photo.album_ids || [],
-      width: photo.width || 300,
-      height: photo.height || 300,
-      filename: photo.filename || '',
-      file_type: photo.file_type || 'image',
-      duration: '00:00'
-    }
 }
 
 const calculateTimelineStats = (photos: AlbumImage[]) => {
@@ -133,7 +95,7 @@ const fetchAllPhotos = async () => {
       const photos = await faceApi.getIdentityPhotos(identityId, page, limit)
       if (photos.length === 0) break
 
-      const newImages = photos.map(mapPhotoToImage)
+      const newImages = photos.map(photoStore.mapPhotoToImage)
       images.value.push(...newImages)
 
       if (photos.length < limit) hasNext = false
@@ -157,16 +119,16 @@ const fetchAllPhotos = async () => {
 const handleConfirmDelete = async (ids: string[], callback: (success: boolean) => void) => {
   try {
     ids.forEach(id => pendingRemoveIds.value.add(id))
-    
+
     await faceApi.removePhotos(identityId, ids)
-    
+
     // Remove from local list
     images.value = images.value.filter(img => !ids.includes(img.id))
     calculateTimelineStats(images.value)
     ElMessage.success('移除成功')
-    
+
     callback(true)
-    
+
   } catch (e) {
     ElMessage.error('移除失败')
     callback(false)
@@ -186,29 +148,6 @@ const handleSetCover = async (ids: string[]) => {
   } catch (e) {
     ElMessage.error('设置封面失败')
   }
-}
-
-const getCoverPhotoUrl = (photoId: string) => {
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-    return `${API_BASE_URL}/api/medias/${photoId}/thumbnail`
-}
-
-const getFaceStyle = (cover: CoverPhotoInfo) => {
-    if (!cover.face_rect || !cover.width || !cover.height) return {}
-
-    // face_rect is [x1, y1, x2, y2]
-    const [x1, y1, x2, y2] = cover.face_rect
-    
-    // 计算人脸中心点在图片中的百分比位置
-    const faceCenterX = (x1 + x2) / 2
-    const faceCenterY = (y1 + y2) / 2
-    
-    const xPct = (faceCenterX / cover.width) * 100
-    const yPct = (faceCenterY / cover.height) * 100
-    
-    return {
-        objectPosition: `${xPct.toFixed(1)}% ${yPct.toFixed(1)}%`
-    }
 }
 
 onMounted(() => {

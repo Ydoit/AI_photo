@@ -362,6 +362,7 @@ export const usePhotoStore = defineStore('photo', () => {
     images,
     loading,
     hasMore,
+    mapPhotoToImage,
     currentContext,
     timelineStats,
     photoOffsetMap,

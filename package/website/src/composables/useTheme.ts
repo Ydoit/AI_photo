@@ -1,4 +1,4 @@
-import { ref, watch, computed, provide, inject, onMounted, onUnmounted, InjectionKey } from 'vue';
+import { ref, watch, computed, provide, inject, onMounted, onUnmounted, InjectionKey, ComputedRef, Ref } from 'vue';
 
 // ----------------- 1. 定义核心类型接口（TS 核心）-----------------
 /** 主题颜色配置类型 */
