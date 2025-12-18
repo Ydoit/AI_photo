@@ -29,7 +29,7 @@ def get_directories(db: Session = Depends(get_db)):
 
 @router.post('/directories')
 def add_directory(payload: dict, db: Session = Depends(get_db)):
-    path = payload.get('path')
+    path = payload.get('path').strip()
     if not path or not isinstance(path, str):
         raise HTTPException(status_code=400, detail='invalid path')
     if not os.path.isdir(path):

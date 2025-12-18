@@ -9,6 +9,9 @@ class AISettings(BaseModel):
     face_recognition_min_photos: int = Field(default=5, description="Minimum photos required for a valid face cluster")
     # OCR settings can be added here later
 
+class TaskSettings(BaseModel):
+    max_concurrent_tasks: int = Field(default=3, description="Maximum number of concurrent tasks")
+
 class StorageSettings(BaseModel):
     photo_storage_path: str = Field(default="./data/uploads", description="Main photo storage root path")
     external_directories: List[str] = Field(default=[], description="List of external gallery directories")
@@ -16,6 +19,8 @@ class StorageSettings(BaseModel):
 class ImageSettings(BaseModel):
     thumbnail_quality: int = Field(default=80, description="Thumbnail quality (1-100)")
     preview_quality: int = Field(default=85, description="Preview image quality (1-100)")
+    thumbnail_size: int = Field(default=250, description="Thumbnail long edge size")
+    preview_size: int = Field(default=1440, description="Preview long edge size")
     # Add other image settings here
 
 class AppSettings(BaseModel):
@@ -23,6 +28,7 @@ class AppSettings(BaseModel):
     ai: AISettings = Field(default_factory=AISettings)
     storage: StorageSettings = Field(default_factory=StorageSettings)
     image: ImageSettings = Field(default_factory=ImageSettings)
+    task: TaskSettings = Field(default_factory=TaskSettings)
     
     class Config:
         arbitrary_types_allowed = True
@@ -88,7 +94,7 @@ class ConfigManager:
             print(f"Error saving config: {e}")
 
     def get_all(self) -> Dict[str, Any]:
-        return self.config.dict()
+        return self.config.model_dump()
 
     def update_all(self, new_config: Dict[str, Any]):
         # Update fields in existing config object
@@ -96,7 +102,7 @@ class ConfigManager:
         # config.dict() returns a dict, but we want to update the actual object or recreate it.
         # Simplest way is to dump current, merge, and recreate.
         
-        current_data = self.config.dict()
+        current_data = self.config.model_dump()
         
         # Deep merge helper or just simple update?
         # If new_config has partial nested data (e.g. only ai updated), we need deep merge.

@@ -200,7 +200,7 @@ const getFaceCropStyle = (cover: CoverPhotoInfo) => {
 
 const getPhotoUrl = (photoId: string) => {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-  return `${API_BASE_URL}/api/medias/${photoId}/thumbnail`
+  return `${API_BASE_URL}/api/medias/${photoId}/thumbnail?size=medium`
 }
 
 const toggleMergeMode = () => {

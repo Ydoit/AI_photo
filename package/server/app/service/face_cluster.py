@@ -79,7 +79,6 @@ class FaceClusterService:
                 ).all()
 
                 if not face_embeddings:
-                    logger.warning(f"Identity {identity.id} 无有效人脸向量，跳过")
                     continue
 
                 # 计算均值向量（核心优化：替代单个default_face）

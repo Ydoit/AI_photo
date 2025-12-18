@@ -9,7 +9,7 @@ from app.service.storage import _get_storage_root
 
 router = APIRouter()
 
-def _get_thumbnail_path(photo_id: UUID, db: Session, size: str = 'medium') -> str:
+def _get_thumbnail_path(photo_id: UUID, db: Session, size: str = 'small') -> str:
     compact = str(photo_id).replace('-', '')
     p1, p2 = compact[:2], compact[2:4]
     root = _get_storage_root(db)
@@ -20,7 +20,7 @@ def _get_thumbnail_path(photo_id: UUID, db: Session, size: str = 'medium') -> st
     return os.path.join(base, f"{compact}.jpg")
 
 @router.get('/{photo_id}/thumbnail')
-def get_thumbnail(photo_id: UUID, size: str = 'medium', db: Session = Depends(get_db)):
+def get_thumbnail(photo_id: UUID, size: str = 'small', db: Session = Depends(get_db)):
     path = _get_thumbnail_path(photo_id, db, size)
     if not os.path.exists(path):
         # Fallback if thumbnail not found: try to return original if it's an image?

@@ -13,21 +13,27 @@
           <div class="flex justify-between items-center mb-4">
             <div class="flex items-center gap-3">
               <h3 class="text-lg font-medium dark:text-white">{{ formatCategory(cat.category) }}</h3>
-              <el-tag :type="cat.status === 'paused' ? 'warning' : 'success'" size="small">
-                {{ cat.status === 'paused' ? '已暂停' : '进行中' }}
+              <el-tag effect="plain" size="small" class="ml-2">
+                 优先级: {{ cat.priority }}
               </el-tag>
+              
+              <!-- Status Logic -->
+              <el-tag v-if="cat.status === 'paused'" type="warning" size="small">已暂停</el-tag>
+              <el-tag v-else-if="cat.pending === 0 && cat.completed > 0" type="success" size="small">已完成</el-tag>
+              <el-tag v-else-if="cat.completed === 0 && cat.pending === 0" type="info" size="small">等待中</el-tag>
+              <el-tag v-else type="primary" size="small">进行中</el-tag>
             </div>
             <div>
-               <el-button
-                 v-if="cat.status === 'paused'"
-                 type="success"
-                 size="small"
+               <el-button 
+                 v-if="cat.status === 'paused'" 
+                 type="success" 
+                 size="small" 
                  @click="resumeCategory(cat.category)"
                >继续</el-button>
-               <el-button
-                 v-else
-                 type="warning"
-                 size="small"
+               <el-button 
+                 v-else 
+                 type="warning" 
+                 size="small" 
                  @click="pauseCategory(cat.category)"
                >暂停</el-button>
             </div>
@@ -94,6 +100,7 @@ interface GroupedTask {
     completed: number
     failed: number
     status: string
+    priority: number
 }
 
 const groupedTasks = ref<GroupedTask[]>([])

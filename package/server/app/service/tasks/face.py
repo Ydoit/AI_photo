@@ -1,4 +1,5 @@
 import logging
+import os
 import aiohttp
 from aiohttp import FormData
 import json
@@ -66,12 +67,27 @@ async def handle_face_recognition(task_manager, task: Task, db: Session) -> Dict
 
         processed = 0
         error_count = 0
+        
+        # Get storage root once if needed or rely on storage service
+        from app.service import storage
 
         async with aiohttp.ClientSession() as session:
             for photo in photos_to_process:
                 try:
+                    # 1. Resolve file path (Prefer preview, fallback to original)
+                    target_path = storage.get_preview_path(photo.id, db)
+                    if not target_path:
+                        target_path = photo.file_path
+                    
+                    if not os.path.exists(target_path):
+                        # Fallback to original if preview claimed exist but file missing (rare race condition)
+                        target_path = photo.file_path
+                        if not os.path.exists(target_path):
+                            logging.warning(f"File not found for face recognition: {photo.id}")
+                            continue
+
                     # 1. Read file
-                    with open(photo.file_path, 'rb') as f:
+                    with open(target_path, 'rb') as f:
                         file_data = f.read()
                     # 2. 构造multipart/form-data格式的表单（核心修正）
                     form_data = FormData()

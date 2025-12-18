@@ -1,6 +1,7 @@
 import os
 import shutil
 from uuid import UUID
+from typing import Optional
 from fastapi import UploadFile
 from PIL import Image
 import logging
@@ -98,15 +99,32 @@ def _save_thumbnails(img: Image.Image, file_id: UUID, db: Session) -> str:
     os.makedirs(base, exist_ok=True)
     m_path = os.path.join(base, f"{compact}.jpg")
     s_path = os.path.join(base, f"{compact}-thumb.jpg")
-    
+
+    # Get settings
+    t_size = config_manager.config.image.thumbnail_size
+    p_size = config_manager.config.image.preview_size
+    t_qual = config_manager.config.image.thumbnail_quality
+    p_qual = config_manager.config.image.preview_quality
+
     m = img.copy()
-    m.thumbnail((800, 800))
-    m.save(m_path, "JPEG", quality=80)
-    
+    m.thumbnail((p_size, p_size))
+    m.save(m_path, "JPEG", quality=p_qual)
+
     s = img.copy()
-    s.thumbnail((300, 300))
-    s.save(s_path, "JPEG", quality=75)
+    s.thumbnail((t_size, t_size))
+    s.save(s_path, "JPEG", quality=t_qual)
     return m_path
+
+def get_preview_path(file_id: UUID, db: Session = None) -> Optional[str]:
+    """Get the absolute path to the preview image if it exists."""
+    compact = str(file_id).replace('-', '')
+    p1, p2 = compact[:2], compact[2:4]
+    root = _get_storage_root(db)
+    m_path = os.path.join(root, 'thumbnails', p1, p2, f"{compact}.jpg")
+    if os.path.exists(m_path):
+        return m_path
+    return None
+
 
 from typing import Optional
 
@@ -115,7 +133,6 @@ def generate_thumbnail(file_path: str, file_id: UUID, db: Session, image_obj: Op
         ext = os.path.splitext(file_path)[1].lower()
         if ext in ('.mp4', '.mov', '.avi', '.mkv', '.webm'):
             return generate_video_thumbnail(file_path, file_id, db)
-            
         if ext in ('.png', '.jpg', '.jpeg', '.webp'):
             if image_obj:
                 return _save_thumbnails(image_obj, file_id, db)

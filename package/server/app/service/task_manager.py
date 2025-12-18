@@ -10,8 +10,20 @@ from app.db.session import SessionLocal
 from app.db.models.task import Task, TaskType, TaskStatus
 from app.db.models.index_log import IndexLog
 from app.crud import album as album_crud
+from app.core.config_manager import config_manager
 
 from app.service.tasks import thumbnail, metadata, scan, face
+
+DEFAULT_PRIORITIES = {
+    TaskType.SCAN_FOLDER: 10,
+    TaskType.PROCESS_BASIC: 9,
+    TaskType.GENERATE_THUMBNAIL: 8,
+    TaskType.EXTRACT_METADATA: 5,
+    TaskType.REBUILD_METADATA: 5,
+    TaskType.REBUILD_THUMBNAILS: 4,
+    TaskType.RECOGNIZE_FACE: 1,
+    TaskType.CLASSIFY_IMAGE: 1,
+}
 
 class TaskManager:
     _instance = None
@@ -59,10 +71,14 @@ class TaskManager:
             return
         self.running = True
         self._recover_unfinished_tasks()
-        self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=4)
+        
+        # Use config for max_workers
+        max_workers = config_manager.config.task.max_concurrent_tasks
+        self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=max_workers)
+        
         self.worker_task = asyncio.create_task(self.worker_loop())
         self.result_task = asyncio.create_task(self.result_loop())
-        logging.info("TaskManager started")
+        logging.info(f"TaskManager started with {max_workers} workers")
 
     def stop(self):
         self.running = False
@@ -84,10 +100,16 @@ class TaskManager:
         # Define categories to show
         categories = ['scanning', 'metadata', 'face']
         
+        # Priority map for categories (higher is better)
+        cat_priority = {
+            'scanning': 10,
+            'metadata': 5,
+            'face': 1
+        }
+
         for cat in categories:
             # Find types belonging to this category
             types = [t for t, c in self.category_map.items() if c == cat]
-            
             pending = db.query(Task).filter(
                 Task.status.in_([TaskStatus.PENDING, TaskStatus.PROCESSING]),
                 Task.type.in_(types)
@@ -108,8 +130,12 @@ class TaskManager:
                 'pending': pending,
                 'completed': completed,
                 'failed': failed,
-                'status': 'paused' if cat in self.paused_categories else 'active'
+                'status': 'paused' if cat in self.paused_categories else 'active',
+                'priority': cat_priority.get(cat, 0)
             })
+            
+        # Sort by priority desc
+        stats.sort(key=lambda x: x['priority'], reverse=True)
         return stats
 
     def pause_category(self, category: str):
@@ -122,6 +148,9 @@ class TaskManager:
             logging.info(f"Resumed task category: {category}")
 
     def add_task(self, db: Session, type: str, payload: dict, priority: int = 0):
+        if priority == 0:
+            priority = DEFAULT_PRIORITIES.get(type, 0)
+            
         task = Task(type=type, payload=payload, priority=priority)
         db.add(task)
         db.commit()
@@ -131,6 +160,8 @@ class TaskManager:
     async def worker_loop(self):
         logging.info("TaskManager worker loop started")
         active_tasks = set()
+        idle_start_time = None
+        
         while self.running:
             try:
                 # Clean up finished tasks
@@ -138,8 +169,29 @@ class TaskManager:
                 # Update status
                 if active_tasks:
                     self.scan_status['running'] = True
-                # Limit concurrency
-                if len(active_tasks) >= 5:
+                    idle_start_time = None
+                
+                # Manage Pool Lifecycle (Resource Release)
+                if not active_tasks:
+                    if idle_start_time is None:
+                        idle_start_time = datetime.now()
+                    elif (datetime.now() - idle_start_time).total_seconds() > 30:
+                        # Idle for 30s, shutdown pool to release resources
+                        if self.process_pool:
+                            logging.info("TaskManager idle for 30s, shutting down process pool to release resources")
+                            self.process_pool.shutdown(wait=False)
+                            self.process_pool = None
+                else:
+                    # Ensure pool exists
+                    if self.process_pool is None:
+                        max_workers = config_manager.config.task.max_concurrent_tasks
+                        logging.info(f"Restarting process pool with {max_workers} workers")
+                        self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=max_workers)
+
+                # Limit concurrency (double check against pool size if needed, but here we limit async tasks)
+                # We should match max_concurrent_tasks
+                max_concurrency = config_manager.config.task.max_concurrent_tasks
+                if len(active_tasks) >= max_concurrency:
                     await asyncio.sleep(0.1)
                     continue
 

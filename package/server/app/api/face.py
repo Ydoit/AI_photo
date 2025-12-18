@@ -79,15 +79,19 @@ def list_identities(
         FaceIdentity.create_time.desc()
     ).offset(offset).limit(limit)
     results = []
+    p_size = config_manager.config.image.preview_size
+
     for identity, count, default_face, photo in query.all():
-        if count<=config_manager.config.ai.face_recognition_min_photos:
+        if not count or count<=config_manager.config.ai.face_recognition_min_photos:
             continue
         cover = None
         if default_face and photo:
+            scale = p_size / max(photo.width, photo.height)
             cover = CoverPhotoInfo(
                 photo_id=default_face.photo_id,
-                width=photo.width,
-                height=photo.height,
+
+                width=int(photo.width * scale),
+                height=int(photo.height * scale),
                 face_rect=default_face.face_rect
             )
         results.append({

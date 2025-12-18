@@ -32,7 +32,7 @@
         <!-- External Directories (Read-only display for now or simple list) -->
         <el-form-item label="外部挂载目录">
            <div class="w-full">
-             <div v-for="(dir, idx) in storageForm.external_directories" :key="idx" class="flex justify-between items-center bg-gray-50 p-2 rounded mb-1 text-sm">
+             <div v-for="(dir, idx) in storageForm.external_directories" :key="idx" class="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded mb-1 text-sm">
                 <span>{{ dir }}</span>
              </div>
              <div v-if="storageForm.external_directories.length === 0" class="text-gray-400 text-sm">暂无挂载目录 (请通过管理工具配置)</div>
@@ -48,7 +48,6 @@
         <el-form-item label="AI API 地址">
           <el-input v-model="aiForm.ai_api_url" placeholder="http://localhost:8001" />
         </el-form-item>
-        
         <div class="my-4 pt-2 border-t border-gray-100">
             <h3 class="text-sm font-medium text-gray-600 mb-3">人脸识别配置</h3>
             <el-form-item label="识别阈值">
@@ -73,9 +72,30 @@
     <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
       <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">图片配置</h2>
       <el-form label-width="140px" class="max-w-3xl">
+        <el-form-item label="缩略图大小">
+          <el-select v-model="imageForm.thumbnail_size" placeholder="选择缩略图大小">
+             <el-option label="250px" :value="250" />
+             <el-option label="480px" :value="480" />
+             <el-option label="720px" :value="720" />
+             <el-option label="1080px" :value="1080" />
+          </el-select>
+          <span class="text-sm text-gray-500 ml-2">默认 250px</span>
+        </el-form-item>
+        
         <el-form-item label="缩略图质量">
            <el-slider v-model="imageForm.thumbnail_quality" :min="1" :max="100" show-input class="w-64" />
         </el-form-item>
+        
+        <el-form-item label="预览图大小">
+          <el-select v-model="imageForm.preview_size" placeholder="选择预览图大小">
+             <el-option label="720px" :value="720" />
+             <el-option label="1080px" :value="1080" />
+             <el-option label="1440px" :value="1440" />
+             <el-option label="2160px" :value="2160" />
+          </el-select>
+          <span class="text-sm text-gray-500 ml-2">默认 1440px</span>
+        </el-form-item>
+
         <el-form-item label="预览图质量">
            <el-slider v-model="imageForm.preview_quality" :min="1" :max="100" show-input class="w-64" />
         </el-form-item>
@@ -138,7 +158,9 @@ const aiForm = ref({
 
 const imageForm = ref({
   thumbnail_quality: 80,
-  preview_quality: 85
+  preview_quality: 85,
+  preview_size: 1440,
+  thumbnail_size: 250
 })
 
 const pathValid = ref<boolean | null>(null)
