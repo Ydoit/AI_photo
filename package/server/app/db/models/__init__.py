@@ -14,7 +14,6 @@ from app.db.models.photo_metadata import PhotoMetadata
 from app.db.models.album_photos import AlbumPhoto
 from app.db.models.trip import TicketType, TrainTicket
 from app.db.models.user import User
-from app.db.models.app_setting import AppSetting
 from app.db.models.index_log import IndexLog
 from app.db.models.task import Task, TaskStatus, TaskType
 from app.db.models.face import Face, FaceIdentity

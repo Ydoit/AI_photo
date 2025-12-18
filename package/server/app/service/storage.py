@@ -6,7 +6,7 @@ from PIL import Image
 import logging
 from datetime import datetime
 from sqlalchemy.orm import Session
-from app.db.models.app_setting import AppSetting
+from app.core.config_manager import config_manager
 try:
     import cv2
     import numpy as np
@@ -21,22 +21,11 @@ def _get_storage_root(db: Session = None) -> str:
     if _STORAGE_ROOT_CACHE:
         return _STORAGE_ROOT_CACHE
         
-    if db:
-        setting = db.query(AppSetting).filter(AppSetting.key == 'storage_root').first()
-        if setting and setting.value:
-            root = setting.value
-        else:
-            root = 'uploads'
-    else:
-        # Fallback if no DB session provided and cache empty
-        # This might happen if called outside of request context before initialization
-        # Ideally shouldn't happen if we initialize properly
+    root = config_manager.config.storage.photo_storage_path
+    if not root:
         root = 'uploads'
 
     # Ensure directories exist
-    # Optimization: We could move this out of the hot path, 
-    # but for safety we keep it or move it to setter.
-    # Given the user instruction is about avoiding DB query, caching the path is the main goal.
     try:
         os.makedirs(root, exist_ok=True)
         os.makedirs(os.path.join(root, 'uploads'), exist_ok=True)

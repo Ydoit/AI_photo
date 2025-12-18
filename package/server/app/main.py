@@ -6,7 +6,6 @@ import time
 import logging
 from sqlalchemy import text
 from app.db.session import engine, SessionLocal
-from app.db.models.app_setting import AppSetting
 from app.core.logger import setup_logging
 
 from app.api import user, album, settings, index, media, stats, photo, tasks, face

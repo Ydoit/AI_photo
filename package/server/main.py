@@ -26,7 +26,6 @@ load_dotenv('./data/.env')
 from app.api import user, train_ticket, album, index, settings, face
 from railway.api import router as railway_router
 from app.db.session import engine, SessionLocal
-from app.db.models.app_setting import AppSetting
 from app.api import user, album, settings, index, media, stats, photo, tasks
 from app.core.logger import setup_logging
 

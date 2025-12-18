@@ -5,7 +5,7 @@ import os
 import tempfile
 import json
 from app.dependencies import get_db
-from app.db.models.app_setting import AppSetting
+from app.core.config_manager import config_manager
 from app.db.models.photo import Photo
 from app.service.storage import delete_thumbnails, update_storage_root_cache, _get_storage_root
 from app.service.indexer import rebuild_index as service_rebuild_index, status as index_status
@@ -16,19 +16,13 @@ router = APIRouter()
 def get_storage_root(db: Session) -> str:
     return _get_storage_root(db)
 
-def get_external_dirs(db: Session) -> list[str]:
-    setting = db.query(AppSetting).filter(AppSetting.key == 'external_directories').first()
-    if setting and setting.value:
-        try:
-            return json.loads(setting.value)
-        except:
-            return []
-    return []
+def get_external_dirs() -> list[str]:
+    return config_manager.config.storage.external_directories
 
 @router.get('/directories')
 def get_directories(db: Session = Depends(get_db)):
     primary = get_storage_root(db)
-    external = get_external_dirs(db)
+    external = get_external_dirs()
     return {'primary': primary, 'external': external}
 
 @router.post('/directories')
@@ -39,22 +33,12 @@ def add_directory(payload: dict, db: Session = Depends(get_db)):
     if not os.path.isdir(path):
         raise HTTPException(status_code=400, detail='not a directory')
     
-    current = get_external_dirs(db)
+    current = get_external_dirs()
     if path in current:
         return {'primary': get_storage_root(db), 'external': current}
     
-    # Check if writable not strictly required for external (read-only), but good practice if we ever write metadata
-    # For now, let's just ensure it exists.
-    
     current.append(path)
-    
-    setting = db.query(AppSetting).filter(AppSetting.key == 'external_directories').first()
-    if not setting:
-        setting = AppSetting(key='external_directories', value=json.dumps(current))
-        db.add(setting)
-    else:
-        setting.value = json.dumps(current)
-    db.commit()
+    config_manager.save()
     
     return {'primary': get_storage_root(db), 'external': current}
 
@@ -64,13 +48,10 @@ def remove_directory(payload: dict, db: Session = Depends(get_db)):
     if not path:
         raise HTTPException(status_code=400, detail='path required')
     
-    current = get_external_dirs(db)
+    current = get_external_dirs()
     if path in current:
         current.remove(path)
-        setting = db.query(AppSetting).filter(AppSetting.key == 'external_directories').first()
-        if setting:
-            setting.value = json.dumps(current)
-            db.add(setting) # ensure update
+        config_manager.save()
             
         # Cleanup photos belonging to this directory
         # We need to normalize paths for comparison.
@@ -110,16 +91,37 @@ def update_storage_root(payload: dict, db: Session = Depends(get_db)):
         os.remove(tmp)
     except Exception:
         raise HTTPException(status_code=400, detail='rw check failed')
-    setting = db.query(AppSetting).filter(AppSetting.key == 'storage_root').first()
-    if not setting:
-        setting = AppSetting(key='storage_root', value=path)
-        db.add(setting)
-    else:
-        setting.value = path
-    db.commit()
+    
+    config_manager.config.storage.photo_storage_path = path
+    config_manager.save()
     
     # Update global cache
     update_storage_root_cache(path)
     
     return {'storage_root': path}
 
+@router.get('/')
+def get_settings():
+    return config_manager.get_all()
+
+@router.put('/')
+def update_settings(payload: dict):
+    config_manager.update_all(payload)
+    # Update cache if storage_root changed
+    root = config_manager.config.storage.photo_storage_path
+    if root:
+        update_storage_root_cache(root)
+    return {"status": "success", "config": config_manager.get_all()}
+
+@router.get('/export')
+def export_settings():
+    return config_manager.get_all()
+
+@router.post('/import')
+def import_settings(payload: dict):
+    config_manager.update_all(payload)
+    # Update cache if storage_root changed
+    root = config_manager.config.storage.photo_storage_path
+    if root:
+        update_storage_root_cache(root)
+    return {"status": "success", "config": config_manager.get_all()}

@@ -16,7 +16,7 @@ class FaceIdentity(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     identity_name = Column(String(50))
     # use_alter=True to handle circular dependency during creation
-    default_face_id = Column(Integer, ForeignKey("faces.id", use_alter=True), nullable=True)
+    default_face_id = Column(Integer, ForeignKey("faces.id", use_alter=True, ondelete="SET NULL"), nullable=True)
     create_time = Column(DateTime, default=datetime.now)
     update_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     is_deleted = Column(Boolean, default=False)

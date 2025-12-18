@@ -5,6 +5,7 @@ from app.dependencies import get_db
 from app.db.models.face import FaceIdentity, Face
 from app.db.models.photo import Photo
 from app.schemas import album
+from app.core.config_manager import config_manager
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from uuid import UUID
@@ -77,10 +78,9 @@ def list_identities(
     ).order_by(
         FaceIdentity.create_time.desc()
     ).offset(offset).limit(limit)
-    
     results = []
     for identity, count, default_face, photo in query.all():
-        if count<=5:
+        if count<=config_manager.config.ai.face_recognition_min_photos:
             continue
         cover = None
         if default_face and photo:

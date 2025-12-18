@@ -35,6 +35,22 @@ export const settingsApi = {
   async removeDirectory(path: string) {
     const { data } = await api.delete('/api/settings/directories', { data: { path } })
     return data
+  },
+  async getSettings() {
+    const { data } = await api.get('/api/settings/')
+    return data
+  },
+  async updateSettings(config: any) {
+    const { data } = await api.put('/api/settings/', config)
+    return data
+  },
+  async exportSettings() {
+    const { data } = await api.get('/api/settings/export')
+    return data
+  },
+  async importSettings(config: any) {
+    const { data } = await api.post('/api/settings/import', config)
+    return data
   }
 }
 

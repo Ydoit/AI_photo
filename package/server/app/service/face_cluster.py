@@ -14,17 +14,18 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class FaceClusterService:
-    # 可配置参数（集中管理，方便调优）
-    SIMILARITY_THRESHOLD = 0.6  # 业务要求的相似度阈值
-    DISTANCE_THRESHOLD = 1.0 - SIMILARITY_THRESHOLD  # 对应余弦距离阈值
-    DBSCAN_EPS = DISTANCE_THRESHOLD  # DBSCAN距离阈值（对齐业务要求）
-    DBSCAN_MIN_SAMPLES = 1  # 初始宽松值，后续可调至2/3
-    CLUSTER_MERGE_THRESHOLD = DISTANCE_THRESHOLD  # 簇合并的距离阈值
-    MIN_CLUSTER_SIZE_FOR_IDENTITY = 2  # 新建Identity的最小簇大小
+from app.core.config_manager import config_manager
 
+class FaceClusterService:
     def __init__(self, db: Session):
         self.db = db
+        # Initialize from config
+        self.SIMILARITY_THRESHOLD = config_manager.config.ai.face_recognition_threshold
+        self.DISTANCE_THRESHOLD = 1.0 - self.SIMILARITY_THRESHOLD
+        self.DBSCAN_EPS = self.DISTANCE_THRESHOLD
+        self.DBSCAN_MIN_SAMPLES = 1
+        self.CLUSTER_MERGE_THRESHOLD = self.DISTANCE_THRESHOLD
+        self.MIN_CLUSTER_SIZE_FOR_IDENTITY = config_manager.config.ai.face_recognition_min_photos
 
     @staticmethod
     def normalize_embedding(embedding: list | np.ndarray) -> np.ndarray:

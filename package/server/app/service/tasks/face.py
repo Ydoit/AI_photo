@@ -9,9 +9,7 @@ from app.db.models.face import Face
 from app.service.face_cluster import FaceClusterService
 from app.db.models.task import TaskType
 from typing import Dict, Any
-
-AI_SERVICE_URL = "http://localhost:8001"
-FACE_CONFIDENCE_THRESHOLD = 0.75
+from app.core.config_manager import config_manager
 
 async def handle_face_recognition(task_manager, task: Task, db: Session) -> Dict[str, Any]:
     """
@@ -89,7 +87,7 @@ async def handle_face_recognition(task_manager, task: Task, db: Session) -> Dict
 
                     # 3. 调用AI服务（用form_data替代原data）
                     async with session.post(
-                        f"{AI_SERVICE_URL}/face-recognition",
+                        f"{config_manager.config.ai.ai_api_url}/face-recognition",
                         data=form_data,  # 传入构造好的FormData
                         timeout=aiohttp.ClientTimeout(total=30)  # 可选，添加超时保护
                     ) as resp:
@@ -101,7 +99,7 @@ async def handle_face_recognition(task_manager, task: Task, db: Session) -> Dict
                             db.commit()
                             # 3. Save Faces
                             for face_data in faces:
-                                if face_data['det_score'] < FACE_CONFIDENCE_THRESHOLD:
+                                if face_data['det_score'] < config_manager.config.ai.face_recognition_threshold:
                                     continue
                                 face = Face(
                                     photo_id=photo.id,

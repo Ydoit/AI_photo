@@ -9,11 +9,11 @@ from sqlalchemy.orm import Session
 
 from app.db.models.task import Task, TaskType, TaskStatus
 from app.db.models.photo import Photo, FileType
-from app.db.models.app_setting import AppSetting
 from app.db.models.index_log import IndexLog
 from app.service import storage
 from app.utils import exif
 from app.schemas import album as album_schemas
+from app.core.config_manager import config_manager
 
 def process_image_cpu_job(file_path: str, file_id: UUID, storage_root: str):
     """
@@ -83,19 +83,12 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
     if not scan_roots:
             root = storage._get_storage_root(db)
             primary_uploads = os.path.join(root, 'uploads')
-            ext_setting = db.query(AppSetting).filter(AppSetting.key == 'external_directories').first()
-            external_dirs = []
-            if ext_setting and ext_setting.value:
-                import json
-                try:
-                    external_dirs = json.loads(ext_setting.value)
-                except:
-                    pass
+            external_dirs = config_manager.config.storage.external_directories
             scan_roots = [primary_uploads] + external_dirs
 
     EXTS = {'.png', '.jpg', '.jpeg', '.webp', '.tiff', '.gif', '.mp4', '.mov', '.avi'}
     loop = asyncio.get_running_loop()
-    
+    logging.info(f"Scanning roots: {scan_roots}")
     def parallel_scan_wrapper():
         found_files = set()
         work_items = []
@@ -173,16 +166,14 @@ async def handle_process_image(task_manager, task: Task, db: Session):
 
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(
-        task_manager.process_pool, 
-        process_image_cpu_job, 
-        file_path, 
-        photo_id, 
+        task_manager.process_pool,
+        process_image_cpu_job,
+        file_path,
+        photo_id,
         storage_root
     )
-    
     if not result['success']:
         raise Exception(result.get('error', 'Unknown error'))
-        
     meta = result['meta']
     ext = os.path.splitext(result['file_name'])[1]
     file_type = FileType.image
