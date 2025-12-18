@@ -43,5 +43,20 @@ export const tasksApi = {
   async getTaskStats() {
     const { data } = await api.get<{ failed_process_tasks: number }>('/api/tasks/stats')
     return data
+  },
+
+  async getGroupedStatus() {
+    const { data } = await api.get<any[]>('/api/tasks/grouped-status')
+    return data
+  },
+
+  async pauseCategory(category: string) {
+    const { data } = await api.post(`/api/tasks/categories/${category}/pause`)
+    return data
+  },
+
+  async resumeCategory(category: string) {
+    const { data } = await api.post(`/api/tasks/categories/${category}/resume`)
+    return data
   }
 }

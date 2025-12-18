@@ -15,10 +15,10 @@ from app.utils import exif
 from app.schemas import album as album_schemas
 from app.core.config_manager import config_manager
 
-def process_image_cpu_job(file_path: str, file_id: UUID, storage_root: str):
+def process_basic_cpu_job(file_path: str, file_id: UUID, storage_root: str):
     """
     CPU-intensive task running in a separate process.
-    Generates thumbnails and extracts metadata.
+    Generates thumbnails and extracts BASIC metadata (no heavy geolocation).
     """
     try:
         # Initialize storage root cache in this process
@@ -36,11 +36,51 @@ def process_image_cpu_job(file_path: str, file_id: UUID, storage_root: str):
         # 1. Generate thumbnail
         thumb_path = storage.generate_thumbnail(file_path, file_id, db=None, image_obj=image_obj)
 
-        # 2. Extract metadata
+        # 2. Extract metadata (BASIC ONLY)
         file_name = os.path.basename(file_path)
-        meta = exif.extract_metadata(file_path, file_name, image_obj=image_obj)
+        meta = exif.extract_metadata(file_path, file_name, image_obj=image_obj, extract_location_details=False)
 
         # 3. Get dimensions/size
+        size = storage.get_file_size(file_path)
+        width, height, duration = storage.get_image_dimensions(file_path, image_obj=image_obj)
+
+        if image_obj:
+            image_obj.close()
+
+        return {
+            "success": True,
+            "thumb_path": thumb_path,
+            "meta": meta,
+            "size": size,
+            "width": width,
+            "height": height,
+            "duration": duration,
+            "file_name": file_name,
+            "photo_create_data": None # Placeholder
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+def process_image_cpu_job(file_path: str, file_id: UUID, storage_root: str):
+    """
+    Legacy/Full processing.
+    """
+    try:
+        storage.update_storage_root_cache(storage_root)
+        image_obj = None
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext in ('.png', '.jpg', '.jpeg', '.webp'):
+             try:
+                 image_obj = Image.open(file_path)
+             except Exception:
+                 pass
+
+        thumb_path = storage.generate_thumbnail(file_path, file_id, db=None, image_obj=image_obj)
+        file_name = os.path.basename(file_path)
+        meta = exif.extract_metadata(file_path, file_name, image_obj=image_obj, extract_location_details=True)
         size = storage.get_file_size(file_path)
         width, height, duration = storage.get_image_dimensions(file_path, image_obj=image_obj)
 
@@ -128,7 +168,7 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
     new_tasks = []
     for fp in new_files:
         new_tasks.append(Task(
-            type=TaskType.PROCESS_IMAGE,
+            type=TaskType.PROCESS_BASIC, # Use Basic Task
             payload={'file_path': fp},
             priority=10, 
             status=TaskStatus.PENDING
@@ -156,7 +196,71 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
 
     return {'new_files': len(new_files), 'deleted_files': len(deleted_files)}
 
+async def handle_process_basic(task_manager, task: Task, db: Session):
+    file_path = task.payload.get('file_path')
+    if not file_path or not os.path.exists(file_path):
+        return {'status': 'skipped', 'reason': 'file not found'}
+
+    photo_id = uuid4()
+    storage_root = storage._get_storage_root(db)
+
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(
+        task_manager.process_pool,
+        process_basic_cpu_job,
+        file_path,
+        photo_id,
+        storage_root
+    )
+    if not result['success']:
+        raise Exception(result.get('error', 'Unknown error'))
+    
+    # Construct PhotoCreate data for bulk insert in TaskManager
+    meta = result['meta']
+    ext = os.path.splitext(result['file_name'])[1]
+    file_type = FileType.image
+    if ext.lower() in ['.mp4', '.mov', '.avi', '.mkv', '.webm']:
+        file_type = FileType.video
+
+    # We need to return raw data, not schemas, because bulk_create_photos expects dicts or similar?
+    # Actually album_crud.batch_create_photos expects schemas.PhotoCreate
+    
+    photo_create = album_schemas.PhotoCreate(
+        file_type=file_type,
+        size=result['size'],
+        width=result['width'],
+        height=result['height'],
+        duration=result['duration'],
+        filename=result['file_name'],
+        photo_time=meta["photo_time"]
+    )
+    
+    # Pass metadata separately? No, PhotoCreate doesn't have metadata fields except photo_time
+    # We need to pass metadata info too.
+    # album_crud.batch_create_photos takes list of {photo: PhotoCreate, metadata: PhotoMetadataCreate}?
+    # Let's check album_crud.batch_create_photos. 
+    # For now, I will construct a dict that TaskManager can understand.
+    
+    metadata_create = album_schemas.PhotoMetadataCreate(
+        exif_info=meta["exif_info"],
+        # Basic task doesn't have location details yet
+    )
+    
+    # Attach ID we generated
+    # photo_create doesn't have ID field, but we need to force it to use the one we used for thumbnail
+    # So we need to pass it along.
+    
+    return {
+        'photo_create_data': {
+            'photo': photo_create,
+            'metadata': metadata_create,
+            'photo_id': photo_id,
+            'file_path': file_path
+        }
+    }
+
 async def handle_process_image(task_manager, task: Task, db: Session):
+    """Legacy handler, keeping for compatibility if needed"""
     file_path = task.payload.get('file_path')
     if not file_path or not os.path.exists(file_path):
         return {'status': 'skipped', 'reason': 'file not found'}
@@ -194,7 +298,6 @@ async def handle_process_image(task_manager, task: Task, db: Session):
         exif_info=meta["exif_info"],
     )
 
-    # Add enhanced location details if available
     loc_details = meta.get("location_details", {})
     if loc_details:
         metadata_create.longitude = loc_details.get("longitude")
@@ -203,13 +306,12 @@ async def handle_process_image(task_manager, task: Task, db: Session):
         metadata_create.province = loc_details.get("province")
         metadata_create.country = loc_details.get("country")
         metadata_create.address = loc_details.get("address")
-
-    # Prepare data for batch insert instead of writing to DB directly
+        
     return {
         'photo_create_data': {
             'photo': photo_create,
-            'file_path': file_path,
+            'metadata': metadata_create,
             'photo_id': photo_id,
-            'metadata': metadata_create
+            'file_path': file_path
         }
     }

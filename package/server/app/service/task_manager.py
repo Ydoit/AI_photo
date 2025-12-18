@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import concurrent.futures
-from typing import List, Dict
+from typing import List, Dict, Set
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -31,6 +31,21 @@ class TaskManager:
             'message': 'Idle',
             'total_files': 0,
             'processed_files': 0
+        }
+        
+        # Category Management
+        self.paused_categories: Set[str] = set()
+        self.category_map = {
+            TaskType.SCAN_FOLDER: 'scanning',
+            TaskType.PROCESS_BASIC: 'scanning',
+            TaskType.PROCESS_IMAGE: 'scanning', # Legacy
+            TaskType.GENERATE_THUMBNAIL: 'scanning',
+            
+            TaskType.EXTRACT_METADATA: 'metadata',
+            TaskType.REBUILD_METADATA: 'metadata',
+            
+            TaskType.RECOGNIZE_FACE: 'face',
+            TaskType.CLASSIFY_IMAGE: 'face', # or 'ai'
         }
 
     @classmethod
@@ -63,6 +78,49 @@ class TaskManager:
     def get_status(self):
         return self.scan_status
 
+    def get_grouped_status(self, db: Session):
+        """Get task counts grouped by category"""
+        stats = []
+        # Define categories to show
+        categories = ['scanning', 'metadata', 'face']
+        
+        for cat in categories:
+            # Find types belonging to this category
+            types = [t for t, c in self.category_map.items() if c == cat]
+            
+            pending = db.query(Task).filter(
+                Task.status.in_([TaskStatus.PENDING, TaskStatus.PROCESSING]),
+                Task.type.in_(types)
+            ).count()
+            
+            completed = db.query(Task).filter(
+                Task.status == TaskStatus.COMPLETED,
+                Task.type.in_(types)
+            ).count()
+            
+            failed = db.query(Task).filter(
+                Task.status == TaskStatus.FAILED,
+                Task.type.in_(types)
+            ).count()
+
+            stats.append({
+                'category': cat,
+                'pending': pending,
+                'completed': completed,
+                'failed': failed,
+                'status': 'paused' if cat in self.paused_categories else 'active'
+            })
+        return stats
+
+    def pause_category(self, category: str):
+        self.paused_categories.add(category)
+        logging.info(f"Paused task category: {category}")
+
+    def resume_category(self, category: str):
+        if category in self.paused_categories:
+            self.paused_categories.remove(category)
+            logging.info(f"Resumed task category: {category}")
+
     def add_task(self, db: Session, type: str, payload: dict, priority: int = 0):
         task = Task(type=type, payload=payload, priority=priority)
         db.add(task)
@@ -87,10 +145,20 @@ class TaskManager:
 
                 db = SessionLocal()
                 try:
+                    # Determine paused types
+                    paused_types = []
+                    for type_enum, cat in self.category_map.items():
+                        if cat in self.paused_categories:
+                            paused_types.append(type_enum)
+
                     # Poll for tasks
-                    task = db.query(Task).filter(Task.status == TaskStatus.PENDING)\
-                        .order_by(Task.priority.desc(), Task.created_at.asc())\
-                        .first()
+                    query = db.query(Task).filter(Task.status == TaskStatus.PENDING)
+                    
+                    if paused_types:
+                        query = query.filter(Task.type.notin_(paused_types))
+                        
+                    task = query.order_by(Task.priority.desc(), Task.created_at.asc()).first()
+                    
                     if task:
                         # Lock task
                         task.status = TaskStatus.PROCESSING
@@ -167,6 +235,7 @@ class TaskManager:
             except Exception as e:
                 logging.error(f"Error in result loop: {e}")
                 await asyncio.sleep(1)
+
     def _recover_unfinished_tasks(self):
         """启动时恢复未完成的任务：重置PROCESSING为PENDING，统计未完成任务数"""
         db = SessionLocal()
@@ -201,7 +270,7 @@ class TaskManager:
             # 3. 初始化扫描状态（标记有未完成任务，更新统计）
             self.scan_status['running'] = True
             self.scan_status['message'] = f"Recovered {total_unfinished} unfinished tasks"
-            self.scan_status['total_files'] = max(self.scan_status['total_files'], total_unfinished)  # 可选：根据实际业务调整
+            self.scan_status['total_files'] = max(self.scan_status['total_files'], total_unfinished)
             logging.info(f"Recovered total {total_unfinished} unfinished tasks (pending: {pending_tasks}, processing: {processing_tasks})")
 
         except Exception as e:
@@ -217,15 +286,24 @@ class TaskManager:
             photos_to_create = []
             index_logs = []
             
+            # Map of temp photo_id to file_path for task chaining
+            processed_photos = {} # photo_id -> file_path
+
             for item in items:
-                if item['status'] == TaskStatus.COMPLETED and item['task_type'] == TaskType.PROCESS_IMAGE:
+                task_type = item['task_type']
+                status = item['status']
+                
+                # Handle PROCESS_BASIC (and legacy PROCESS_IMAGE if needed)
+                if status == TaskStatus.COMPLETED and (task_type == TaskType.PROCESS_BASIC or task_type == TaskType.PROCESS_IMAGE):
                     res = item['result']
-                    # res contains 'photo_create_data' which we need to construct
                     if 'photo_create_data' in res:
                         data = res['photo_create_data']
                         photos_to_create.append(data)
                         index_logs.append(IndexLog(action='added', file_path=data['file_path'], photo_id=data['photo_id']))
                         
+                        # Store for chaining
+                        processed_photos[str(data['photo_id'])] = data['file_path']
+
                         # Update stats
                         self.scan_status['added'] += 1
                         self.scan_status['processed_files'] += 1
@@ -235,6 +313,23 @@ class TaskManager:
                 album_crud.batch_create_photos(db, photos_to_create)
                 db.add_all(index_logs)
                 
+                # Now chain subsequent tasks for newly created photos
+                for photo_id, file_path in processed_photos.items():
+                    # 1. Metadata Task (High Priority)
+                    db.add(Task(
+                        type=TaskType.EXTRACT_METADATA,
+                        payload={'file_path': file_path, 'photo_id': photo_id},
+                        priority=5,
+                        status=TaskStatus.PENDING
+                    ))
+                    # 2. Face Recognition Task (Low Priority)
+                    db.add(Task(
+                        type=TaskType.RECOGNIZE_FACE,
+                        payload={'file_path': file_path, 'photo_id': photo_id},
+                        priority=1,
+                        status=TaskStatus.PENDING
+                    ))
+
             # 2. Update tasks
             for item in items:
                 task = db.query(Task).filter(Task.id == item['task_id']).first()
@@ -268,10 +363,14 @@ class TaskManager:
             return await scan.handle_scan_folder(self, task, db)
         elif task.type == TaskType.PROCESS_IMAGE:
             return await scan.handle_process_image(self, task, db)
+        elif task.type == TaskType.PROCESS_BASIC:
+            return await scan.handle_process_basic(self, task, db)
         elif task.type == TaskType.REBUILD_THUMBNAILS:
             return await thumbnail.handle_rebuild_thumbnails(self, task, db)
         elif task.type == TaskType.REBUILD_METADATA:
             return await metadata.handle_rebuild_metadata(self, task, db)
+        elif task.type == TaskType.EXTRACT_METADATA:
+            return await metadata.handle_extract_metadata(self, task, db)
         elif task.type == TaskType.RECOGNIZE_FACE:
             return await face.handle_face_recognition(self, task, db)
         else:

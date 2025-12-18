@@ -98,7 +98,7 @@ def get_exif_data(image: Image.Image) -> Dict[str, Any]:
     return exif_data
 
 
-def extract_metadata(file_path: str, filename: str, image_obj: Optional[Image.Image] = None) -> Dict[str, Any]:
+def extract_metadata(file_path: str, filename: str, image_obj: Optional[Image.Image] = None, extract_location_details: bool = True) -> Dict[str, Any]:
     """
     Extracts photo_time, exif_info, and location from the file.
     Priority:
@@ -144,7 +144,7 @@ def extract_metadata(file_path: str, filename: str, image_obj: Optional[Image.Im
                 # Extract GPS
                 gps = get_gps_info(exif_dict)
                 metadata["location"] = gps
-                if gps:
+                if gps and extract_location_details:
                     try:
                         results = rg.search([(gps["latitude"], gps["longitude"])], mode=1)
                         if results:

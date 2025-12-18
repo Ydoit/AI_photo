@@ -14,9 +14,10 @@ class TaskStatus(str, enum.Enum):
 
 class TaskType(str, enum.Enum):
     SCAN_FOLDER = "SCAN_FOLDER"
-    PROCESS_IMAGE = "PROCESS_IMAGE"
+    PROCESS_BASIC = "PROCESS_BASIC"  # Basic info, thumbnail, preview
+    PROCESS_IMAGE = "PROCESS_IMAGE"  # Deprecated or Full Legacy
     GENERATE_THUMBNAIL = "GENERATE_THUMBNAIL"
-    EXTRACT_METADATA = "EXTRACT_METADATA"
+    EXTRACT_METADATA = "EXTRACT_METADATA" # Heavy metadata, geolocation
     CLASSIFY_IMAGE = "CLASSIFY_IMAGE"
     RECOGNIZE_FACE = "RECOGNIZE_FACE"
     REBUILD_THUMBNAILS = "REBUILD_THUMBNAILS"
