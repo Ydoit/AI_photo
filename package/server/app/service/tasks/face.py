@@ -6,11 +6,12 @@ import json
 from sqlalchemy.orm import Session
 from app.db.models.task import Task
 from app.db.models.photo import Photo, FileType
-from app.db.models.face import Face
 from app.service.face_cluster import FaceClusterService
 from app.db.models.task import TaskType
 from typing import Dict, Any
 from app.core.config_manager import config_manager
+from app.crud import face as crud_face
+from app.schemas import face as schemas
 
 async def handle_face_recognition(task_manager, task: Task, db: Session) -> Dict[str, Any]:
     """
@@ -67,7 +68,6 @@ async def handle_face_recognition(task_manager, task: Task, db: Session) -> Dict
 
         processed = 0
         error_count = 0
-        
         # Get storage root once if needed or rely on storage service
         from app.service import storage
 
@@ -78,7 +78,6 @@ async def handle_face_recognition(task_manager, task: Task, db: Session) -> Dict
                     target_path = storage.get_preview_path(photo.id, db)
                     if not target_path:
                         target_path = photo.file_path
-                    
                     if not os.path.exists(target_path):
                         # Fallback to original if preview claimed exist but file missing (rare race condition)
                         target_path = photo.file_path
@@ -111,20 +110,20 @@ async def handle_face_recognition(task_manager, task: Task, db: Session) -> Dict
                             result = await resp.json()
                             faces = result.get('faces', [])
                             # 添加人脸前，先删除该照片已有的人脸数据
-                            db.query(Face).filter(Face.photo_id == photo.id).delete()
-                            db.commit()
+                            crud_face.delete_faces_by_photo(db, photo.id)
+                            
                             # 3. Save Faces
                             for face_data in faces:
                                 if face_data['det_score'] < config_manager.config.ai.face_recognition_threshold:
                                     continue
-                                face = Face(
+                                
+                                create_data = schemas.FaceCreate(
                                     photo_id=photo.id,
                                     face_feature=face_data['embedding'],
                                     face_rect=face_data['bbox'], # [x1, y1, x2, y2]
                                     face_confidence=face_data['det_score']
                                 )
-                                db.add(face)
-                                db.flush() # Get ID
+                                face = crud_face.create_face(db, create_data)
 
                                 # Trigger clustering
                                 if face.face_feature:

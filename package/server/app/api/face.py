@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Body, Query, Path
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from app.dependencies import get_db
-from app.db.models.face import FaceIdentity, Face
-from app.db.models.photo import Photo
 from app.schemas import album
+from app.schemas import face as schemas
+from app.crud import face as crud_face
 from app.core.config_manager import config_manager
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
@@ -51,57 +50,14 @@ def list_identities(
     获取人物列表，包含每个人的封面照片和照片总数。
     """
     offset = (page - 1) * limit
+    min_photos = config_manager.config.ai.face_recognition_min_photos
     
-    # Subquery for face counts to avoid N+1 queries
-    face_counts = db.query(
-        Face.face_identity_id,
-        func.count(Face.id).label("count")
-    ).filter(
-        Face.is_deleted == False,
-        Face.face_identity_id != None
-    ).group_by(Face.face_identity_id).subquery()
-
-    # Main query: Identity + Count + Default Face + Photo
-    query = db.query(
-        FaceIdentity,
-        face_counts.c.count,
-        Face,
-        Photo
-    ).outerjoin(
-        face_counts, FaceIdentity.id == face_counts.c.face_identity_id
-    ).outerjoin(
-        Face, FaceIdentity.default_face_id == Face.id
-    ).outerjoin(
-        Photo, Face.photo_id == Photo.id
-    ).filter(
-        FaceIdentity.is_deleted == False
-    ).order_by(
-        FaceIdentity.create_time.desc()
-    ).offset(offset).limit(limit)
-    results = []
-    p_size = config_manager.config.image.preview_size
-
-    for identity, count, default_face, photo in query.all():
-        if not count or count<=config_manager.config.ai.face_recognition_min_photos:
-            continue
-        cover = None
-        if default_face and photo:
-            scale = p_size / max(photo.width, photo.height)
-            cover = CoverPhotoInfo(
-                photo_id=default_face.photo_id,
-
-                width=int(photo.width * scale),
-                height=int(photo.height * scale),
-                face_rect=default_face.face_rect
-            )
-        results.append({
-            "id": identity.id,
-            "identity_name": identity.identity_name,
-            "default_face_id": identity.default_face_id,
-            "face_count": count or 0,
-            "cover_photo": cover
-        })
-    return results
+    return crud_face.get_identities_with_details(
+        db, 
+        skip=offset, 
+        limit=limit, 
+        min_photos=min_photos
+    )
 
 
 @router.get("/identities/{id}/photos", response_model=List[album.Photo], summary="获取人物照片列表", description="获取指定人物下的所有照片")
@@ -115,13 +71,7 @@ def get_identity_photos(
     获取指定人物关联的所有照片列表。
     """
     offset = (page - 1) * limit
-    photos = db.query(Photo).join(Face).filter(
-        Face.face_identity_id == id,
-        Photo.id == Face.photo_id,
-        Face.is_deleted == False
-    ).offset(offset).limit(limit).all()
-
-    return photos
+    return crud_face.get_identity_photos(db, id, skip=offset, limit=limit)
 
 @router.delete("/identities/{id}", summary="删除人物", description="软删除指定人物，但保留其关联的照片（解除关联）")
 def delete_identity(
@@ -132,19 +82,9 @@ def delete_identity(
     删除人物。
     注意：这只是软删除人物记录，并将关联的人脸数据中的 identity_id 置为 NULL（解除关联）。
     """
-    identity = db.query(FaceIdentity).get(id)
-    if not identity:
+    if not crud_face.delete_identity(db, id):
         raise HTTPException(status_code=404, detail="Identity not found")
     
-    # Dissociate faces
-    faces = db.query(Face).filter(Face.face_identity_id == id).all()
-    for face in faces:
-        face.face_identity_id = None
-
-    # Soft delete identity
-    identity.is_deleted = True
-    
-    db.commit()
     return {"status": "success"}
 
 @router.post("/identities/{id}/remove-photos", summary="从人物中移除照片", description="将指定照片从该人物中移除（解除人脸关联）")
@@ -156,21 +96,11 @@ def remove_photos_from_identity(
     """
     批量从人物中移除照片。
     """
-    identity = db.query(FaceIdentity).get(id)
-    if not identity:
+    if not crud_face.get_identity(db, id):
         raise HTTPException(status_code=404, detail="Identity not found")
         
-    # Find faces in these photos that belong to this identity
-    faces = db.query(Face).filter(
-        Face.face_identity_id == id,
-        Face.photo_id.in_(payload.photo_ids)
-    ).all()
-    
-    for face in faces:
-        face.face_identity_id = None # Dissociate
-        
-    db.commit()
-    return {"status": "success", "count": len(faces)}
+    count = crud_face.remove_photos_from_identity(db, id, payload.photo_ids)
+    return {"status": "success", "count": count}
 
 @router.put("/identities/{id}/cover", summary="设置人物封面", description="将指定照片设为该人物的封面照片")
 def set_identity_cover(
@@ -182,21 +112,12 @@ def set_identity_cover(
     设置人物的封面照片。
     系统会自动查找该照片中属于该人物的人脸，并将其ID设为默认人脸ID。
     """
-    identity = db.query(FaceIdentity).get(id)
-    if not identity:
+    if not crud_face.get_identity(db, id):
         raise HTTPException(status_code=404, detail="Identity not found")
         
-    # Find face in the photo belonging to this identity
-    face = db.query(Face).filter(
-        Face.face_identity_id == id,
-        Face.photo_id == payload.photo_id
-    ).first()
-    
-    if not face:
+    if not crud_face.set_identity_cover(db, id, payload.photo_id):
         raise HTTPException(status_code=404, detail="Face not found in this photo for this identity")
         
-    identity.default_face_id = face.id
-    db.commit()
     return {"status": "success"}
 
 @router.put("/identities/{id}/name", summary="重命名人物", description="修改人物的显示名称")
@@ -208,13 +129,13 @@ def rename_identity(
     """
     修改人物名称。
     """
-    identity = db.query(FaceIdentity).get(id)
+    update_data = schemas.FaceIdentityUpdate(identity_name=payload.name)
+    identity = crud_face.update_identity(db, id, update_data)
+    
     if not identity:
         raise HTTPException(status_code=404, detail="Identity not found")
     
-    identity.identity_name = payload.name
-    db.commit()
-    return {"status": "success", "name": payload.name}
+    return {"status": "success", "name": identity.identity_name}
 
 @router.post("/identities/merge", summary="合并人物", description="将多个源人物合并到一个目标人物中")
 def merge_identities(
@@ -225,25 +146,8 @@ def merge_identities(
     合并人物。
     将源人物的所有人脸数据移动到目标人物下，并软删除源人物。
     """
-    target = db.query(FaceIdentity).get(payload.target_id)
-    if not target:
+    if not crud_face.merge_identities(db, payload.target_id, payload.source_ids):
          raise HTTPException(status_code=404, detail="Target identity not found")
          
-    for source_id in payload.source_ids:
-        if source_id == payload.target_id:
-            continue
-            
-        source = db.query(FaceIdentity).get(source_id)
-        if not source:
-            continue
-            
-        # Move faces
-        faces = db.query(Face).filter(Face.face_identity_id == source_id).all()
-        for face in faces:
-            face.face_identity_id = payload.target_id
-            
-        # Soft delete source
-        source.is_deleted = True
-        
-    db.commit()
     return {"status": "success"}
+

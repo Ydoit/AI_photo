@@ -348,11 +348,15 @@ def batch_update_album_association(db: Session, photo_ids: List[UUID], album_id:
 
 def batch_delete_photos_db(db: Session, photo_ids: List[UUID]):
     # Get photos with albums to know which albums to update
-    photos = db.query(Photo).options(joinedload(Photo.albums)).filter(Photo.id.in_(photo_ids)).all()
+    photos = db.query(Photo).options(joinedload(Photo.albums), joinedload(Photo.faces)).filter(Photo.id.in_(photo_ids)).all()
     affected_album_ids = set()
     for photo in photos:
         for album in photo.albums:
             affected_album_ids.add(album.id)
+        
+        # Handle face deletion dependencies
+        for face in photo.faces:
+            crud_face.handle_face_deletion_dependency(db, face)
 
     count = len(photos)
     for photo in photos:

@@ -4,6 +4,8 @@ from sqlalchemy import select, func
 from sklearn.cluster import DBSCAN
 from app.db.models.face import Face, FaceIdentity
 from app.db.models.photo import Photo
+from app.crud import face as crud_face
+from app.schemas import face as schemas
 import logging
 import uuid
 from datetime import datetime
@@ -60,9 +62,7 @@ class FaceClusterService:
 
         try:
             # 1. 查询所有未删除的Identity
-            identities = self.db.query(FaceIdentity).filter(
-                FaceIdentity.is_deleted == False
-            ).all()
+            identities = crud_face.get_identities(self.db, limit=100000)
 
             if not identities:
                 logger.info("无已存在的Identity，触发新聚类")
@@ -97,17 +97,18 @@ class FaceClusterService:
             # 3. 判断是否匹配成功
             if best_match_id and min_dist < self.DISTANCE_THRESHOLD:
                 # 分配到已有Identity
-                face = self.db.query(Face).get(face_id)
+                face = crud_face.get_face(self.db, face_id)
                 if not face:
                     logger.error(f"人脸ID {face_id} 不存在")
                     return None
 
-                face.face_identity_id = best_match_id
-                # 转换为原生float，避免np.float64导致的数据库错误
-                face.recognize_confidence = float(1.0 - min_dist)
-                face.update_time = datetime.now()
-
-                self.db.commit()
+                # 使用 update_face 更新
+                update_data = schemas.FaceUpdate(
+                    face_identity_id=best_match_id,
+                    recognize_confidence=float(1.0 - min_dist)
+                )
+                crud_face.update_face(self.db, face_id, update_data)
+                
                 logger.info(
                     f"人脸 {face_id} 匹配到Identity {best_match_id}，"
                     f"余弦距离={min_dist:.4f}，相似度={1 - min_dist:.4f}"
@@ -147,7 +148,7 @@ class FaceClusterService:
             ).limit(1000).all()  # 限制数量，避免全表扫描
 
             # 包含当前人脸（若未在查询结果中）
-            current_face = self.db.query(Face).get(current_face_id)
+            current_face = crud_face.get_face(self.db, current_face_id)
             if current_face and current_face not in unassigned_faces:
                 unassigned_faces.append(current_face)
 
@@ -232,33 +233,30 @@ class FaceClusterService:
                     continue
 
                 # 创建新Identity
-                new_identity = FaceIdentity(
-                    identity_name="未命名",
-                    create_time=datetime.now(),
-                    update_time=datetime.now()
-                )
-                self.db.add(new_identity)
-                self.db.flush()  # 获取新Identity的ID
+                create_identity_data = schemas.FaceIdentityCreate(identity_name="未命名")
+                new_identity = crud_face.create_identity(self.db, create_identity_data)
 
                 # 分配人脸到新Identity
                 first_face_id = None
                 for f_id in cluster:
-                    face = self.db.query(Face).get(f_id)
+                    face = crud_face.get_face(self.db, f_id)
                     if not face:
                         continue
 
-                    face.face_identity_id = new_identity.id
-                    face.recognize_confidence = float(0.9)  # 占位值，可后续优化
-                    face.update_time = datetime.now()
+                    update_data = schemas.FaceUpdate(
+                        face_identity_id=new_identity.id,
+                        recognize_confidence=0.9
+                    )
+                    crud_face.update_face(self.db, f_id, update_data)
 
                     if not first_face_id:
                         first_face_id = face.id
 
                 # 设置默认人脸
                 if first_face_id:
-                    new_identity.default_face_id = first_face_id
+                    update_identity_data = schemas.FaceIdentityUpdate(default_face_id=first_face_id)
+                    crud_face.update_identity(self.db, new_identity.id, update_identity_data)
 
-                self.db.commit()
                 logger.info(
                     f"创建新Identity {new_identity.id}，包含 {cluster_size} 个人脸（合并后）"
                 )
