@@ -15,78 +15,85 @@ def rebuild_thumbnail_cpu_job(file_path: str, file_id: UUID, storage_root: str):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+async def handle_generate_thumbnail(task_manager, task: Task, db: Session):
+    """Single item thumbnail generation"""
+    photo_id_str = task.payload.get('photo_id')
+    if not photo_id_str:
+        return {'status': 'skipped', 'reason': 'missing photo_id'}
+    
+    try:
+        photo_id = UUID(photo_id_str)
+    except:
+        return {'status': 'failed', 'reason': 'invalid uuid'}
+
+    photo = db.query(Photo).filter(Photo.id == photo_id).first()
+    if not photo:
+         return {'status': 'skipped', 'reason': 'photo not found'}
+    
+    if not os.path.exists(photo.file_path):
+        return {'status': 'failed', 'reason': 'file not found'}
+
+    storage_root = storage._get_storage_root(db)
+    loop = asyncio.get_running_loop()
+    
+    res = await loop.run_in_executor(
+        task_manager.process_pool,
+        rebuild_thumbnail_cpu_job,
+        photo.file_path,
+        photo.id,
+        storage_root
+    )
+    
+    if res['success']:
+        # Mark as processed
+        tasks_status = dict(photo.processed_tasks or {})
+        tasks_status['thumbnail'] = True
+        photo.processed_tasks = tasks_status
+        db.add(photo)
+        db.commit()
+        return {'status': 'success'}
+    else:
+        raise Exception(res.get('error'))
+
 async def handle_rebuild_thumbnails(task_manager, task: Task, db: Session):
     scope = task.payload.get('scope', 'all')
     force = task.payload.get('force', False)
     
-    # Determine photos to process
-    query = db.query(Photo)
-    if scope != 'all':
-        pass
-        
-    all_photos = query.all()
-    photos = []
+    # Generator Mode
+    batch_size = 1000
+    offset = 0
+    generated_count = 0
     
-    # Filter by processed status
-    for p in all_photos:
-        if force:
-            photos.append(p)
-        else:
-            tasks_status = p.processed_tasks or {}
-            if not tasks_status.get('thumbnail'):
-                photos.append(p)
-    
-    task.total_items = len(photos)
-    task.processed_items = 0
-    db.commit()
-    
-    storage_root = storage._get_storage_root(db)
-    loop = asyncio.get_running_loop()
-    
-    processed = 0
-    errors = 0
-    
-    for photo in photos:
-        if not task_manager.running:
+    while True:
+        batch = db.query(Photo).offset(offset).limit(batch_size).all()
+        if not batch:
             break
         
-        # Check for cancellation
-        db.refresh(task)
-        if task.status == TaskStatus.CANCELLED:
-            logging.info(f"Task {task.id} cancelled")
-            break
-            
-        try:
-            if not os.path.exists(photo.file_path):
-                continue
-
-            res = await loop.run_in_executor(
-                task_manager.process_pool,
-                rebuild_thumbnail_cpu_job,
-                photo.file_path,
-                photo.id,
-                storage_root
-            )
-            
-            if res['success']:
-                # Mark as processed
-                tasks_status = dict(photo.processed_tasks or {})
-                tasks_status['thumbnail'] = True
-                photo.processed_tasks = tasks_status
-                db.add(photo)
+        tasks_to_create = []
+        for p in batch:
+            should_process = False
+            if force:
+                should_process = True
             else:
-                errors += 1
-                logging.error(f"Thumbnail rebuild failed for {photo.id}: {res.get('error')}")
-        except Exception as e:
-            errors += 1
-            logging.error(f"Thumbnail rebuild error for {photo.id}: {e}")
+                tasks_status = p.processed_tasks or {}
+                if not tasks_status.get('thumbnail'):
+                    should_process = True
             
-        processed += 1
-        if processed % 10 == 0:
-            task.processed_items = processed
-            db.commit()
+            if should_process:
+                tasks_to_create.append({
+                    'type': TaskType.GENERATE_THUMBNAIL,
+                    'payload': {'photo_id': str(p.id)},
+                    'priority': 8
+                })
+        
+        if tasks_to_create:
+            task_manager.add_tasks(db, tasks_to_create)
+            generated_count += len(tasks_to_create)
             
-    task.processed_items = processed
-    db.commit()
+        offset += batch_size
     
-    return {'processed': processed, 'errors': errors, 'total': len(photos)}
+    return {
+        'processed': 0,
+        'generated_tasks': generated_count,
+        'message': f'Generated {generated_count} thumbnail generation tasks'
+    }

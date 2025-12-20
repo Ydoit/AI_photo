@@ -35,11 +35,11 @@ def update_face(db: Session, face_id: int, obj_in: schemas.FaceUpdate) -> Option
     db_obj = get_face(db, face_id)
     if not db_obj:
         return None
-    
+
     update_data = obj_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_obj, field, value)
-    
+
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)

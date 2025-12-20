@@ -115,10 +115,8 @@ class TaskManager:
                 Task.type.in_(types)
             ).count()
             
-            completed = db.query(Task).filter(
-                Task.status == TaskStatus.COMPLETED,
-                Task.type.in_(types)
-            ).count()
+            # Completed is always 0 as we delete them
+            completed = 0
             
             failed = db.query(Task).filter(
                 Task.status == TaskStatus.FAILED,
@@ -156,6 +154,31 @@ class TaskManager:
         db.commit()
         db.refresh(task)
         return task
+
+    def add_tasks(self, db: Session, tasks_data: List[Dict]):
+        """Batch add tasks"""
+        if not tasks_data:
+            return
+        
+        tasks = []
+        for t_data in tasks_data:
+            priority = t_data.get('priority', 0)
+            if priority == 0:
+                priority = DEFAULT_PRIORITIES.get(t_data['type'], 0)
+            
+            tasks.append(Task(
+                type=t_data['type'],
+                payload=t_data.get('payload', {}),
+                priority=priority,
+                status=TaskStatus.PENDING
+            ))
+            
+        db.bulk_save_objects(tasks)
+        db.commit()
+        # No refresh for bulk
+        
+        # Update stats locally if needed, or let worker update
+        self.scan_status['total_files'] += len(tasks)
 
     async def worker_loop(self):
         logging.info("TaskManager worker loop started")
@@ -385,17 +408,23 @@ class TaskManager:
             # 2. Update tasks
             for item in items:
                 task = db.query(Task).filter(Task.id == item['task_id']).first()
-                if task:
+                if not task:
+                    continue
+                
+                if item['status'] == TaskStatus.COMPLETED:
+                    # Delete completed task to prevent table bloat
+                    db.delete(task)
+                    # self.scan_status['processed_files'] += 1 # Already updated in loop or logic? 
+                    # Actually processed_files is updated in item processing for PROCESS_BASIC
+                    # For other tasks, we should update it here?
+                    # The scan_status['processed_files'] is a global counter for the current "Session" or "Batch".
+                    # Let's keep it incrementing.
+                    
+                else:
                     task.status = item['status']
-                    if item['status'] == TaskStatus.COMPLETED:
-                        # Clear photo_create_data from result to save space in DB
-                        res = item.get('result', {})
-                        if 'photo_create_data' in res:
-                            res = {'photo_id': str(res['photo_create_data']['photo_id'])}
-                        task.result = res
-                    else:
-                        task.error = item.get('error')
-                        self.scan_status['errors'] += 1
+                    task.error = item.get('error')
+                    task.result = item.get('result')
+                    self.scan_status['errors'] += 1
             
             # Update progress
             if self.scan_status['total_files'] > 0:
@@ -417,6 +446,8 @@ class TaskManager:
             return await scan.handle_process_image(self, task, db)
         elif task.type == TaskType.PROCESS_BASIC:
             return await scan.handle_process_basic(self, task, db)
+        elif task.type == TaskType.GENERATE_THUMBNAIL:
+            return await thumbnail.handle_generate_thumbnail(self, task, db)
         elif task.type == TaskType.REBUILD_THUMBNAILS:
             return await thumbnail.handle_rebuild_thumbnails(self, task, db)
         elif task.type == TaskType.REBUILD_METADATA:

@@ -19,150 +19,145 @@ async def handle_face_recognition(task_manager, task: Task, db: Session) -> Dict
     """
     try:
         force = task.payload.get('force', False)
-        cluster_service = FaceClusterService(db)
-        # Get all photos that need face recognition
-        # Filter logic:
-        # 1. If payload has photo_id, process that photo
-        # 2. Else, process all photos where processed_tasks['face'] is not True (unless force is True)
-        photos_to_process = []
+        
+        # 1. Single Photo Mode (Worker)
         if task.payload and 'photo_id' in task.payload:
-            photo = db.query(Photo).filter(Photo.id == task.payload['photo_id']).first()
-            if photo:
-                photos_to_process.append(photo)
-        else:
-            # Note: JSON querying depends on DB support.
-            # For simplicity in Python filtering:
-            # We iterate over photos. For large datasets, this should be optimized with proper SQL JSON queries.
-            # Postgres supports: filter(Photo.processed_tasks['face'].astext == 'true')
-            # But let's assume we want to process everything not marked true.
-            # Using basic query and filtering in python for safety if JSON operators vary
-            # Ideally: db.query(Photo).filter(func.jsonb_extract_path_text(Photo.processed_tasks, 'face') != 'true').all()
-            # Optimized for now: Process chunks
-            batch_size = 50
-            offset = 0
-            while True:
-                batch = db.query(Photo).offset(offset).limit(batch_size).all()
-                if not batch:
-                    break
+            photo_id = task.payload['photo_id']
+            photo = db.query(Photo).filter(Photo.id == photo_id).first()
+            if not photo:
+                return {'status': 'skipped', 'reason': 'photo not found'}
+            
+            # Check if already processed (unless force)
+            if not force:
+                tasks_status = photo.processed_tasks or {}
+                if tasks_status.get('face'):
+                     return {'status': 'skipped', 'reason': 'already processed'}
 
-                for p in batch:
-                    if p.file_type == FileType.video:
-                        continue
-                    if force:
-                        photos_to_process.append(p)
-                    else:
-                        tasks_status = p.processed_tasks or {}
-                        if not tasks_status.get('face'):
-                            photos_to_process.append(p)
+            return await process_single_photo(task_manager, photo, db)
 
-                offset += batch_size
-                # Limit total processing per task execution to avoid timeout?
-                # Or just let it run. Let's process all found so far.
-                # if len(photos_to_process) > 100: # Limit one task run to 100 photos
-                #     break
-        task.total_items = len(photos_to_process)
-        task.processed_items = 0
-        db.commit()
-        task_manager.scan_status['total_files'] = len(photos_to_process)
-        task_manager.scan_status['processed_files'] = 0
+        # 2. Generator Mode (Scan all)
+        # Get all photos that need face recognition
+        photos_to_process = []
+        batch_size = 1000
+        offset = 0
+        
+        generated_count = 0
+        
+        while True:
+            batch = db.query(Photo).offset(offset).limit(batch_size).all()
+            if not batch:
+                break
 
-        processed = 0
-        error_count = 0
-        # Get storage root once if needed or rely on storage service
-        from app.service import storage
+            tasks_to_create = []
+            for p in batch:
+                if p.file_type == FileType.video:
+                    continue
+                
+                should_process = False
+                if force:
+                    should_process = True
+                else:
+                    tasks_status = p.processed_tasks or {}
+                    if not tasks_status.get('face'):
+                        should_process = True
+                
+                if should_process:
+                    tasks_to_create.append({
+                        'type': TaskType.RECOGNIZE_FACE,
+                        'payload': {'photo_id': str(p.id), 'force': force},
+                        'priority': 1
+                    })
 
-        async with aiohttp.ClientSession() as session:
-            for photo in photos_to_process:
-                try:
-                    # 1. Resolve file path (Prefer preview, fallback to original)
-                    target_path = storage.get_preview_path(photo.id, db)
-                    if not target_path:
-                        target_path = photo.file_path
-                    if not os.path.exists(target_path):
-                        # Fallback to original if preview claimed exist but file missing (rare race condition)
-                        target_path = photo.file_path
-                        if not os.path.exists(target_path):
-                            logging.warning(f"File not found for face recognition: {photo.id}")
-                            continue
+            if tasks_to_create:
+                task_manager.add_tasks(db, tasks_to_create)
+                generated_count += len(tasks_to_create)
 
-                    # 1. Read file
-                    with open(target_path, 'rb') as f:
-                        file_data = f.read()
-                    # 2. 构造multipart/form-data格式的表单（核心修正）
-                    form_data = FormData()
-                    # 添加文件字段：name='file'（必须和接口的File(...)参数名一致），
-                    # value=文件二进制，filename=可选（建议传，模拟真实上传），
-                    # content_type=文件MIME类型（适配接口的类型校验）
-                    form_data.add_field(
-                        name='file',  # 必须和接口的参数名（file: UploadFile）一致
-                        value=file_data,
-                        filename=photo.filename,  # 可选，建议传（接口可通过filename获取后缀）
-                        content_type='image/jpeg'  # 根据实际文件类型设置（如image/png）
-                    )
-
-                    # 3. 调用AI服务（用form_data替代原data）
-                    async with session.post(
-                        f"{config_manager.config.ai.ai_api_url}/face-recognition",
-                        data=form_data,  # 传入构造好的FormData
-                        timeout=aiohttp.ClientTimeout(total=30)  # 可选，添加超时保护
-                    ) as resp:
-                        if resp.status == 200:
-                            result = await resp.json()
-                            faces = result.get('faces', [])
-                            # 添加人脸前，先删除该照片已有的人脸数据
-                            crud_face.delete_faces_by_photo(db, photo.id)
-                            
-                            # 3. Save Faces
-                            for face_data in faces:
-                                if face_data['det_score'] < config_manager.config.ai.face_recognition_threshold:
-                                    continue
-                                
-                                create_data = schemas.FaceCreate(
-                                    photo_id=photo.id,
-                                    face_feature=face_data['embedding'],
-                                    face_rect=face_data['bbox'], # [x1, y1, x2, y2]
-                                    face_confidence=face_data['det_score']
-                                )
-                                face = crud_face.create_face(db, create_data)
-
-                                # Trigger clustering
-                                if face.face_feature:
-                                    try:
-                                        cluster_service.assign_face_to_identity(face.id, face.face_feature)
-                                    except Exception as ce:
-                                        logging.error(f"Clustering failed for face {face.id}: {ce}")
-                            # 4. Update Photo Status
-                            tasks_status = dict(photo.processed_tasks or {})
-                            tasks_status['face'] = True
-                            photo.processed_tasks = tasks_status
-                            db.add(photo)
-                            db.commit()
-                        else:
-                            logging.error(f"AI Service error for photo {photo.id}: {resp.status}")
-                            error_count += 1
-                    task_manager.scan_status['processed_files'] += 1
-                except Exception as e:
-                    logging.error(f"Error processing photo {photo.id} ({photo.filename}): {e}")
-                    error_count += 1
-                    # 4. Update Photo Status
-                    tasks_status = dict(photo.processed_tasks or {})
-                    tasks_status['face'] = False
-                    photo.processed_tasks = tasks_status
-                    db.add(photo)
-                    db.commit()
-                processed += 1
-                if processed % 10 == 0:
-                    task.processed_items = processed
-                    db.commit()
-        task.processed_items = processed
-        db.commit()
+            offset += batch_size
 
         return {
-            'processed': processed,
-            'errors': error_count,
-            'message': 'Face recognition completed'
+            'processed': 0,
+            'generated_tasks': generated_count,
+            'message': f'Generated {generated_count} face recognition tasks'
         }
 
     except Exception as e:
         logging.error(f"Face recognition task failed: {e}")
+        raise e
+
+async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[str, Any]:
+    cluster_service = FaceClusterService(db)
+    from app.service import storage
+    
+    try:
+        # 1. Resolve file path
+        target_path = storage.get_preview_path(photo.id, db)
+        if not target_path:
+            target_path = photo.file_path
+        if not os.path.exists(target_path):
+             target_path = photo.file_path
+             if not os.path.exists(target_path):
+                 return {'status': 'failed', 'error': 'file not found'}
+
+        async with aiohttp.ClientSession() as session:
+            # 1. Read file
+            with open(target_path, 'rb') as f:
+                file_data = f.read()
+            
+            form_data = FormData()
+            form_data.add_field(
+                name='file',
+                value=file_data,
+                filename=photo.filename,
+                content_type='image/jpeg'
+            )
+
+            # 3. Call AI Service
+            async with session.post(
+                f"{config_manager.config.ai.ai_api_url}/face-recognition",
+                data=form_data,
+                timeout=aiohttp.ClientTimeout(total=30)
+            ) as resp:
+                if resp.status == 200:
+                    result = await resp.json()
+                    faces = result.get('faces', [])
+                    
+                    crud_face.delete_faces_by_photo(db, photo.id)
+                    
+                    for face_data in faces:
+                        if face_data['det_score'] < config_manager.config.ai.face_recognition_threshold:
+                            continue
+                        
+                        create_data = schemas.FaceCreate(
+                            photo_id=photo.id,
+                            face_feature=face_data['embedding'],
+                            face_rect=face_data['bbox'],
+                            face_confidence=face_data['det_score']
+                        )
+                        face = crud_face.create_face(db, create_data)
+
+                        if face.face_feature:
+                            try:
+                                cluster_service.assign_face_to_identity(face.id, face.face_feature)
+                            except Exception as ce:
+                                logging.error(f"Clustering failed for face {face.id}: {ce}")
+                    
+                    # Update Status
+                    tasks_status = dict(photo.processed_tasks or {})
+                    tasks_status['face'] = True
+                    photo.processed_tasks = tasks_status
+                    db.add(photo)
+                    db.commit()
+                    
+                    task_manager.scan_status['processed_files'] += 1
+                    return {'status': 'success', 'faces_found': len(faces)}
+                else:
+                    return {'status': 'failed', 'error': f"AI Service error: {resp.status}"}
+                    
+    except Exception as e:
+        logging.error(f"Error processing photo {photo.id}: {e}")
+        tasks_status = dict(photo.processed_tasks or {})
+        tasks_status['face'] = False
+        photo.processed_tasks = tasks_status
+        db.add(photo)
+        db.commit()
         raise e

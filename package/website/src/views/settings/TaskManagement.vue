@@ -24,29 +24,24 @@
               <el-tag v-else type="primary" size="small">进行中</el-tag>
             </div>
             <div>
-               <el-button 
-                 v-if="cat.status === 'paused'" 
-                 type="success" 
-                 size="small" 
+               <el-button
+                 v-if="cat.status === 'paused'"
+                 type="success"
+                 size="small"
                  @click="resumeCategory(cat.category)"
                >继续</el-button>
-               <el-button 
-                 v-else 
-                 type="warning" 
-                 size="small" 
+               <el-button
+                 v-else
+                 type="warning"
+                 size="small"
                  @click="pauseCategory(cat.category)"
                >暂停</el-button>
             </div>
           </div>
-          
-          <div class="grid grid-cols-3 gap-4 text-center">
+          <div class="grid grid-cols-2 gap-4 text-center">
              <div class="bg-white dark:bg-gray-800 p-3 rounded shadow-sm">
                <div class="text-gray-500 text-xs mb-1">待处理</div>
                <div class="text-xl font-bold text-blue-600">{{ cat.pending }}</div>
-             </div>
-             <div class="bg-white dark:bg-gray-800 p-3 rounded shadow-sm">
-               <div class="text-gray-500 text-xs mb-1">已完成</div>
-               <div class="text-xl font-bold text-green-600">{{ cat.completed }}</div>
              </div>
              <div class="bg-white dark:bg-gray-800 p-3 rounded shadow-sm">
                <div class="text-gray-500 text-xs mb-1">失败</div>
