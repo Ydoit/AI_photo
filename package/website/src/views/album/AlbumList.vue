@@ -167,7 +167,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAlbumStore, Album } from '@/stores/albumStore'
+import { useAlbumStore } from '@/stores/albumStore'
+import type { Album } from '@/types/album'
 import { Plus, Sparkles, Edit2, Trash2, Clock, Users, MapPin, FolderHeart, FolderOpen } from 'lucide-vue-next'
 import { albumService } from '@/api/album'
 import { ElMessage, ElMessageBox } from 'element-plus'

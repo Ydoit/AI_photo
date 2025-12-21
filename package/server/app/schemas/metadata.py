@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+@Time        : 2025/12/21 21:15
+@Author      : SiYuan
+@Email       : siyuan044@gmail.com
+@File        : server-metadata.py
+@Description : 
+"""
+
+from typing import Optional, List, Dict, Any, Union
+from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel, Field, computed_field
+from app.db.models.photo import FileType
+from app.schemas.album import Album
+from app.schemas.face import FaceIdentitySchema
+
+# Metadata Schemas
+class PhotoMetadataBase(BaseModel):
+    exif_info: Optional[str] = None
+    location_api: Optional[str] = None
+
+    # Enhanced location fields
+    longitude: Optional[float] = None
+    latitude: Optional[float] = None
+    city: Optional[str] = None
+    district: Optional[str] = None
+    province: Optional[str] = None
+    country: Optional[str] = None
+    address: Optional[str] = None
+
+
+class PhotoMetadataCreate(PhotoMetadataBase):
+    pass
+
+
+class PhotoMetadataUpdate(PhotoMetadataBase):
+    pass
+
+class PhotoMetadata(PhotoMetadataBase):
+    photo_id: UUID
+    albums: Optional[List[Album]] = None
+    faces_identities: Optional[List[FaceIdentitySchema]] = None
+    class Config:
+        from_attributes = True

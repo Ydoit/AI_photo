@@ -141,7 +141,7 @@
         <!-- Header -->
         <div class="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur z-10">
             <h3 class="font-bold text-gray-900 dark:text-white">详细信息</h3>
-            <button @click="toggleSidebar" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
+            <button @click="toggleSidebar" class="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-200">
                 <PanelRightClose v-if="showSidebar" class="w-4 h-4" />
                 <PanelRightOpen v-else class="w-4 h-4" />
             </button>
@@ -258,10 +258,26 @@
                     </div>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                    <span v-if="(!metadata.faces || metadata.faces.length === 0)" class="text-sm text-gray-400 italic">无人脸信息</span>
-                    <span v-for="(face, idx) in metadata.faces" :key="idx" class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full text-xs">
-                        {{ face.name || 'Unknown' }}
+                    <span v-if="(!metadata.faces_identities || metadata.faces_identities.length === 0)" class="text-sm text-gray-400 italic">无人脸信息</span>
+                    <span v-for="(face, idx) in metadata.faces_identities" :key="idx" class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full text-xs">
+                        {{ face.identity_name || 'Unknown' }}
                     </span>
+                </div>
+            </div>
+
+            <!-- Faces -->
+            <div class="space-y-2">
+                <div class="flex items-center justify-between text-gray-500 text-xs font-medium uppercase tracking-wider">
+                    <div class="flex items-center gap-2">
+                        <User class="w-3.5 h-3.5" />
+                        <span>相册</span>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <span v-if="(!metadata.albums || metadata.albums.length === 0)" class="text-sm text-gray-400 italic">无相册信息</span>
+                    <a v-for="(album, idx) in metadata.albums" target="_blank" :key="idx" :href="`/album/${album.id}`" class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full text-xs">
+                        {{ album.name || 'Unknown' }}
+                    </a>
                 </div>
             </div>
 
@@ -305,7 +321,7 @@
       >
         <div class="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur z-10">
             <h3 class="font-bold text-gray-900 dark:text-white">文字识别结果</h3>
-            <button @click="toggleOCR" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
+            <button @click="toggleOCR" class="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-200">
                 <PanelRightClose class="w-4 h-4" />
             </button>
         </div>
@@ -375,8 +391,7 @@ import 'video.js/dist/video-js.css'
 import { format } from 'date-fns'
 import { albumService } from '@/api/album'
 import { ocrApi, type OCRRecord } from '@/api/ocr'
-import type { AlbumImage } from '@/stores/photoStore'
-import type { PhotoMetadata, Photo } from '@/types/album'
+import type { PhotoMetadata, AlbumImage } from '@/types/album'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
 

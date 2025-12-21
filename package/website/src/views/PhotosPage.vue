@@ -206,8 +206,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAlbumStore } from '@/stores/albumStore'
-import { usePhotoStore, type AlbumImage } from '@/stores/photoStore'
-import { 
+import { usePhotoStore } from '@/stores/photoStore'
+import type { AlbumImage } from '@/types/album'
+import {
   X, Maximize, Grid3x3, Grid2x2, LayoutDashboard, LayoutGrid, LayoutList,
   UploadCloud, CheckSquare, FolderInput, Folder, Settings2, Loader2, Check
 } from 'lucide-vue-next'
@@ -384,11 +385,7 @@ const handlePhotoDelete = async (id: string) => {
 }
 
 const handlePhotoUpdate = (event: { id: string, location?: string, tags?: string[] }) => {
-  const img = photoStore.images.find(i => i.id === event.id)
-  if (img) {
-    if (event.location !== undefined) img.location = event.location
-    if (event.tags !== undefined) img.tags = event.tags
-  }
+  console.log('Update photo:', event)
 }
 
 onMounted(() => {

@@ -9,36 +9,12 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from uuid import UUID
 
+from app.schemas.face import FaceIdentitySchema, RemovePhotosRequest, SetCoverRequest, MergeRequest
+
 router = APIRouter()
-
-class CoverPhotoInfo(BaseModel):
-    photo_id: UUID = Field(..., description="封面照片ID")
-    width: Optional[int] = Field(None, description="照片宽度")
-    height: Optional[int] = Field(None, description="照片高度")
-    face_rect: Optional[List[float]] = Field(None, description="人脸位置坐标 [x1, y1, x2, y2]")
-
-class FaceIdentitySchema(BaseModel):
-    id: UUID = Field(..., description="人物ID")
-    identity_name: Optional[str] = Field(None, description="人物名称")
-    default_face_id: Optional[int] = Field(None, description="默认封面人脸ID")
-    face_count: Optional[int] = Field(0, description="照片数量")
-    cover_photo: Optional[CoverPhotoInfo] = Field(None, description="封面照片信息")
-
-    class Config:
-        from_attributes = True
 
 class FaceIdentityUpdate(BaseModel):
     name: str = Field(..., description="新的名称")
-
-class MergeRequest(BaseModel):
-    source_ids: List[UUID] = Field(..., description="源人物ID列表")
-    target_id: UUID = Field(..., description="目标人物ID")
-
-class RemovePhotosRequest(BaseModel):
-    photo_ids: List[UUID] = Field(..., description="要移除的照片ID列表")
-
-class SetCoverRequest(BaseModel):
-    photo_id: UUID = Field(..., description="设置为封面的照片ID")
 
 @router.get("/identities", response_model=List[FaceIdentitySchema], summary="获取人物列表", description="获取所有已识别的人物列表，支持分页，返回包含封面信息和照片数量的人物对象")
 def list_identities(
@@ -51,11 +27,11 @@ def list_identities(
     """
     offset = (page - 1) * limit
     min_photos = config_manager.config.ai.face_recognition_min_photos
-    
+
     return crud_face.get_identities_with_details(
-        db, 
-        skip=offset, 
-        limit=limit, 
+        db,
+        skip=offset,
+        limit=limit,
         min_photos=min_photos
     )
 

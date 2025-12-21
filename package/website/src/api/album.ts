@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Album, CreateAlbumDto, Photo, PhotoMetadata, TimelineStats, PhotoGroup } from '@/types/album';
+import type { ApiAlbum, Album, CreateAlbumDto, Photo, PhotoMetadata, TimelineStats, PhotoGroup } from '@/types/album';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -11,15 +11,15 @@ const api = axios.create({
 export const albumService = {
   // Albums
   async getAlbums() {
-    const { data } = await api.get<Album[]>('/api/albums');
+    const { data } = await api.get<ApiAlbum[]>('/api/albums');
     return data;
   },
   async getAlbum(id: string) {
-    const { data } = await api.get<Album>(`/api/albums/${id}`);
+    const { data } = await api.get<ApiAlbum>(`/api/albums/${id}`);
     return data;
   },
   async createAlbum(album: CreateAlbumDto) {
-    const { data } = await api.post<Album>('/api/albums', album);
+    const { data } = await api.post<ApiAlbum>('/api/albums', album);
     return data;
   },
   async updateAlbum(id: string, album: CreateAlbumDto) {

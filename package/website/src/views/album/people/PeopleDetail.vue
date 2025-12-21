@@ -31,11 +31,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { faceApi, type FaceIdentity, type CoverPhotoInfo } from '@/api/face'
+import { faceApi } from '@/api/face'
+import { type FaceIdentity, CoverPhotoInfo } from '@/types/album'
+
 import UnifiedPhotoPage from '@/components/UnifiedPhotoPage.vue'
 import { Folder as FolderIcon } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
-import { usePhotoStore, type AlbumImage } from '@/stores/photoStore'
+import { usePhotoStore } from '@/stores/photoStore'
+import type { AlbumImage } from '@/types/album'
 
 const photoStore = usePhotoStore()
 

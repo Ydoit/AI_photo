@@ -11,9 +11,16 @@ export interface PhotoMetadata {
   photo_id: string;
   exif_info?: string;
   location?: any;
-  location_api?: string;
+  address?: string;
+  albums?: Album[];
+  faces_identities?: FaceIdentity[];
+  country?: string;
+  province?: string;
+  city?: string;
+  district?: string;
+  latitude?: number;
+  longitude?: number;
   tags?: string[];
-  faces?: any[];
 }
 
 export interface Photo {
@@ -29,7 +36,6 @@ export interface Photo {
   size: number;
   width?: number;
   height?: number;
-  metadata_info?: PhotoMetadata;
   duration?: number;
 }
 
@@ -54,7 +60,7 @@ export interface TimelineStats {
   timeline: TimelineItem[];
 }
 
-export interface Album {
+export interface ApiAlbum {
   id: string;
   name: string;
   create_time: string;
@@ -65,7 +71,50 @@ export interface Album {
   photos?: Photo[];
 }
 
+export interface Album {
+  id: string
+  title: string
+  name: string
+  type: string
+  cover: string
+  count: number
+  description?: string
+  createdAt: number
+}
+
 export interface CreateAlbumDto {
   name: string;
   description?: string;
+}
+
+export interface CoverPhotoInfo {
+  photo_id: string
+  width: number | null
+  height: number | null
+  face_rect: number[] | null
+}
+
+export interface FaceIdentity {
+  id: string
+  identity_name: string
+  default_face_id: number | null
+  face_count: number
+  cover_photo: CoverPhotoInfo | null
+  cover: Photo | null
+}
+
+export interface AlbumImage {
+  id: string
+  url: string
+  thumbnail: string
+  preview: string
+  srcset: string
+  timestamp: number
+  albumIds: string[]
+  width?: number
+  height?: number
+  size?: number
+  filename?: string
+  file_type: 'image' | 'video' | 'live_photo'
+  duration?: string
 }

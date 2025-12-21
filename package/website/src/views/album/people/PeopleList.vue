@@ -52,22 +52,22 @@
 
     <div v-else class="flow-grid">
       <div
-        v-for="person in identities" 
+        v-for="person in identities"
         :key="person.id"
         class="group flex flex-col items-center cursor-pointer transition-transform duration-200 active:scale-95"
         @click="handleCardClick(person)"
       >
-        <div 
+        <div
           class="relative w-full aspect-square rounded-full overflow-hidden border-2 transition-all duration-300 bg-gray-100 dark:bg-gray-800"
           :class="[
-            selectedIds.includes(person.id) 
-              ? 'border-blue-500 ring-4 ring-blue-500/20' 
+            selectedIds.includes(person.id)
+              ? 'border-blue-500 ring-4 ring-blue-500/20'
               : 'border-transparent group-hover:border-gray-300 dark:group-hover:border-gray-600'
           ]"
         >
-          <img 
-            v-if="person.cover_photo" 
-            :src="getPhotoUrl(person.cover_photo.photo_id)" 
+          <img
+            v-if="person.cover_photo"
+            :src="getPhotoUrl(person.cover_photo.photo_id)"
             class="absolute max-w-none transition-transform duration-500 group-hover:scale-110"
             :style="getFaceCropStyle(person.cover_photo)"
             loading="lazy"
@@ -77,7 +77,7 @@
           </div>
 
           <div v-if="isMergeMode" class="absolute inset-0 bg-blue-500/10 flex items-center justify-center transition-opacity">
-            <div 
+            <div
               class="w-7 h-7 rounded-full border-2 flex items-center justify-center shadow-lg"
               :class="selectedIds.includes(person.id) ? 'bg-blue-600 border-blue-600' : 'bg-white/80 border-white'"
             >
@@ -91,7 +91,7 @@
             <span class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
               {{ person.identity_name }}
             </span>
-            
+
             <el-dropdown v-if="!isMergeMode" trigger="click" @command="(cmd: string) => handleCommand(cmd, person)">
               <div class="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors cursor-pointer" @click.stop>
                 <MoreVerticalIcon class="w-3.5 h-3.5 text-gray-400 group-hover/name:text-gray-600" />
@@ -110,7 +110,7 @@
         </div>
       </div>
     </div>
-    
+
     <el-dialog v-model="renameDialogVisible" title="重命名" width="340px" border-radius="12px">
       <div class="py-2">
         <el-input v-model="newName" placeholder="输入姓名..." @keyup.enter="submitRename" />
@@ -128,7 +128,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { faceApi, type FaceIdentity, type CoverPhotoInfo } from '@/api/face'
+import { faceApi } from '@/api/face'
+import type { FaceIdentity, CoverPhotoInfo } from '@/types/album'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   User as UserIcon,

@@ -11,8 +11,11 @@ from app.db.models.photo import Photo
 from app.db.models.photo_metadata import PhotoMetadata
 from app.db.models.face import Face
 from app.db.models.tag import PhotoTag
-from app.schemas import album as schemas
+from app.schemas import album as album_schemas
+from app.schemas import photo as photo_schemas
+from app.schemas.metadata import PhotoMetadataUpdate
 from app.service import storage
+from app.crud import face as crud_face
 from app.db.models.photo import FileType
 from app.utils.exif import extract_metadata
 
@@ -28,10 +31,13 @@ def _update_album_photo_count(db: Session, album_id: UUID):
 def get_album(db: Session, album_id: UUID):
     return db.query(Album).options(joinedload(Album.cover)).filter(Album.id == album_id).first()
 
+def get_albums_by_photo_id(db: Session, photo_id: UUID):
+    return db.query(Album).join(Album.photos).filter(Photo.id == photo_id).all()
+
 def get_albums(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Album).options(joinedload(Album.cover)).offset(skip).limit(limit).all()
 
-def create_album(db: Session, album: schemas.AlbumCreate):
+def create_album(db: Session, album: album_schemas.AlbumCreate):
     db_album = Album(name=album.name, description=album.description)
     db.add(db_album)
     db.commit()
@@ -45,7 +51,7 @@ def delete_album(db: Session, album_id: UUID):
         db.commit()
     return db_album
 
-def update_album(db: Session, album_id: UUID, album: schemas.AlbumCreate):
+def update_album(db: Session, album_id: UUID, album: album_schemas.AlbumCreate):
     db_album = get_album(db, album_id)
     if db_album:
         db_album.name = album.name
@@ -72,7 +78,7 @@ def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id:
     extracted_meta = extract_metadata(file_path, file_name)
 
     # Create Schema for DB
-    photo_create = schemas.PhotoCreate(
+    photo_create = photo_schemas.PhotoCreate(
         file_type=file_type,
         size=size,
         width=width,
@@ -84,7 +90,7 @@ def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id:
 
     # Create Metadata Schema
     loc_details = extracted_meta.get("location_details", {})
-    metadata_create = schemas.PhotoMetadataCreate(
+    metadata_create = photo_schemas.PhotoMetadataCreate(
         exif_info=extracted_meta["exif_info"],
         longitude=loc_details.get("longitude"),
         latitude=loc_details.get("latitude"),
@@ -207,7 +213,7 @@ def get_all_photos(
 def get_photo(db: Session, photo_id: UUID):
     return db.query(Photo).options(joinedload(Photo.albums)).filter(Photo.id == photo_id).first()
 
-def create_photo(db: Session, photo: schemas.PhotoCreate, album_id: Optional[UUID], file_path: str, photo_id: Optional[UUID] = None, metadata: Optional[schemas.PhotoMetadataCreate] = None):
+def create_photo(db: Session, photo: photo_schemas.PhotoCreate, album_id: Optional[UUID], file_path: str, photo_id: Optional[UUID] = None):
     db_photo = Photo(
         id=photo_id,
         # album_id removed
@@ -220,48 +226,23 @@ def create_photo(db: Session, photo: schemas.PhotoCreate, album_id: Optional[UUI
         filename=photo.filename,
         photo_time=photo.photo_time or datetime.now()
     )
-    
+
     if album_id:
         album = get_album(db, album_id)
         if album:
             db_photo.albums.append(album)
-            
     db.add(db_photo)
     db.commit()
     db.refresh(db_photo)
-    
+
     if album_id:
         _update_album_photo_count(db, album_id)
-    
-    # Initialize metadata
-    db_metadata = PhotoMetadata(photo_id=db_photo.id)
-    if metadata:
-        if metadata.exif_info:
-            db_metadata.exif_info = metadata.exif_info
-        if metadata.location_api:
-            db_metadata.location_api = metadata.location_api
-        # Enhanced location fields
-        if metadata.longitude is not None:
-            db_metadata.longitude = metadata.longitude
-        if metadata.latitude is not None:
-            db_metadata.latitude = metadata.latitude
-        if metadata.city:
-            db_metadata.city = metadata.city
-        if metadata.province:
-            db_metadata.province = metadata.province
-        if metadata.country:
-            db_metadata.country = metadata.country
-        if metadata.district:
-            db_metadata.district = metadata.district
-        if metadata.address:
-            db_metadata.address = metadata.address
 
-    db.add(db_metadata)
     db.commit()
-    
+
     return db_photo
 
-def update_photo(db: Session, photo_id: UUID, photo_update: schemas.PhotoUpdate):
+def update_photo(db: Session, photo_id: UUID, photo_update: photo_schemas.PhotoUpdate):
     db_photo = get_photo(db, photo_id)
     if db_photo:
         if photo_update.filename is not None:
@@ -373,7 +354,7 @@ def batch_delete_photos_db(db: Session, photo_ids: List[UUID]):
 def get_photo_metadata(db: Session, photo_id: UUID):
     return db.query(PhotoMetadata).filter(PhotoMetadata.photo_id == photo_id).first()
 
-def update_photo_metadata(db: Session, photo_id: UUID, metadata: schemas.PhotoMetadataUpdate):
+def update_photo_metadata(db: Session, photo_id: UUID, metadata: PhotoMetadataUpdate):
     db_metadata = get_photo_metadata(db, photo_id)
     if not db_metadata:
         db_metadata = PhotoMetadata(photo_id=photo_id)
@@ -392,24 +373,20 @@ def batch_create_photos(db: Session, photos_data: List[dict]):
     """
     Batch create photos.
     photos_data list of dict with keys:
-    - photo: schemas.PhotoCreate
+    - photo: album_schemas.PhotoCreate
     - album_id: Optional[UUID]
     - file_path: str
     - photo_id: UUID
-    - metadata: Optional[schemas.PhotoMetadataCreate]
     """
     if not photos_data:
         return 0
 
     db_photos = []
-    db_metadatas = []
-    
+
     for item in photos_data:
         photo = item['photo']
         file_path = item['file_path']
         photo_id = item['photo_id']
-        metadata = item.get('metadata')
-        
         db_photo = Photo(
             id=photo_id,
             file_path=file_path,
@@ -422,34 +399,10 @@ def batch_create_photos(db: Session, photos_data: List[dict]):
             photo_time=photo.photo_time or datetime.now()
         )
         # Skipping album association for batch insert as it's typically for scanning
-        
         db_photos.append(db_photo)
-        
-        db_metadata = PhotoMetadata(photo_id=photo_id)
-        if metadata:
-            if metadata.exif_info:
-                db_metadata.exif_info = metadata.exif_info
-            if metadata.location_api:
-                db_metadata.location_api = metadata.location_api
-            if metadata.longitude is not None:
-                db_metadata.longitude = metadata.longitude
-            if metadata.latitude is not None:
-                db_metadata.latitude = metadata.latitude
-            if metadata.city:
-                db_metadata.city = metadata.city
-            if metadata.province:
-                db_metadata.province = metadata.province
-            if metadata.country:
-                db_metadata.country = metadata.country
-            if metadata.district:
-                db_metadata.district = metadata.district
-            if metadata.address:
-                db_metadata.address = metadata.address
-        db_metadatas.append(db_metadata)
 
     try:
         db.add_all(db_photos)
-        db.add_all(db_metadatas)
         db.commit()
         return len(db_photos)
     except Exception as e:

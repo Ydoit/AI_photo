@@ -4,28 +4,9 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import { albumService } from '@/api/album'
-import type { Photo, TimelineStats } from '@/types/album'
+import type { Photo, TimelineStats, AlbumImage } from '@/types/album'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-
-export interface AlbumImage {
-  id: string
-  url: string
-  thumbnail: string
-  srcset: string
-  timestamp: number
-  category: string
-  tags: string[]
-  city?: string
-  location?: any
-  albumIds: string[]
-  width?: number
-  height?: number
-  size?: number
-  filename?: string
-  file_type: 'image' | 'video' | 'live_photo'
-  duration?: string
-}
 
 // --- 缓存工具 ---
 const CACHE_PREFIX = 'trailsnap:';
@@ -100,10 +81,9 @@ export const usePhotoStore = defineStore('photo', () => {
   const mapPhotoToImage = (photo: Photo): AlbumImage => {
     // 新 API 在 url 和 thumbnail_url 字段中返回相对地址
     const url = `${API_BASE_URL}${photo.url}`;
-    const thumbnail = `${API_BASE_URL}${photo.thumbnail_url}`;
+    const thumbnail = `${API_BASE_URL}/api/medias/${photo.id}/thumbnail`;
+    const preview = `${API_BASE_URL}/api/medias/${photo.id}/thumbnail?size=medium`;
 
-    // 提取元数据
-    const metadata = photo.metadata_info;
     // 优先使用 photo_time，其次 upload_time，最后取当前时间
     let timestamp = Date.now();
     if (photo.photo_time) {
@@ -115,19 +95,14 @@ export const usePhotoStore = defineStore('photo', () => {
     // 尝试从 location 或 tags 中解析城市
     let city = 'Unknown';
 
-    const tags = metadata?.tags || [];
-    const category = tags.length > 0 ? tags[0] : 'Uncategorized';
 
     return {
       id: photo.id,
       url,
       thumbnail,
+      preview,
       srcset: '', // 暂不分发多尺寸，后端按需动态处理
       timestamp,
-      category,
-      tags,
-      city: city !== 'Unknown' ? city : undefined,
-      location: metadata?.location,
       albumIds: photo.album_ids || [],
       width: photo.width || 300,
       height: photo.height || 300,

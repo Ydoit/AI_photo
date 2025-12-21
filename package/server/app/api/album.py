@@ -27,7 +27,7 @@ def read_album(album_id: UUID, db: Session = Depends(get_db)):
     db_album = crud.get_album(db, album_id=album_id)
     if db_album is None:
         raise HTTPException(status_code=404, detail="Album not found")
-    
+
     # Check if cover is set (relationship or ID)
     if db_album.cover_id is None:
         photos = crud.get_photos(db, album_id)

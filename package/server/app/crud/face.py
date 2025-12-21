@@ -2,11 +2,15 @@ from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+import sqlalchemy as sa
+
 from app.db.models.face import Face, FaceIdentity
 from app.db.models.photo import Photo
 from app.schemas import face as schemas
 from app.core.config_manager import config_manager
 import logging
+
+from app.schemas.face import FaceIdentitySchema
 
 logger = logging.getLogger(__name__)
 
@@ -135,48 +139,62 @@ def delete_identity(db: Session, identity_id: UUID) -> bool:
     db.commit()
     return True
 
-# Advanced Query Operations
 def get_identities_with_details(
-    db: Session, 
-    skip: int = 0, 
-    limit: int = 20, 
-    min_photos: int = 0
-) -> List[dict]:
-    # Subquery for face counts
-    face_counts = db.query(
+    db: Session,
+    skip: int = 0,
+    limit: int = 20,
+    min_photos: int = 0,
+    photo_id: Optional[UUID] = None
+) -> List[FaceIdentitySchema]:
+    # 1. 子查询：统计每个人脸身份的人脸数（按photo_id筛选）
+    face_counts_subq = db.query(
         Face.face_identity_id,
         func.count(Face.id).label("count")
     ).filter(
         Face.is_deleted == False,
-        Face.face_identity_id != None
-    ).group_by(Face.face_identity_id).subquery()
+        Face.face_identity_id.isnot(None)  # 修正：非空判断
+    )
+    # 仅当photo_id有值时，添加photo_id筛选
+    if photo_id:
+        face_counts_subq = face_counts_subq.filter(Face.photo_id == photo_id)
+    face_counts_subq = face_counts_subq.group_by(Face.face_identity_id).subquery()
 
-    # Main query
+    # 2. 主查询：关联FaceIdentity + 统计数 + 默认人脸 + 照片
     query = db.query(
         FaceIdentity,
-        face_counts.c.count,
+        func.coalesce(face_counts_subq.c.count, 0).label("count"),  # 空值转0
         Face,
         Photo
     ).outerjoin(
-        face_counts, FaceIdentity.id == face_counts.c.face_identity_id
+        face_counts_subq, FaceIdentity.id == face_counts_subq.c.face_identity_id
     ).outerjoin(
         Face, FaceIdentity.default_face_id == Face.id
     ).outerjoin(
         Photo, Face.photo_id == Photo.id
     ).filter(
-        FaceIdentity.is_deleted == False
-    ).order_by(
-        FaceIdentity.create_time.desc()
-    ).offset(skip).limit(limit)
+        FaceIdentity.is_deleted == False,
+        # 核心修正：筛选「统计数>min_photos」（SQL层过滤，提升性能）
+        func.coalesce(face_counts_subq.c.count, 0) > min_photos
+    )
+
+    # 3. 仅当photo_id有值时：筛选「该身份在该photo_id下有人脸」
+    if photo_id:
+        # 方式1：通过face_counts_subq的count>0筛选（推荐）
+        query = query.filter(face_counts_subq.c.count.isnot(None))
+        # 方式2（备选）：子查询筛选有该photo_id人脸的身份ID
+        # photo_identity_ids = db.query(Face.face_identity_id).filter(
+        #     Face.photo_id == photo_id, Face.is_deleted == False
+        # ).subquery()
+        # query = query.filter(FaceIdentity.id.in_(photo_identity_ids))
+
+    # 4. 排序+分页
+    query = query.order_by(FaceIdentity.create_time.desc()).offset(skip).limit(limit)
 
     results = []
-    
     p_size = config_manager.config.image.preview_size
 
     for identity, count, default_face, photo in query.all():
-        if not count or count <= min_photos:
-            continue
-        
+        # 无需再过滤min_photos（已在SQL层处理）
         cover = None
         if default_face and photo:
             scale = p_size / max(photo.width, photo.height) if max(photo.width, photo.height) > 0 else 1
@@ -186,16 +204,17 @@ def get_identities_with_details(
                 height=int(photo.height * scale),
                 face_rect=default_face.face_rect
             )
-            
-        results.append({
-            "id": identity.id,
-            "identity_name": identity.identity_name,
-            "default_face_id": identity.default_face_id,
-            "face_count": count or 0,
-            "cover_photo": cover,
-            "create_time": identity.create_time,
-            "update_time": identity.update_time
-        })
+
+        results.append(FaceIdentitySchema(
+            id=identity.id,
+            identity_name=identity.identity_name,
+            default_face_id=identity.default_face_id,
+            face_count=count,
+            cover_photo=cover,
+            cover=photo,
+            create_time=identity.create_time,
+            update_time=identity.update_time
+        ))
     return results
 
 def get_identity_photos(db: Session, identity_id: UUID, skip: int = 0, limit: int = 50) -> List[Photo]:
