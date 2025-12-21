@@ -1,131 +1,112 @@
 <template>
-  <div class="mx-auto mt-20 min-w-0 max-w-7xl overflow-hidden lg:mt-[-4.5rem] lg:h-dvh lg:px-8">
-    <div class="relative mx-auto block size-full min-w-0 max-w-[1800px] flex-col flex-wrap items-center lg:flex lg:flex-row">
-      <div class="hero-content item text-left">
-        <!-- 深色模式下文字颜色调整 -->
-        <p class="greeting p-2 text-2xl text-gray-600 dark:text-gray-300">Hi, I’m <span class="font-bold">SiYuan</span> <span class="wave">👋</span></p>
-        <p class="title p-2 text-4xl text-gray-800 dark:text-gray-100">An undergraduate student </p>
-        <p class="subtitle p-2 text-xl text-gray-600 dark:text-gray-300">studying computer science with a research focus on databases.</p>
-
-        <!-- 社交链接/图标列表 -->
-        <ul class="social-links flex gap-4 p-0 mt-4 mb-0 list-none">
-          <li class="flex items-center justify-center w-10 h-10 text-4xl rounded-full">
-            <a href="https://github.com/LC044" target="_blank" rel="noreferrer" class="text-gray-600 dark:text-gray-300 transition-all duration-200 hover:scale-110 hover:text-pink-400">
-              <i class="mgc_github_2_line"></i>
-            </a>
-          </li>
-          <li class="flex items-center justify-center w-10 h-10 text-4xl rounded-full">
-            <a href="mailto:sixyuan044@gmail.com" target="_blank" rel="noreferrer" class="text-gray-600 dark:text-gray-300 transition-all duration-200 hover:scale-110 hover:text-pink-400">
-              <i class="mgc_mailbox_line"></i>
-            </a>
-          </li>
-          <li class="flex items-center justify-center w-10 h-10 text-4xl rounded-full">
-            <a href="https://blog.lc044.love" target="_blank" rel="noreferrer" class="text-gray-600 dark:text-gray-300 transition-all duration-200 hover:scale-110 hover:text-pink-400">
-              <i class="mgc_comment_2_line"></i>
-            </a>
-          </li>
-          <!-- ... -->
-        </ul>
+  <div class="min-h-screen bg-white dark:bg-black pb-12">
+    <!-- Navbar -->
+    <div class="sticky top-0 z-20 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 h-14 flex items-center justify-between px-4 transition-opacity duration-300">
+      <h1 class="text-lg font-bold text-[#333] dark:text-white">相册概览</h1>
+      <div class="flex items-center space-x-4">
+        <button class="text-[#666] dark:text-gray-300 hover:text-[#4A90E2] transition-colors">
+          <i class="mgc_search_3_line text-2xl"></i>
+        </button>
+        <button class="text-[#666] dark:text-gray-300 hover:text-[#4A90E2] transition-colors" @click="$router.push('/settings')">
+          <i class="mgc_settings_4_line text-2xl"></i>
+        </button>
       </div>
-
-      <div class="item flex flex-col justify-center items-center">
-        <!-- 角色插画（深色模式下添加轻微阴影增强对比度） -->
-        <img src="/avatar.png" alt="avatar" class="hero-avatar w-[300px] max-w-[40vw] object-contain animate-float dark:shadow-lg dark:shadow-pink-500/10" />
-      </div>
-      <!-- 卡片列表（网格布局） -->
     </div>
-  </div>
 
-  <!-- 底部文字和箭头（深色模式颜色调整） -->
-  <div class="inset-x-0 bottom-0 mt-12 flex flex-col items-center text-center lg:absolute lg:mt-0 text-neutral-800/80 dark:text-neutral-200/80 opacity-100 transform-none">
-    <small>司然后能行，行所以致远。</small>
-    <span class="mt-8 animate-bounce">
-      <i class="mgc_down_line text-3xl inline-block"></i>
-    </span>
+    <!-- Loading State -->
+    <div v-if="loading" class="flex items-center justify-center h-[calc(100vh-56px)]">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4A90E2]"></div>
+    </div>
+
+    <!-- Content -->
+    <div v-else-if="dashboardData" class="py-3 space-y-2">
+      <OverviewCards :data="dashboardData.card" @show-storage="showStorageDialog = true" />
+      
+      <FaceSection :data="dashboardData.face" />
+      
+      <ContentStats :data="dashboardData.content" />
+      
+      <TimeChart :data="dashboardData.time" />
+      
+      <ToolsSection />
+    </div>
+    
+    <!-- Error State -->
+    <div v-else class="flex flex-col items-center justify-center h-[calc(100vh-56px)] text-gray-500">
+      <i class="mgc_warning_line text-4xl mb-2"></i>
+      <p>加载失败，请下拉刷新</p>
+    </div>
+
+    <BottomBar 
+      :loading="loading" 
+      @refresh="fetchData" 
+      @customize="showCustomizeDialog = true"
+    />
+
+    <!-- Dialogs (Mock) -->
+    <el-dialog v-model="showStorageDialog" title="存储分布" width="80%">
+      <div class="text-center py-4">存储分布图表（待实现）</div>
+    </el-dialog>
+
+    <el-dialog v-model="showCustomizeDialog" title="自定义展示" width="80%">
+      <div class="p-4">
+        <div class="flex items-center justify-between mb-4">
+          <span>存储空间</span>
+          <el-switch v-model="displaySettings.storage" />
+        </div>
+        <div class="flex items-center justify-between">
+          <span>时间分布</span>
+          <el-switch v-model="displaySettings.time" />
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
-<script setup>
-import { ref } from 'vue'
-defineProps({
-  msg: String,
-})
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { dashboardApi, DashboardResponse } from '@/api/dashboard';
+import { ElMessage } from 'element-plus';
 
-const count = ref(0)
+// Components
+import OverviewCards from '@/components/home/OverviewCards.vue';
+import FaceSection from '@/components/home/FaceSection.vue';
+import ContentStats from '@/components/home/ContentStats.vue';
+import TimeChart from '@/components/home/TimeChart.vue';
+import ToolsSection from '@/components/home/ToolsSection.vue';
+import BottomBar from '@/components/home/BottomBar.vue';
+
+const loading = ref(false);
+const dashboardData = ref<DashboardResponse | null>(null);
+const showStorageDialog = ref(false);
+const showCustomizeDialog = ref(false);
+
+const displaySettings = ref({
+  storage: true,
+  time: true
+});
+
+const fetchData = async () => {
+  loading.value = true;
+  try {
+    dashboardData.value = await dashboardApi.getOverview();
+    // Toast success
+    if (loading.value) { // only if triggered manually or first load
+       // ElMessage.success('数据刷新成功');
+    }
+  } catch (error) {
+    console.error(error);
+    ElMessage.error('加载数据失败');
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(() => {
+  fetchData();
+});
 </script>
 
 <style scoped>
-/* 保留关键动画和无法用Tailwind实现的样式 */
-.wave {
-  display: inline-block;
-  animation: wave 1s infinite alternate;
-}
-
-.animate-float {
-  animation: floatUpDown 3s ease-in-out infinite alternate;
-}
-
-@keyframes wave {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(20deg); }
-}
-
-@keyframes floatUpDown {
-  from { transform: translateY(0); }
-  to { transform: translateY(-20px); }
-}
-
-/* 响应式补充样式 */
-@media (max-width: 767px) {
-  .hero-content {
-    text-align: center;
-    align-items: center;
-  }
-  .fullscreen-div {
-      position: relative;
-      display: flex;
-      flex-direction:column;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      max-width: 1080px;
-  }
-  content {
-      display: flex;
-      gap: 20px;
-  }
-  .item {
-    flex: 0;
-    display: flex;
-    flex-direction:column;
-    justify-content: center;
-  }
-  .hero {
-    align-items: center;
-    text-align: center;
-  }
-  .hero-content {
-    align-items: center;
-    text-align: center;
-  }
-  .item {
-    flex: 0;
-    display: flex;
-  }
-  .hero-avatar {
-    position: static;
-    margin-top: 2rem;
-    width: 200px !important;
-    max-width: 60vw !important;
-    animation: none;
-  }
-}
-
-/* 深色模式下的补充样式（无法用Tailwind实现的） */
-.dark .social-links a {
-  filter: brightness(0.9);
-}
-.dark .social-links a:hover {
-  filter: brightness(1.1);
-}
+/* Any additional global overrides */
 </style>

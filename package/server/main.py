@@ -100,10 +100,7 @@ app.add_middleware(CustomGZipMiddleware, minimum_size=1000, compresslevel=9, exc
 
 # 配置允许跨域的源（生产环境建议指定具体域名，不要用 "*"）
 origins = [
-    "http://localhost:8080",  # Vue开发环境地址
-    "http://localhost:5173",  # Vite开发环境地址
-    "http://localhost:5176",  # Vite开发环境地址
-    "https://your-production-domain.com"  # 生产环境前端域名
+    "*"
 ]
 
 # 添加CORS中间件

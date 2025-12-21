@@ -9,7 +9,8 @@ from app.dependencies import get_db
 from app.db.models.photo import Photo
 from app.db.models.album import Album
 from app.schemas.album import TimelineItem, TimelineStats
-
+from app.schemas.dashboard import DashboardResponse
+from app.crud import dashboard as crud_dashboard
 
 router = APIRouter()
 
@@ -68,3 +69,10 @@ def get_timeline_stats(album_id: UUID|None = None, db: Session = Depends(get_db)
         },
         'timeline': timeline
     }
+
+@router.get("/dashboard", response_model=DashboardResponse)
+def get_dashboard_overview(db: Session = Depends(get_db)):
+    """
+    Get dashboard overview data.
+    """
+    return crud_dashboard.get_dashboard_stats(db)
