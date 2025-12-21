@@ -62,6 +62,7 @@
                     <el-option label="重建缩略图" value="REBUILD_THUMBNAILS" />
                     <el-option label="重建元数据" value="REBUILD_METADATA" />
                     <el-option label="人脸识别" value="RECOGNIZE_FACE" />
+                    <el-option label="OCR识别" value="OCR" />
                 </el-select>
             </el-form-item>
              <el-form-item label="范围" class="dark:text-white">
@@ -164,7 +165,8 @@ const formatCategory = (cat: string) => {
     const map: Record<string, string> = {
         'scanning': '扫描文件夹',
         'metadata': '处理元数据',
-        'face': '识别人物'
+        'face': '识别人物',
+        'ocr': 'OCR识别'
     }
     return map[cat] || cat
 }

@@ -12,7 +12,7 @@ from app.db.models.index_log import IndexLog
 from app.crud import album as album_crud
 from app.core.config_manager import config_manager
 
-from app.service.tasks import thumbnail, metadata, scan, face
+from app.service.tasks import thumbnail, metadata, scan, face, ocr
 
 DEFAULT_PRIORITIES = {
     TaskType.SCAN_FOLDER: 10,
@@ -23,6 +23,7 @@ DEFAULT_PRIORITIES = {
     TaskType.REBUILD_THUMBNAILS: 4,
     TaskType.RECOGNIZE_FACE: 1,
     TaskType.CLASSIFY_IMAGE: 1,
+    TaskType.OCR: 1,
 }
 
 class TaskManager:
@@ -58,6 +59,7 @@ class TaskManager:
             
             TaskType.RECOGNIZE_FACE: 'face',
             TaskType.CLASSIFY_IMAGE: 'face', # or 'ai'
+            TaskType.OCR: 'ocr',
         }
 
     @classmethod
@@ -98,13 +100,14 @@ class TaskManager:
         """Get task counts grouped by category"""
         stats = []
         # Define categories to show
-        categories = ['scanning', 'metadata', 'face']
+        categories = ['scanning', 'metadata', 'face', 'ocr']
         
         # Priority map for categories (higher is better)
         cat_priority = {
             'scanning': 10,
             'metadata': 5,
-            'face': 1
+            'face': 1,
+            'ocr': 1
         }
 
         for cat in categories:
@@ -404,6 +407,13 @@ class TaskManager:
                         priority=1,
                         status=TaskStatus.PENDING
                     ))
+                    # 3. OCR Task (Low Priority)
+                    db.add(Task(
+                        type=TaskType.OCR,
+                        payload={'file_path': file_path, 'photo_id': photo_id},
+                        priority=1,
+                        status=TaskStatus.PENDING
+                    ))
 
             # 2. Update tasks
             for item in items:
@@ -456,5 +466,7 @@ class TaskManager:
             return await metadata.handle_extract_metadata(self, task, db)
         elif task.type == TaskType.RECOGNIZE_FACE:
             return await face.handle_face_recognition(self, task, db)
+        elif task.type == TaskType.OCR:
+            return await ocr.handle_ocr_task(self, task, db)
         else:
             return {'status': 'not_implemented', 'type': task.type}
