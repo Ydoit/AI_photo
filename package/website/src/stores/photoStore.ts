@@ -21,6 +21,7 @@ export interface AlbumImage {
   albumIds: string[]
   width?: number
   height?: number
+  size?: number
   filename?: string
   file_type: 'image' | 'video' | 'live_photo'
   duration?: string
@@ -113,15 +114,6 @@ export const usePhotoStore = defineStore('photo', () => {
 
     // 尝试从 location 或 tags 中解析城市
     let city = 'Unknown';
-    if (metadata && metadata.location) {
-        // 如果 location 是字符串，尝试解析城市（兼容旧格式）
-        if (typeof metadata.location === 'string') {
-             city = metadata.location.split('·')[0] || metadata.location;
-        } else if (typeof metadata.location === 'object' && metadata.location.formatted_address) {
-             // 新 JSON 格式
-             city = metadata.location.formatted_address.split('·')[0] || 'Unknown';
-        }
-    }
 
     const tags = metadata?.tags || [];
     const category = tags.length > 0 ? tags[0] : 'Uncategorized';
@@ -139,6 +131,7 @@ export const usePhotoStore = defineStore('photo', () => {
       albumIds: photo.album_ids || [],
       width: photo.width || 300,
       height: photo.height || 300,
+      size: photo.size || 0,
       filename: photo.filename || '',
       file_type: photo.file_type || 'image',
       duration: formatDuration(photo.duration ?? null) || '00:00'

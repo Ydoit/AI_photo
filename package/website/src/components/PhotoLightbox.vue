@@ -1,10 +1,10 @@
 <template>
   <Transition name="fade">
     <div v-if="visible" class="fixed inset-0 z-[100] flex bg-black/95 backdrop-blur-sm" @click="close" @keydown.esc="close" tabindex="0">
-      
+
       <!-- Top Toolbar (Mobile Adapted) -->
       <div class="fixed top-0 left-0 right-0 z-[102] p-2 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
-         <button 
+         <button
             @click.stop="close"
             class="pointer-events-auto w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0"
         >
@@ -19,13 +19,10 @@
             <button @click.stop="zoomIn" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0">
                 <ZoomIn class="w-6 h-6" />
             </button>
-            
+
             <!-- Actions -->
             <button @click.stop="downloadImage" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0">
                 <Download class="w-6 h-6" />
-            </button>
-            <button @click.stop="emit('add-to-album', image)" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0">
-                <FolderPlus class="w-6 h-6" />
             </button>
              <button @click.stop="handleDelete" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors text-red-400 hover:text-red-300 bg-transparent p-0">
                 <Trash2 class="w-6 h-6" />
@@ -33,12 +30,36 @@
             <button @click.stop="toggleSidebar" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0" :class="{ 'bg-white/20 text-white': showSidebar }">
                 <Info class="w-6 h-6" />
             </button>
+
+            <div @click.stop @mousedown.stop class="flex items-center">
+                <el-dropdown trigger="click" @command="handleCommand">
+                    <button class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0" :class="{ 'bg-white/20 text-white': showOCR }">
+                        <MoreHorizontal class="w-6 h-6" />
+                    </button>
+                    <template #dropdown>
+                        <el-dropdown-menu class="w-36">
+                            <el-dropdown-item command="ocr">
+                                <div class="flex items-center gap-2">
+                                    <ScanText class="w-4 h-4" />
+                                    <span>{{ showOCR ? '关闭识别' : '文字识别' }}</span>
+                                </div>
+                            </el-dropdown-item>
+                            <el-dropdown-item command="addToAlbum">
+                                <div class="flex items-center gap-2">
+                                    <FolderPlus class="w-4 h-4" />
+                                    <span>添加到相册</span>
+                                </div>
+                            </el-dropdown-item>
+                        </el-dropdown-menu>
+                    </template>
+                </el-dropdown>
+            </div>
         </div>
       </div>
 
       <!-- Main Image Area -->
       <div class="flex-1 relative flex items-center justify-center h-full overflow-hidden group">
-        
+
         <!-- Navigation -->
         <button 
             v-if="hasPrev"
@@ -57,15 +78,35 @@
 
 
         <div class="relative w-full h-full flex items-center justify-center overflow-hidden" @wheel.prevent="handleWheel">
-            <img
+            <div
               v-if="image && (!image.file_type || image.file_type === 'image' || image.file_type === 'live_photo')"
-              :src="image.url"
-              class="max-w-full max-h-full object-contain transition-transform duration-200 ease-out origin-center select-none"
+              class="relative w-full h-full transition-transform duration-200 ease-out origin-center select-none flex items-center justify-center"
               :style="{ transform: `scale(${scale}) translate(${translateX}px, ${translateY}px)` }"
               @click.stop
               @mousedown="startDrag"
               @touchstart="startTouch"
-            />
+            >
+                <img
+                    ref="imageRef"
+                    :src="image.url"
+                    class="block w-full h-full object-contain pointer-events-none"
+                    draggable="false"
+                />
+                
+                <!-- OCR Overlay -->
+                <div v-if="showOCR && ocrRecords.length > 0" class="absolute inset-0 z-10">
+                    <svg viewBox="0 0 1 1" class="w-full h-full pointer-events-none" preserveAspectRatio="none">
+                         <polygon 
+                            v-for="rec in ocrRecords"
+                            :key="rec.id"
+                            :points="getPolygonPoints(rec.polygon)"
+                            class="fill-transparent stroke-primary-500 stroke-[0.002] cursor-pointer pointer-events-auto hover:fill-primary-500/20 hover:stroke-[0.004] transition-all"
+                            :class="{ 'fill-primary-500/30 stroke-[0.004]': highlightedOCR?.id === rec.id }"
+                            @click.stop="handleOCRClick(rec)"
+                         />
+                    </svg>
+                </div>
+            </div>
             
             <div
               v-else-if="image && image.file_type === 'video'"
@@ -92,7 +133,7 @@
       </div>
 
       <!-- Sidebar (Metadata) -->
-      <div 
+      <div
         class="fixed inset-y-0 right-0 w-80 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 h-full overflow-y-auto transition-transform duration-300 z-[103] shadow-2xl"
         :class="{ 'translate-x-full': !showSidebar, 'translate-x-0': showSidebar }"
         @click.stop
@@ -111,16 +152,23 @@
         </div>
 
         <div v-else-if="metadata" class="p-4 space-y-6">
-            <!-- File Name -->
+            <!-- File Name & Info -->
             <div class="space-y-1">
                 <div class="flex items-center gap-2 text-gray-500 text-xs font-medium uppercase tracking-wider">
                     <Info class="w-3.5 h-3.5" />
-                    <span>文件名</span>
+                    <span>基本信息</span>
                 </div>
                 <!-- 文件名过长时自动换行 -->
-                <p class="text-sm text-gray-900 dark:text-gray-200 font-mono break-all">
+                <p class="text-sm text-gray-900 dark:text-gray-200 font-mono break-all font-bold">
                     {{ image?.filename || '无文件名' }}
                 </p>
+                 <div class="text-xs text-gray-500 flex gap-2">
+                    <span v-if="image?.width && image?.height">{{ image.width }} x {{ image.height }}</span>
+                    <span>{{ formatSize(image?.size) }}</span>
+                </div>
+                <button @click="showExifDialog = true" class="text-xs text-primary-500 hover:text-primary-400 hover:underline pt-1">
+                    查看文件 EXIF 信息
+                </button>
             </div>
             <!-- Date & Time -->
             <div class="space-y-1">
@@ -138,19 +186,18 @@
                 <div class="flex items-center justify-between text-gray-500 text-xs font-medium uppercase tracking-wider">
                     <div class="flex items-center gap-2">
                         <MapPin class="w-3.5 h-3.5" />
-                        <span>位置</span>
+                        <span>地理位置</span>
                     </div>
-                    <button 
-                        v-if="!isEditing" 
-                        @click="startEdit" 
+                    <button
+                        v-if="!isEditing"
+                        @click="startEdit"
                         class="text-primary-500 hover:text-primary-600"
                     >
                         编辑
                     </button>
                 </div>
-                
                 <div v-if="isEditing" class="space-y-2">
-                    <input 
+                    <input
                         v-model="editForm.location"
                         type="text"
                         class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
@@ -158,14 +205,14 @@
                     />
                 </div>
                 <p v-else class="text-sm text-gray-900 dark:text-gray-200">
-                    {{ 
-                        metadata.location?.formatted_address || 
-                        (typeof metadata.location === 'string' ? metadata.location : 
-                            (metadata.location?.latitude && metadata.location?.longitude ? 
-                                `${metadata.location.latitude.toFixed(6)}, ${metadata.location.longitude.toFixed(6)}` : 
+                    {{
+                        metadata.location?.formatted_address ||
+                        (typeof metadata.location === 'string' ? metadata.location :
+                            (metadata.location?.latitude && metadata.location?.longitude ?
+                                `${metadata.location.latitude.toFixed(6)}, ${metadata.location.longitude.toFixed(6)}` :
                                 '无位置信息'
                             )
-                        ) 
+                        )
                     }}
                 </p>
             </div>
@@ -218,17 +265,6 @@
                 </div>
             </div>
 
-            <!-- EXIF (Camera Info) -->
-            <div class="space-y-1">
-                <div class="flex items-center gap-2 text-gray-500 text-xs font-medium uppercase tracking-wider">
-                    <Camera class="w-3.5 h-3.5" />
-                    <span>相机信息</span>
-                </div>
-                <p class="text-sm text-gray-900 dark:text-gray-200 whitespace-pre-wrap">
-                    {{ metadata.exif_info || '无相机信息' }}
-                </p>
-            </div>
-
             <!-- Actions -->
             <div v-if="isEditing" class="flex items-center gap-2 pt-4 border-t border-gray-100 dark:border-gray-800">
                 <button
@@ -260,26 +296,87 @@
 
         </div>
       </div>
+
+      <!-- OCR Panel (Separate) -->
+      <div
+        class="fixed inset-y-0 right-0 w-80 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 h-full overflow-y-auto transition-transform duration-300 z-[103] shadow-2xl"
+        :class="{ 'translate-x-full': !showOCR, 'translate-x-0': showOCR }"
+        @click.stop
+      >
+        <div class="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between sticky top-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur z-10">
+            <h3 class="font-bold text-gray-900 dark:text-white">文字识别结果</h3>
+            <button @click="toggleOCR" class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500">
+                <PanelRightClose class="w-4 h-4" />
+            </button>
+        </div>
+
+        <div v-if="ocrLoading" class="p-8 flex justify-center">
+            <Loader2 class="w-6 h-6 animate-spin text-primary-500" />
+        </div>
+
+        <div v-else-if="ocrRecords.length === 0" class="p-8 text-center text-gray-400 text-sm">
+            <ScanText class="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p>暂无识别结果</p>
+        </div>
+
+        <div v-else class="p-4">
+             <div
+                v-for="rec in ocrRecords"
+                :key="rec.id"
+                class="text-sm bg-gray-50 dark:bg-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                :class="{ 'border-primary-500 ring-1 ring-primary-500 bg-primary-50 dark:bg-primary-900/20': highlightedOCR?.id === rec.id }"
+                @click="handleOCRClick(rec)"
+            >
+                <p class="text-gray-900 dark:text-gray-200 leading-relaxed">{{ rec.text }}</p>
+            </div>
+        </div>
+      </div>
+
     </div>
   </Transition>
+
+  <!-- EXIF Dialog -->
+  <el-dialog
+    v-model="showExifDialog"
+    title="EXIF 详细信息"
+    width="500px"
+    align-center
+  >
+    <div v-if="parsedExif.length > 0" class="max-h-[60vh] overflow-y-auto border border-gray-100 dark:border-gray-800 rounded-lg">
+        <table class="w-full text-sm text-left">
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                <tr v-for="(item, index) in parsedExif" :key="index" class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                    <td class="px-4 py-3 font-medium text-gray-500 bg-gray-50/50 dark:bg-gray-900/50 w-1/3">{{ item.label }}</td>
+                    <td class="px-4 py-3 text-gray-900 dark:text-gray-200 font-mono break-all">{{ item.value }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div v-else class="text-center text-gray-500 py-8">
+        暂无 EXIF 信息
+    </div>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, reactive, computed, onUnmounted, nextTick } from 'vue'
-import { 
+import {
     X, CalendarDays, MapPin, Tags, Camera, PanelRightClose, PanelRightOpen,
     Loader2, Trash2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, FolderPlus, Info, User,
     FileArchiveIcon,
     FilePen,
     FileArchive,
-    FileBadgeIcon
+    FileBadgeIcon,
+    ScanText,
+    MoreHorizontal
 } from 'lucide-vue-next'
 import videojs from 'video.js'
 import 'video.js/dist/video-js.css'
 import { format } from 'date-fns'
 import { albumService } from '@/api/album'
+import { ocrApi, type OCRRecord } from '@/api/ocr'
 import type { AlbumImage } from '@/stores/photoStore'
-import type { PhotoMetadata } from '@/types/album'
+import type { PhotoMetadata, Photo } from '@/types/album'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
 
@@ -301,10 +398,46 @@ const emit = defineEmits(['close', 'delete', 'update', 'prev', 'next', 'add-to-a
 
 // State
 const showSidebar = ref(false)
+const showExifDialog = ref(false)
 const loading = ref(false)
 const saving = ref(false)
 const isEditing = ref(false)
 const metadata = ref<PhotoMetadata | null>(null)
+
+const parsedExif = computed(() => {
+    if (!metadata.value?.exif_info) return []
+    const info = metadata.value.exif_info
+    
+    // Attempt to parse as JSON first
+    try {
+        if (info.trim().startsWith('{')) {
+             const obj = JSON.parse(info)
+             return Object.entries(obj).map(([k, v]) => ({ label: k, value: String(v) }))
+        }
+    } catch (e) {
+        // Ignore JSON error
+    }
+
+    // Fallback to line-based parsing
+    return info.split('\n')
+        .map(line => {
+            const idx = line.indexOf(':')
+            if (idx === -1) return null
+            return {
+                label: line.slice(0, idx).trim(),
+                value: line.slice(idx + 1).trim()
+            }
+        })
+        .filter((item): item is { label: string, value: string } => item !== null && item.label !== '' && item.value !== '')
+})
+
+
+// OCR State
+const showOCR = ref(false)
+const ocrLoading = ref(false)
+const ocrRecords = ref<OCRRecord[]>([])
+const highlightedOCR = ref<OCRRecord | null>(null)
+const imageRef = ref<HTMLImageElement | null>(null)
 
 // Zoom & Pan State
 const scale = ref(1)
@@ -364,6 +497,12 @@ onUnmounted(() => {
 watch(() => props.image, async (newImg, oldImg) => {
     if (newImg && props.visible) {
         resetZoom()
+        highlightedOCR.value = null
+        if (showOCR.value) {
+            await fetchOCR(newImg.id)
+        } else {
+            ocrRecords.value = []
+        }
         
         // Dispose old player if switching from video
         if (oldImg?.file_type === 'video') {
@@ -377,6 +516,7 @@ watch(() => props.image, async (newImg, oldImg) => {
         }
         
         await fetchMetadata(undefined, newImg.id)
+        await fetchOCR(newImg.id)
     } else {
         // If image is null (closed or cleared), dispose
         disposePlayer()
@@ -411,11 +551,31 @@ const close = () => {
 
 const toggleSidebar = () => {
     showSidebar.value = !showSidebar.value
+    if (showSidebar.value) {
+        showOCR.value = false // Close OCR if Sidebar opens
+    }
+}
+
+const handleCommand = (command: string) => {
+    if (command === 'ocr') {
+        toggleOCR()
+    } else if (command === 'addToAlbum') {
+        emit('add-to-album', props.image)
+    }
 }
 
 const formatTime = (ts?: number) => {
     if (!ts) return '--'
     return format(new Date(ts), 'yyyy-MM-dd HH:mm:ss')
+}
+
+const formatSize = (bytes?: number) => {
+    if (bytes === undefined) return '--'
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
 const fetchMetadata = async (albumId: string | undefined, photoId: string) => {
@@ -430,6 +590,93 @@ const fetchMetadata = async (albumId: string | undefined, photoId: string) => {
         console.error("Failed to fetch metadata", error)
     } finally {
         loading.value = false
+    }
+}
+
+// OCR Methods
+const toggleOCR = async () => {
+    showOCR.value = !showOCR.value
+    if (showOCR.value) {
+        showSidebar.value = false // Close Sidebar if OCR opens
+        if (props.image) {
+            await fetchOCR(props.image.id)
+        }
+    }
+}
+
+const fetchOCR = async (photoId: string) => {
+    ocrLoading.value = true
+    try {
+        const res = await ocrApi.getOCR(photoId)
+        ocrRecords.value = res.records
+    } catch (error) {
+        console.error("Failed to fetch OCR records", error)
+        ElMessage.error("获取OCR记录失败")
+    } finally {
+        ocrLoading.value = false
+    }
+}
+
+const getPolygonPoints = (polygon: number[][]) => {
+    return polygon.map(p => p.join(',')).join(' ')
+}
+
+const handleOCRClick = (record: OCRRecord) => {
+    highlightedOCR.value = record
+    if (!showSidebar.value) {
+        showSidebar.value = true
+    }
+
+    // 复制到剪贴板（带完整容错+降级）
+    if (record?.text) { // 先判断record.text是否存在
+        const text = record.text.trim()
+        if (!text) return ElMessage.warning('无可复制的文本')
+
+        // 方案1：优先使用原生 Clipboard API（现代浏览器）
+        if (navigator?.clipboard) { // 双层判断：navigator和clipboard都存在
+            try {
+                navigator.clipboard.writeText(text)
+                ElMessage.success('复制成功')
+            } catch (err) {
+                // API调用失败，降级到方案2
+                fallbackCopyToClipboard(text)
+            }
+        } 
+        // 方案2：降级到document.execCommand（兼容旧浏览器/非安全上下文）
+        else {
+            fallbackCopyToClipboard(text)
+        }
+    }
+}
+
+// 降级复制方法（无依赖，兼容所有浏览器）
+const fallbackCopyToClipboard = (text: string) => {
+    // 创建隐藏的文本框
+    const textArea = document.createElement('textarea')
+    textArea.value = text
+    // 避免滚动条/页面闪烁
+    textArea.style.position = 'fixed'
+    textArea.style.top = '-9999px'
+    textArea.style.left = '-9999px'
+    textArea.style.opacity = '0'
+    document.body.appendChild(textArea)
+
+    // 选中文本并复制
+    textArea.select()
+    textArea.setSelectionRange(0, text.length) // 兼容移动设备
+
+    try {
+        const isSuccess = document.execCommand('copy')
+        if (isSuccess) {
+            ElMessage.success('复制成功')
+        } else {
+            ElMessage.warning('复制失败，请手动选中文本复制')
+        }
+    } catch (err) {
+        ElMessage.error('复制失败，请手动选中文本复制')
+    } finally {
+        // 无论成败，都移除临时文本框
+        document.body.removeChild(textArea)
     }
 }
 

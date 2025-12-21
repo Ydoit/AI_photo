@@ -8,7 +8,9 @@ from sqlalchemy import text
 from app.db.session import engine, SessionLocal
 from app.core.logger import setup_logging
 
-from app.api import user, album, settings, index, media, stats, photo, tasks, face
+from app.api import (
+    user, album, settings, index, media, stats, tasks, photo, face, ocr
+)
 
 app = FastAPI(title="TrailSnap - 足迹相册")
 
@@ -54,6 +56,7 @@ app.include_router(media.router, prefix="/media", tags=["Media"])
 app.include_router(stats.router, prefix="/stats", tags=["Stats"])
 app.include_router(tasks.router, prefix="/tasks", tags=["Tasks"])
 app.include_router(face.router, prefix="/faces", tags=["Faces"])
+app.include_router(ocr.router, prefix="/ocr", tags=["OCR"])
 
 app.add_middleware(
     CORSMiddleware,
