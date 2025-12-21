@@ -9,6 +9,7 @@ from app.db.models.photo import Photo, FileType
 from app.db.models.ocr import OCR
 from typing import Dict, Any, List
 from app.core.config_manager import config_manager
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -84,28 +85,32 @@ async def handle_ocr_task(task_manager, task: Task, db: Session) -> Dict[str, An
 
 async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[str, Any]:
     from app.service import storage
-    
+
     try:
         # 1. Resolve file path
         # Prefer original file for OCR to get best quality
-        target_path = photo.file_path
+        target_path = storage.get_preview_path(photo.id, db)
         if not os.path.exists(target_path):
-             # Fallback to preview if original not available (unlikely for local)
-             target_path = storage.get_preview_path(photo.id, db)
-             if not target_path or not os.path.exists(target_path):
-                 return {'status': 'failed', 'error': 'file not found'}
+            # Fallback to preview if original not available (unlikely for local)
+            target_path = photo.file_path
+            if not target_path or not os.path.exists(target_path):
+                return {'status': 'failed', 'error': 'file not found'}
+
+        # 读取图片实际宽高
+        with Image.open(target_path) as img:
+            width, height = img.size
 
         async with aiohttp.ClientSession() as session:
             # 1. Read file
             with open(target_path, 'rb') as f:
                 file_data = f.read()
-            
+
             form_data = FormData()
             form_data.add_field(
                 name='file',
                 value=file_data,
                 filename=photo.filename,
-                content_type='image/jpeg' 
+                content_type='image/jpeg'
             )
 
             # 3. Call AI Service
@@ -129,14 +134,12 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                     #     }
                     #   }
                     # }
-                    
                     ocr_results = result.get('ocrResults', [])
                     if ocr_results:
                         ocr_results = ocr_results[0]  # Assuming single image per request
                     else:
                         ocr_results = {}
                     pruned_result = ocr_results.get('prunedResult', {})
-                    
                     rec_texts = pruned_result.get('rec_texts', [])
                     rec_scores = pruned_result.get('rec_scores', [])
                     rec_polys = pruned_result.get('rec_polys', [])
@@ -145,19 +148,10 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                     db.query(OCR).filter(OCR.photo_id == photo.id).delete()
 
                     count = 0
-                    width = photo.width
-                    height = photo.height
-
-                    if not width or not height:
-                        # Try to get from PIL if photo record is missing dimensions?
-                        # For now assume photo has width/height or we can't normalize properly
-                        # If width/height is 0, we can't normalize.
-                        pass
 
                     for i, text in enumerate(rec_texts):
                         score = rec_scores[i] if i < len(rec_scores) else 0.0
                         poly = rec_polys[i] if i < len(rec_polys) else []
-                        
                         # Normalize polygon
                         norm_poly = []
                         if width and height and width > 0 and height > 0:
@@ -167,12 +161,12 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                                     point[1] / height
                                 ])
                         else:
-                            # If no dimensions, store absolute or 0? 
+                            # If no dimensions, store absolute or 0?
                             # User requested relative coordinates.
-                            # We'll skip normalization if dimensions are missing, 
-                            # but frontend might expect 0-1. 
+                            # We'll skip normalization if dimensions are missing,
+                            # but frontend might expect 0-1.
                             # Let's hope dimensions are there.
-                            norm_poly = poly 
+                            norm_poly = poly
 
                         ocr_record = OCR(
                             photo_id=photo.id,
@@ -182,20 +176,18 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                         )
                         db.add(ocr_record)
                         count += 1
-                    
+
                     # Update Status
                     tasks_status = dict(photo.processed_tasks or {})
                     tasks_status['ocr'] = True
                     photo.processed_tasks = tasks_status
                     db.add(photo)
                     db.commit()
-                    
                     # Use a separate counter or just log
-                    # task_manager.scan_status['processed_files'] += 1 
+                    # task_manager.scan_status['processed_files'] += 1
                     return {'status': 'success', 'texts_found': count}
                 else:
                     return {'status': 'failed', 'error': f"AI Service error: {resp.status}"}
-                    
     except Exception as e:
         logger.error(f"Error processing OCR for photo {photo.id}: {e}")
         tasks_status = dict(photo.processed_tasks or {})

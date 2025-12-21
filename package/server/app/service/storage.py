@@ -21,7 +21,7 @@ def _get_storage_root(db: Session = None) -> str:
     global _STORAGE_ROOT_CACHE
     if _STORAGE_ROOT_CACHE:
         return _STORAGE_ROOT_CACHE
-        
+
     root = config_manager.config.storage.photo_storage_path
     if not root:
         root = 'uploads'
@@ -124,9 +124,6 @@ def get_preview_path(file_id: UUID, db: Session = None) -> Optional[str]:
     if os.path.exists(m_path):
         return m_path
     return None
-
-
-from typing import Optional
 
 def generate_thumbnail(file_path: str, file_id: UUID, db: Session, image_obj: Optional[Image.Image] = None):
     try:
