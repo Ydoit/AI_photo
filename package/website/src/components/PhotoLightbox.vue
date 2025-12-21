@@ -259,9 +259,9 @@
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <span v-if="(!metadata.faces_identities || metadata.faces_identities.length === 0)" class="text-sm text-gray-400 italic">无人脸信息</span>
-                    <span v-for="(face, idx) in metadata.faces_identities" :key="idx" class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full text-xs">
+                    <a target="_blank" :href="`/people/${face.id}`" v-for="(face, idx) in metadata.faces_identities" :key="idx" class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full text-xs">
                         {{ face.identity_name || 'Unknown' }}
-                    </span>
+                    </a>
                 </div>
             </div>
 

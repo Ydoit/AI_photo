@@ -11,6 +11,7 @@
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware, GZipResponder
 from fastapi import FastAPI, HTTPException, Request
+from contextlib import asynccontextmanager
 import os
 import logging
 import time
@@ -29,7 +30,18 @@ from app.db.session import engine, SessionLocal
 from app.api import user, album, settings, index, media, stats, photo, tasks
 from app.core.logger import setup_logging
 
-app = FastAPI(title="TrailSnap - 足迹相册")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global log_listener
+    log_listener = setup_logging()
+    # Start Task Manager
+    TaskManager.get_instance().start()
+    yield
+    TaskManager.get_instance().stop()
+    if log_listener:
+        log_listener.stop()
+
+app = FastAPI(title="TrailSnap - 足迹相册", lifespan=lifespan)
 
 from app.service.task_manager import TaskManager
 
@@ -85,20 +97,6 @@ class CustomGZipMiddleware(GZipMiddleware):
 # 添加 GZip 中间件
 exclude_paths = ['/ai_communication/AiCommunicationThemesRecord/chat']
 app.add_middleware(CustomGZipMiddleware, minimum_size=1000, compresslevel=9, exclude_paths=exclude_paths)
-
-@app.on_event("startup")
-async def startup_event():
-    global log_listener
-    log_listener = setup_logging()
-    # Start Task Manager
-    TaskManager.get_instance().start()
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    global log_listener
-    TaskManager.get_instance().stop()
-    if log_listener:
-        log_listener.stop()
 
 # 配置允许跨域的源（生产环境建议指定具体域名，不要用 "*"）
 origins = [
