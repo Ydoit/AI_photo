@@ -3,7 +3,7 @@
 ## 1. 技术栈拆解
 
 ### 1.1 核心框架
-项目使用 **Vue 3** (3.5.13) 作为核心框架，利用 Composition API 提供的灵活性和逻辑复用能力。配合 **TypeScript** (5.9.3) 提供静态类型检查，增强代码健壮性。
+项目使用 **Vue 3** (`^3.5.13`) 作为核心框架，采用 Composition API 提供灵活的逻辑复用能力；配合 **TypeScript** (`^5.9.3`) 提供静态类型检查，增强代码健壮性；构建工具为 **Vite** (`^6.2.0`)。
 
 ### 1.2 UI 组件库与样式
 - **Element Plus**: 作为主要的基础组件库，提供按钮、表单、对话框等通用组件。
@@ -20,6 +20,14 @@
 ### 1.4 数据交互
 - **Axios**: 封装 HTTP 请求，配合 `src/utils/request.ts` 进行拦截器配置（统一处理 Token、错误响应）。
 - **API 层**: `src/api` 目录将接口调用按模块封装，与业务逻辑解耦。
+
+### 1.5 版本与依赖来源
+前端依赖版本以 `package/website/package.json` 为准：
+- `vue ^3.5.13`、`vite ^6.2.0`、`typescript ^5.9.3`
+- `element-plus ^2.11.9`、`tailwindcss 3.4.17`
+- `pinia ^3.0.3`、`vue-router ^4.5.0`
+- `axios ^1.12.2`、`echarts ^6.0.0`
+- 其他：`@vueuse/core ^14.0.0`、`video.js ^8.23.4` 等
 
 ## 2. 前端组件层级关系
 
@@ -71,3 +79,24 @@ graph TD
 4. **状态管理优化**:
    - 避免 Store 过于庞大，合理拆分 Store 模块。
    - 确保 Store 中的数据仅在需要时更新，减少不必要的组件重渲染。
+5. **交互与绘制优化**:
+   - OCR 多边形绘制建议使用 `requestAnimationFrame` 批量刷新，减少频繁重排。
+   - 对于大图预览，采用 `object-fit` 与 CSS 硬件加速 (`will-change: transform`) 提升滚动与缩放体验。
+
+## 4. 前端与后端交互示意
+
+```mermaid
+sequenceDiagram
+  participant FE as Vue Frontend
+  participant API as Server API :8000
+  participant AI as AI Service :8001
+
+  FE->>API: GET /api/ocr?photo_id=...
+  API-->>FE: OCR records (归一化多边形/文本)
+
+  FE->>API: 媒体/相册相关接口
+  API-->>FE: 列表/详情/流式媒体
+
+  API->>AI: POST /ocr/predict (由任务触发)
+  AI-->>API: prunedResult (rec_texts/rec_scores/rec_polys)
+```

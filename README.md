@@ -13,15 +13,16 @@ TrailSnap 是一个智能化的 AI 相册应用，致力于帮助用户轻松记
 ## 🛠️ 技术栈
 
 ### 前端 (Web)
-- **框架**: Vue 3, TypeScript, Vite
-- **UI**: Element Plus, TailwindCSS
-- **状态管理**: Pinia
-- **可视化**: Echarts
+- **框架**: Vue 3 (`^3.5.13`), TypeScript (`^5.9.3`), Vite (`^6.2.0`)
+- **UI**: Element Plus (`^2.11.9`), TailwindCSS (`3.4.17`)
+- **状态管理**: Pinia (`^3.0.3`)
+- **路由**: Vue Router (`^4.5.0`)
+- **可视化**: ECharts (`^6.0.0`)
 
 ### 后端 (Server)
 - **核心**: Python 3.12+, FastAPI
 - **数据库**: PostgreSQL, SQLAlchemy (Async)
-- **AI/CV**: PaddleOCR, YOLO (Ultralytics), OpenCV
+- **AI/CV**: PaddleOCR（AI 微服务）, InsightFace（AI 微服务）, YOLO (Ultralytics 脚本), OpenCV
 - **任务调度**: Custom Task Manager
 
 ## 📂 目录结构
@@ -31,6 +32,7 @@ TrailSnap/
 ├── package/
 │   ├── server/      # 后端 FastAPI 服务
 │   └── website/     # 前端 Vue 应用
+│   └── ai/          # AI 微服务 (OCR/Face)
 ├── doc/             # 项目技术文档
 └── ...
 ```
@@ -57,6 +59,24 @@ TrailSnap/
    uvicorn app.main:app --reload
    ```
 
+### AI 微服务启动（OCR/人脸）
+
+1. 进入 AI 目录:
+   ```bash
+   cd package/ai
+   ```
+2. 安装依赖（建议使用 GPU 版本 PaddlePaddle，如无 GPU 可改为 CPU 版本）:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. 启动 AI 服务:
+   ```bash
+   python main.py
+   # 或
+   uvicorn app.main:app --reload --port 8001
+   ```
+4. 后端服务默认通过 `config_manager` 使用 `http://localhost:8001` 调用 AI 服务。
+
 ### 前端启动
 
 1. 进入前端目录:
@@ -72,9 +92,31 @@ TrailSnap/
    pnpm dev
    ```
 
+## 📦 部署要求
+
+- **数据库**: PostgreSQL 可用连接，建议创建专用库与用户，设置 `data/.env` 中的数据库连接串。
+- **AI 微服务**: 默认端口 `8001`，需与后端互通；如使用 GPU，请安装对应 CUDA 版本的 PaddlePaddle-GPU。
+- **存储**: 后端需具备读写图片文件的权限；为提升浏览性能，建议开启缩略图生成。
+- **环境变量**:
+  - 后端：`data/.env`（示例），包含数据库连接、存储路径等。
+  - AI：`INSIGHTFACE_MODEL_PATH`（人脸模型缓存路径，可选）、端口/跨域配置等。
+
+## 🧭 功能概览
+
+- 智能相册：瀑布流展示、相册管理、照片元数据解析。
+- AI 能力：OCR 识别（支持文本检测与识别、多边形坐标返回），人脸检测与特征抽取。
+- 行程票据：火车票信息管理，支持创建、编辑、删除与列表展示。
+- 数据可视化：出行统计图表、时间轴与线路里程。
+- 高性能：异步任务处理、虚拟滚动、坐标归一化绘制。
+
 ## 📚 文档
 
 更多详细技术文档请参阅 `doc/` 目录：
 - [架构设计文档](doc/architecture_design.md)
 - [前端框架分析](doc/frontend_analysis.md)
 - [后端框架分析](doc/backend_analysis.md)
+
+## 🔍 备注
+
+- YOLO_OCR 脚本位于 `package/server/yolo_ocr/`，用于票据区域检测与字段解析的实验/批处理场景；
+  AI 微服务当前提供通用 OCR 接口（`/ocr/predict`），服务端任务将结果落库并在前端展示。

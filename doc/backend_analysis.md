@@ -3,8 +3,9 @@
 ## 1. 技术栈详细说明
 
 ### 1.1 核心框架
-- **FastAPI**: 高性能的异步 Web 框架，基于 Starlette 和 Pydantic。提供自动化的 OpenAPI 文档 (Swagger UI)。
-- **Uvicorn**: 基于 uvloop 和 httptools 的 ASGI 服务器，用于运行 FastAPI 应用。
+- **FastAPI**（Server）: 高性能异步 Web 框架，提供自动化 OpenAPI 文档 (`/docs`)。
+- **Uvicorn**: ASGI 服务器，运行 FastAPI 应用。
+- **Pydantic**: 请求/响应模型与数据校验。
 
 ### 1.2 数据持久化
 - **PostgreSQL**: 主数据库。
@@ -20,9 +21,10 @@
   - OCR 识别任务
 
 ### 1.4 AI 与 图像处理
-- **PaddleOCR**: 用于提取图片中的文字信息（如车票识别）。
-- **YOLO (Ultralytics)**: 用于目标检测和图像识别。
-- **OpenCV**: 底层图像处理支持。
+- **PaddleOCR**（AI 微服务）: 文本检测与识别，支持 `rec_texts/rec_scores/rec_polys` 输出。
+- **InsightFace**（AI 微服务）: 人脸检测/关键点/特征提取。
+- **YOLO (Ultralytics)**: 服务端独立脚本用于票据区域检测与裁剪。
+- **OpenCV**: 图像解码与基础处理。
 
 ## 2. 服务模块划分与调用关系
 
@@ -47,7 +49,7 @@ graph TD
     end
     
     subgraph External [外部依赖]
-        Workers --> OCR_Model[OCR Model]
+        Workers --> AI_Svc[AI Service :8001]
         Workers --> FileSys[File System]
         StorageSvc --> FileSys
     end
@@ -58,6 +60,20 @@ graph TD
         PhotoMod --> CRUD
         CRUD --> DB[(PostgreSQL)]
     end
+```
+
+### 2.2 AI 微服务调用链
+
+```mermaid
+sequenceDiagram
+  participant S as Server :8000
+  participant AI as AI Service :8001
+  participant DB as PostgreSQL
+
+  S->>AI: POST /ocr/predict (multipart form: file)
+  AI->>AI: PaddleOCR.ocr(img)
+  AI-->>S: prunedResult(rec_texts, rec_scores, rec_polys)
+  S->>DB: 写入 ocr_results（坐标归一化为 0~1）
 ```
 
 ### 2.1 关键模块解析
@@ -76,8 +92,21 @@ graph TD
 - **Swagger UI**: FastAPI 自动生成交互式文档，地址通常为 `/docs`。
 - **ReDoc**: 另一种风格的文档，地址通常为 `/redoc`。
 - **主要资源**:
-  - `/users`: 用户注册、登录、信息获取。
+  - `/users`: 用户相关。
   - `/albums`: 相册的增删改查。
   - `/photos`: 照片上传、流式获取、元数据管理。
   - `/tasks`: 任务状态查询、任务触发。
   - `/settings`: 系统配置管理。
+  - `/faces`: 人脸实体与照片管理。
+  - `/ocr`: OCR 识别记录查询（`GET /ocr?photo_id=...`）。
+  - `/train-ticket`: 火车票 CRUD 与导出。
+  - `/railway`: 铁路站点与运行计划接口。
+
+### 3.3 日志与异常
+- **日志**: JSON 队列日志 + 按日容量滚动；每条记录包含 `timestamp/level/message/operation/params/result`。
+- **异常**: 统一捕获并写入日志；AI 调用失败或图像解码错误将返回相应错误码并记录。
+
+### 3.4 数据模型说明（示例）
+- **OCR 结果**（表 `ocr_results`）：
+  - `text: str`、`text_score: float`、`polygon: List[List[float]]`（坐标归一化至 0~1）
+  - 查询接口：`GET /ocr?photo_id=<uuid>` 返回列表记录
