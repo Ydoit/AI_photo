@@ -13,7 +13,7 @@ from app.db.models.face import Face
 from app.db.models.tag import PhotoTag
 from app.schemas import album as album_schemas
 from app.schemas import photo as photo_schemas
-from app.schemas.metadata import PhotoMetadataUpdate
+from app.schemas.metadata import PhotoMetadataUpdate,PhotoMetadataCreate
 from app.service import storage
 from app.crud import face as crud_face
 from app.db.models.photo import FileType
@@ -90,7 +90,7 @@ def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id:
 
     # Create Metadata Schema
     loc_details = extracted_meta.get("location_details", {})
-    metadata_create = photo_schemas.PhotoMetadataCreate(
+    metadata_create = PhotoMetadataCreate(
         exif_info=extracted_meta["exif_info"],
         longitude=loc_details.get("longitude"),
         latitude=loc_details.get("latitude"),
@@ -101,7 +101,7 @@ def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id:
         address=loc_details.get("address")
     )
 
-    return create_photo(db, photo_create, album_id, file_path, photo_id=photo_id, metadata=metadata_create)
+    return create_photo(db, photo_create, album_id, file_path, photo_id=photo_id)
 
 
 # Photo CRUD

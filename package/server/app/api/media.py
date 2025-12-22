@@ -1,11 +1,21 @@
 import os
+import shutil
+import uuid
+from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Header, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Header, Request, status, Form, UploadFile, File
 from fastapi.responses import FileResponse, StreamingResponse, Response
 from sqlalchemy.orm import Session
+
+from app.crud.album import save_and_create_photo
 from app.dependencies import get_db
 from app.db.models.photo import Photo
+from app.service import storage
 from app.service.storage import _get_storage_root
+from app.crud import album as crud_album
+from app.crud import face as crud_face
+
+from app.schemas import photo as schemas
 
 router = APIRouter()
 
@@ -91,3 +101,73 @@ def get_media_file(
 
     # Full content
     return FileResponse(file_path, media_type=media_type, headers={"Accept-Ranges": "bytes", "Cache-Control": "public, max-age=31536000"})
+
+# Chunked Upload Endpoints
+
+@router.post("/upload/init")
+def init_upload():
+    upload_id = uuid.uuid4()
+    upload_dir = os.path.join("uploads", "chunks", str(upload_id))
+    os.makedirs(upload_dir, exist_ok=True)
+    return {"upload_id": upload_id}
+
+
+@router.post("/upload/chunk")
+def upload_chunk(
+        upload_id: UUID = Form(...),
+        chunk_index: int = Form(...),
+        file: UploadFile = File(...)
+):
+    chunk_dir = os.path.join("uploads", "chunks", str(upload_id))
+    if not os.path.exists(chunk_dir):
+        raise HTTPException(status_code=404, detail="Upload session not found")
+
+    chunk_path = os.path.join(chunk_dir, str(chunk_index))
+    with open(chunk_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return {"status": "success"}
+
+
+@router.post("/upload/finish", response_model=schemas.Photo)
+def finish_upload_generic(
+        upload_id: UUID = Form(...),
+        file_name: str = Form(...),
+        album_id: Optional[UUID] = Form(None),
+        db: Session = Depends(get_db)
+):
+    if album_id:
+        # Verify album exists
+        db_album = crud_album.get_album(db, album_id=album_id)
+        if not db_album:
+            raise HTTPException(status_code=404, detail="Album not found")
+
+    # Merge chunks
+    chunk_dir = os.path.join("uploads", "chunks", str(upload_id))
+    if not os.path.exists(chunk_dir):
+        raise HTTPException(status_code=404, detail="Upload session not found")
+
+    chunks = sorted([int(f) for f in os.listdir(chunk_dir) if f.isdigit()])
+    if not chunks:
+        raise HTTPException(status_code=400, detail="No chunks found")
+
+    photo_id = uuid.uuid4()
+    ext = os.path.splitext(file_name)[1]
+
+    # Save to storage_root/year/month with conflict resolution
+    class _Tmp:
+        filename = file_name
+        file = None
+
+    with open(os.path.join("uploads", "chunks", str(upload_id), "merged"), "wb") as outfile:
+        for chunk_idx in chunks:
+            chunk_path = os.path.join(chunk_dir, str(chunk_idx))
+            with open(chunk_path, "rb") as infile:
+                outfile.write(infile.read())
+    with open(os.path.join("uploads", "chunks", str(upload_id), "merged"), "rb") as merged:
+        _Tmp.file = merged
+        final_path = storage.save_upload_file(_Tmp, photo_id, db)
+
+    # Clean up chunks
+    shutil.rmtree(chunk_dir)
+
+    return save_and_create_photo(db, final_path, file_name, album_id, photo_id)

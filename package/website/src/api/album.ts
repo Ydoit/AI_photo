@@ -88,7 +88,7 @@ export const albumService = {
 
   // Chunk Upload
   async initUpload() {
-      const { data } = await api.post<{upload_id: string}>('/api/upload/init');
+      const { data } = await api.post<{upload_id: string}>('/api/medias/upload/init');
       return data.upload_id;
   },
 
@@ -97,7 +97,7 @@ export const albumService = {
       formData.append('upload_id', uploadId);
       formData.append('chunk_index', chunkIndex.toString());
       formData.append('file', chunk);
-      await api.post('/api/upload/chunk', formData);
+      await api.post('/api/medias/upload/chunk', formData);
   },
 
   async finishUpload(uploadId: string, fileName: string, albumId?: string) {
@@ -107,7 +107,7 @@ export const albumService = {
       if (albumId) {
           formData.append('album_id', albumId);
       }
-      const { data } = await api.post<Photo>('/api/upload/finish', formData);
+      const { data } = await api.post<Photo>('/api/medias/upload/finish', formData);
       return data;
   },
 
