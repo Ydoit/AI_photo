@@ -13,11 +13,11 @@ TrailSnap 是一个智能化的 AI 相册应用，致力于帮助用户轻松记
 ## 🛠️ 技术栈
 
 ### 前端 (Web)
-- **框架**: Vue 3 (`^3.5.13`), TypeScript (`^5.9.3`), Vite (`^6.2.0`)
-- **UI**: Element Plus (`^2.11.9`), TailwindCSS (`3.4.17`)
-- **状态管理**: Pinia (`^3.0.3`)
-- **路由**: Vue Router (`^4.5.0`)
-- **可视化**: ECharts (`^6.0.0`)
+- **框架**: Vue 3, TypeScript, Vite
+- **UI**: Element Plus, TailwindCSS
+- **状态管理**: Pinia
+- **路由**: Vue Router
+- **可视化**: ECharts
 
 ### 后端 (Server)
 - **核心**: Python 3.12+, FastAPI

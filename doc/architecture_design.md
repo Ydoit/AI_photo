@@ -38,27 +38,17 @@ flowchart TD
 ## 2. 技术选型及版本
 
 ### 2.1 前端技术栈
-- **框架**: Vue `^3.5.13`
-- **构建工具**: Vite `^6.2.0`
-- **语言**: TypeScript `^5.9.3`
-- **UI 组件库**: Element Plus `^2.11.9`
-- **CSS 框架**: TailwindCSS `3.4.17`
-- **状态管理**: Pinia `^3.0.3`
-- **路由**: Vue Router `^4.5.0`
-- **HTTP 客户端**: Axios `^1.12.2`
-- **可视化**: ECharts `^6.0.0`
-- **图标**: `lucide-vue-next ^0.555.0`, `mingcute_icon ^2.9.6`
-- **其他**: Video.js `^8.23.4`, `html-to-image ^1.11.13`, `html2canvas ^1.4.1`
 
 ### 2.2 后端技术栈
-- **语言**: Python `3.12+`
-- **Web 框架**: FastAPI (server: 未固定版本；ai: `>=0.110.0`)
-- **ASGI**: Uvicorn (server: 未固定；ai: `>=0.27.0`)
-- **ORM**: SQLAlchemy (server: 未固定)
-- **数据库驱动**: `psycopg2==2.9.11`
+- **编程语言**: Python 3.12+
+- **Web 框架**: FastAPI 0.122.0
+- **ASGI 服务器**: Uvicorn 0.38.0
+- **ORM**: SQLAlchemy 2.0.44
+- **数据库迁移**: Alembic 1.17.2
+- **数据库驱动**: psycopg2 (PostgreSQL)
 - **任务/异步**: APScheduler、`aiohttp`
 - **AI/CV (AI 微服务)**:
-  - PaddleOCR `==3.3.2`
+  - PaddleOCR ==3.3.2
   - PaddlePaddle-GPU `==3.2.0`（可选 GPU）
   - OpenCV `opencv-python-headless >=4.9.0`
   - Torch `>=2.0.0`、TorchVision `>=0.15.0`（部分模型可用）
