@@ -1,0 +1,135 @@
+<template>
+  <div 
+    class="group bg-white max-w-md dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm hover:shadow-md hover:border-primary-300 dark:hover:border-primary-700 transition-all duration-300 relative overflow-hidden"
+  >
+    <div 
+      class="h-1.5 w-full opacity-80"
+      :style="{ background: `linear-gradient(to right, ${currentTheme.secondary}, ${currentTheme.primary})` }"
+    ></div>
+
+    <div class="p-5">
+      <div class="flex justify-between items-start mb-4">
+        <div class="flex items-center gap-3">
+          <div
+            @click.stop="handleToggleSelect"
+            :class="['w-5 h-5 rounded-full border cursor-pointer flex items-center justify-center transition-colors', isSelected ? 'bg-primary-500 border-primary-500' : 'border-slate-300 dark:border-slate-600 hover:border-primary-500']"
+          >
+             <Check v-if="isSelected" class="w-3 h-3 text-white" />
+          </div>
+          <div>
+             <div class="flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-slate-100">
+               <span>{{ ticket.from }}</span>
+               <MoveRight class="w-4 h-4 text-primary-500" />
+               <span>{{ ticket.to }}</span>
+             </div>
+             <!-- 乘车人显示 -->
+             <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+               乘车人：{{ ticket.name }}
+             </div>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="text-xl font-bold text-primary-600 dark:text-primary-400 font-mono">{{ ticket.trainCode }}</div>
+          <div class="text-xs text-slate-400">{{ formatDate(ticket.date) }}</div>
+        </div>
+      </div>
+
+      <div class="border-b border-dashed border-slate-200 dark:border-slate-600 my-3 relative">
+        <div class="absolute -left-7 -top-1.5 w-3 h-3 bg-slate-50 dark:bg-slate-900 rounded-full"></div>
+        <div class="absolute -right-7 -top-1.5 w-3 h-3 bg-slate-50 dark:bg-slate-900 rounded-full"></div>
+      </div>
+
+      <div class="flex justify-between items-end">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <Clock class="w-3.5 h-3.5" />
+            <span>{{ ticket.duration }}</span>
+            <span class="w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full mx-1"></span>
+            <Route class="w-3.5 h-3.5" />
+            <span>{{ ticket.distance }}km</span>
+            <span class="w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full mx-1"></span>
+            <span>{{ ticket.price }}元</span>
+          </div>
+          <div class="text-sm font-medium text-slate-600 dark:text-slate-300">
+            {{ ticket.seatType }} · {{ ticket.carriage }}车 {{ ticket.seatNumber }}
+            <span v-if="ticket.berthType !== '无'" class="text-xs text-slate-400 ml-2">{{ ticket.berthType }}铺</span>
+          </div>
+        </div>
+
+        <div class="flex gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity translate-y-0 md:translate-y-2 group-hover:translate-y-0">
+          <button @click.stop="handleEdit" class="p-2 text-primary-600 bg-primary-50 dark:bg-slate-700 dark:text-primary-400 rounded-md hover:bg-primary-500 hover:text-white dark:hover:bg-primary-600 dark:hover:text-white transition-colors">
+            <Pencil class="w-4 h-4" />
+          </button>
+          <button @click.stop="handleDelete" class="p-2 text-red-500 bg-red-50 dark:bg-red-900/20 rounded-md hover:bg-red-500 hover:text-white transition-colors">
+            <Trash2 class="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+    <div v-if="ticket.comments" class="bg-slate-50 dark:bg-slate-700/30 px-5 py-2 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700">
+      <span class="font-medium text-slate-700 dark:text-slate-300">备注：</span>{{ ticket.comments }}
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue';
+import { MoveRight, Clock, Route, Pencil, Trash2, Check } from 'lucide-vue-next';
+
+const props = defineProps({
+  // 车票数据
+  ticket: {
+    type: Object,
+    required: true,
+    default: () => ({})
+  },
+  // 选中的车票ID数组
+  selectedTicketIds: {
+    type: Array,
+    required: true,
+    default: () => []
+  },
+  // 当前主题
+  currentTheme: {
+    type: Object,
+    required: true,
+    default: () => ({ primary: '#3b82f6', secondary: '#60a5fa' })
+  }
+});
+
+const emit = defineEmits(['toggle-select', 'edit', 'delete']);
+
+// 计算属性：当前车票是否被选中
+const isSelected = computed(() => {
+  return props.selectedTicketIds.includes(props.ticket.id);
+});
+
+// 日期格式化（只显示日期部分）
+const formatDate = (dateStr) => {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+};
+
+// 处理切换选中状态
+const handleToggleSelect = () => {
+  emit('toggle-select', props.ticket.id);
+};
+
+// 处理编辑
+const handleEdit = () => {
+  emit('edit', props.ticket);
+};
+
+// 处理删除
+const handleDelete = () => {
+  emit('delete', props.ticket.id);
+};
+</script>
+
+<style scoped>
+/* 保持原有的卡片样式，如需修改可在此添加 */
+</style>

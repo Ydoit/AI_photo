@@ -1,0 +1,49 @@
+from pydantic import BaseModel
+from typing import List, Optional
+
+class DashboardCard(BaseModel):
+    total_media: int
+    today_new: int
+    storage_used: str
+
+class DashboardFaceItem(BaseModel):
+    id: str
+    name: str
+    count: int
+    avatar_url: Optional[str] = None
+
+class DashboardFace(BaseModel):
+    total_identified: int
+    top_faces: List[DashboardFaceItem]
+    pending_faces_count: int
+    unidentified_photos_count: int
+
+class ContentDetail(BaseModel):
+    total: int
+    sub_1_label: str
+    sub_1_count: int
+    sub_2_label: str
+    sub_2_count: int
+
+class DashboardContentStats(BaseModel):
+    photos: ContentDetail
+    videos: ContentDetail
+    scenery_count: int
+    food_count: int
+
+class DashboardTimeChartItem(BaseModel):
+    year: int
+    count: int
+    percentage: float
+    color: str
+
+class DashboardTime(BaseModel):
+    current_year_percentage: int
+    chart_data: List[DashboardTimeChartItem]
+    monthly_peak: str
+
+class DashboardResponse(BaseModel):
+    card: DashboardCard
+    face: DashboardFace
+    content: DashboardContentStats
+    time: DashboardTime

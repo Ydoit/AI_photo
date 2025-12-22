@@ -4,7 +4,7 @@
 """
 @Time        : 2025/5/9 23:43 
 @Author      : SiYuan 
-@Email       : siyuan044@qq.com 
+@Email       : sixyuan044@gmail.com 
 @File        : TrailSnap-__init__.py.py 
 @Description : 
 """

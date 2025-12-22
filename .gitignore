@@ -3,3 +3,8 @@
 *test*
 *.pyc
 node_modules
+temp*
+*.log*
+dist
+.trae
+*uploads*

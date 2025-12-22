@@ -546,9 +546,9 @@ def get_train_schedule_list(db: Session, query: TrainScheduleListQuery) -> Tuple
 
         # 筛选条件
         if query.train_no:
-            db_query = db_query.filter(TrainSchedule.train_no.ilike(f"%{query.train_no}%"))
+            db_query = db_query.filter(TrainSchedule.train_no==query.train_no)
         if query.train_code:
-            db_query = db_query.filter(TrainSchedule.train_code.ilike(f"%{query.train_code}%"))
+            db_query = db_query.filter(TrainSchedule.train_code==query.train_code)
         if query.station_telecode:
             db_query = db_query.filter(TrainSchedule.station_telecode == query.station_telecode)
         if query.station_name:

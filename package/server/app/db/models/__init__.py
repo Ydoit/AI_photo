@@ -4,17 +4,21 @@
 """
 @Time        : 2025/5/9 23:44 
 @Author      : SiYuan 
-@Email       : siyuan044@qq.com 
+@Email       : sixyuan044@gmail.com 
 @File        : TrailSnap-__init__.py.py 
 @Description : 
 """
-from app.db.models.media import Media, MediaType
-from app.db.models.person import Person, PersonMedia
-from app.db.models.album import Album, AlbumMedia
-from app.db.models.scenic import ScenicSpot, ScenicSpotMedia
-from app.db.models.trip import Trip, TripMedia, TripTicket, TicketType
-from app.db.models.location import Province, City, Country
+from app.db.models.album import Album
+from app.db.models.photo import Photo, FileType
+from app.db.models.photo_metadata import PhotoMetadata
+from app.db.models.album_photos import AlbumPhoto
+from app.db.models.trip import TicketType, TrainTicket
 from app.db.models.user import User
+from app.db.models.index_log import IndexLog
+from app.db.models.task import Task, TaskStatus, TaskType
+from app.db.models.face import Face, FaceIdentity
+from app.db.models.tag import PhotoTag, PhotoTagRelation
+from app.db.models.ocr import OCR
 
 if __name__ == '__main__':
     pass

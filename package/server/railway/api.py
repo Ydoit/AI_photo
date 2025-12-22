@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from datetime import date
 
 
-from schemas import (
+from railway.schemas import (
     StationRead, StationCreate, BaseResponse, StationSingleQuery, StationListQuery, StationListResponse,
     TrainScheduleRead, TrainScheduleListQuery, TrainScheduleSingleQuery, TrainScheduleBatchCreate, TrainListQuery,
     TrainSingleQuery, TrainRead, TrainCreate, TrainOperationPlanRead, TrainOperationPlanListQuery,
@@ -293,7 +293,7 @@ def query_schedule_single(
 )
 def query_schedule_list(
     train_no: Optional[str] = Query(None, description="车次编号（模糊匹配）"),
-    train_code: Optional[str] = Query(None, description="对外车次（模糊匹配）"),
+    train_code: Optional[str] = Query(None, description="对外车次（精准匹配）"),
     station_telecode: Optional[str] = Query(None, description="车站电报码"),
     station_name: Optional[str] = Query(None, description="车站名称（模糊匹配）"),
     is_departure: Optional[int] = Query(None, ge=0, le=1, description="是否出发站（1=是）"),

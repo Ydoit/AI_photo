@@ -4,15 +4,15 @@
 """
 @Time        : 2025/5/10 22:31 
 @Author      : SiYuan 
-@Email       : siyuan044@qq.com 
+@Email       : sixyuan044@gmail.com 
 @File        : backend-dependencies.py 
 @Description : 
 """
 from app.db.base import Base
+import app.db.models
 from app.db.session import SessionLocal, engine
 from sqlalchemy.orm import Session
 
-# 创建数据库表！！！必须放在User后面
 Base.metadata.create_all(bind=engine)
 
 
