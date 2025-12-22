@@ -1,7 +1,8 @@
 import asyncio
 import logging
 import concurrent.futures
-from typing import List, Dict, Set
+import json
+from typing import List, Dict, Set, Any
 from uuid import UUID
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -9,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.db.models.task import Task, TaskType, TaskStatus
 from app.db.models.index_log import IndexLog
+from app.db.models.system import SystemState
 from app.crud import album as album_crud
 from app.core.config_manager import config_manager
 
@@ -26,6 +28,18 @@ DEFAULT_PRIORITIES = {
     TaskType.OCR: 1,
 }
 
+DEFAULT_SCAN_STATUS = {
+    'running': False,
+    'progress': 0.0,
+    'added': 0,
+    'deleted': 0,
+    'errors': 0,
+    'current_task': None,
+    'message': 'Idle',
+    'total_files': 0,
+    'processed_files': 0
+}
+
 class TaskManager:
     _instance = None
     def __init__(self):
@@ -34,17 +48,7 @@ class TaskManager:
         self.result_task = None
         self.process_pool = None
         self.result_queue = asyncio.Queue()
-        self.scan_status = {
-            'running': False,
-            'progress': 0.0,
-            'added': 0,
-            'deleted': 0,
-            'errors': 0,
-            'current_task': None,
-            'message': 'Idle',
-            'total_files': 0,
-            'processed_files': 0
-        }
+        self.scan_status = DEFAULT_SCAN_STATUS.copy()
         
         # Category Management
         self.paused_categories: Set[str] = set()
@@ -67,6 +71,40 @@ class TaskManager:
         if cls._instance is None:
             cls._instance = TaskManager()
         return cls._instance
+
+    def _save_system_state(self, key: str, value: Any):
+        db = SessionLocal()
+        try:
+            state = db.query(SystemState).filter(SystemState.key == key).first()
+            if not state:
+                state = SystemState(key=key)
+                db.add(state)
+            
+            if isinstance(value, (set, list, dict)):
+                state.value = json.dumps(value, default=str)
+            else:
+                state.value = str(value)
+            db.commit()
+        except Exception as e:
+            logging.error(f"Failed to save system state {key}: {e}")
+        finally:
+            db.close()
+
+    def _load_system_state(self, key: str, default: Any = None):
+        db = SessionLocal()
+        try:
+            state = db.query(SystemState).filter(SystemState.key == key).first()
+            if state:
+                try:
+                    return json.loads(state.value)
+                except:
+                    return state.value
+            return default
+        except Exception as e:
+            # logging.error(f"Failed to load system state {key}: {e}")
+            return default
+        finally:
+            db.close()
 
     def start(self):
         if self.running:
@@ -91,13 +129,24 @@ class TaskManager:
         if self.process_pool:
             self.process_pool.shutdown(wait=False)
             self.process_pool = None
+        
+        # Save final status
+        self._save_system_state('scan_status', self.scan_status)
         logging.info("TaskManager stopped")
 
     def get_status(self):
-        return self.scan_status
+        if self.running:
+            return self.scan_status
+        else:
+            return self._load_system_state('scan_status', DEFAULT_SCAN_STATUS.copy())
 
     def get_grouped_status(self, db: Session):
         """Get task counts grouped by category"""
+        # Ensure we have latest paused categories
+        if not self.running:
+            paused_list = self._load_system_state('paused_categories', [])
+            self.paused_categories = set(paused_list)
+
         stats = []
         # Define categories to show
         categories = ['scanning', 'metadata', 'face', 'ocr']
@@ -140,12 +189,22 @@ class TaskManager:
         return stats
 
     def pause_category(self, category: str):
+        # Refresh first
+        paused_list = self._load_system_state('paused_categories', [])
+        self.paused_categories = set(paused_list)
+        
         self.paused_categories.add(category)
+        self._save_system_state('paused_categories', list(self.paused_categories))
         logging.info(f"Paused task category: {category}")
 
     def resume_category(self, category: str):
+        # Refresh first
+        paused_list = self._load_system_state('paused_categories', [])
+        self.paused_categories = set(paused_list)
+        
         if category in self.paused_categories:
             self.paused_categories.remove(category)
+            self._save_system_state('paused_categories', list(self.paused_categories))
             logging.info(f"Resumed task category: {category}")
 
     def add_task(self, db: Session, type: str, payload: dict, priority: int = 0):
@@ -181,15 +240,29 @@ class TaskManager:
         # No refresh for bulk
         
         # Update stats locally if needed, or let worker update
-        self.scan_status['total_files'] += len(tasks)
+        # If we are not the worker, we shouldn't touch scan_status because it will be overwritten by worker from DB
+        if self.running:
+            self.scan_status['total_files'] += len(tasks)
+            self._save_system_state('scan_status', self.scan_status)
 
     async def worker_loop(self):
         logging.info("TaskManager worker loop started")
         active_tasks = set()
         idle_start_time = None
         
+        last_sync = datetime.now()
+
         while self.running:
             try:
+                # Sync status periodically (every 5s)
+                now = datetime.now()
+                if (now - last_sync).total_seconds() > 5:
+                    self._save_system_state('scan_status', self.scan_status)
+                    # Refresh paused categories
+                    paused_list = self._load_system_state('paused_categories', [])
+                    self.paused_categories = set(paused_list)
+                    last_sync = now
+
                 # Clean up finished tasks
                 active_tasks = {t for t in active_tasks if not t.done()}
                 # Update status
@@ -201,6 +274,9 @@ class TaskManager:
                 if not active_tasks:
                     if idle_start_time is None:
                         idle_start_time = datetime.now()
+                        self.scan_status['running'] = False
+                        self.scan_status['message'] = "Idle"
+                        self._save_system_state('scan_status', self.scan_status)
                     elif (datetime.now() - idle_start_time).total_seconds() > 30:
                         # Idle for 30s, shutdown pool to release resources
                         if self.process_pool:
@@ -308,6 +384,8 @@ class TaskManager:
                     self._flush_results(pending_items)
                     pending_items = []
                     last_flush = now
+                    # Update status in DB
+                    self._save_system_state('scan_status', self.scan_status)
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -350,6 +428,8 @@ class TaskManager:
             self.scan_status['message'] = f"Recovered {total_unfinished} unfinished tasks"
             self.scan_status['total_files'] = max(self.scan_status['total_files'], total_unfinished)
             logging.info(f"Recovered total {total_unfinished} unfinished tasks (pending: {pending_tasks}, processing: {processing_tasks})")
+            
+            self._save_system_state('scan_status', self.scan_status)
 
         except Exception as e:
             logging.error(f"Failed to recover unfinished tasks: {e}", exc_info=True)
