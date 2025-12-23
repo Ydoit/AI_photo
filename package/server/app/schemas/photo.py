@@ -26,16 +26,16 @@ class Photo(PhotoBase):
     # album_id removed from core Photo model, usually returned as separate list or part of details
     file_path: str = Field(exclude=True)
     upload_time: datetime
-    album_ids: Optional[List[UUID]] = [] # Helper field for API response
-    processed_tasks: Optional[Dict[str, bool]] = {}
+    # album_ids: Optional[List[UUID]] = [] # Helper field for API response
+    # processed_tasks: Optional[Dict[str, bool]] = {}
 
-    @computed_field
-    def url(self) -> str:
-        return f"/api/medias/{self.id}/file"
+    # @computed_field
+    # def url(self) -> str:
+    #     return f"/api/medias/{self.id}/file"
 
-    @computed_field
-    def thumbnail_url(self) -> str:
-        return f"/api/medias/{self.id}/thumbnail"
+    # @computed_field
+    # def thumbnail_url(self) -> str:
+    #     return f"/api/medias/{self.id}/thumbnail"
 
     class Config:
         from_attributes = True

@@ -188,7 +188,7 @@ def get_identities_with_details(
         # query = query.filter(FaceIdentity.id.in_(photo_identity_ids))
 
     # 4. 排序+分页
-    query = query.order_by(FaceIdentity.create_time.desc()).offset(skip).limit(limit)
+    query = query.order_by(face_counts_subq.c.count.desc()).offset(skip).limit(limit)
 
     results = []
     p_size = config_manager.config.image.preview_size

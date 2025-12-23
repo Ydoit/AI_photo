@@ -8,7 +8,8 @@
 @File        : server-photo.py
 @Description : 
 """
-
+import logging
+import time
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
@@ -54,6 +55,7 @@ def read_all_photos(
         center_lng: Optional[float] = None,
         db: Session = Depends(get_db)
 ):
+    st_time = time.time()
     photos = crud_album.get_all_photos(
         db, skip=skip, limit=limit, start_time=start_time, end_time=end_time,
         city=city, province=province, country=country, tag=tag, album_id=album_id,
@@ -61,6 +63,7 @@ def read_all_photos(
         lat_min=lat_min, lat_max=lat_max, lng_min=lng_min, lng_max=lng_max,
         radius=radius, center_lat=center_lat, center_lng=center_lng
     )
+    logging.info(f"read_all_photos time: {time.time() - st_time}")
     return photos
 
 

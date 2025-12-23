@@ -122,6 +122,19 @@ def get_photos(db: Session, album_id: UUID, skip: int = 0, limit: int = 100, sta
         return query.offset(skip).all()
     return query.offset(skip).limit(limit).all()
 
+def get_photos_by_time(db: Session, skip: int = 0, limit: int = 100, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None):
+    query = db.query(Photo)
+    if start_time:
+        query = query.filter(Photo.photo_time >= start_time)
+    if end_time:
+        query = query.filter(Photo.photo_time <= end_time)
+    # 按拍摄时间倒序
+    query = query.order_by(Photo.photo_time.desc())
+    if limit == 0:
+        # 不限制数量，返回所有照片
+        return query.offset(skip).all()
+    return query.offset(skip).limit(limit).all()
+
 def get_all_photos(
     db: Session,
     skip: int = 0,
@@ -144,18 +157,20 @@ def get_all_photos(
     center_lng: Optional[float] = None
 ):
     # 先筛选 Photo，减少后续连表的数据量
-    photo_query = db.query(Photo.id).distinct()
+    photo_query = db.query(Photo.id)
 
     # 时间范围过滤（Photo 表）
-    if start_time:
-        photo_query = photo_query.filter(Photo.photo_time >= start_time)
-    if end_time:
-        photo_query = photo_query.filter(Photo.photo_time <= end_time)
+    if start_time or end_time:
+        if not start_time:
+            start_time = datetime.min
+        if not end_time:
+            end_time = datetime.max
+        photo_query = photo_query.filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)
 
     # 如果指定 album_id，先过滤出该相册下的 photo_id
     if album_id is not None:
         photo_query = photo_query.join(Photo.albums).filter(Album.id == album_id)
-        
+
     # Face Identity Filter
     if face_id is not None:
         photo_query = photo_query.join(Photo.faces).filter(Face.face_identity_id == face_id)
@@ -168,55 +183,63 @@ def get_all_photos(
     if tag is not None and tag.strip():
         photo_query = photo_query.join(Photo.tags).filter(PhotoTag.tag_name.ilike(f"%{tag.strip()}%"))
 
-    # 得到候选 photo_id 子查询
-    photo_subquery = photo_query.subquery()
+    if city or province or country or lat_min or lat_max or lng_min or lng_max or radius or center_lat or center_lng:
+        # 得到候选 photo_id 子查询
+        photo_subquery = photo_query.subquery()
 
-    # 主查询：仅对候选照片做连表与剩余过滤
-    query = (
-        db.query(Photo)
-        .join(photo_subquery, Photo.id == photo_subquery.c.id)
-        .options(joinedload(Photo.albums))
-        .outerjoin(PhotoMetadata)
-    )
-
-    # 地理位置与标签过滤（PhotoMetadata 表）
-    if city is not None and city.strip():
-        query = query.filter(PhotoMetadata.city.ilike(f"%{city.strip()}%"))
-    if province:
-        query = query.filter(PhotoMetadata.province.ilike(f"%{province.strip()}%"))
-    if country:
-        query = query.filter(PhotoMetadata.country.ilike(f"%{country.strip()}%"))
-
-    if lat_min is not None:
-        query = query.filter(PhotoMetadata.latitude >= lat_min)
-    if lat_max is not None:
-        query = query.filter(PhotoMetadata.latitude <= lat_max)
-    if lng_min is not None:
-        query = query.filter(PhotoMetadata.longitude >= lng_min)
-    if lng_max is not None:
-        query = query.filter(PhotoMetadata.longitude <= lng_max)
-
-    if radius is not None and center_lat is not None and center_lng is not None:
-        distance_expr = 6371 * func.acos(
-            func.cos(func.radians(PhotoMetadata.latitude)) *
-            func.cos(func.radians(center_lat)) *
-            func.cos(func.radians(PhotoMetadata.longitude) - func.radians(center_lng)) +
-            func.sin(func.radians(PhotoMetadata.latitude)) *
-            func.sin(func.radians(center_lat))
+        # 主查询：仅对候选照片做连表与剩余过滤
+        query = (
+            db.query(Photo)
+            .join(photo_subquery, Photo.id == photo_subquery.c.id)
+            .options(joinedload(Photo.albums))
+            .outerjoin(PhotoMetadata)
         )
-        query = query.filter(distance_expr <= radius)
 
+        # 地理位置与标签过滤（PhotoMetadata 表）
+        if city is not None and city.strip():
+            query = query.filter(PhotoMetadata.city.ilike(f"%{city.strip()}%"))
+        if province:
+            query = query.filter(PhotoMetadata.province.ilike(f"%{province.strip()}%"))
+        if country:
+            query = query.filter(PhotoMetadata.country.ilike(f"%{country.strip()}%"))
+
+        if lat_min is not None:
+            query = query.filter(PhotoMetadata.latitude >= lat_min)
+        if lat_max is not None:
+            query = query.filter(PhotoMetadata.latitude <= lat_max)
+        if lng_min is not None:
+            query = query.filter(PhotoMetadata.longitude >= lng_min)
+        if lng_max is not None:
+            query = query.filter(PhotoMetadata.longitude <= lng_max)
+
+        if radius is not None and center_lat is not None and center_lng is not None:
+            distance_expr = 6371 * func.acos(
+                func.cos(func.radians(PhotoMetadata.latitude)) *
+                func.cos(func.radians(center_lat)) *
+                func.cos(func.radians(PhotoMetadata.longitude) - func.radians(center_lng)) +
+                func.sin(func.radians(PhotoMetadata.latitude)) *
+                func.sin(func.radians(center_lat))
+            )
+            query = query.filter(distance_expr <= radius)
+    else:
+        # 得到候选 photo_id 子查询
+        photo_subquery = photo_query.subquery()
+
+        # 主查询：仅对候选照片做连表与剩余过滤
+        query = (
+            db.query(Photo)
+            .join(photo_subquery, Photo.id == photo_subquery.c.id)
+        )
     # 按拍摄时间倒序
     query = query.order_by(Photo.photo_time.desc())
     return query.offset(skip).limit(limit).all()
 
 def get_photo(db: Session, photo_id: UUID):
-    return db.query(Photo).options(joinedload(Photo.albums)).filter(Photo.id == photo_id).first()
+    return db.query(Photo).filter(Photo.id == photo_id).first()
 
 def create_photo(db: Session, photo: photo_schemas.PhotoCreate, album_id: Optional[UUID], file_path: str, photo_id: Optional[UUID] = None):
     db_photo = Photo(
         id=photo_id,
-        # album_id removed
         file_path=file_path,
         file_type=photo.file_type,
         size=photo.size,
