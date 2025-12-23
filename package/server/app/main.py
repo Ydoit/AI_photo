@@ -70,19 +70,38 @@ app.add_middleware(
 def root():
     return {"message": "Image Manager Backend Ready"}
 
+# Worker Process Management
+import multiprocessing
+from app.worker import run_worker
+
+worker_process = None
+
 @app.on_event("startup")
 def startup_event():
-    global log_listener
+    global log_listener, worker_process
     log_listener = setup_logging()
-    # Start Task Manager
-    from app.service.task_manager import TaskManager
-    TaskManager.get_instance().start()
+    
+    # Start Worker Process
+    # Start a separate process for background tasks
+    # This process will run the TaskManager loop
+    worker_process = multiprocessing.Process(target=run_worker, daemon=True)
+    worker_process.start()
+    logging.info(f"Worker process started with PID: {worker_process.pid}")
 
 @app.on_event("shutdown")
 def shutdown_event():
-    global log_listener
-    from app.service.task_manager import TaskManager
-    TaskManager.get_instance().stop()
+    global log_listener, worker_process
+    
+    # Stop Worker Process
+    if worker_process and worker_process.is_alive():
+        logging.info("Terminating worker process...")
+        worker_process.terminate()
+        # Wait a bit
+        worker_process.join(timeout=5)
+        if worker_process.is_alive():
+            logging.warning("Worker process did not terminate gracefully, killing...")
+            worker_process.kill()
+        logging.info("Worker process stopped")
 
     if log_listener:
         log_listener.stop()

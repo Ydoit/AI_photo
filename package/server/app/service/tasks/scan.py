@@ -10,9 +10,11 @@ from sqlalchemy.orm import Session
 from app.db.models.task import Task, TaskType, TaskStatus
 from app.db.models.photo import Photo, FileType
 from app.db.models.index_log import IndexLog
+from app.schemas.metadata import PhotoMetadataCreate
 from app.service import storage
 from app.utils import exif
 from app.schemas import album as album_schemas
+from app.schemas import photo as photo_schemas
 from app.core.config_manager import config_manager
 
 def process_basic_cpu_job(file_path: str, file_id: UUID, storage_root: str):
@@ -225,7 +227,7 @@ async def handle_process_basic(task_manager, task: Task, db: Session):
     # We need to return raw data, not schemas, because bulk_create_photos expects dicts or similar?
     # Actually album_crud.batch_create_photos expects schemas.PhotoCreate
     
-    photo_create = album_schemas.PhotoCreate(
+    photo_create = photo_schemas.PhotoCreate(
         file_type=file_type,
         size=result['size'],
         width=result['width'],
@@ -241,7 +243,7 @@ async def handle_process_basic(task_manager, task: Task, db: Session):
     # Let's check album_crud.batch_create_photos. 
     # For now, I will construct a dict that TaskManager can understand.
     
-    metadata_create = album_schemas.PhotoMetadataCreate(
+    metadata_create = PhotoMetadataCreate(
         exif_info=meta["exif_info"],
         # Basic task doesn't have location details yet
     )
@@ -284,7 +286,7 @@ async def handle_process_image(task_manager, task: Task, db: Session):
     if ext.lower() in ['.mp4', '.mov', '.avi', '.mkv', '.webm']:
         file_type = FileType.video
 
-    photo_create = album_schemas.PhotoCreate(
+    photo_create = photo_schemas.PhotoCreate(
         file_type=file_type,
         size=result['size'],
         width=result['width'],
@@ -294,7 +296,7 @@ async def handle_process_image(task_manager, task: Task, db: Session):
         photo_time=meta["photo_time"]
     )
 
-    metadata_create = album_schemas.PhotoMetadataCreate(
+    metadata_create = PhotoMetadataCreate(
         exif_info=meta["exif_info"],
     )
 

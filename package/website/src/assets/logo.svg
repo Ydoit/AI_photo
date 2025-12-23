@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="400" height="400">
+  <defs>
+    <linearGradient id="trailSkyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4FACFE;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00C6FB;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="sparkleGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+       <stop offset="0%" style="stop-color:#FFF;stop-opacity:1" />
+       <stop offset="100%" style="stop-color:#E0F7FF;stop-opacity:0.8" />
+    </linearGradient>
+  </defs>
+
+  <rect x="10" y="10" width="80" height="80" rx="18" ry="18" fill="white" />
+
+  <rect x="18" y="18" width="64" height="64" rx="12" ry="12" fill="url(#trailSkyGradient)" />
+
+  <circle cx="32" cy="34" r="6" fill="white" opacity="0.9"/>
+
+  <path d="M 18 65 L 40 42 L 52 52 L 65 40 L 82 58 L 82 70 L 18 70 Z" fill="#D9EEFF" />
+
+  <path d="M 35 82 C 35 82, 45 70, 42 62 C 39 54, 50 48, 52 48 L 58 48 C 56 48, 48 54, 50 62 C 52 70, 62 82, 62 82 L 35 82 Z" fill="#FFFFFF"/>
+
+  <path d="M 70 30 L 72 26 L 74 30 L 78 32 L 74 34 L 72 38 L 70 34 L 66 32 Z" fill="url(#sparkleGradient)" />
+  <circle cx="25" cy="50" r="1.5" fill="white" opacity="0.8"/>
+  <circle cx="75" cy="55" r="1" fill="white" opacity="0.6"/>
+</svg>

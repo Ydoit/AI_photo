@@ -19,6 +19,7 @@ from app.db.models.task import Task, TaskStatus, TaskType
 from app.db.models.face import Face, FaceIdentity
 from app.db.models.tag import PhotoTag, PhotoTagRelation
 from app.db.models.ocr import OCR
+from app.db.models.system import SystemState
 
 if __name__ == '__main__':
     pass

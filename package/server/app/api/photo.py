@@ -116,6 +116,20 @@ def batch_update_photos(
         raise HTTPException(status_code=400, detail="Invalid action")
 
 
+@router.delete("/batch")
+def batch_delete_photos(
+    batch_data: schemas.BatchPhotoDelete,
+    db: Session = Depends(get_db)
+):
+    # Get photos to delete files
+    photos = crud_album.get_photos_by_ids(db, batch_data.photo_ids)
+    for photo in photos:
+        storage.delete_file(photo.file_path, photo.id, db)
+
+    count = crud_album.batch_delete_photos_db(db, batch_data.photo_ids)
+    return {"message": f"Successfully deleted {count} photos"}
+
+
 @router.post("", response_model=schemas.Photo)
 async def upload_photo_generic(
         album_id: Optional[UUID] = Form(None),

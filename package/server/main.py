@@ -19,6 +19,8 @@ from dotenv import load_dotenv
 from starlette.staticfiles import StaticFiles
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Receive, Scope, Send
+# Worker Process Management
+import multiprocessing
 
 if not os.path.exists('./data'):
     os.mkdir('./data')
@@ -29,15 +31,33 @@ from railway.api import router as railway_router
 from app.db.session import engine, SessionLocal
 from app.api import user, album, settings, index, media, stats, photo, tasks
 from app.core.logger import setup_logging
+from app.worker import run_worker
+worker_process = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global log_listener
+    global log_listener, worker_process
     log_listener = setup_logging()
-    # Start Task Manager
-    TaskManager.get_instance().start()
+
+    # Start Worker Process
+    # Start a separate process for background tasks
+    # This process will run the TaskManager loop
+    worker_process = multiprocessing.Process(target=run_worker, daemon=True)
+    worker_process.start()
+    logging.info(f"Worker process started with PID: {worker_process.pid}")
     yield
-    TaskManager.get_instance().stop()
+
+    # Stop Worker Process
+    if worker_process and worker_process.is_alive():
+        logging.info("Terminating worker process...")
+        worker_process.terminate()
+        # Wait a bit
+        worker_process.join(timeout=5)
+        if worker_process.is_alive():
+            logging.warning("Worker process did not terminate gracefully, killing...")
+            worker_process.kill()
+        logging.info("Worker process stopped")
+
     if log_listener:
         log_listener.stop()
 

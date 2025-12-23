@@ -1,8 +1,8 @@
 <template>
   <header class="header bg-light-bg dark:bg-gray-900 transition-colors duration-300">
     <div class="logo-wrapper destop-only">
-      <img src="/src/assets/logo.png" alt="Logo" class="logo" />
-      <h1 class="site-title text-gray-800 dark:text-gray-100">拾光物语</h1>
+      <img src="@/assets/logo.svg" alt="Logo" class="logo" />
+      <h1 class="site-title text-gray-800 dark:text-gray-100">行影集</h1>
     </div>
 
     <nav class="nav-bg bg-light-bg/80 dark:bg-gray-800/80 backdrop-blur-md shadow-md rounded-full px-4 py-1 flex justify-center items-center space-x-2 fixed left-1/2 transform -translate-x-1/2 transition-colors duration-300">
