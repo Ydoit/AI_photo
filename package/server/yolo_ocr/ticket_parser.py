@@ -59,22 +59,48 @@ def _poly_center(poly):
     return cx, cy
 
 
+def _order_dep_arr_by_geometry(a, b):
+    """
+    a,b: (name, cx, cy)
+    - 如果两站主要横向分布(abs(dx) >= abs(dy))：按 x 左->右
+    - 如果两站主要纵向分布(abs(dy) > abs(dx))：按 y 上->下
+    返回 (dep_name, arr_name)
+    """
+    (n1, x1, y1) = a
+    (n2, x2, y2) = b
+    dx = x2 - x1
+    dy = y2 - y1
+
+    if abs(dx) >= abs(dy):
+        # 左 -> 右
+        return (n1, n2) if x1 <= x2 else (n2, n1)
+    else:
+        # 上 -> 下
+        return (n1, n2) if y1 <= y2 else (n2, n1)
+
+
 def _pick_left_right_station_names(station_with_y):
     """
     station_with_y: List[(name, cx, cy)]
-    返回同一带内按 x 左->右的两个站名（去重）。
+    返回同一带内的两个站名（去重），并根据几何分布自动决定方向：
+    - 横向：左->右
+    - 纵向：上->下（适配旋转90°）
     """
-    row_sorted = sorted(station_with_y, key=lambda x: x[1])
+    # 先过滤 + 去重（保留第一个出现的坐标）
     uniq = []
     seen = set()
-    for n, cx, cy in row_sorted:
-        if n not in seen and _is_valid_station_name(n):
-            uniq.append((n, cx, cy))
-            seen.add(n)
+    for n, cx, cy in station_with_y:
+        if n in seen:
+            continue
+        if not _is_valid_station_name(n):
+            continue
+        uniq.append((n, cx, cy))
+        seen.add(n)
         if len(uniq) >= 2:
             break
+
     if len(uniq) >= 2:
-        return uniq[0][0], uniq[1][0]
+        return _order_dep_arr_by_geometry(uniq[0], uniq[1])
     if len(uniq) == 1:
         return uniq[0][0], ""
     return "", ""
@@ -144,11 +170,8 @@ def _pick_dep_arr_from_station_candidates(station_with_y):
                     best_dx = dx
                     best_pair = (uniq[i], uniq[j])
 
-        (n1, x1, _), (n2, x2, _) = best_pair
-        if x1 <= x2:
-            return n1, n2
-        else:
-            return n2, n1
+        (a, b) = best_pair  # a,b: (name, cx, cy)
+        return _order_dep_arr_by_geometry(a, b)
 
     if len(uniq) == 1:
         return uniq[0][0], ""
@@ -391,28 +414,27 @@ def parse_ticket_info(ocr_texts, polys):
     # 从visual_texts中提取车次
     train_code = ""
     train_index_in_visual = -1
+    # 车次优先级：G > D > C > K > T > Z
+    prefixes = ['G', 'D', 'C', 'K', 'T', 'Z']
     for idx, txt in enumerate(visual_texts):
         fixed_txt = _fix_ocr_text(txt)
-        # 提取车次
-        if not train_code:
-            # 尝试 Gxxx
-            g_match = re.search(r'\bG(\d{4})\b', fixed_txt)
-            if g_match and len(g_match.group(0)) == 5:
-                train_code = f"G{g_match.group(1)}"
+        if train_code:
+            break
+        for p in prefixes:
+            # 不依赖 \b：允许后面跟中文，但不允许继续跟数字
+            # 同时避免在长串字母数字中间误命中
+            m = re.search(rf'(?<![A-Za-z0-9])({p}\d{{1,4}})(?!\d)', fixed_txt)
+            if not m:
+                continue
+            code = m.group(1)
+            # 过滤明显伪造码：如 C0000 / G0000
+            if re.fullmatch(r'[GDCKTZ]0{3,4}', code):
+                continue
+            # 基本长度约束（2~5）
+            if 2 <= len(code) <= 5:
+                train_code = code
                 train_index_in_visual = idx
-            else:
-                # 尝试其他车次
-                prefixes = ['C', 'D', 'K', 'T', 'Z']
-                for p in prefixes:
-                    pattern = rf'\b{p}(\d{{1,4}})\b'
-                    match = re.search(pattern, fixed_txt)
-                    if match:
-                        code = match.group(0)
-                        if 4 <= len(code) <= 5:
-                            train_code = code
-                            train_index_in_visual = idx
-                            break
-
+                break
     ticket_info["train_code"] = train_code
 
     # === 新增：车次的y坐标锚点，用于修正倾斜导致的站名行分裂 ===
@@ -540,34 +562,73 @@ def parse_ticket_info(ocr_texts, polys):
 
         # 3. 发车时间匹配（支持中文/英文冒号，带或不带“开”字）
         if not ticket_info["datetime"]:
-            # 先在整个 ocr_texts 中分别找日期和时间
+            # 先在整个 ocr_texts 中分别找日期和时间（并支持跨文本块拼接）
+            year_candidate = None
             date_candidate = None
             time_candidate = None
+            mdhm_candidate = None  # "MM月DD日 HH:MM"
 
             for t in ocr_texts:
-                # 匹配日期：YYYY年MM月DD日
+                tt = _fix_ocr_text(t).strip()
+                # A) 年份块：如 "2025年"
+                if not year_candidate:
+                    ym = re.search(r'(\d{4})年', tt)
+                    if ym:
+                        year_candidate = ym.group(1)
+                # B) 完整日期块：YYYY年MM月DD日（你原来的规则）
                 if not date_candidate:
-                    d_match = re.search(r'(\d{4}年\d{1,2}月\d{1,2}日)', t)
+                    d_match = re.search(r'(\d{4}年\d{1,2}月\d{1,2}日)', tt)
                     if d_match:
                         date_candidate = d_match.group(1)
+                # C) 月日+时间在同一块：如 "06月02日10:40开"
+                #    把月日和时分一起抓出来，供 year-only 拼接用
+                if not mdhm_candidate:
+                    mdhm = re.search(r'(\d{1,2})月(\d{1,2})日\s*(\d{1,2})[:：](\d{2})\s*开?', tt)
+                    if mdhm:
+                        mm = mdhm.group(1).zfill(2)
+                        dd = mdhm.group(2).zfill(2)
+                        hh = mdhm.group(3).zfill(2)
+                        mi = mdhm.group(4).zfill(2)
+                        mdhm_candidate = (mm, dd, hh, mi)
 
-                # 匹配时间：HH:MM 或 HH：MM，可带“开”
+                # D) 单独时间块：HH:MM（你原来的规则，保留）
                 if not time_candidate:
-                    t_match = re.search(r'(\d{1,2})[:：](\d{2})\s*开?', t)
+                    t_match = re.search(r'(\d{1,2})[:：](\d{2})\s*开?', tt)
                     if t_match:
                         h = t_match.group(1).zfill(2)
                         m = t_match.group(2).zfill(2)
                         time_candidate = f"{h}:{m}"
-
-                # 如果都找到了，提前退出
                 if date_candidate and time_candidate:
                     break
+                # E) 紧凑粘连日期时间（年/月/日可能丢或误识别）
+                # 例：2025405八26108:46开  -> 2025年05月26日 08:46
+                if not date_candidate and not mdhm_candidate:
+                    m_compact = re.search(
+                        r'(\d{4})\D*(\d{1,2})\D*([0-3]?\d)(?:日|1|I|l)?\s*(\d{1,2})[:：](\d{2})\s*开?',
+                        tt
+                    )
+                    if m_compact:
+                        yy = m_compact.group(1)
+                        mm = m_compact.group(2).zfill(2)
+                        dd = m_compact.group(3).zfill(2)
+                        hh = m_compact.group(4).zfill(2)
+                        mi = m_compact.group(5).zfill(2)
+                        # 直接生成最终 datetime
+                        ticket_info["datetime"] = f"{yy}年{mm}月{dd}日 {hh}:{mi}"
+                        break
 
-            # 组合结果
+            if ticket_info["datetime"]:
+                continue
+
+            # 1) 原逻辑：完整日期 + 时间
             if date_candidate and time_candidate:
                 ticket_info["datetime"] = f"{date_candidate} {time_candidate}"
+            # 2) 新增：年份块 + (月日时分) 块
+            elif year_candidate and mdhm_candidate:
+                mm, dd, hh, mi = mdhm_candidate
+                ticket_info["datetime"] = f"{year_candidate}年{mm}月{dd}日 {hh}:{mi}"
+            # 3) 只有日期（无时间）
             elif date_candidate:
-                # 只有日期（无时间），也保留
                 ticket_info["datetime"] = date_candidate
 
         if not ticket_info["datetime"]:
