@@ -1,0 +1,127 @@
+<template>
+  <UnifiedPhotoPage
+    :title="title"
+    :subtitle="`${totalCount > 0 ? totalCount + ' 个项目' : (photos.length + (hasMore ? '+' : '')) + ' 个项目'}`"
+    :loading="loading && photos.length === 0"
+    :photos="photos"
+    :has-more="hasMore"
+    :timeline-items="timeline"
+    :timeline-stats="{ timeline }"
+    @back="router.back()"
+    @load-more="loadMore"
+  />
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { locationService } from '@/api/location'
+import UnifiedPhotoPage from '@/components/UnifiedPhotoPage.vue'
+import { mapPhotoToImage } from '@/stores/photoStore'
+import type { AlbumImage } from '@/types/album'
+
+const route = useRoute()
+const router = useRouter()
+const name = route.params.name as string
+const level = (route.query.level as 'city' | 'province') || 'city'
+
+const loading = ref(false)
+const photos = ref<AlbumImage[]>([])
+const timeline = ref<any[]>([])
+const skip = ref(0)
+const limit = 100
+const hasMore = ref(true)
+const totalCount = ref(0) // Optional: if API returned total count, but currently it doesn't.
+
+const title = computed(() => name)
+const calculateTimelineStats = (photos: AlbumImage[]) => {
+  const stats = new Map<string, { year: number, month: number, day: number, count: number }>()
+
+  photos.forEach(photo => {
+    const date = new Date(photo.timestamp)
+    const year = date.getFullYear()
+    const month = date.getMonth() + 1
+    const day = date.getDate()
+    const key = `${year}-${month}-${day}`
+
+    if (!stats.has(key)) {
+      stats.set(key, { year, month, day, count: 0 })
+    }
+    stats.get(key)!.count++
+  })
+
+  timeline.value = Array.from(stats.values()).sort((a, b) => {
+    if (a.year !== b.year) return b.year - a.year
+    if (a.month !== b.month) return b.month - a.month
+    return b.day - a.day
+  })
+}
+
+const fetchAllPhotos = async () => {
+  if (loading.value || !hasMore.value) return
+  loading.value = true
+  try {
+    let page = 1
+    const limit = 1000
+    let hasNext = true
+    while (hasNext) {
+      // Encode name to ensure special characters (like / or ?) don't break the path
+      const safeName = encodeURIComponent(name)
+      const rawPhotos = await locationService.getLocationPhotos(safeName, level, skip.value, limit)
+
+      const newPhotos = rawPhotos.map(mapPhotoToImage)
+
+      if (newPhotos.length < limit) {
+        hasMore.value = false
+        hasNext = false
+      }
+      photos.value.push(...newPhotos)
+      skip.value += limit
+      page++
+    }
+
+        // Calculate timeline
+    calculateTimelineStats(photos.value)
+  } catch (e) {
+    console.error('Failed to load location photos:', e)
+    // Optional: show error toast
+  } finally {
+    loading.value = false
+  }
+}
+
+
+
+const loadMore = async () => {
+  if (loading.value || !hasMore.value) return
+  loading.value = true
+  try {
+    let page = 1
+    const limit = 100
+    // Encode name to ensure special characters (like / or ?) don't break the path
+    const safeName = encodeURIComponent(name)
+    const rawPhotos = await locationService.getLocationPhotos(safeName, level, skip.value, limit)
+
+    const newPhotos = rawPhotos.map(mapPhotoToImage)
+
+    if (newPhotos.length < limit) {
+      hasMore.value = false
+    }
+    photos.value.push(...newPhotos)
+    skip.value += limit
+    page++
+        // Calculate timeline
+    calculateTimelineStats(photos.value)
+  } catch (e) {
+    console.error('Failed to load location photos:', e)
+    // Optional: show error toast
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  // loadMore()
+  fetchAllPhotos()
+})
+</script>

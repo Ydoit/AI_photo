@@ -13,6 +13,8 @@ const More = () => import('@/views/More.vue');
 const Settings = () => import('@/views/Settings.vue');
 const PeopleList = () => import('@/views/album/people/PeopleList.vue');
 const PeopleDetail = () => import('@/views/album/people/PeopleDetail.vue');
+const LocationList = () => import('@/views/album/location/LocationList.vue');
+const LocationDetail = () => import('@/views/album/location/LocationDetail.vue');
 
 const NotFound = () => import('@/views/NotFound.vue');
 const AboutPage = () => import('@/views/AboutPage.vue');
@@ -30,6 +32,8 @@ const routes: RouteRecordRaw[] = [
       { path: '/album/:id', name: 'AlbumDetail', component: AlbumDetail, meta: { title: '相册详情' } },
       { path: '/people', name: 'PeopleList', component: PeopleList, meta: { title: '人物相册' } },
       { path: '/people/:id', name: 'PeopleDetail', component: PeopleDetail, meta: { title: '人物详情' } },
+      { path: '/location', name: 'LocationList', component: LocationList, meta: { title: '位置相册' } },
+      { path: '/location/:name', name: 'LocationDetail', component: LocationDetail, meta: { title: '位置详情' } },
       { path: '/photos', name: 'Photos', component: PhotosPage, meta: { title: '所有照片' } },
       { path: '/ticket', name: 'Ticket', component: TicketPage, meta: { title: '车票', keepAlive: true } },
       { path: '/statistics', name: 'Statistics', component: StatisticsPage, meta: { title: '统计' } },

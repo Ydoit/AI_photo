@@ -26,7 +26,7 @@ if not os.path.exists('./data'):
     os.mkdir('./data')
 load_dotenv('./data/.env')
 
-from app.api import user, train_ticket, album, index, settings, face, ocr
+from app.api import user, train_ticket, album, index, settings, face, ocr, location
 from railway.api import router as railway_router
 from app.db.session import engine, SessionLocal
 from app.api import user, album, settings, index, media, stats, photo, tasks
@@ -70,6 +70,10 @@ log_listener = None
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
+    # 2. 判断当前请求是否在排除列表中，若是则直接处理请求，不记录日志
+    if request.url.path.startswith('/medias'):
+        response = await call_next(request)
+        return response
     start_time = time.time()
     operation = f"{request.method} {request.url.path}"
     params = dict(request.query_params)
@@ -149,6 +153,7 @@ app.include_router(stats.router, prefix="/stats", tags=["Stats"])
 app.include_router(tasks.router, prefix="/tasks", tags=["Tasks"])
 app.include_router(face.router, prefix="/faces", tags=["Faces"])
 app.include_router(ocr.router, prefix="/ocr", tags=["OCR"])
+app.include_router(location.router, prefix="/locations", tags=["Locations"])
 
 if __name__ == "__main__":
     import uvicorn

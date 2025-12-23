@@ -198,10 +198,10 @@ const smartAlbums = [
   },
   {
     id: 'location',
-    title: '位置',
-    description: '地图视图',
+    title: '位置相册',
+    description: '按地点分类',
     icon: MapPin,
-    route: '' // Placeholder
+    route: '/location'
   }
 ]
 

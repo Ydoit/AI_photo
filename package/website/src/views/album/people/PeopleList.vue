@@ -54,7 +54,7 @@
       <div
         v-for="person in identities"
         :key="person.id"
-        class="group flex flex-col items-center cursor-pointer transition-transform duration-200 active:scale-95"
+        class="group flex flex-col items-center cursor-pointer transition-transform active:scale-95"
         @click="handleCardClick(person)"
       >
         <div
@@ -105,7 +105,7 @@
             </el-dropdown>
           </div>
           <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-            {{ person.face_count }} 张照片
+            {{ person.face_count }} 个项目
           </p>
         </div>
       </div>

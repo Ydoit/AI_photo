@@ -482,29 +482,7 @@ const getFaceCropStyle = (cover: CoverPhotoInfo) => {
 
 const getPhotoUrl = (photoId: string) => {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-  return `${API_BASE_URL}/api/medias/${photoId}/thumbnail?size=medium`
-}
-
-const getFaceStyle = (face: any) => {
-    if (!face.cover_photo || !face.cover_photo.face_rect || !face.cover) return {}
-    const [x, y, w, h] = face.cover_photo.face_rect
-    const size = 24
-    const scale = size / w
-    const bgWidth = face.cover_photo.width * scale
-    const bgHeight = face.cover_photo.height * scale
-    const bgX = -x * scale
-    const bgY = -y * scale
-
-    return {
-        backgroundImage: `url(/api/medias/${face.cover.id}/thumbnail?size=medium)`,
-        backgroundSize: `${bgWidth}px ${bgHeight}px`,
-        backgroundPosition: `${bgX}px ${bgY}px`,
-        width: `${size}px`,
-        height: `${size}px`,
-        borderRadius: '50%',
-        flexShrink: 0,
-        backgroundColor: '#f3f4f6'
-    }
+  return `${API_BASE_URL}/api/medias/${photoId}/thumbnail`
 }
 
 const emit = defineEmits(['close', 'delete', 'update', 'prev', 'next', 'add-to-album'])

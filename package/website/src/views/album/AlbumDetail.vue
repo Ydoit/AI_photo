@@ -135,10 +135,6 @@ const handleAddToAlbumFromLightbox = (id: string) => {
 
 const handlePhotoUpdate = (event: { id: string, location?: string, tags?: string[] }) => {
     const img = photoStore.images.find(i => i.id === event.id)
-    if (img) {
-        if (event.location !== undefined) img.location = event.location
-        if (event.tags !== undefined) img.tags = event.tags
-    }
 }
 
 const setCover = async (ids: string[]) => {

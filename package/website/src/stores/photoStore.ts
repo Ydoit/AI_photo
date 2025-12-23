@@ -256,7 +256,7 @@ export const usePhotoStore = defineStore('photo', () => {
              return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
         };
 
-        const filters = { 
+        const filters = {
             start_time: formatDate(startDate),
             end_time: formatDate(endDate)
         };
@@ -270,7 +270,7 @@ export const usePhotoStore = defineStore('photo', () => {
         }
 
         if (!activeRequests.has(requestId)) {
-            loadedDates.delete(dateKey); 
+            loadedDates.delete(dateKey);
             return;
         }
         processPhotos(photosData);

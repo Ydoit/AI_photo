@@ -106,7 +106,7 @@ const fetchAllPhotos = async () => {
     }
 
     // Sort by time desc
-    images.value.sort((a, b) => b.timestamp - a.timestamp)
+    // images.value.sort((a, b) => b.timestamp - a.timestamp)
 
     // Calculate timeline
     calculateTimelineStats(images.value)
