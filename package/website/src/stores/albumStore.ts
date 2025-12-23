@@ -4,7 +4,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { albumService } from '@/api/album'
-import type { ApiAlbum, Album } from '@/types/album'
+import { mapPhotoToImage } from '@/stores/photoStore'
+import type { ApiAlbum, Album, AlbumImage } from '@/types/album'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -59,7 +60,21 @@ export const useAlbumStore = defineStore('album', () => {
   // --- 计算属性相册 ---
   const allAlbums = computed<Album[]>(() => {
     return apiAlbums.value.map(album => {
-      const cover = album.cover ? `${API_BASE_URL}${album.cover.thumbnail_url}` : 'https://placehold.co/400x300?text=Empty';
+      const cover: AlbumImage = album.cover ? mapPhotoToImage(album.cover) : {
+        id: '',
+        url: 'https://placehold.co/400x300?text=Empty',
+        thumbnail: 'https://placehold.co/400x300?text=Empty',
+        preview: 'https://placehold.co/400x300?text=Empty',
+        srcset: '',
+        timestamp: Date.now(),
+        albumIds: [],
+        width: 400,
+        height: 300,
+        size: 0,
+        filename: '',
+        file_type: 'image',
+        duration: '00:00'
+      }
 
       return {
         id: album.id,

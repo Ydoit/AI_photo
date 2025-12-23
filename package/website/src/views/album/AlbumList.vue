@@ -59,13 +59,12 @@
           <!-- Cover -->
           <div class="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 relative shadow-sm group-hover:shadow-md transition-all duration-300 mb-3 border border-gray-100 dark:border-gray-800">
             <img
-              :src="album.cover"
+              :src="album.cover.thumbnail"
               class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
               loading="lazy"
             />
             <!-- Overlay -->
             <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
-            
             <!-- Type Badge -->
             <div class="absolute top-2 right-2 flex gap-1">
                <span v-if="album.type === 'smart' || album.type === 'conditional'" class="bg-black/50 backdrop-blur-sm text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -75,14 +74,14 @@
 
             <!-- Actions (Only for User Albums) -->
             <div v-if="album.type === 'user'" class="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-              <button 
+              <button
                 @click.stop="openEditModal(album)"
                 class="p-1.5 bg-white/90 dark:bg-gray-800/90 rounded-full text-gray-600 dark:text-gray-300 hover:text-primary-500 shadow-sm backdrop-blur-sm"
                 title="编辑"
               >
                 <Edit2 class="w-4 h-4" />
               </button>
-              <button 
+              <button
                 @click.stop="confirmDelete(album)"
                 class="p-1.5 bg-white/90 dark:bg-gray-800/90 rounded-full text-gray-600 dark:text-gray-300 hover:text-red-500 shadow-sm backdrop-blur-sm"
                 title="删除"

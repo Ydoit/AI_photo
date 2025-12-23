@@ -27,6 +27,9 @@
              <button @click.stop="handleDelete" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors text-red-400 hover:text-red-300 bg-transparent p-0">
                 <Trash2 class="w-6 h-6" />
             </button>
+            <button @click.stop="toggleOriginal" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0" :class="{ 'text-primary-400': showOriginal }" title="查看原图">
+                <ImageIcon class="w-6 h-6" />
+            </button>
             <button @click.stop="toggleSidebar" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0" :class="{ 'bg-white/20 text-white': showSidebar }">
                 <Info class="w-6 h-6" />
             </button>
@@ -88,15 +91,14 @@
             >
                 <img
                     ref="imageRef"
-                    :src="image.url"
+                    :src="displayImageSrc"
                     class="block w-full h-full object-contain pointer-events-none"
                     draggable="false"
                 />
-                
                 <!-- OCR Overlay -->
                 <div v-if="showOCR && ocrRecords.length > 0" class="absolute inset-0 z-10">
                     <svg viewBox="0 0 1 1" class="w-full h-full pointer-events-none" preserveAspectRatio="none">
-                         <polygon 
+                         <polygon
                             v-for="rec in ocrRecords"
                             :key="rec.id"
                             :points="getPolygonPoints(rec.polygon)"
@@ -107,7 +109,6 @@
                     </svg>
                 </div>
             </div>
-            
             <div
               v-else-if="image && image.file_type === 'video'"
               class="relative w-full h-full flex items-center justify-center"
@@ -259,8 +260,23 @@
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <span v-if="(!metadata.faces_identities || metadata.faces_identities.length === 0)" class="text-sm text-gray-400 italic">无人脸信息</span>
-                    <a target="_blank" :href="`/people/${face.id}`" v-for="(face, idx) in metadata.faces_identities" :key="idx" class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full text-xs">
-                        {{ face.identity_name || 'Unknown' }}
+                    <a target="_blank" :href="`/people/${face.id}`" v-for="(face, idx) in metadata.faces_identities" :key="idx" class="text-gray-600 dark:text-gray-300 rounded-full text-xs flex flex-col items-center transition-colors">
+                        <div
+                        class="relative w-12 aspect-square rounded-full overflow-hidden border-2 transition-all duration-300 bg-gray-100 dark:bg-gray-800"
+                        :class="['border-transparent group-hover:border-gray-300 dark:group-hover:border-gray-600']"
+                        >
+                            <img
+                                v-if="face.cover_photo"
+                                :src="getPhotoUrl(face.cover_photo.photo_id)"
+                                class="absolute max-w-none transition-transform duration-500 group-hover:scale-110"
+                                :style="getFaceCropStyle(face.cover_photo)"
+                                loading="lazy"
+                            />
+                            <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
+                                <UserIcon class="w-1/2 h-1/2" />
+                            </div>
+                        </div>
+                        <span class="font-medium">{{ face.identity_name || 'Unknown' }}</span>
                     </a>
                 </div>
             </div>
@@ -384,14 +400,15 @@ import {
     FileArchive,
     FileBadgeIcon,
     ScanText,
-    MoreHorizontal
+    MoreHorizontal,
+    Image as ImageIcon
 } from 'lucide-vue-next'
 import videojs from 'video.js'
 import 'video.js/dist/video-js.css'
 import { format } from 'date-fns'
 import { albumService } from '@/api/album'
 import { ocrApi, type OCRRecord } from '@/api/ocr'
-import type { PhotoMetadata, AlbumImage } from '@/types/album'
+import type { PhotoMetadata, AlbumImage, CoverPhotoInfo } from '@/types/album'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
 
@@ -408,6 +425,87 @@ const props = withDefaults(defineProps<Props>(), {
   deleteTitle: '删除确认',
   deleteMessage: '确定要删除这张照片吗？此操作不可恢复。'
 })
+
+const showOriginal = ref(false)
+
+const displayImageSrc = computed(() => {
+    if (!props.image) return ''
+    if (showOriginal.value) return props.image.url
+    return props.image.preview || props.image.url
+})
+
+watch(() => props.image, () => {
+    showOriginal.value = false
+})
+
+const toggleOriginal = () => {
+    showOriginal.value = !showOriginal.value
+}
+
+/**
+ * 核心算法：计算人脸裁切样式
+ * 原理：通过 absolute 定位和百分比控制，使人脸区域充满圆形容器
+ */
+const getFaceCropStyle = (cover: CoverPhotoInfo) => {
+  if (!cover.face_rect || !cover.width || !cover.height) {
+    return {}
+  }
+
+  // face_rect: [x1, y1, x2, y2]
+  const [x1, y1, x2, y2] = cover.face_rect
+  const faceW = x2 - x1
+  const faceH = y2 - y1
+
+  // 1. 确定裁切基准（取人脸宽高的最大值，并增加 60% 的留白防止太挤）
+  const cropSize = Math.max(faceW, faceH) * 1.6
+
+  // 2. 计算缩放比例：容器宽度 / 裁切目标在原图中的宽度
+  // 这里直接用百分比：(原图宽 / 裁切宽) * 100%
+  const widthPct = (cover.width / cropSize) * 100
+  const heightPct = (cover.height / cropSize) * 100
+
+  // 3. 计算人脸中心点坐标（百分比）
+  const centerX = (x1 + x2) / 2
+  const centerY = (y1 + y2) / 2
+  const leftPct = (centerX / cover.width) * 100
+  const topPct = (centerY / cover.height) * 100
+
+  return {
+    width: `${widthPct.toFixed(2)}%`,
+    height: `${heightPct.toFixed(2)}%`,
+    left: '50%',
+    top: '50%',
+    // 将图片中心移动到容器中心，再根据人脸中心点进行偏移
+    transform: `translate(-${leftPct.toFixed(2)}%, -${topPct.toFixed(2)}%)`,
+  }
+}
+
+const getPhotoUrl = (photoId: string) => {
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+  return `${API_BASE_URL}/api/medias/${photoId}/thumbnail?size=medium`
+}
+
+const getFaceStyle = (face: any) => {
+    if (!face.cover_photo || !face.cover_photo.face_rect || !face.cover) return {}
+    const [x, y, w, h] = face.cover_photo.face_rect
+    const size = 24
+    const scale = size / w
+    const bgWidth = face.cover_photo.width * scale
+    const bgHeight = face.cover_photo.height * scale
+    const bgX = -x * scale
+    const bgY = -y * scale
+
+    return {
+        backgroundImage: `url(/api/medias/${face.cover.id}/thumbnail?size=medium)`,
+        backgroundSize: `${bgWidth}px ${bgHeight}px`,
+        backgroundPosition: `${bgX}px ${bgY}px`,
+        width: `${size}px`,
+        height: `${size}px`,
+        borderRadius: '50%',
+        flexShrink: 0,
+        backgroundColor: '#f3f4f6'
+    }
+}
 
 const emit = defineEmits(['close', 'delete', 'update', 'prev', 'next', 'add-to-album'])
 

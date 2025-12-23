@@ -68,6 +68,41 @@ const formatDuration = (duration: number | null) => {
   return `${hours > 0 ? `${hours}:` : ''}${minutes}:${seconds < 10 ? `0${seconds}` : seconds}`;
 }
 
+export const mapPhotoToImage = (photo: Photo): AlbumImage => {
+    // 新 API 在 url 和 thumbnail_url 字段中返回相对地址
+    const url = `${API_BASE_URL}/api/medias/${photo.id}/file`;
+    const thumbnail = `${API_BASE_URL}/api/medias/${photo.id}/thumbnail`;
+    const preview = `${API_BASE_URL}/api/medias/${photo.id}/thumbnail?size=medium`;
+
+    // 优先使用 photo_time，其次 upload_time，最后取当前时间
+    let timestamp = Date.now();
+    if (photo.photo_time) {
+        timestamp = new Date(photo.photo_time).getTime();
+    } else if (photo.upload_time) {
+        timestamp = new Date(photo.upload_time).getTime();
+    }
+
+    // 尝试从 location 或 tags 中解析城市
+    let city = 'Unknown';
+
+
+    return {
+      id: photo.id,
+      url,
+      thumbnail,
+      preview,
+      srcset: '', // 暂不分发多尺寸，后端按需动态处理
+      timestamp,
+      albumIds: photo.album_ids || [],
+      width: photo.width || 300,
+      height: photo.height || 300,
+      size: photo.size || 0,
+      filename: photo.filename || '',
+      file_type: photo.file_type || 'image',
+      duration: formatDuration(photo.duration ?? null) || '00:00'
+    }
+  }
+
 export const usePhotoStore = defineStore('photo', () => {
   // --- 状态 ---
   const images = ref<AlbumImage[]>([])
@@ -80,7 +115,7 @@ export const usePhotoStore = defineStore('photo', () => {
   // --- 辅助函数 ---
   const mapPhotoToImage = (photo: Photo): AlbumImage => {
     // 新 API 在 url 和 thumbnail_url 字段中返回相对地址
-    const url = `${API_BASE_URL}${photo.url}`;
+    const url = `${API_BASE_URL}/api/medias/${photo.id}/file`;
     const thumbnail = `${API_BASE_URL}/api/medias/${photo.id}/thumbnail`;
     const preview = `${API_BASE_URL}/api/medias/${photo.id}/thumbnail?size=medium`;
 
