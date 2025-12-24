@@ -41,65 +41,15 @@ TrailSnap/
 
 ### 后端启动
 
-1. 进入后端目录:
-   ```bash
-   cd package/server
-   ```
-2. 安装依赖 (推荐使用 uv):
-   ```bash
-   pip install -r requirements.txt
-   # 或者
-   uv sync
-   ```
-3. 配置环境变量 (参考 `.env.example`，需配置数据库连接)。
-4. 启动服务:
-   ```bash
-   python main.py
-   # 或使用 uvicorn
-   uvicorn app.main:app --reload
-   ```
+[查看后端文档](./package/server/README.md)
 
 ### AI 微服务启动（OCR/人脸）
 
-1. 进入 AI 目录:
-   ```bash
-   cd package/ai
-   ```
-2. 安装依赖（建议使用 GPU 版本 PaddlePaddle，如无 GPU 可改为 CPU 版本）:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. 启动 AI 服务:
-   ```bash
-   python main.py
-   # 或
-   uvicorn app.main:app --reload --port 8001
-   ```
-4. 后端服务默认通过 `config_manager` 使用 `http://localhost:8001` 调用 AI 服务。
+[查看 AI 微服务文档](./package/ai/README.md)
 
 ### 前端启动
 
-1. 进入前端目录:
-   ```bash
-   cd package/website
-   ```
-2. 安装依赖:
-   ```bash
-   pnpm install
-   ```
-3. 启动开发服务器:
-   ```bash
-   pnpm dev
-   ```
-
-## 📦 部署要求
-
-- **数据库**: PostgreSQL 可用连接，建议创建专用库与用户，设置 `data/.env` 中的数据库连接串。
-- **AI 微服务**: 默认端口 `8001`，需与后端互通；如使用 GPU，请安装对应 CUDA 版本的 PaddlePaddle-GPU。
-- **存储**: 后端需具备读写图片文件的权限；为提升浏览性能，建议开启缩略图生成。
-- **环境变量**: 详细配置请参考 [开发者文档](./doc/developer_guide.md)。
-  - 后端：`data/.env`（示例），包含数据库连接、存储路径等。
-  - AI：`INSIGHTFACE_MODEL_PATH`（人脸模型缓存路径，可选）、端口/跨域配置等。
+[查看前端文档](./package/website/README.md)
 
 ## 🧭 功能概览
 
@@ -115,6 +65,8 @@ TrailSnap/
 - [架构设计文档](doc/architecture_design.md)
 - [前端框架分析](doc/frontend_analysis.md)
 - [后端框架分析](doc/backend_analysis.md)
+- [开发者文档](doc/developer_guide.md)
+- [用户指南](doc/user_guide.md)
 
 ## 🔍 备注
 

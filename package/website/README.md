@@ -34,20 +34,20 @@ pnpm install
 ### 2. 运行开发服务器
 
 ```bash
-pnpm dev
+pnpm run dev
 ```
 
-启动后访问: http://localhost:5173
+启动后访问: http://localhost:5176
 
 ### 3. 构建生产版本
 
 ```bash
-pnpm build
+pnpm run build
 ```
 
 构建产物将输出到 `dist` 目录。
 
-## 环境变量
+## 环境变量（暂不需要）
 
 在根目录下创建 `.env` 或 `.env.local` 文件来配置环境变量：
 

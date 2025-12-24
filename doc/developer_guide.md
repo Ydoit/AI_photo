@@ -109,7 +109,7 @@ pnpm install
 ```bash
 pnpm dev
 ```
-访问地址：`http://localhost:5173`
+访问地址：`http://localhost:5176`
 
 ### 5.3 构建
 ```bash
