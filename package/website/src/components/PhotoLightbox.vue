@@ -207,13 +207,7 @@
                 </div>
                 <p v-else class="text-sm text-gray-900 dark:text-gray-200">
                     {{
-                        metadata.location?.formatted_address ||
-                        (typeof metadata.location === 'string' ? metadata.location :
-                            (metadata.location?.latitude && metadata.location?.longitude ?
-                                `${metadata.location.latitude.toFixed(6)}, ${metadata.location.longitude.toFixed(6)}` :
-                                '无位置信息'
-                            )
-                        )
+                        metadata.address || '无位置信息'
                     }}
                 </p>
             </div>

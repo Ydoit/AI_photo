@@ -317,3 +317,6 @@ async def handle_process_image(task_manager, task: Task, db: Session):
             'file_path': file_path
         }
     }
+
+def release_resources():
+    pass

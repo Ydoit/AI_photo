@@ -97,3 +97,6 @@ async def handle_rebuild_thumbnails(task_manager, task: Task, db: Session):
         'generated_tasks': generated_count,
         'message': f'Generated {generated_count} thumbnail generation tasks'
     }
+
+def release_resources():
+    pass

@@ -161,3 +161,6 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
         db.add(photo)
         db.commit()
         raise e
+
+def release_resources():
+    pass

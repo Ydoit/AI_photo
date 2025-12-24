@@ -11,6 +11,7 @@
 import shutil
 from datetime import datetime
 import re
+import os
 from typing import Dict, Any, Optional
 
 from PIL import Image
@@ -97,6 +98,16 @@ def get_exif_data(image: Image.Image) -> Dict[str, Any]:
                     exif_data[decoded] = value
     return exif_data
 
+def get_file_time_form_system(file_path: str) -> datetime:
+    """
+    Get the file modification time from the system.
+    """
+    try:
+        stat = os.stat(file_path)
+        return datetime.fromtimestamp(stat.st_mtime)
+    except OSError:
+        return datetime.now()
+
 
 def extract_metadata(file_path: str, filename: str, image_obj: Optional[Image.Image] = None, extract_location_details: bool = True) -> Dict[str, Any]:
     """
@@ -149,13 +160,18 @@ def extract_metadata(file_path: str, filename: str, image_obj: Optional[Image.Im
                         results = rg.search([(gps["latitude"], gps["longitude"])], mode=1)
                         if results:
                             res = results[0]
+                            district = res.get("admin_3", "")
+                            name = res.get("admin_4","")
+                            if name == "":
+                                name = res.get("name","")
                             metadata["location_details"] = {
                                 "latitude": gps["latitude"],
                                 "longitude": gps["longitude"],
-                                "city": res.get("name", ""),
-                                "province": res.get("admin1", ""),
-                                "country": res.get("cc", ""),
-                                "address": f"{res.get('name', '')}, {res.get('admin1', '')}, {res.get('cc', '')}"
+                                "district": district,
+                                "city": res.get("admin_2", ""),
+                                "province": res.get("admin_1", ""),
+                                "country": res.get("country", ""),
+                                "address": f"{res.get('admin_1', '')}{res.get('admin_2', '')}{district}{name}"
                             }
                     except Exception as e:
                         print(f"Reverse geocoding error: {e}")
@@ -169,6 +185,9 @@ def extract_metadata(file_path: str, filename: str, image_obj: Optional[Image.Im
         try:
             photo_time = extract_datetime_from_filename(filename)
             if photo_time:
+                metadata["photo_time"] = photo_time
+            else:
+                photo_time = get_file_time_form_system(file_path)
                 metadata["photo_time"] = photo_time
         except Exception:
             pass

@@ -2,6 +2,7 @@ import asyncio
 import logging
 import concurrent.futures
 import json
+from re import S
 from typing import List, Dict, Set, Any
 from uuid import UUID
 from datetime import datetime
@@ -47,9 +48,10 @@ class TaskManager:
         self.worker_task = None
         self.result_task = None
         self.process_pool = None
+        self.thread_pool = None
         self.result_queue = asyncio.Queue()
         self.scan_status = DEFAULT_SCAN_STATUS.copy()
-        
+
         # Category Management
         self.paused_categories: Set[str] = set()
         self.category_map = {
@@ -57,10 +59,10 @@ class TaskManager:
             TaskType.PROCESS_BASIC: 'scanning',
             TaskType.PROCESS_IMAGE: 'scanning', # Legacy
             TaskType.GENERATE_THUMBNAIL: 'scanning',
-            
+
             TaskType.EXTRACT_METADATA: 'metadata',
             TaskType.REBUILD_METADATA: 'metadata',
-            
+
             TaskType.RECOGNIZE_FACE: 'face',
             TaskType.CLASSIFY_IMAGE: 'face', # or 'ai'
             TaskType.OCR: 'ocr',
@@ -79,7 +81,7 @@ class TaskManager:
             if not state:
                 state = SystemState(key=key)
                 db.add(state)
-            
+
             if isinstance(value, (set, list, dict)):
                 state.value = json.dumps(value, default=str)
             else:
@@ -111,11 +113,12 @@ class TaskManager:
             return
         self.running = True
         self._recover_unfinished_tasks()
-        
+
         # Use config for max_workers
         max_workers = config_manager.config.task.max_concurrent_tasks
         self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=max_workers)
-        
+        self.thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+
         self.worker_task = asyncio.create_task(self.worker_loop())
         self.result_task = asyncio.create_task(self.result_loop())
         logging.info(f"TaskManager started with {max_workers} workers")
@@ -129,7 +132,10 @@ class TaskManager:
         if self.process_pool:
             self.process_pool.shutdown(wait=False)
             self.process_pool = None
-        
+        if self.thread_pool:
+            self.thread_pool.shutdown(wait=False)
+            self.thread_pool = None
+
         # Save final status
         self._save_system_state('scan_status', self.scan_status)
         logging.info("TaskManager stopped")
@@ -150,7 +156,7 @@ class TaskManager:
         stats = []
         # Define categories to show
         categories = ['scanning', 'metadata', 'face', 'ocr']
-        
+
         # Priority map for categories (higher is better)
         cat_priority = {
             'scanning': 10,
@@ -192,7 +198,7 @@ class TaskManager:
         # Refresh first
         paused_list = self._load_system_state('paused_categories', [])
         self.paused_categories = set(paused_list)
-        
+
         self.paused_categories.add(category)
         self._save_system_state('paused_categories', list(self.paused_categories))
         logging.info(f"Paused task category: {category}")
@@ -201,7 +207,7 @@ class TaskManager:
         # Refresh first
         paused_list = self._load_system_state('paused_categories', [])
         self.paused_categories = set(paused_list)
-        
+
         if category in self.paused_categories:
             self.paused_categories.remove(category)
             self._save_system_state('paused_categories', list(self.paused_categories))
@@ -210,7 +216,7 @@ class TaskManager:
     def add_task(self, db: Session, type: str, payload: dict, priority: int = 0):
         if priority == 0:
             priority = DEFAULT_PRIORITIES.get(type, 0)
-            
+
         task = Task(type=type, payload=payload, priority=priority)
         db.add(task)
         db.commit()
@@ -221,29 +227,45 @@ class TaskManager:
         """Batch add tasks"""
         if not tasks_data:
             return
-        
+
         tasks = []
         for t_data in tasks_data:
             priority = t_data.get('priority', 0)
             if priority == 0:
                 priority = DEFAULT_PRIORITIES.get(t_data['type'], 0)
-            
+
             tasks.append(Task(
                 type=t_data['type'],
                 payload=t_data.get('payload', {}),
                 priority=priority,
                 status=TaskStatus.PENDING
             ))
-            
+
         db.bulk_save_objects(tasks)
         db.commit()
         # No refresh for bulk
-        
+
         # Update stats locally if needed, or let worker update
         # If we are not the worker, we shouldn't touch scan_status because it will be overwritten by worker from DB
         if self.running:
             self.scan_status['total_files'] += len(tasks)
             self._save_system_state('scan_status', self.scan_status)
+
+    def release_resources(self):
+        """Release all resources"""
+        if self.process_pool:
+            logging.info("Shutting down process pool to release resources")
+            self.process_pool.shutdown(wait=False)
+            self.process_pool = None
+        if self.thread_pool:
+            logging.info("Shutting down thread pool to release resources")
+            self.thread_pool.shutdown(wait=False)
+            self.thread_pool = None
+        thumbnail.release_resources()
+        metadata.release_resources()
+        ocr.release_resources()
+        scan.release_resources()
+        face.release_resources()
 
     async def worker_loop(self):
         logging.info("TaskManager worker loop started")
@@ -269,7 +291,7 @@ class TaskManager:
                 if active_tasks:
                     self.scan_status['running'] = True
                     idle_start_time = None
-                
+
                 # Manage Pool Lifecycle (Resource Release)
                 if not active_tasks:
                     if idle_start_time is None:
@@ -279,10 +301,8 @@ class TaskManager:
                         self._save_system_state('scan_status', self.scan_status)
                     elif (datetime.now() - idle_start_time).total_seconds() > 30:
                         # Idle for 30s, shutdown pool to release resources
-                        if self.process_pool:
-                            logging.info("TaskManager idle for 30s, shutting down process pool to release resources")
-                            self.process_pool.shutdown(wait=False)
-                            self.process_pool = None
+                        self.release_resources()
+
                 else:
                     # Ensure pool exists
                     if self.process_pool is None:
