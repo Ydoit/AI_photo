@@ -1,9 +1,10 @@
+import json
 import os
 import shutil
 import uuid
 from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Header, Request, status, Form, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Header, Request, status, Form, UploadFile, File, Query
 from fastapi.responses import FileResponse, StreamingResponse, Response
 from sqlalchemy.orm import Session
 
@@ -171,3 +172,16 @@ def finish_upload_generic(
     shutil.rmtree(chunk_dir)
 
     return save_and_create_photo(db, final_path, file_name, album_id, photo_id)
+
+@router.get('/geojson')
+def get_geojson(level: str = Query("city")):
+    if level not in ["province", "city", "district"]:
+        raise HTTPException(status_code=400, detail="Invalid level. Must be province, city, or district.")
+    try:
+        level_cn = {"province": "省", "city": "市", "district": "县"}[level]
+        path = os.path.join("resources","geo_data", f"中国_{level_cn}.geojson")
+        return FileResponse(path, media_type="application/geo+json", headers={"Cache-Control": "public, max-age=31536000"})
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"GeoJSON file for {level} not found.")
+
+    return geojson

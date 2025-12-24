@@ -16,6 +16,13 @@ export const locationService = {
     });
     return data;
   },
+
+  async getDistribution(level: 'city' | 'province' = 'city') {
+    const { data } = await api.get<{name: string, count: number, level: string}[]>('/api/locations/distribution', {
+      params: { level }
+    });
+    return data;
+  },
   
   async getLocationPhotos(name: string, level: 'city' | 'province' = 'city', skip: number = 0, limit: number = 50) {
     const { data } = await api.get<Photo[]>(`/api/locations/${name}/photos`, {

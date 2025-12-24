@@ -79,3 +79,26 @@ def get_location_photos(db: Session, name: str, level: str = 'city', skip: int =
     ).order_by(
         desc(Photo.photo_time)
     ).offset(skip).limit(limit).all()
+
+def get_location_distribution(db: Session, level: str = 'city'):
+    if level == 'city':
+        group_col = PhotoMetadata.city
+    elif level == 'province':
+        group_col = PhotoMetadata.province
+    else:
+        return []
+
+    # Group by location and count, no limit
+    results = db.query(
+        group_col.label('name'),
+        func.count(Photo.id).label('count')
+    ).join(
+        PhotoMetadata, Photo.id == PhotoMetadata.photo_id
+    ).filter(
+        group_col.is_not(None),
+        group_col != ''
+    ).group_by(
+        group_col
+    ).all()
+
+    return [{"name": r.name, "count": r.count, "level": level} for r in results]

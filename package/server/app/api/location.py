@@ -20,6 +20,16 @@ def get_locations(
     """
     return crud.get_locations(db, level, skip, limit)
 
+@router.get("/distribution", response_model=List[schemas.LocationBase], summary="获取位置分布数据")
+def get_location_distribution(
+    level: str = Query('city', regex='^(city|province)$', description="分组级别：city 或 province"),
+    db: Session = Depends(get_db)
+):
+    """
+    获取所有位置的分布数据（仅包含名称和数量），用于地图展示。
+    """
+    return crud.get_location_distribution(db, level)
+
 @router.get("/{name}/photos", response_model=List[photo_schemas.Photo], summary="获取位置照片列表")
 def get_location_photos(
     name: str = Path(..., description="位置名称"),

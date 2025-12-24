@@ -85,7 +85,7 @@ RG_COLUMNS = [
 
 # Name of cities file created by this library
 RG_FILE = 'rg_cities1000.csv'
-RG_FILE = 'rg_cities_cn0.csv'
+RG_FILE = 'rg_cities_cn.csv'
 
 # WGS-84 major axis in kms
 A = 6378.137
