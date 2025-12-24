@@ -14,7 +14,8 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "sqlite:///./data/railway.db"  # SQLite数据库路径
-DATABASE_URL = "postgresql://msi:msi4090@192.168.1.113:5532/railway"
-engine = create_engine(DATABASE_URL)
+RAILWAY_DB_URL = os.getenv("RAILWAY_DB_URL", "")
+if not RAILWAY_DB_URL:
+    raise ValueError("RAILWAY_DB_URL environment variable is not set")
+engine = create_engine(RAILWAY_DB_URL)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)

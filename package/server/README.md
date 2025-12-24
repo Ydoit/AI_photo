@@ -1,36 +1,100 @@
-# TrailSnap 后端代码
+# TrailSnap Backend Service
 
-## 使用说明
+TrailSnap 的后端核心服务，基于 FastAPI 构建，负责业务逻辑处理、数据存储与检索、以及与 AI 服务的交互。
 
-在`./data`目录创建`.env`文件并写入下面几个环境变量
+## 目录
+1. [前置条件](#前置条件)
+2. [快速开始](#快速开始)
+3. [数据库配置](#数据库配置)
+4. [配置说明](#配置说明)
+5. [开发指南](#开发指南)
 
-```text
-BLOG_URL=http://localhost:8088
-BLOG_API=http://localhost:8088
-BLOG_TOKEN=
-SIYUAN_TOKEN=
-GITHUB_USERNAME=
-GITHUB_TOKEN=
+## 前置条件
+
+在启动 Server 之前，必须先启动 PostgreSQL 数据库，并确保安装了 `pgvector` 插件。
+
+### 数据库启动 (Docker Compose)
+
+推荐使用 Docker Compose 启动数据库，已配置好 `pgvector` 环境。
+
+1. **配置文件**: 参考[`docker-compose-pg.yml`](../../docker-compose/docker-compose-pg.yml)。
+2. **初始化脚本**: 需要在 `docker-compose-pg.yml` 中指定的 `init-scripts` 目录下创建 `01_create_vector_extension.sql` (如果尚未创建)。
+
+   ```sql
+   -- 01_create_vector_extension.sql
+   \c postgres;
+   CREATE EXTENSION IF NOT EXISTS vector;
+   CREATE DATABASE IF NOT EXISTS trailsnap;
+   CREATE DATABASE IF NOT EXISTS railway;
+   ```
+
+3. **启动命令**:
+   ```bash
+   docker-compose -f docker-compose-pg.yml up -d
+   ```
+
+## 快速开始
+
+### 1. 安装依赖
+
+Python 版本要求: >=3.10 (开发环境使用 3.12)
+
+推荐使用 `uv` 包管理器：
+```bash
+pip install uv
+uv sync
 ```
 
-参数说明：
-- BLOG_URL: VanBlog地址，[部署方式](https://vanblog.mereith.com/)（推荐使用域名，外部可见）
-- BLOG_API: VanBlog的api地址，（推荐使用内网地址，仅内部使用）
-- BLOG_TOKEN: VanBlog的API token，[获取方式](https://vanblog.mereith.com/advanced/token.html)
-- SIYUAN_TOKEN: 思源笔记的token
-- GITHUB_USERNAME: GitHub的用户名
-- GITHUB_TOKEN: GitHub的token（可选，没有token会限制请求频率）
-
-### 安装依赖
-
-Python版本>=3.10(开发版本是3.12)
-
+或者使用 `pip`:
 ```bash
 pip install -r requirements.txt
 ```
 
-### 运行
+### 2. 环境变量配置
+
+在 `package/server/data` 目录下创建 `.env` 文件，写入以下配置：
+
+```env
+# 主数据库 (根据实际情况修改 host, user, password)
+DB_URL=postgresql://msi:msi4090@localhost:5532/trailsnap
+
+# 铁路数据库
+RAILWAY_DB_URL=postgresql://msi:msi4090@localhost:5532/railway
+
+# AI 服务地址
+AI_SERVICE_URL=http://localhost:8001
+```
+
+### 3. 运行服务
 
 ```bash
-uvicorn main:app --host 0.0.0.0 --port 8000
+# 开发模式
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+
+启动后访问 Swagger 文档: http://localhost:8000/docs
+
+## 数据库迁移
+
+本项目使用 **Alembic** 进行数据库版本控制。
+
+- **初始化/生成迁移脚本**:
+  ```bash
+  alembic revision --autogenerate -m "描述"
+  ```
+- **执行迁移**:
+  ```bash
+  alembic upgrade head
+  ```
+
+## 目录结构
+
+- `app/`: 应用代码
+  - `api/`: 路由接口
+  - `core/`: 核心配置
+  - `crud/`: 数据库操作
+  - `db/`: 数据库模型
+  - `schemas/`: Pydantic 验证模型
+  - `service/`: 业务服务
+- `railway/`: 铁路数据相关逻辑
+- `data/`: 配置文件与数据存储
