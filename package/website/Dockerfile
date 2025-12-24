@@ -20,8 +20,6 @@ RUN pnpm install --verbose
 # 构建生产版本（会生成dist目录）
 RUN pnpm run build
 
-
-
 # 第二阶段：用Nginx托管静态文件
 FROM nginx:alpine as production-stage
 

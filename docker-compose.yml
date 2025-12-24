@@ -1,50 +1,28 @@
-version: "3.9"
+version: '3.8'
 
 services:
-  backend:
-    build: ./backend
+  server:
+    build: ./package/server
+    # 用环境变量 ${TAG} 动态指定版本（默认 fallback 到 v0.1.0）
+    image: siyuan044/trailsnap-server:${TAG:-v0.1.0}
+    restart: always
+    expose: [ "8000" ]
+    ports: [ "8800:8000" ]
+    networks: [ app-network ]
     volumes:
-      - ./backend:/app
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
+      - ./package/server/data:/app/data
+      - F:\Photos:/app/Photos
     environment:
-      - DATABASE_URL=postgresql+asyncpg://user:password@db:5432/imagedb
+      - DATABASE_URL=postgresql://msi:msi4090@192.168.1.113:5532/trailsnap
 
   frontend:
-    build: ./frontend
-    volumes:
-      - ./frontend:/app
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-
-  db:
-    image: postgres:15
+    build: ./package/website
+    image: siyuan044/trailsnap-frontend:${TAG:-v0.1.0}
     restart: always
-    environment:
-      POSTGRES_DB: imagedb
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-    ports:
-      - "5432:5432"
-    volumes:
-      - db_data:/var/lib/postgresql/data
+    ports: [ "8082:80" ]
+    depends_on: [ server ]
+    networks: [ app-network ]
 
-  minio:
-    image: minio/minio
-    command: server /data --console-address ":9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: minio
-      MINIO_ROOT_PASSWORD: minio123
-    volumes:
-      - minio_data:/data
-
-volumes:
-  db_data:
-  minio_data:
+networks:
+  app-network:
+    driver: bridge
