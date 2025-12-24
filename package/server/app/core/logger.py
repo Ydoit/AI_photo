@@ -1,3 +1,4 @@
+from fileinput import filename
 import logging
 import logging.handlers
 import os
@@ -43,8 +44,9 @@ class DailySizeRotatingFileHandler(logging.handlers.RotatingFileHandler):
     Handler that rotates files based on size and changes filename based on date.
     Also ensures total number of log files does not exceed limit.
     """
-    def __init__(self, log_dir: str, maxBytes: int, backupCount: int):
+    def __init__(self,filename: str, log_dir: str, maxBytes: int, backupCount: int):
         self.log_dir_path = Path(log_dir)
+        self.filename = filename
         try:
             self.log_dir_path.mkdir(parents=True, exist_ok=True)
         except Exception as e:
@@ -62,7 +64,7 @@ class DailySizeRotatingFileHandler(logging.handlers.RotatingFileHandler):
         super().__init__(filename, maxBytes=maxBytes, backupCount=100, encoding='utf-8')
         
     def _get_filename(self, date_obj) -> str:
-        return str(self.log_dir_path / f"{date_obj.strftime('%Y-%m-%d')}.log")
+        return str(self.log_dir_path / f"{self.filename}-{date_obj.strftime('%Y-%m-%d')}.log")
 
     def emit(self, record):
         try:
@@ -110,7 +112,7 @@ class DailySizeRotatingFileHandler(logging.handlers.RotatingFileHandler):
             # Avoid crashing logging if cleanup fails
             pass
 
-def setup_logging():
+def setup_logging(filename="main"):
     """
     Configure the logging system.
     Returns the listener so it can be stopped if needed.
@@ -123,6 +125,7 @@ def setup_logging():
     
     # File Handler
     file_handler = DailySizeRotatingFileHandler(
+        filename=filename,
         log_dir=LOG_DIR,
         maxBytes=MAX_BYTES,
         backupCount=BACKUP_COUNT

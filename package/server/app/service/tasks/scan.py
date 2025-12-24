@@ -172,7 +172,7 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
         new_tasks.append(Task(
             type=TaskType.PROCESS_BASIC, # Use Basic Task
             payload={'file_path': fp},
-            priority=10, 
+            priority=10,
             status=TaskStatus.PENDING
         ))
 
@@ -206,17 +206,18 @@ async def handle_process_basic(task_manager, task: Task, db: Session):
     photo_id = uuid4()
     storage_root = storage._get_storage_root(db)
 
-    loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(
-        task_manager.process_pool,
-        process_basic_cpu_job,
-        file_path,
-        photo_id,
-        storage_root
-    )
+    # loop = asyncio.get_running_loop()
+    # result = await loop.run_in_executor(
+    #     task_manager.thread_pool,
+    #     process_basic_cpu_job,
+    #     file_path,
+    #     photo_id,
+    #     storage_root
+    # )
+    result = process_basic_cpu_job(file_path, photo_id, storage_root)
     if not result['success']:
         raise Exception(result.get('error', 'Unknown error'))
-    
+
     # Construct PhotoCreate data for bulk insert in TaskManager
     meta = result['meta']
     ext = os.path.splitext(result['file_name'])[1]
@@ -226,7 +227,6 @@ async def handle_process_basic(task_manager, task: Task, db: Session):
 
     # We need to return raw data, not schemas, because bulk_create_photos expects dicts or similar?
     # Actually album_crud.batch_create_photos expects schemas.PhotoCreate
-    
     photo_create = photo_schemas.PhotoCreate(
         file_type=file_type,
         size=result['size'],
@@ -236,22 +236,22 @@ async def handle_process_basic(task_manager, task: Task, db: Session):
         filename=result['file_name'],
         photo_time=meta["photo_time"]
     )
-    
+
     # Pass metadata separately? No, PhotoCreate doesn't have metadata fields except photo_time
     # We need to pass metadata info too.
     # album_crud.batch_create_photos takes list of {photo: PhotoCreate, metadata: PhotoMetadataCreate}?
-    # Let's check album_crud.batch_create_photos. 
+    # Let's check album_crud.batch_create_photos.
     # For now, I will construct a dict that TaskManager can understand.
-    
+
     metadata_create = PhotoMetadataCreate(
         exif_info=meta["exif_info"],
         # Basic task doesn't have location details yet
     )
-    
+
     # Attach ID we generated
     # photo_create doesn't have ID field, but we need to force it to use the one we used for thumbnail
     # So we need to pass it along.
-    
+
     return {
         'photo_create_data': {
             'photo': photo_create,
@@ -272,7 +272,7 @@ async def handle_process_image(task_manager, task: Task, db: Session):
 
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(
-        task_manager.process_pool,
+        task_manager.thread_pool,
         process_image_cpu_job,
         file_path,
         photo_id,

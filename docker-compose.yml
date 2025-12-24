@@ -13,7 +13,8 @@ services:
       - ./package/server/data:/app/data
       - F:\Photos:/app/Photos
     environment:
-      - DATABASE_URL=postgresql://msi:msi4090@192.168.1.113:5532/trailsnap
+      - DB_URL=postgresql://msi:msi4090@192.168.1.113:5532/trailsnap
+      - RAILWAY_DB_URL=postgresql://msi:msi4090@192.168.1.113:5532/railway
 
   frontend:
     build: ./package/website

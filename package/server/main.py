@@ -37,7 +37,7 @@ worker_process = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global log_listener, worker_process
-    log_listener = setup_logging()
+    log_listener = setup_logging('api')
 
     # Start Worker Process
     # Start a separate process for background tasks
@@ -63,12 +63,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="TrailSnap - 足迹相册", lifespan=lifespan)
 
-from app.service.task_manager import TaskManager
-
 # Initialize logging listener
 log_listener = None
 
-@app.middleware("http")
+# @app.middleware("http")
 async def log_requests(request: Request, call_next):
     # 2. 判断当前请求是否在排除列表中，若是则直接处理请求，不记录日志
     if request.url.path.startswith('/medias'):

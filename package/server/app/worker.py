@@ -7,13 +7,13 @@ import signal
 from dotenv import load_dotenv
 
 from app.core.logger import setup_logging
-from app.service.task_manager import TaskManager
+from app.service.task_worker import TaskWorker
 from app.db.session import SessionLocal
 
 async def _run():
-    manager = TaskManager.get_instance()
-    manager.start()
-    
+    worker = TaskWorker.get_instance()
+    worker.start()
+
     # Keep the loop alive
     while True:
         await asyncio.sleep(1)
@@ -22,32 +22,31 @@ def run_worker():
     load_dotenv('./data/.env')
     """Entry point for the worker process"""
     # Setup logging for this process
-    setup_logging()
+    setup_logging('task')
     logging.info(f"Starting Worker Process (PID: {os.getpid()})...")
-    
+
     # Windows compatibility for asyncio loop
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-        
+
     try:
         if sys.platform != 'win32':
             # Signal handling for graceful shutdown (Linux/Mac)
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            
+
             # Register signal handlers
-            # Note: asyncio.run handles this in Python 3.7+, but let's be explicit or use asyncio.run
             pass
-            
+
         asyncio.run(_run())
     except (KeyboardInterrupt, SystemExit):
         logging.info("Worker process received stop signal")
     except Exception as e:
         logging.error(f"Worker process crashed: {e}", exc_info=True)
     finally:
-        logging.info("Stopping TaskManager in worker process...")
+        logging.info("Stopping TaskWorker in worker process...")
         try:
-            TaskManager.get_instance().stop()
+            TaskWorker.get_instance().stop()
         except:
             pass
         logging.info("Worker process stopped")

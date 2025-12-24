@@ -37,7 +37,7 @@ async def handle_generate_thumbnail(task_manager, task: Task, db: Session):
     loop = asyncio.get_running_loop()
     
     res = await loop.run_in_executor(
-        task_manager.process_pool,
+        task_manager.thread_pool,
         rebuild_thumbnail_cpu_job,
         photo.file_path,
         photo.id,

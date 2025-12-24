@@ -68,7 +68,7 @@ def remove_directory(payload: dict, db: Session = Depends(get_db)):
         db.commit()
 
         # Trigger scan to update index
-        TaskManager.get_instance().add_task(db, TaskType.SCAN_FOLDER, {'scan_roots': current})
+        # TaskManager.get_instance().add_task(db, TaskType.SCAN_FOLDER, {'scan_roots': current})
     return {'primary': get_storage_root(db), 'external': current}
 
 @router.get('/storage-root')
