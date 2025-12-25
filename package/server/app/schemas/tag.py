@@ -16,6 +16,17 @@ class Tag(TagBase):
     class Config:
         from_attributes = True
 
+from app.schemas.photo import Photo
+
+class TagStats(BaseModel):
+    id: UUID
+    tag_name: str
+    count: int
+    cover: Optional[Photo] = None
+
+    class Config:
+        from_attributes = True
+
 class PhotoTagAdd(BaseModel):
     tag_name: str
     confidence: Optional[float] = 1.0

@@ -446,28 +446,28 @@ class TaskWorker:
                     db.add(Task(
                         type=TaskType.EXTRACT_METADATA,
                         payload={'file_path': file_path, 'photo_id': photo_id},
-                        priority=5,
+                        priority=DEFAULT_PRIORITIES[TaskType.EXTRACT_METADATA],
                         status=TaskStatus.PENDING
                     ))
                     # 2. Face Recognition Task (Low Priority)
                     db.add(Task(
                         type=TaskType.RECOGNIZE_FACE,
                         payload={'file_path': file_path, 'photo_id': photo_id},
-                        priority=1,
+                        priority=DEFAULT_PRIORITIES[TaskType.RECOGNIZE_FACE],
                         status=TaskStatus.PENDING
                     ))
                     # 3. OCR Task (Low Priority)
                     db.add(Task(
                         type=TaskType.OCR,
                         payload={'file_path': file_path, 'photo_id': photo_id},
-                        priority=1,
+                        priority=DEFAULT_PRIORITIES[TaskType.OCR],
                         status=TaskStatus.PENDING
                     ))
                     # 4. Classification Task (Low Priority)
                     db.add(Task(
                         type=TaskType.CLASSIFY_IMAGE,
                         payload={'file_path': file_path, 'photo_id': photo_id},
-                        priority=1,
+                        priority=DEFAULT_PRIORITIES[TaskType.CLASSIFY_IMAGE],
                         status=TaskStatus.PENDING
                     ))
 

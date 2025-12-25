@@ -1,3 +1,5 @@
+import logging
+import traceback
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
@@ -18,7 +20,8 @@ class SearchResult(BaseModel):
 class TextSearchRequest(BaseModel):
     text: str
     limit: int = 20
-    threshold: float = 0.0
+    skip: int = 0
+    threshold: float = 0.2
 
 @router.post("/text", response_model=List[SearchResult])
 async def search_by_text(
@@ -41,27 +44,22 @@ async def search_by_text(
                 embedding = await resp.json()
 
         # 2. Search Vectors
-        results = crud_vector.search_similar_vectors(db, embedding, request.limit)
+        results = crud_vector.search_similar_vectors(db, embedding, request.limit, request.skip)
 
         # 3. Format Response
         response = []
-        for photo_id, distance in results:
-            # Convert distance to similarity score (0 to 1) if possible, 
-            # or just return distance (lower is better) or 1 - distance
-            # Cosine distance is 1 - cosine_similarity.
-            # So score = 1 - distance.
+        for vector, distance in results:
             score = 1 - distance
-            
             if score < request.threshold:
                 continue
 
-            photo = crud_album.get_photo(db, photo_id)
+            photo = crud_album.get_photo(db, vector.photo_id)
             if photo:
                 response.append(SearchResult(photo=photo, score=score))
-
         return response
 
     except Exception as e:
+        logging.info(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/image", response_model=List[SearchResult])
@@ -100,15 +98,14 @@ async def search_by_image(
 
         # 3. Format Response
         response = []
-        for photo_id, distance in results:
+        for vector, distance in results:
             score = 1 - distance
             if score < threshold:
                 continue
-                
-            photo = crud_album.get_photo(db, photo_id)
+            
+            photo = crud_album.get_photo(db, vector.photo_id)
             if photo:
                 response.append(SearchResult(photo=photo, score=score))
-
         return response
 
     except Exception as e:

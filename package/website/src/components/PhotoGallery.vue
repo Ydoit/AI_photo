@@ -189,19 +189,19 @@
                                 @vue:mounted="loadImage(img)"
                                 @vue:unmounted="cancelImageLoad(img.id)"
                             >
-                                <img 
-                                    :src="loadedImages[img.id] || placeholderSrc" 
+                                <img
+                                    :src="loadedImages[img.id] || placeholderSrc"
                                     class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                    :alt="img.category" 
+                                    :alt="img.filename"
                                 />
                                 
                                 <!-- Selection Checkbox (Top Left) -->
-                                <div 
+                                <div
                                     class="absolute top-2 left-2 z-30 transition-opacity duration-200 cursor-pointer"
                                     :class="(isSelectionMode || localSelectedIds.has(img.id)) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
                                     @click.stop="toggleSelection(img)"
                                 >
-                                    <div 
+                                    <div
                                     class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 backdrop-blur-sm shadow-sm"
                                     :class="localSelectedIds.has(img.id) ? 'bg-primary-500 border-primary-500' : 'bg-black/10 border-white/70 hover:bg-black/40'"
                                     >
@@ -272,8 +272,8 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 import { CalendarDays, PlayCircle, Image as ImageIcon, MapPin, Check, X, Download, Trash2, FolderMinus, Loader2, PlaySquare, Play, PlayIcon, PlayCircleIcon, Plus, FolderPlus, PhoneOutgoingIcon, PictureInPicture, CloverIcon, ImageMinusIcon, ImagePlusIcon, RefreshCcw } from 'lucide-vue-next'
 import { format } from 'date-fns'
 import { useAlbumStore } from '@/stores/albumStore'
-import { usePhotoStore, type AlbumImage } from '@/stores/photoStore'
-import type { TimelineStats } from '@/types/album'
+import { usePhotoStore } from '@/stores/photoStore'
+import type { TimelineStats, AlbumImage } from '@/types/album'
 import { useVirtualLayout, type MonthBlock, type DayBlock } from '@/composables/useVirtualLayout'
 import { useWindowScroll, useDebounceFn } from '@vueuse/core'
 

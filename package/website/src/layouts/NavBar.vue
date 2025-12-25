@@ -21,6 +21,36 @@
         ></span>
       </RouterLink>
 
+      <div class="relative transition-all duration-300 ease-in-out" :class="[isSearchExpanded ? 'w-48' : 'w-8']">
+        <button 
+          @click="toggleSearch"
+          class="absolute left-0 top-1/2 -translate-y-1/2 p-1.5 text-gray-500 hover:text-primary-500 transition-colors z-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+          :class="{'bg-transparent hover:bg-transparent dark:hover:bg-transparent': isSearchExpanded}"
+          title="搜索"
+        >
+          <Search class="w-4 h-4" />
+        </button>
+        
+        <input
+          v-show="isSearchExpanded"
+          ref="searchInputRef"
+          v-model="searchText"
+          @keydown.enter="handleSearch"
+          @blur="handleBlur"
+          type="text"
+          placeholder="搜索"
+          class="w-full pl-9 pr-7 py-1 text-sm bg-transparent border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:border-primary-500 text-gray-700 dark:text-gray-200"
+        />
+        
+        <button 
+          v-if="isSearchExpanded && searchText"
+          @click="clearSearch"
+          class="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+        >
+          <X class="w-3 h-3" />
+        </button>
+      </div>
+
       <!-- More Menu -->
       <div class="relative" ref="moreMenuRef">
         <button
@@ -115,12 +145,13 @@
 
 <script setup>
 import { injectTheme } from '@/composables/useTheme.js'
-import { ref } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import {
-  Palette, Sun, Moon, Check, Image as ImageIcon, Images, MoreHorizontal, ChevronDown
+  Palette, Sun, Moon, Check, Image as ImageIcon, Images, MoreHorizontal, ChevronDown, Search, X
 } from 'lucide-vue-next';
-import { useRoute } from 'vue-router'
-import { onClickOutside } from '@vueuse/core' 
+import { useRouter } from 'vue-router'
+import { onClickOutside } from '@vueuse/core'
+import { usePhotoStore } from '@/stores/photoStore'
 
 // 导航数据
 const navLinks = [
@@ -138,6 +169,57 @@ const moreLinks = [
 
 const showMoreMenu = ref(false);
 const moreMenuRef = ref(null);
+
+const router = useRouter();
+const store = usePhotoStore();
+const searchText = ref('');
+const isSearchExpanded = ref(false);
+const searchInputRef = ref(null);
+
+// Sync with store
+watch(() => store.currentContext, (ctx) => {
+  if (ctx.type === 'search' && ctx.id) {
+    searchText.value = ctx.id;
+    isSearchExpanded.value = true;
+  } else if (ctx.type !== 'search') {
+    searchText.value = '';
+    isSearchExpanded.value = false;
+  }
+});
+
+const toggleSearch = () => {
+  if (isSearchExpanded.value && searchText.value) {
+    handleSearch();
+  } else {
+    isSearchExpanded.value = !isSearchExpanded.value;
+    if (isSearchExpanded.value) {
+      nextTick(() => {
+        searchInputRef.value?.focus();
+      });
+    }
+  }
+};
+
+const handleBlur = () => {
+  // Give some time for other interactions (like clear button)
+  setTimeout(() => {
+    if (!searchText.value) {
+      isSearchExpanded.value = false;
+    }
+  }, 200);
+};
+
+const handleSearch = () => {
+  if (searchText.value.trim()) {
+    router.push({ path: '/search', query: { q: searchText.value } });
+  }
+};
+
+const clearSearch = () => {
+  searchText.value = '';
+  store.loadPhotos(true); // Reset to default
+  searchInputRef.value?.focus();
+};
 
 onClickOutside(moreMenuRef, () => {
   showMoreMenu.value = false;
@@ -207,17 +289,6 @@ onClickOutside(themeMenuRef, () => {
   padding-left: 0;
   font-weight: bold;
 }
-
-/* 解决导航链接激活状态样式问题 */
-/* 注意：这里使用 :deep(.router-link-active) 可能会与全局主题冲突，
-   请确保您已经在 App.vue 中定义了 .router-link-active 的主题色映射，
-   或者直接使用 'bg-primary-500' 等类名。 
-*/
-/* :deep(.router-link-active) {
-  font-weight: bold;
-  color: var(--theme-primary) !important; 
-}
-*/
 
 @media (max-width: 767px) {
   .destop-only {

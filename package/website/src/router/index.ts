@@ -15,6 +15,9 @@ const PeopleList = () => import('@/views/album/people/PeopleList.vue');
 const PeopleDetail = () => import('@/views/album/people/PeopleDetail.vue');
 const LocationList = () => import('@/views/album/location/LocationList.vue');
 const LocationDetail = () => import('@/views/album/location/LocationDetail.vue');
+const ClassificationList = () => import('@/views/album/intelligent-classification/ClassificationList.vue');
+const ClassificationDetail = () => import('@/views/album/intelligent-classification/ClassificationDetail.vue');
+const SearchResult = () => import('@/views/SearchResult.vue');
 
 const NotFound = () => import('@/views/NotFound.vue');
 const AboutPage = () => import('@/views/AboutPage.vue');
@@ -34,6 +37,9 @@ const routes: RouteRecordRaw[] = [
       { path: '/people/:id', name: 'PeopleDetail', component: PeopleDetail, meta: { title: '人物详情' } },
       { path: '/location', name: 'LocationList', component: LocationList, meta: { title: '位置相册' } },
       { path: '/location/:name', name: 'LocationDetail', component: LocationDetail, meta: { title: '位置详情' } },
+      { path: '/classification', name: 'ClassificationList', component: ClassificationList, meta: { title: '智能分类' } },
+      { path: '/classification/:name', name: 'ClassificationDetail', component: ClassificationDetail, meta: { title: '分类详情' } },
+      { path: '/search', name: 'SearchResult', component: SearchResult, meta: { title: '搜索结果' } },
       { path: '/photos', name: 'Photos', component: PhotosPage, meta: { title: '所有照片' } },
       { path: '/ticket', name: 'Ticket', component: TicketPage, meta: { title: '车票', keepAlive: true } },
       { path: '/statistics', name: 'Statistics', component: StatisticsPage, meta: { title: '统计' } },

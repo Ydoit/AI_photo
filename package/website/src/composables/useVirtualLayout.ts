@@ -1,6 +1,5 @@
 import { ref, computed, watch, type Ref } from 'vue'
-import type { TimelineStats, TimelineItem } from '@/types/album'
-import type { AlbumImage } from '@/stores/photoStore'
+import type { TimelineStats, TimelineItem, AlbumImage } from '@/types/album'
 
 export interface DayBlock {
   key: string // YYYY-MM-DD

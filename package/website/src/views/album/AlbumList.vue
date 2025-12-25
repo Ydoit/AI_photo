@@ -168,7 +168,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAlbumStore } from '@/stores/albumStore'
 import type { Album } from '@/types/album'
-import { Plus, Sparkles, Edit2, Trash2, Clock, Users, MapPin, FolderHeart, FolderOpen } from 'lucide-vue-next'
+import { Plus, Sparkles, Edit2, Trash2, Clock, Users, MapPin, FolderHeart, FolderOpen, Tag } from 'lucide-vue-next'
 import { albumService } from '@/api/album'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { format } from 'date-fns'
@@ -202,6 +202,13 @@ const smartAlbums = [
     description: '按地点分类',
     icon: MapPin,
     route: '/location'
+  },
+  {
+    id: 'classification',
+    title: '智能分类',
+    description: 'AI自动分类',
+    icon: Tag,
+    route: '/classification'
   }
 ]
 

@@ -73,3 +73,58 @@ def remove_tag_from_photo(db: Session, photo_id: UUID, tag_id: UUID):
         db.delete(relation)
         db.commit()
     return True
+
+from sqlalchemy import func, desc
+from app.db.models.photo import Photo
+
+def get_tags_with_stats(db: Session, skip: int = 0, limit: int = 100):
+    # Subquery to count photos per tag
+    subquery = db.query(
+        PhotoTagRelation.tag_id,
+        func.count(PhotoTagRelation.photo_id).label('count')
+    ).filter(
+        PhotoTagRelation.is_deleted == False
+    ).group_by(PhotoTagRelation.tag_id).subquery()
+    
+    # Query tags joined with count
+    tags_with_count = db.query(PhotoTag, subquery.c.count)\
+        .join(subquery, PhotoTag.id == subquery.c.tag_id)\
+        .filter(PhotoTag.is_deleted == False)\
+        .order_by(desc(subquery.c.count))\
+        .offset(skip).limit(limit).all()
+        
+    result = []
+    for tag, count in tags_with_count:
+        # Get latest photo for cover
+        cover_relation = db.query(PhotoTagRelation).filter(
+            PhotoTagRelation.tag_id == tag.id,
+            PhotoTagRelation.is_deleted == False
+        ).order_by(desc(PhotoTagRelation.created_at)).first()
+        
+        cover = None
+        if cover_relation:
+            cover = db.query(Photo).filter(Photo.id == cover_relation.photo_id).first()
+            
+        result.append(schemas.TagStats(
+            id=tag.id,
+            tag_name=tag.tag_name,
+            count=count,
+            cover=cover
+        ))
+        
+    return result
+
+def get_photos_by_tag_name(db: Session, tag_name: str, skip: int = 0, limit: int = 50):
+    tag = get_tag_by_name(db, tag_name)
+    if not tag:
+        return []
+        
+    photos = db.query(Photo)\
+        .join(PhotoTagRelation, Photo.id == PhotoTagRelation.photo_id)\
+        .filter(
+            PhotoTagRelation.tag_id == tag.id,
+            PhotoTagRelation.is_deleted == False
+        ).order_by(desc(Photo.photo_time))\
+        .offset(skip).limit(limit).all()
+        
+    return photos

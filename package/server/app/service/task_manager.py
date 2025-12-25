@@ -16,8 +16,8 @@ DEFAULT_PRIORITIES = {
     TaskType.EXTRACT_METADATA: 5,
     TaskType.REBUILD_METADATA: 5,
     TaskType.REBUILD_THUMBNAILS: 4,
-    TaskType.RECOGNIZE_FACE: 1,
-    TaskType.CLASSIFY_IMAGE: 1,
+    TaskType.RECOGNIZE_FACE: 2,
+    TaskType.CLASSIFY_IMAGE: 3,
     TaskType.OCR: 1,
 }
 

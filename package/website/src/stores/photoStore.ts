@@ -4,7 +4,8 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import { albumService } from '@/api/album'
-import type { Photo, TimelineStats, AlbumImage } from '@/types/album'
+import searchService, { type TextSearchRequest } from '@/api/search'
+import type { Photo, TimelineStats, AlbumImage, TimelineItem } from '@/types/album'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -109,7 +110,8 @@ export const usePhotoStore = defineStore('photo', () => {
   const loading = ref(false)
   const hasMore = ref(true)
   const error = ref<string | null>(null)
-  const currentContext = ref<{ type: 'all' | 'album', id?: string }>({ type: 'all' })
+  const isSearchMode = ref(false)
+  const currentContext = ref<{ type: 'all' | 'album' | 'search', id?: string }>({ type: 'all' })
   const timelineStats = ref<TimelineStats>()
 
   // --- 辅助函数 ---
@@ -361,6 +363,11 @@ export const usePhotoStore = defineStore('photo', () => {
     return thumbnail;
   }
 
+  const searchPhotos = async (query: string) => {
+    const results = await searchService.searchByText({ text: query });
+    return results;
+  }
+
   return {
     images,
     loading,
@@ -378,6 +385,8 @@ export const usePhotoStore = defineStore('photo', () => {
     deletePhotos,
     cancelAllPendingLoads,
     resetAll,
-    error
+    error,
+    isSearchMode,
+    searchPhotos
   }
 })

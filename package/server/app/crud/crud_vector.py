@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from app.db.models.image_vector import ImageVector
-from typing import List, Optional
+from typing import List, Optional, Any
 from uuid import UUID
 from pgvector.sqlalchemy import Vector
 
@@ -22,7 +22,8 @@ def create_or_update_vector(db: Session, photo_id: UUID, embedding: List[float],
 def get_vector(db: Session, photo_id: UUID) -> Optional[ImageVector]:
     return db.query(ImageVector).filter(ImageVector.photo_id == photo_id).first()
 
-def search_similar_vectors(db: Session, embedding: List[float], limit: int = 10, threshold: float = None):
+def search_similar_vectors(db: Session, embedding: List[float], limit: int = 10, offset: int = 0, threshold: float = None) -> list[
+    type[ImageVector]]:
     """
     Search for similar vectors using cosine distance (l2_distance is default for pgvector but usually cosine is preferred for CLIP).
     Actually, for normalized vectors (like CLIP), L2 distance and Cosine distance are related.
@@ -32,8 +33,9 @@ def search_similar_vectors(db: Session, embedding: List[float], limit: int = 10,
     """
     # Using cosine distance operator <=>
     # Order by distance ascending
-    query = db.query(ImageVector).order_by(ImageVector.embedding.cosine_distance(embedding)).limit(limit)
+    distance = ImageVector.embedding.cosine_distance(embedding).label("distance")
+    query = db.query(ImageVector, distance).order_by(distance).offset(offset).limit(limit)
     
     results = query.all()
-    # TODO: Filter by threshold if needed (requires calculating distance in python or query)
+    # Returns list of (ImageVector, distance) tuples
     return results
