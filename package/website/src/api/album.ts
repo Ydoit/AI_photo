@@ -132,5 +132,23 @@ export const albumService = {
 
   async getThumbnail(photoId: string) {
     const { data } = await api.get<{ thumbnail: string }>(`/api/medias/${photoId}/thumbnail`);
+  },
+
+  // Tags
+  async getPhotoTags(photoId: string) {
+    const { data } = await api.get<{id: string, tag_name: string, confidence: number}[]>(`/api/photos/${photoId}/tags`);
+    return data;
+  },
+
+  async addPhotoTag(photoId: string, tagName: string, confidence: number = 1.0) {
+    const { data } = await api.post<{id: string, tag_name: string, confidence: number}>(`/api/photos/${photoId}/tags`, {
+      tag_name: tagName,
+      confidence
+    });
+    return data;
+  },
+
+  async deletePhotoTag(photoId: string, tagId: string) {
+    await api.delete(`/api/photos/${photoId}/tags/${tagId}`);
   }
 };

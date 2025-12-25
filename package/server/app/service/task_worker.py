@@ -212,7 +212,7 @@ class TaskWorker:
                     active_io = sum(1 for t in self.active_task_map.values() if t in IO_TASKS)
                     
                     max_cpu = os.cpu_count() or 4
-                    max_io = 10 # Allow up to 10 concurrent IO tasks
+                    max_io = 30 # Allow up to 10 concurrent IO tasks
                     
                     if active_cpu < max_cpu:
                         allowed_types.extend(CPU_TASKS)

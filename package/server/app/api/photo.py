@@ -21,9 +21,11 @@ from app.crud.album import save_and_create_photo
 from app.dependencies import get_db
 from app.crud import album as crud_album
 from app.crud import face as crud_face
+from app.crud import tag as crud_tag
 
 from app.schemas import photo as schemas
 from app.schemas.metadata import PhotoMetadata, PhotoMetadataUpdate
+from app.schemas import tag as tag_schemas
 from app.service import storage
 import uuid
 import os
@@ -177,17 +179,21 @@ def update_photo(photo_id: UUID, photo: schemas.PhotoUpdate, db: Session = Depen
 # Metadata Endpoints
 
 @router.get("/{photo_id}/metadata", response_model=PhotoMetadata)
-def read_photo_metadata(photo_id: UUID, db: Session = Depends(get_db)):
-    # Ignoring album_id for metadata retrieval as it's global
+def get_photo_metadata(photo_id: UUID, db: Session = Depends(get_db)):
     db_metadata = crud_album.get_photo_metadata(db, photo_id=photo_id)
-    albums = crud_album.get_albums_by_photo_id(db, photo_id=photo_id)
-    faces_identities = crud_face.get_identities_with_details(db, photo_id=photo_id)
-
+    
     if not db_metadata:
         raise HTTPException(status_code=404, detail="Metadata not found")
+        
+    albums = crud_album.get_albums_by_photo_id(db, photo_id=photo_id)
+    faces_identities = crud_face.get_identities_with_details(db, photo_id=photo_id)
+    tags = crud_tag.get_photo_tags(db, photo_id=photo_id)
+    
     photo_metadata = PhotoMetadata.model_validate(db_metadata)
     photo_metadata.albums = albums
     photo_metadata.faces_identities = faces_identities
+    photo_metadata.tags = tags
+    
     return photo_metadata
 
 
@@ -198,4 +204,22 @@ def update_photo_metadata(
         db: Session = Depends(get_db)
 ):
     return crud_album.update_photo_metadata(db, photo_id=photo_id, metadata=metadata)
+
+
+# Tag Endpoints
+
+@router.get("/{photo_id}/tags", response_model=List[tag_schemas.PhotoTagResponse])
+def get_photo_tags(photo_id: UUID, db: Session = Depends(get_db)):
+    return crud_tag.get_photo_tags(db, photo_id)
+
+
+@router.post("/{photo_id}/tags", response_model=tag_schemas.PhotoTagResponse)
+def add_photo_tag(photo_id: UUID, tag_data: tag_schemas.PhotoTagAdd, db: Session = Depends(get_db)):
+    return crud_tag.add_tag_to_photo(db, photo_id, tag_data.tag_name, tag_data.confidence)
+
+
+@router.delete("/{photo_id}/tags/{tag_id}")
+def delete_photo_tag(photo_id: UUID, tag_id: UUID, db: Session = Depends(get_db)):
+    crud_tag.remove_tag_from_photo(db, photo_id, tag_id)
+    return {"message": "Tag deleted successfully"}
 

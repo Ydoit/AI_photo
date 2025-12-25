@@ -7,6 +7,12 @@ export enum FileType {
   LivePhoto = 'live_photo'
 }
 
+export interface Tag {
+  id: string;
+  tag_name: string;
+  confidence: number;
+}
+
 export interface PhotoMetadata {
   photo_id: string;
   exif_info?: string;
@@ -20,7 +26,7 @@ export interface PhotoMetadata {
   district?: string;
   latitude?: number;
   longitude?: number;
-  tags?: string[];
+  tags?: Tag[];
 }
 
 export interface Photo {

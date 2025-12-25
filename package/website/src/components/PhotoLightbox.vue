@@ -224,8 +224,8 @@
                 <div v-if="isEditing" class="space-y-2">
                     <div class="flex flex-wrap gap-2 mb-2">
                         <span v-for="(tag, idx) in editForm.tags" :key="idx" class="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 px-2 py-1 rounded-md text-xs flex items-center gap-1">
-                            {{ tag }}
-                            <button @click="removeTag(idx)" class="hover:text-red-500"><X class="w-3 h-3" /></button>
+                            {{ tag.tag_name }}
+                            <button @click="removeTag(idx, tag.id)" class="hover:text-red-500"><X class="w-3 h-3" /></button>
                         </span>
                     </div>
                     <input 
@@ -238,8 +238,8 @@
                 </div>
                 <div v-else class="flex flex-wrap gap-2">
                     <span v-if="(!metadata.tags || metadata.tags.length === 0)" class="text-sm text-gray-400 italic">无标签</span>
-                    <span v-for="tag in metadata.tags" :key="tag" class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full text-xs">
-                        {{ tag }}
+                    <span v-for="tag in metadata.tags" :key="tag.id" class="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full text-xs">
+                        {{ tag.tag_name }}
                     </span>
                 </div>
             </div>
@@ -406,7 +406,7 @@ import 'video.js/dist/video-js.css'
 import { format } from 'date-fns'
 import { albumService } from '@/api/album'
 import { ocrApi, type OCRRecord } from '@/api/ocr'
-import type { PhotoMetadata, AlbumImage, CoverPhotoInfo } from '@/types/album'
+import type { PhotoMetadata, AlbumImage, CoverPhotoInfo, Tag } from '@/types/album'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
 
@@ -540,7 +540,7 @@ const initialDistance = ref(0)
 // Edit Form
 const editForm = reactive({
     location: '',
-    tags: [] as string[]
+    tags: [] as Tag[]
 })
 const newTagInput = ref('')
 
@@ -904,16 +904,54 @@ const cancelEdit = () => {
     newTagInput.value = ''
 }
 
-const addTag = () => {
+const addTag = async () => {
     const tag = newTagInput.value.trim()
-    if (tag && !editForm.tags.includes(tag)) {
-        editForm.tags.push(tag)
+    if (!tag || !props.image) return
+    
+    // Check if tag already exists
+    if (editForm.tags.some(t => t.tag_name === tag)) {
+        ElMessage.warning('标签已存在')
+        return
     }
-    newTagInput.value = ''
+
+    try {
+        const newTag = await albumService.addPhotoTag(props.image.id, tag, 1.0)
+        
+        // Update local state
+        if (!editForm.tags.find(t => t.id === newTag.id)) {
+            editForm.tags.push(newTag)
+        }
+        
+        if (metadata.value) {
+             if (!metadata.value.tags) metadata.value.tags = []
+             if (!metadata.value.tags.find(t => t.id === newTag.id)) {
+                 metadata.value.tags.push(newTag)
+             }
+        }
+        
+        newTagInput.value = ''
+        ElMessage.success('标签添加成功')
+    } catch (error) {
+        console.error("Failed to add tag", error)
+        ElMessage.error('添加标签失败')
+    }
 }
 
-const removeTag = (index: number) => {
-    editForm.tags.splice(index, 1)
+const removeTag = async (index: number, tagId: string) => {
+    if (!props.image) return
+    try {
+        await albumService.deletePhotoTag(props.image.id, tagId)
+        
+        editForm.tags = editForm.tags.filter(t => t.id !== tagId)
+        
+        if (metadata.value && metadata.value.tags) {
+            metadata.value.tags = metadata.value.tags.filter(t => t.id !== tagId)
+        }
+        ElMessage.success('标签删除成功')
+    } catch (error) {
+        console.error("Failed to delete tag", error)
+        ElMessage.error('删除标签失败')
+    }
 }
 
 const saveEdit = async () => {
@@ -922,10 +960,18 @@ const saveEdit = async () => {
     try {
         const updates: Partial<PhotoMetadata> = {
             location: editForm.location,
-            tags: editForm.tags
+            // Tags are handled separately via immediate API calls
         }
         const updated = await albumService.updateMetadata(undefined, props.image.id, updates)
-        metadata.value = updated
+        // Merge tags back because updated metadata from server might not have tags (if not included in response or cleared)
+        // Actually our updateMetadata returns updated metadata.
+        // But since we updated tags separately, the server might return them if get_photo_metadata logic is used.
+        // But update_photo_metadata just returns the updated DB object, which is PhotoMetadata model.
+        // It might NOT include tags if we didn't update the return logic of update_photo_metadata endpoint.
+        // Let's assume we preserve local tags or re-fetch. 
+        // Ideally re-fetch or rely on local.
+        metadata.value = { ...updated, tags: editForm.tags } 
+        
         isEditing.value = false
         emit('update', { id: props.image.id, ...updates })
     } catch (error) {

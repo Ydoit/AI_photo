@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from sqlalchemy import Column, String, ForeignKey, DateTime, Boolean, Integer, UniqueConstraint
+from sqlalchemy import Column, String, ForeignKey, DateTime, Boolean, Integer, UniqueConstraint, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -26,6 +26,7 @@ class PhotoTagRelation(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     photo_id = Column(UUID(as_uuid=True), ForeignKey("photos.id", ondelete="CASCADE"), nullable=False)
     tag_id = Column(UUID(as_uuid=True), ForeignKey("photo_tags.id", ondelete="CASCADE"), nullable=False)
+    confidence = Column(Float, default=1.0)
     created_at = Column(DateTime, default=datetime.now)
     is_deleted = Column(Boolean, default=False)
 
