@@ -17,3 +17,5 @@ torchvision>=0.15.0
 # PaddleOCR
 paddlepaddle==3.2.0
 paddleocr==3.3.2
+transformers>=4.37.0
+

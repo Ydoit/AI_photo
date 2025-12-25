@@ -1,0 +1,137 @@
+{
+    "person_portrait": {
+        "zh": "人物肖像",
+        "en": "Person Portrait",
+        "prompts": ["a photo of a person portrait", "human face", "portrait photography", "close-up of a person", "professional portrait"]
+    },
+    "selfie": {
+        "zh": "自拍",
+        "en": "Selfie",
+        "prompts": ["a photo of a selfie", "self-portrait with smartphone", "handheld selfie", "selfie close-up face", "selfie with arm extended", "selfie in mirror"]
+    },
+    "person_group": {
+        "zh": "多人合照",
+        "en": "Group Photo",
+        "prompts": ["a photo of group of people", "family photo", "friends gathering", "group portrait"]
+    },
+    "baby_kid": {
+        "zh": "萌娃/儿童",
+        "en": "Baby/Kid",
+        "prompts": ["a photo of a baby", "a photo of a kid", "child playing", "toddler", "infant"]
+    },
+    "pet": {
+        "zh": "宠物",
+        "en": "Pet",
+        "prompts": ["a photo of a pet", "cat", "dog", "pet dog", "pet cat", "hamster", "rabbit", "pet playing"]
+    },
+    "wild_animal": {
+        "zh": "野生动物",
+        "en": "Wild Animal",
+        "prompts": ["a photo of wild animal", "mammal", "bird", "fish", "wildlife", "zoo animal"]
+    },
+    "nature": {
+        "zh": "自然场景",
+        "en": "Nature",
+        "prompts": [
+            "a photo of mountain scenery", "a photo of forest", "a photo of sea and beach", "a photo of river and lake",
+            "a photo of sunrise over mountain", "a photo of morning sunrise by sea", "a photo of sunset over ocean",
+            "a photo of evening sunset in west sky", "a photo of night sky with full moon", "a photo of crescent moon over city",
+            "a photo of starry sky", "a photo of rainbow", "a photo of aurora"
+        ]
+    },
+    "architecture": {
+        "zh": "建筑",
+        "en": "Architecture",
+        "prompts": ["a photo of city building", "a photo of skyscraper", "a photo of house", "a photo of historic landmark", "a photo of ancient temple"]
+    },
+    "sports": {
+        "zh": "运动",
+        "en": "Sports",
+        "prompts": ["a photo of skiing", "a photo of basketball game", "a photo of hiking", "a photo of cycling", "a photo of swimming"]
+    },
+    "food": {
+        "zh": "美食",
+        "en": "Food",
+        "prompts": ["a photo of chinese food", "a photo of snack and dessert", "a photo of coffee or milk tea", "a photo of restaurant meal"]
+    },
+    "travel": {
+        "zh": "旅行/出游",
+        "en": "Travel",
+        "prompts": ["a photo of travel scenery", "a photo of tourism", "a photo of sightseeing", "a photo of trip to scenic spot"]
+    },
+    "transport": {
+        "zh": "交通工具",
+        "en": "Transportation (Excluding Car)",
+        "prompts": ["a photo of plane", "a photo of train", "a photo of bus", "a photo of subway", "a photo of bicycle", "a photo of motorcycle", "a photo of ship"]
+    },
+    "car": {
+        "zh": "汽车",
+        "en": "Car",
+        "prompts": ["a photo of car", "a photo of sedan", "a photo of SUV", "a photo of car interior", "a photo of car exterior", "a photo of automobile", "a photo of sports car"]
+    },
+    "outdoor_activity": {
+        "zh": "户外",
+        "en": "Outdoor Activity",
+        "prompts": ["a photo of hiking", "a photo of trekking", "a photo of camping with tent", "a photo of campsite", "a photo of picnic", "a photo of outdoor barbecue", "a photo of outdoor picnic"]
+    },
+    "electronic_product": {
+        "zh": "电子产品",
+        "en": "Electronic Product",
+        "prompts": ["a photo of smartphone", "a photo of laptop", "a photo of tablet", "a photo of camera", "a photo of headphone", "a photo of smart watch", "a photo of electronic device", "a photo of desktop computer"]
+    },
+    "card_certificate": {
+        "zh": "卡证",
+        "en": "Card & Certificate",
+        "prompts": ["a photo of ID card", "a photo of bank card", "a photo of driver license", "a photo of passport", "a photo of certificate", "a photo of membership card", "a photo of credit card"]
+    },
+    "qrcode": {
+        "zh": "二维码",
+        "en": "QR Code",
+        "prompts": ["a photo of QR code", "a photo of 2D barcode", "QR code on paper", "QR code on screen", "scanable QR code", "square QR code pattern"]
+    },
+    "home_living": {
+        "zh": "居家日常",
+        "en": "Home Daily",
+        "prompts": ["a photo of living room", "a photo of kitchen", "a photo of cooking at home"]
+    },
+    "office": {
+        "zh": "办公场景",
+        "en": "Office",
+        "prompts": ["a photo of office desk", "a photo of laptop and document", "a photo of meeting in office"]
+    },
+    "festival": {
+        "zh": "节日/庆典",
+        "en": "Festival",
+        "prompts": ["a photo of birthday party", "a photo of new year celebration", "a photo of wedding"]
+    },
+    "still_life": {
+        "zh": "静物/物品",
+        "en": "Still Life",
+        "prompts": ["a photo of daily stuff", "a photo of tool", "a photo of clothes or bag"]
+    },
+    "document": {
+        "zh": "文档/截图",
+        "en": "Document & Screenshot",
+        "prompts": ["a photo of document paper", "a photo of phone screen screenshot", "a photo of contract or invoice"]
+    },
+    "night_view": {
+        "zh": "夜景",
+        "en": "Night View",
+        "prompts": ["a photo of city night view", "a photo of neon lights at night", "a photo of moon night sky", "a photo of starry night"]
+    },
+    "plant": {
+        "zh": "绿植/花卉",
+        "en": "Plant & Flower",
+        "prompts": ["a photo of flower garden", "a photo of potted plant", "a photo of rose or cherry blossom"]
+    },
+    "shopping": {
+        "zh": "购物/探店",
+        "en": "Shopping & Store Visit",
+        "prompts": ["a photo of shopping mall", "a photo of cafe visit", "a photo of restaurant visit"]
+    },
+    "handmade": {
+        "zh": "手工/DIY",
+        "en": "Handmade & DIY",
+        "prompts": ["a photo of handmade craft", "a photo of DIY artwork", "a photo of homemade craft"]
+    }
+}
