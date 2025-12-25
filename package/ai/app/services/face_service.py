@@ -15,8 +15,9 @@ def load_insightface_model():
         # Initialize InsightFace analysis
         # providers=['CUDAExecutionProvider', 'CPUExecutionProvider'] if GPU available
         provider_options = [{"device_id": 0}, {}]
+        model_path = settings.MODEL_PATH.rstrip("/").rstrip("models")
         app = FaceAnalysis(
-            name='buffalo_l', root=settings.INSIGHTFACE_MODEL_PATH,
+            name='buffalo_l', root=model_path,
             providers=['CUDAExecutionProvider', 'CPUExecutionProvider'],
             provider_options = provider_options  # 传递 CUDA 配置
         )

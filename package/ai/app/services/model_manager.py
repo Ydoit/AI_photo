@@ -53,7 +53,7 @@ class ModelManager:
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, idle_timeout=30):
+    def __init__(self, idle_timeout=300):
         if self._initialized:
             return
         self.models = {}

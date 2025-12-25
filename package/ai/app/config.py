@@ -8,8 +8,7 @@ class Settings(BaseSettings):
     PORT: int = 8001
 
     # AI Models Configuration
-    INSIGHTFACE_MODEL_PATH: str = os.getenv("INSIGHTFACE_MODEL_PATH", os.path.expanduser("~/.insightface/models"))
-
+    MODEL_PATH: str = os.getenv("MODEL_PATH", os.path.expanduser("data/models"))
     class Config:
         env_file = ".env"
 

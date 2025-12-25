@@ -9,11 +9,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routers import system, face, ocr, object_detection, tickets, image_classification
 from app.core.logger import setup_logging
+from app.services.model_downloader import ensure_models
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global log_listener
     log_listener = setup_logging()
+    
+    # Ensure models are present
+    ensure_models()
+    
     yield
     if log_listener:
         log_listener.stop()

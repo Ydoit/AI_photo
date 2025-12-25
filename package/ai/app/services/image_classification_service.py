@@ -1,4 +1,6 @@
 from PIL import Image
+
+from app.config import settings
 from app.services.model_manager import model_manager
 import logging
 import io
@@ -7,37 +9,48 @@ import os
 from typing import List, Dict, Optional
 
 class SentenceTransformerWrapper:
-    def __init__(self, model_name="clip-ViT-B-32"):
+    def __init__(self, model_name="sentence-transformers/clip-ViT-B-32-multilingual-v1"):
         from sentence_transformers import SentenceTransformer
         import torch
+        self.model_name = model_name
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         logging.info(f"Loading SentenceTransformer model {model_name} on {self.device}")
-        self.model = SentenceTransformer(model_name, device=self.device)
+        self.model = SentenceTransformer(model_name, device=self.device, cache_folder=settings.MODEL_PATH)
 
 class ImageClassificationService:
     def __init__(self):
-        self.model_name = "clip-ViT-B-32"
-        self._register_model()
+        text_model_path = os.path.join(settings.MODEL_PATH, 'clip-ViT-B-32-multilingual-v1')
+        image_model_path = os.path.join(settings.MODEL_PATH, 'clip-ViT-B-32')
+
+        self.text_model_name = text_model_path if os.path.exists(text_model_path) else 'sentence-transformers/clip-ViT-B-32-multilingual-v1'
+        self.image_model_name = image_model_path if os.path.exists(image_model_path) else "clip-ViT-B-32"
+
+        self._register_models()
         self.data_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "categories.json")
         self.categories: Dict = {}
         self.category_keys: List[str] = []
         self.simple_prompts: List[str] = []
         self._load_categories()
 
-    def _load_model(self):
-        return SentenceTransformerWrapper(self.model_name)
+    def _load_text_model(self):
+        return SentenceTransformerWrapper(self.text_model_name)
+
+    def _load_image_model(self):
+        return SentenceTransformerWrapper(self.image_model_name)
 
     def _release_model(self, wrapper):
         """Release resources associated with the model"""
-        logging.info(f"Releasing resources for {self.model_name}")
+        model_name = getattr(wrapper, 'model_name', 'unknown')
+        logging.info(f"Releasing resources for {model_name}")
         if hasattr(wrapper, 'model'):
             del wrapper.model
         import torch
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    def _register_model(self):
-        model_manager.register_model("clip", self._load_model, self._release_model)
+    def _register_models(self):
+        model_manager.register_model("clip_text", self._load_text_model, self._release_model)
+        model_manager.register_model("clip_image", self._load_image_model, self._release_model)
 
     def _load_categories(self):
         """Load categories from JSON file"""
@@ -86,20 +99,26 @@ class ImageClassificationService:
             return {"results": [], "embedding": []}
         import torch
         from sentence_transformers import util
-        wrapper = model_manager.get_model("clip")
+        
+        # Get models
+        text_wrapper = model_manager.get_model("clip_text")
+        image_wrapper = model_manager.get_model("clip_image")
+
         try:
             image = Image.open(io.BytesIO(image_data)).convert("RGB")
             
-            # Encode image
-            # convert_to_tensor=True to keep it on device if possible, but ST usually returns CPU tensor or numpy by default unless specified?
-            # actually ST encode returns numpy array by default.
-            image_emb = wrapper.model.encode(image, convert_to_tensor=True)
+            # Encode image using image model
+            # convert_to_tensor=True to keep it on device if possible
+            image_emb = image_wrapper.model.encode(image, convert_to_tensor=True)
             
             # Determine prompts based on precision
             if precision == "normal":
                 text_inputs = self.simple_prompts
-                text_embs = wrapper.model.encode(text_inputs, convert_to_tensor=True)
+                text_embs = text_wrapper.model.encode(text_inputs, convert_to_tensor=True)
                 
+                if image_emb.device != text_embs.device:
+                    text_embs = text_embs.to(image_emb.device)
+
                 # Compute cosine similarity
                 cos_scores = util.cos_sim(image_emb, text_embs)[0]
                 
@@ -116,12 +135,17 @@ class ImageClassificationService:
                         all_prompts.append(p)
                         prompt_category_map.append(i)
                 
-                text_embs = wrapper.model.encode(all_prompts, convert_to_tensor=True)
+                text_embs = text_wrapper.model.encode(all_prompts, convert_to_tensor=True)
                 
                 # Aggregate embeddings per category
-                category_embs = torch.zeros((len(self.category_keys), text_embs.shape[1]), device=wrapper.device)
-                category_counts = torch.zeros(len(self.category_keys), device=wrapper.device)
+                category_embs = torch.zeros((len(self.category_keys), text_embs.shape[1]), device=image_emb.device)
+                category_counts = torch.zeros(len(self.category_keys), device=image_emb.device)
                 
+                # Ensure text_embs is on same device for aggregation if needed, or aggregate on its device then move?
+                # Simpler: move text_embs to image_emb device (which is where category_embs is)
+                if text_embs.device != image_emb.device:
+                    text_embs = text_embs.to(image_emb.device)
+
                 for prompt_idx, cat_idx in enumerate(prompt_category_map):
                     category_embs[cat_idx] += text_embs[prompt_idx]
                     category_counts[cat_idx] += 1
@@ -161,7 +185,7 @@ class ImageClassificationService:
             raise e
 
     async def embed_text(self, text: str) -> List[float]:
-        wrapper = model_manager.get_model("clip")
+        wrapper = model_manager.get_model("clip_text")
         try:
             # Encode text
             text_emb = wrapper.model.encode(text, convert_to_tensor=False)
