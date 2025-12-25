@@ -4,7 +4,18 @@
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
       <div class="flex justify-between items-center mb-6">
         <h2 class="text-lg font-semibold text-gray-800 dark:text-white">任务管理</h2>
-        <el-button type="primary" @click="showCreateTaskDialog">新建任务</el-button>
+        <div class="flex gap-4 items-center">
+             <div class="flex items-center gap-2">
+                <span class="text-sm text-gray-600 dark:text-gray-300">快速模式</span>
+                <el-switch v-model="fastMode" @change="handleFastModeChange" />
+                <el-tooltip content="开启后将同时运行不同类型的任务（CPU/IO），最大化资源利用" placement="top">
+                    <span class="text-gray-400 cursor-pointer">
+                        <i class="i-mdi-help-circle-outline"></i>
+                    </span>
+                </el-tooltip>
+             </div>
+            <el-button type="primary" @click="showCreateTaskDialog">新建任务</el-button>
+        </div>
       </div>
       
       <!-- Category Cards -->
@@ -102,6 +113,7 @@ interface GroupedTask {
 const groupedTasks = ref<GroupedTask[]>([])
 const stats = ref({ failed_process_tasks: 0 })
 const createTaskVisible = ref(false)
+const fastMode = ref(false)
 const newTaskForm = ref({
     type: '',
     scope: 'all',
@@ -113,8 +125,24 @@ const fetchTasks = async () => {
     try {
         groupedTasks.value = await tasksApi.getGroupedStatus()
         stats.value = await tasksApi.getTaskStats()
+
+        // Fetch global status for fast mode
+        const globalStatus = await tasksApi.getGlobalStatus()
+        if (globalStatus && typeof globalStatus.fast_mode !== 'undefined') {
+            fastMode.value = globalStatus.fast_mode=="True"
+        }
     } catch (e) {
         console.error("Failed to fetch tasks", e)
+    }
+}
+
+const handleFastModeChange = async (val: boolean) => {
+    try {
+        await tasksApi.toggleFastMode(val)
+        ElMessage.success(val ? '快速模式已开启' : '快速模式已关闭')
+    } catch (e) {
+        ElMessage.error('设置失败')
+        fastMode.value = !val // Revert
     }
 }
 

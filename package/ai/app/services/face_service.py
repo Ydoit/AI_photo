@@ -70,16 +70,8 @@ def release_model(model):
         if hasattr(app, 'cls_model'):
             del app.cls_model
 
-        # 3. 清理InsightFace全局缓存
-        import insightface
-        if hasattr(insightface, 'model_zoo'):
-            insightface.model_zoo.model_zoo.clear_cache()  # 清空模型动物园缓存
-        if hasattr(insightface.utils, 'face_align'):
-            insightface.utils.face_align.clear_cache()  # 清空对齐缓存
-
         # 4. 强制GC（清理循环引用）
         gc.collect()
-
         logger.info("InsightFace model internal resources cleaned")
     except Exception as e:
         logger.error(f"Failed to cleanup InsightFace internal resources: {e}", exc_info=True)

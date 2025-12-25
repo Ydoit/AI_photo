@@ -65,7 +65,7 @@ class FaceClusterService:
             identities = crud_face.get_identities(self.db, limit=100000)
 
             if not identities:
-                logger.info("无已存在的Identity，触发新聚类")
+                # logger.info("无已存在的Identity，触发新聚类")
                 self._try_create_new_cluster(face_id, embedding)
                 return None
 
@@ -108,16 +108,16 @@ class FaceClusterService:
                     recognize_confidence=float(1.0 - min_dist)
                 )
                 crud_face.update_face(self.db, face_id, update_data)
-                
-                logger.info(
-                    f"人脸 {face_id} 匹配到Identity {best_match_id}，"
-                    f"余弦距离={min_dist:.4f}，相似度={1 - min_dist:.4f}"
-                )
+
+                # logger.info(
+                #     f"人脸 {face_id} 匹配到Identity {best_match_id}，"
+                #     f"余弦距离={min_dist:.4f}，相似度={1 - min_dist:.4f}"
+                # )
                 return best_match_id
             else:
-                logger.info(
-                    f"无匹配的Identity（最小距离={min_dist:.4f} > 阈值={self.DISTANCE_THRESHOLD}），触发新聚类"
-                )
+                # logger.info(
+                #     f"无匹配的Identity（最小距离={min_dist:.4f} > 阈值={self.DISTANCE_THRESHOLD}），触发新聚类"
+                # )
                 self._try_create_new_cluster(face_id, embedding)
                 return None
 
@@ -154,7 +154,7 @@ class FaceClusterService:
 
             face_count = len(unassigned_faces)
             if face_count < self.DBSCAN_MIN_SAMPLES:
-                logger.info(f"未分配人脸数 {face_count} < 最小样本数 {self.DBSCAN_MIN_SAMPLES}，不聚类")
+                # logger.info(f"未分配人脸数 {face_count} < 最小样本数 {self.DBSCAN_MIN_SAMPLES}，不聚类")
                 return
 
             # 2. 提取并归一化向量
@@ -175,7 +175,7 @@ class FaceClusterService:
             ).fit(X)
 
             labels = clustering.labels_
-            logger.info(f"DBSCAN聚类完成，共生成 {len(set(labels)) - (1 if -1 in labels else 0)} 个簇")
+            # logger.info(f"DBSCAN聚类完成，共生成 {len(set(labels)) - (1 if -1 in labels else 0)} 个簇")
 
             # 4. 计算簇中心，合并相似簇（核心：解决同一人拆分为多个簇）
             cluster_centers = {}  # label -> 簇中心向量
@@ -229,7 +229,7 @@ class FaceClusterService:
             for cluster in merged_clusters:
                 cluster_size = len(cluster)
                 if cluster_size < self.MIN_CLUSTER_SIZE_FOR_IDENTITY:
-                    logger.info(f"簇大小 {cluster_size} < 阈值 {self.MIN_CLUSTER_SIZE_FOR_IDENTITY}，跳过创建Identity")
+                    # logger.info(f"簇大小 {cluster_size} < 阈值 {self.MIN_CLUSTER_SIZE_FOR_IDENTITY}，跳过创建Identity")
                     continue
 
                 # 创建新Identity

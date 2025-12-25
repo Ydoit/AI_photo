@@ -61,6 +61,26 @@ def get_task_stats(db: Session = Depends(get_db)):
     return {"failed_process_tasks": failed_count}
 
 
+@router.post("/fast-mode", summary="设置快速模式")
+def set_fast_mode(enabled: bool = Body(..., embed=True)):
+    """
+    开启或关闭快速模式。
+    快速模式下，系统将尝试同时运行 IO 密集型和 CPU 密集型任务，
+    以最大化利用系统资源。
+    """
+    TaskManager.get_instance().set_fast_mode(enabled)
+    return {"status": "success", "fast_mode": enabled}
+
+
+@router.get("/status", summary="获取全局任务状态")
+def get_status(db: Session = Depends(get_db)):
+    """
+    获取当前扫描状态和快速模式状态。
+    """
+    # return "hello world"
+    return TaskManager.get_instance().get_status()
+
+
 @router.get("/grouped-status", summary="按状态分组统计任务")
 def get_grouped_status(db: Session = Depends(get_db)):
     """

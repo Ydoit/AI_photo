@@ -103,7 +103,9 @@ class TaskManager:
 
     def get_status(self):
         """Get global scan status from DB"""
-        return self._load_system_state('scan_status', DEFAULT_SCAN_STATUS.copy())
+        return {
+            'fast_mode': self._load_system_state('fast_mode', False)
+        }
 
     def get_grouped_status(self, db: Session):
         """Get task counts grouped by category"""
@@ -170,6 +172,10 @@ class TaskManager:
             self.paused_categories.remove(category)
             self._save_system_state('paused_categories', list(self.paused_categories))
             logging.info(f"Resumed task category: {category}")
+
+    def set_fast_mode(self, enabled: bool):
+        self._save_system_state('fast_mode', enabled)
+        logging.info(f"Fast Mode set to {enabled} via TaskManager")
 
     def add_task(self, db: Session, type: str, payload: dict, priority: int = 0):
         if priority == 0:

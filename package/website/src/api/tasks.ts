@@ -58,5 +58,15 @@ export const tasksApi = {
   async resumeCategory(category: string) {
     const { data } = await api.post(`/api/tasks/categories/${category}/resume`)
     return data
+  },
+
+  async toggleFastMode(enabled: boolean) {
+    const { data } = await api.post('/api/tasks/fast-mode', { enabled })
+    return data
+  },
+
+  async getGlobalStatus() {
+      const { data } = await api.get('/api/tasks/status')
+      return data
   }
 }

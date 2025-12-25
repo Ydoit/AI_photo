@@ -48,7 +48,7 @@ async def handle_extract_metadata(task_manager, task: Task, db: Session):
     if not file_path:
         file_path = photo.file_path
 
-    loop = asyncio.get_running_loop()
+    # loop = asyncio.get_running_loop()
     # res = await loop.run_in_executor(
     #     task_manager.thread_pool,
     #     rebuild_metadata_cpu_job,

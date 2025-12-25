@@ -1,3 +1,4 @@
+import os
 import asyncio
 import logging
 import concurrent.futures
@@ -18,6 +19,22 @@ from app.service.task_manager import DEFAULT_SCAN_STATUS, CATEGORY_MAP, DEFAULT_
 # Import handlers
 from app.service.tasks import thumbnail, metadata, scan, face, ocr
 
+CPU_TASKS = {
+    TaskType.PROCESS_BASIC,
+    TaskType.PROCESS_IMAGE,
+    TaskType.GENERATE_THUMBNAIL,
+    TaskType.REBUILD_THUMBNAILS,
+    TaskType.EXTRACT_METADATA,
+    TaskType.REBUILD_METADATA
+}
+
+IO_TASKS = {
+    TaskType.SCAN_FOLDER,
+    TaskType.RECOGNIZE_FACE,
+    TaskType.OCR,
+    TaskType.CLASSIFY_IMAGE
+}
+
 class TaskWorker:
     """
     Task Consumer / Worker (Runs in Background Process)
@@ -36,9 +53,11 @@ class TaskWorker:
         self.thread_pool = None
         self.result_queue = asyncio.Queue()
         self.scan_status = DEFAULT_SCAN_STATUS.copy()
-
+        
         self.paused_categories: Set[str] = set()
         self.category_map = CATEGORY_MAP
+        self.fast_mode = False
+        self.active_task_map: Dict[Any, str] = {} # future -> task_type
 
     @classmethod
     def get_instance(cls):
@@ -86,14 +105,17 @@ class TaskWorker:
         self.running = True
         self._recover_unfinished_tasks()
 
+        # Load fast_mode state
+        self.fast_mode = self._load_system_state('fast_mode', False)
+
         # Use config for max_workers
         max_workers = config_manager.config.task.max_concurrent_tasks
-        # self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=max_workers)
-        self.thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+        self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count())
+        self.thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers * 2) # More threads for IO
 
         self.worker_task = asyncio.create_task(self.worker_loop())
         self.result_task = asyncio.create_task(self.result_loop())
-        logging.info(f"TaskWorker started with {max_workers} workers")
+        logging.info(f"TaskWorker started. Fast Mode: {self.fast_mode}")
 
     def stop(self):
         self.running = False
@@ -109,6 +131,7 @@ class TaskWorker:
             self.thread_pool = None
 
         # Save final status
+        self.scan_status['fast_mode'] = self.fast_mode
         self._save_system_state('scan_status', self.scan_status)
         logging.info("TaskWorker stopped")
 
@@ -130,7 +153,7 @@ class TaskWorker:
 
     async def worker_loop(self):
         logging.info("TaskWorker loop started")
-        active_tasks = set()
+        # active_tasks set is replaced by self.active_task_map keys
         idle_start_time = None
 
         last_sync = datetime.now()
@@ -144,17 +167,24 @@ class TaskWorker:
                     # Refresh paused categories
                     paused_list = self._load_system_state('paused_categories', [])
                     self.paused_categories = set(paused_list)
+                    # Refresh fast_mode
+                    self.fast_mode = self._load_system_state('fast_mode', False)
                     last_sync = now
 
                 # Clean up finished tasks
-                active_tasks = {t for t in active_tasks if not t.done()}
+                done_futures = [f for f in self.active_task_map.keys() if f.done()]
+                for f in done_futures:
+                    del self.active_task_map[f]
+
+                active_count = len(self.active_task_map)
+                
                 # Update status
-                if active_tasks:
+                if active_count > 0:
                     self.scan_status['running'] = True
                     idle_start_time = None
 
                 # Manage Pool Lifecycle (Resource Release)
-                if not active_tasks:
+                if active_count == 0:
                     if idle_start_time is None:
                         idle_start_time = datetime.now()
                         self.scan_status['running'] = False
@@ -163,21 +193,44 @@ class TaskWorker:
                     elif (datetime.now() - idle_start_time).total_seconds() > 30:
                         # Idle for 30s, shutdown pool to release resources
                         self.release_resources()
-
                 else:
-                    # Ensure pool exists
-                    # if self.process_pool is None:
-                    #     max_workers = config_manager.config.task.max_concurrent_tasks
-                    #     logging.info(f"Restarting process pool with {max_workers} workers")
-                        # self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=max_workers)
+                    # Ensure pools exist
+                    if self.process_pool is None:
+                        logging.info(f"Restarting process pool")
+                        self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count())
                     if self.thread_pool is None:
                         max_workers = config_manager.config.task.max_concurrent_tasks
-                        logging.info(f"Restarting thread pool with {max_workers} workers")
-                        self.thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+                        logging.info(f"Restarting thread pool")
+                        self.thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers * 2)
 
-                # Limit concurrency
-                max_concurrency = config_manager.config.task.max_concurrent_tasks
-                if len(active_tasks) >= max_concurrency:
+                # Scheduling Logic
+                allowed_types = []
+                
+                if self.fast_mode:
+                    # Fast Mode: Smart Scheduling
+                    active_cpu = sum(1 for t in self.active_task_map.values() if t in CPU_TASKS)
+                    active_io = sum(1 for t in self.active_task_map.values() if t in IO_TASKS)
+                    
+                    max_cpu = os.cpu_count() or 4
+                    max_io = 10 # Allow up to 10 concurrent IO tasks
+                    
+                    if active_cpu < max_cpu:
+                        allowed_types.extend(CPU_TASKS)
+                    if active_io < max_io:
+                        allowed_types.extend(IO_TASKS)
+                        
+                    # Also include any other types not in CPU/IO sets
+                    other_types = [t for t in TaskType if t not in CPU_TASKS and t not in IO_TASKS]
+                    if active_cpu + active_io < max_cpu + max_io:
+                        allowed_types.extend(other_types)
+                        
+                else:
+                    # Normal Mode: Strict Concurrency Limit
+                    max_concurrency = config_manager.config.task.max_concurrent_tasks
+                    if active_count < max_concurrency:
+                        allowed_types = [t for t in TaskType] # All types allowed
+
+                if not allowed_types:
                     await asyncio.sleep(0.1)
                     continue
 
@@ -191,6 +244,9 @@ class TaskWorker:
 
                     # Poll for tasks
                     query = db.query(Task).filter(Task.status == TaskStatus.PENDING)
+                    
+                    # Filter by allowed types
+                    query = query.filter(Task.type.in_(allowed_types))
 
                     if paused_types:
                         query = query.filter(Task.type.notin_(paused_types))
@@ -204,9 +260,9 @@ class TaskWorker:
                         self.scan_status['current_task'] = f"{task.type} - {task.id}"
                         # Launch async wrapper
                         future = asyncio.create_task(self.execute_task_wrapper(task.id, task.type))
-                        active_tasks.add(future)
+                        self.active_task_map[future] = task.type
                     else:
-                        if not active_tasks:
+                        if active_count == 0:
                             self.scan_status['running'] = False
                             self.scan_status['message'] = "Idle"
                         await asyncio.sleep(1)

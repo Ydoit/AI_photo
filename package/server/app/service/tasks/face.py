@@ -102,7 +102,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
             # 1. Read file
             with open(target_path, 'rb') as f:
                 file_data = f.read()
-            
+
             form_data = FormData()
             form_data.add_field(
                 name='file',
@@ -115,18 +115,18 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
             async with session.post(
                 f"{config_manager.config.ai.ai_api_url}/face-recognition",
                 data=form_data,
-                timeout=aiohttp.ClientTimeout(total=30)
+                timeout=aiohttp.ClientTimeout(total=60)
             ) as resp:
                 if resp.status == 200:
                     result = await resp.json()
                     faces = result.get('faces', [])
-                    
+
                     crud_face.delete_faces_by_photo(db, photo.id)
-                    
+
                     for face_data in faces:
                         if face_data['det_score'] < config_manager.config.ai.face_recognition_threshold:
                             continue
-                        
+
                         create_data = schemas.FaceCreate(
                             photo_id=photo.id,
                             face_feature=face_data['embedding'],
@@ -140,19 +140,19 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                                 cluster_service.assign_face_to_identity(face.id, face.face_feature)
                             except Exception as ce:
                                 logging.error(f"Clustering failed for face {face.id}: {ce}")
-                    
+
                     # Update Status
                     tasks_status = dict(photo.processed_tasks or {})
                     tasks_status['face'] = True
                     photo.processed_tasks = tasks_status
                     db.add(photo)
                     db.commit()
-                    
+
                     task_manager.scan_status['processed_files'] += 1
                     return {'status': 'success', 'faces_found': len(faces)}
                 else:
                     return {'status': 'failed', 'error': f"AI Service error: {resp.status}"}
-                    
+
     except Exception as e:
         logging.error(f"Error processing photo {photo.id}: {e}")
         tasks_status = dict(photo.processed_tasks or {})

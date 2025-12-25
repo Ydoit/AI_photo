@@ -321,6 +321,10 @@
              </div>
 
         </div>
+        <div v-else-if="!metadata">
+             <span class="text-sm text-gray-400 italic">无元数据信息，请等待元数据处理完成之后再试</span>
+             <a href='/settings#task-management'  class="text-sm text-primary-500 hover:underline">点击查看任务管理</a>
+        </div>
       </div>
 
       <!-- OCR Panel (Separate) -->

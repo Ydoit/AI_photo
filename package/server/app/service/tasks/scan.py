@@ -206,15 +206,15 @@ async def handle_process_basic(task_manager, task: Task, db: Session):
     photo_id = uuid4()
     storage_root = storage._get_storage_root(db)
 
-    # loop = asyncio.get_running_loop()
-    # result = await loop.run_in_executor(
-    #     task_manager.thread_pool,
-    #     process_basic_cpu_job,
-    #     file_path,
-    #     photo_id,
-    #     storage_root
-    # )
-    result = process_basic_cpu_job(file_path, photo_id, storage_root)
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(
+        task_manager.thread_pool,
+        process_basic_cpu_job,
+        file_path,
+        photo_id,
+        storage_root
+    )
+    # result = process_basic_cpu_job(file_path, photo_id, storage_root)
     if not result['success']:
         raise Exception(result.get('error', 'Unknown error'))
 
@@ -272,7 +272,7 @@ async def handle_process_image(task_manager, task: Task, db: Session):
 
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(
-        task_manager.thread_pool,
+        task_manager.process_pool,
         process_image_cpu_job,
         file_path,
         photo_id,

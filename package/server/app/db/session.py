@@ -20,7 +20,7 @@ if not DATABASE_URL:
 engine = create_engine(
     DATABASE_URL,
     pool_size=10,  # 先保留默认，后续再调
-    max_overflow=10,
+    max_overflow=50,
     pool_timeout=30,
     pool_recycle=1800,  # 定期回收空闲连接（避免失效连接）
 )

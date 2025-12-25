@@ -42,7 +42,8 @@ async def lifespan(app: FastAPI):
     # Start Worker Process
     # Start a separate process for background tasks
     # This process will run the TaskManager loop
-    worker_process = multiprocessing.Process(target=run_worker, daemon=True)
+    # daemon must be False to allow sub-processes (ProcessPoolExecutor)
+    worker_process = multiprocessing.Process(target=run_worker, daemon=False)
     worker_process.start()
     logging.info(f"Worker process started with PID: {worker_process.pid}")
     yield
