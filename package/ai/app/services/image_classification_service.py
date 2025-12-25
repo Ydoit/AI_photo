@@ -6,18 +6,17 @@ import json
 import os
 from typing import List, Dict, Optional
 
-class CLIPWrapper:
-    def __init__(self, model_name="openai/clip-vit-base-patch32"):
+class SentenceTransformerWrapper:
+    def __init__(self, model_name="clip-ViT-B-32"):
+        from sentence_transformers import SentenceTransformer
         import torch
-        from transformers import CLIPProcessor, CLIPModel
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        logging.info(f"Loading CLIP model {model_name} on {self.device}")
-        self.model = CLIPModel.from_pretrained(model_name).to(self.device)
-        self.processor = CLIPProcessor.from_pretrained(model_name)
+        logging.info(f"Loading SentenceTransformer model {model_name} on {self.device}")
+        self.model = SentenceTransformer(model_name, device=self.device)
 
 class ImageClassificationService:
     def __init__(self):
-        self.model_name = "openai/clip-vit-base-patch32"
+        self.model_name = "clip-ViT-B-32"
         self._register_model()
         self.data_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "categories.json")
         self.categories: Dict = {}
@@ -26,15 +25,13 @@ class ImageClassificationService:
         self._load_categories()
 
     def _load_model(self):
-        return CLIPWrapper(self.model_name)
+        return SentenceTransformerWrapper(self.model_name)
 
     def _release_model(self, wrapper):
         """Release resources associated with the model"""
         logging.info(f"Releasing resources for {self.model_name}")
         if hasattr(wrapper, 'model'):
             del wrapper.model
-        if hasattr(wrapper, 'processor'):
-            del wrapper.processor
         import torch
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -84,40 +81,31 @@ class ImageClassificationService:
                 # Fallback prompt if list is empty
                 self.simple_prompts.append(f"a photo of {self.categories[key].get('en', key)}")
 
-    async def classify(self, image_data: bytes, lang: str = "zh", limit: int = 3, precision: str = "high") -> list[dict]:
+    async def classify(self, image_data: bytes, lang: str = "zh", limit: int = 3, precision: str = "high") -> dict:
         if not self.categories:
-            return []
+            return {"results": [], "embedding": []}
         import torch
+        from sentence_transformers import util
         wrapper = model_manager.get_model("clip")
         try:
             image = Image.open(io.BytesIO(image_data)).convert("RGB")
             
+            # Encode image
+            # convert_to_tensor=True to keep it on device if possible, but ST usually returns CPU tensor or numpy by default unless specified?
+            # actually ST encode returns numpy array by default.
+            image_emb = wrapper.model.encode(image, convert_to_tensor=True)
+            
             # Determine prompts based on precision
             if precision == "normal":
-                # Use pre-calculated simple prompts (first one only)
                 text_inputs = self.simple_prompts
+                text_embs = wrapper.model.encode(text_inputs, convert_to_tensor=True)
                 
-                inputs = wrapper.processor(
-                    text=text_inputs, 
-                    images=image, 
-                    return_tensors="pt", 
-                    padding=True
-                ).to(wrapper.device)
-
-                with torch.no_grad():
-                    outputs = wrapper.model(**inputs)
-                
-                # Use softmax to get probabilities
-                logits_per_image = outputs.logits_per_image
-                probs = logits_per_image.softmax(dim=1).cpu().numpy()[0]
+                # Compute cosine similarity
+                cos_scores = util.cos_sim(image_emb, text_embs)[0]
                 
             else: # precision == "high" (default)
-                # Use all prompts for each category and average the features/logits
-                # This is more computationally expensive but potentially more accurate
-                
-                # We need to flatten all prompts but keep track of which category they belong to
                 all_prompts = []
-                prompt_category_map = [] # stores index of category for each prompt
+                prompt_category_map = [] 
                 
                 for i, key in enumerate(self.category_keys):
                     prompts = self.categories[key].get("prompts", [])
@@ -128,63 +116,58 @@ class ImageClassificationService:
                         all_prompts.append(p)
                         prompt_category_map.append(i)
                 
-                # Process in batches if too many prompts? 
-                # For now assume reasonable number of total prompts (<100)
-                inputs = wrapper.processor(
-                    text=all_prompts, 
-                    images=image, 
-                    return_tensors="pt", 
-                    padding=True
-                ).to(wrapper.device)
-
-                with torch.no_grad():
-                    outputs = wrapper.model(**inputs)
+                text_embs = wrapper.model.encode(all_prompts, convert_to_tensor=True)
                 
-                logits_per_image = outputs.logits_per_image # [1, num_all_prompts]
-                
-                # Now we need to aggregate logits/probs per category
-                # Strategy: average logits per category then softmax? OR softmax then average probs?
-                # Usually averaging logits (before softmax) or features is better for CLIP ensembles.
-                # Let's average logits per category.
-                
-                logits = logits_per_image[0] # [num_all_prompts]
-                
-                # Initialize category logits
-                category_logits = torch.zeros(len(self.category_keys), device=wrapper.device)
+                # Aggregate embeddings per category
+                category_embs = torch.zeros((len(self.category_keys), text_embs.shape[1]), device=wrapper.device)
                 category_counts = torch.zeros(len(self.category_keys), device=wrapper.device)
                 
-                # Map back using prompt_category_map
-                # This can be vectorized but loop is fine for small N
                 for prompt_idx, cat_idx in enumerate(prompt_category_map):
-                    category_logits[cat_idx] += logits[prompt_idx]
+                    category_embs[cat_idx] += text_embs[prompt_idx]
                     category_counts[cat_idx] += 1
                 
                 # Average
-                category_logits = category_logits / category_counts
+                category_embs = category_embs / category_counts.unsqueeze(1)
                 
-                # Softmax
-                probs = category_logits.softmax(dim=0).cpu().numpy()
+                # Compute cosine similarity
+                cos_scores = util.cos_sim(image_emb, category_embs)[0]
+
+            # Convert to probabilities (softmax)
+            scores = cos_scores * 100
+            probs = scores.softmax(dim=0).cpu().numpy()
 
             # Create result list
             results = []
             for i, score in enumerate(probs):
                 key = self.category_keys[i]
                 category_info = self.categories[key]
-                label = category_info.get(lang, category_info["zh"]) # Default to zh if lang not found
+                label = category_info.get(lang, category_info["zh"]) 
                 results.append({
-                    "category": key, # Internal key
-                    "label": label,  # Display label
+                    "category": key, 
+                    "label": label, 
                     "confidence": float(score)
                 })
             
             # Sort by confidence desc
             results.sort(key=lambda x: x["confidence"], reverse=True)
             
-            # Return top N
-            return results[:limit]
+            return {
+                "results": results[:limit],
+                "embedding": image_emb.cpu().tolist()
+            }
             
         except Exception as e:
             logging.error(f"Error in image classification: {e}")
+            raise e
+
+    async def embed_text(self, text: str) -> List[float]:
+        wrapper = model_manager.get_model("clip")
+        try:
+            # Encode text
+            text_emb = wrapper.model.encode(text, convert_to_tensor=False)
+            return text_emb.tolist()
+        except Exception as e:
+            logging.error(f"Error in text embedding: {e}")
             raise e
 
     # --- Management Methods ---

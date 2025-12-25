@@ -17,18 +17,18 @@ from app.core.config_manager import config_manager
 from app.service.task_manager import DEFAULT_SCAN_STATUS, CATEGORY_MAP, DEFAULT_PRIORITIES
 
 # Import handlers
-from app.service.tasks import thumbnail, metadata, scan, face, ocr
+from app.service.tasks import thumbnail, metadata, scan, face, ocr, classification
 
 CPU_TASKS = {
     TaskType.PROCESS_BASIC,
     TaskType.PROCESS_IMAGE,
     TaskType.GENERATE_THUMBNAIL,
     TaskType.REBUILD_THUMBNAILS,
-    TaskType.EXTRACT_METADATA,
-    TaskType.REBUILD_METADATA
 }
 
 IO_TASKS = {
+    TaskType.EXTRACT_METADATA,
+    TaskType.REBUILD_METADATA,
     TaskType.SCAN_FOLDER,
     TaskType.RECOGNIZE_FACE,
     TaskType.OCR,
@@ -325,6 +325,8 @@ class TaskWorker:
             return await face.handle_face_recognition(self, task, db)
         elif task.type == TaskType.OCR:
             return await ocr.handle_ocr_task(self, task, db)
+        elif task.type == TaskType.CLASSIFY_IMAGE:
+            return await classification.handle_classification_task(self, task, db)
         else:
             return {'status': 'not_implemented', 'type': task.type}
 
@@ -427,6 +429,11 @@ class TaskWorker:
                         # Update stats
                         self.scan_status['added'] += 1
                         self.scan_status['processed_files'] += 1
+                
+                elif status == TaskStatus.COMPLETED and task_type == TaskType.CLASSIFY_IMAGE:
+                    if 'classified' not in self.scan_status:
+                        self.scan_status['classified'] = 0
+                    self.scan_status['classified'] += 1
 
             # Batch insert photos
             if photos_to_create:
@@ -452,6 +459,13 @@ class TaskWorker:
                     # 3. OCR Task (Low Priority)
                     db.add(Task(
                         type=TaskType.OCR,
+                        payload={'file_path': file_path, 'photo_id': photo_id},
+                        priority=1,
+                        status=TaskStatus.PENDING
+                    ))
+                    # 4. Classification Task (Low Priority)
+                    db.add(Task(
+                        type=TaskType.CLASSIFY_IMAGE,
                         payload={'file_path': file_path, 'photo_id': photo_id},
                         priority=1,
                         status=TaskStatus.PENDING

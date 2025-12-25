@@ -73,6 +73,7 @@
                     <el-option label="重建缩略图" value="REBUILD_THUMBNAILS" />
                     <el-option label="重建元数据" value="REBUILD_METADATA" />
                     <el-option label="人脸识别" value="RECOGNIZE_FACE" />
+                    <el-option label="图片分类" value="CLASSIFY_IMAGE" />
                     <el-option label="OCR识别" value="OCR" />
                 </el-select>
             </el-form-item>
@@ -194,7 +195,8 @@ const formatCategory = (cat: string) => {
         'scanning': '扫描文件夹',
         'metadata': '处理元数据',
         'face': '识别人物',
-        'ocr': 'OCR识别'
+        'ocr': 'OCR识别',
+        'classification': '图片分类',
     }
     return map[cat] || cat
 }

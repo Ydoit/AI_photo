@@ -11,6 +11,7 @@ class ClassificationResult(BaseModel):
 
 class ClassificationResponse(BaseModel):
     results: List[ClassificationResult]
+    embedding: List[float]
 
 class CategoryCreateRequest(BaseModel):
     key: str
@@ -22,6 +23,20 @@ class CategoryUpdateRequest(BaseModel):
     zh: Optional[str] = None
     en: Optional[str] = None
     prompts: Optional[List[str]] = None
+
+class TextEmbeddingRequest(BaseModel):
+    text: str
+
+@router.post("/embed/text", response_model=List[float])
+async def embed_text(request: TextEmbeddingRequest):
+    """
+    Generate embedding for text using the loaded CLIP model.
+    """
+    try:
+        embedding = await image_classification_service.embed_text(request.text)
+        return embedding
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/classify", response_model=ClassificationResponse)
 async def classify_image(
@@ -46,13 +61,14 @@ async def classify_image(
     
     try:
         content = await file.read()
-        results = await image_classification_service.classify(content, lang, limit, precision)
+        classification_result = await image_classification_service.classify(content, lang, limit, precision)
         
         return ClassificationResponse(
             results=[
                 ClassificationResult(label=r["label"], confidence=r["confidence"])
-                for r in results
-            ]
+                for r in classification_result["results"]
+            ],
+            embedding=classification_result["embedding"]
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

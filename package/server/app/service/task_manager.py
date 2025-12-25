@@ -30,7 +30,8 @@ DEFAULT_SCAN_STATUS = {
     'current_task': None,
     'message': 'Idle',
     'total_files': 0,
-    'processed_files': 0
+    'processed_files': 0,
+    'classified': 0
 }
 
 CATEGORY_MAP = {
@@ -43,7 +44,7 @@ CATEGORY_MAP = {
     TaskType.REBUILD_METADATA: 'metadata',
 
     TaskType.RECOGNIZE_FACE: 'face',
-    TaskType.CLASSIFY_IMAGE: 'face', # or 'ai'
+    TaskType.CLASSIFY_IMAGE: 'classification',
     TaskType.OCR: 'ocr',
 }
 
@@ -115,13 +116,14 @@ class TaskManager:
 
         stats = []
         # Define categories to show
-        categories = ['scanning', 'metadata', 'face', 'ocr']
+        categories = ['scanning', 'metadata', 'face', 'classification', 'ocr']
 
         # Priority map for categories (higher is better)
         cat_priority = {
             'scanning': 10,
             'metadata': 5,
             'face': 1,
+            'classification': 1,
             'ocr': 1
         }
 

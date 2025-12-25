@@ -1,25 +1,11 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""
-@Time        : 2025/5/9 23:44 
-@Author      : SiYuan 
-@Email       : sixyuan044@gmail.com 
-@File        : TrailSnap-__init__.py.py 
-@Description : 
-"""
-from app.db.models.album import Album
-from app.db.models.photo import Photo, FileType
-from app.db.models.photo_metadata import PhotoMetadata
-from app.db.models.album_photos import AlbumPhoto
-from app.db.models.trip import TicketType, TrainTicket
-from app.db.models.user import User
-from app.db.models.index_log import IndexLog
-from app.db.models.task import Task, TaskStatus, TaskType
-from app.db.models.face import Face, FaceIdentity
-from app.db.models.tag import PhotoTag, PhotoTagRelation
-from app.db.models.ocr import OCR
-from app.db.models.system import SystemState
-
-if __name__ == '__main__':
-    pass
+from .user import User
+from .system import SystemState
+from .photo import Photo
+from .album import Album
+from .tag import PhotoTag, PhotoTagRelation
+from .face import Face
+from .photo_metadata import PhotoMetadata
+from .task import Task
+from .index_log import IndexLog
+from .album_photos import AlbumPhoto
+from .image_vector import ImageVector

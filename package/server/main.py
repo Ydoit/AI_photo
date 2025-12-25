@@ -26,7 +26,7 @@ if not os.path.exists('./data'):
     os.mkdir('./data')
 load_dotenv('./data/.env')
 
-from app.api import user, train_ticket, album, index, settings, face, ocr, location
+from app.api import user, train_ticket, album, index, settings, face, ocr, location, search
 from railway.api import router as railway_router
 from app.db.session import engine, SessionLocal
 from app.api import user, album, settings, index, media, stats, photo, tasks
@@ -153,6 +153,7 @@ app.include_router(tasks.router, prefix="/tasks", tags=["Tasks"])
 app.include_router(face.router, prefix="/faces", tags=["Faces"])
 app.include_router(ocr.router, prefix="/ocr", tags=["OCR"])
 app.include_router(location.router, prefix="/locations", tags=["Locations"])
+app.include_router(search.router, prefix="/search", tags=["Search"])
 
 if __name__ == "__main__":
     import uvicorn
