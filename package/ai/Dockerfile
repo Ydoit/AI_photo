@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends --fix-missing \
 # 复制依赖文件并安装
 COPY requirements.txt .
 # RUN pip install uv -i https://pypi.tuna.tsinghua.edu.cn/simple
-RUN pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip install -r requirements.txt
 
 # 复制项目所有文件到工作目录
 COPY . .
