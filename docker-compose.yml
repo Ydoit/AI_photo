@@ -15,7 +15,16 @@ services:
     environment:
       - DB_URL=postgresql://msi:msi4090@192.168.1.113:5532/trailsnap
       - RAILWAY_DB_URL=postgresql://msi:msi4090@192.168.1.113:5532/railway
-
+  ai:
+    build: ./package/ai
+    # 用环境变量 ${TAG} 动态指定版本（默认 fallback 到 v0.1.0）
+    image: siyuan044/trailsnap-ai:${TAG:-v0.1.0}
+    restart: always
+    expose: [ "8001" ]
+    ports: [ "8801:8001" ]
+    networks: [ app-network ]
+    volumes:
+      - ./package/ai/data:/app/data
   frontend:
     build: ./package/website
     image: siyuan044/trailsnap-frontend:${TAG:-v0.1.0}

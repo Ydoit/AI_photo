@@ -112,7 +112,7 @@ class RGeocoder(object):
     """
     The main reverse geocoder class
     """
-    def __init__(self, mode=2, verbose=True, stream=None):
+    def __init__(self, mode=1, verbose=True, stream=None):
         """ Class Instantiation
         Args:
         mode (int): Library supports the following two modes:
@@ -311,7 +311,7 @@ def rel_path(filename):
     """
     return os.path.join(os.getcwd(), os.path.dirname(__file__), filename)
 
-def get(geo_coord, mode=2, verbose=True):
+def get(geo_coord, mode=1, verbose=True):
     """
     Function to query for a single coordinate
     """
@@ -321,7 +321,7 @@ def get(geo_coord, mode=2, verbose=True):
     _rg = RGeocoder(mode=mode, verbose=verbose)
     return _rg.query([geo_coord])[0]
 
-def search(geo_coords, mode=2, verbose=True):
+def search(geo_coords, mode=1, verbose=True):
     """
     Function to query for a list of coordinates
     """

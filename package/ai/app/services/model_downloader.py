@@ -1,8 +1,6 @@
 import os
 import logging
 import shutil
-
-from modelscope.hub.snapshot_download import snapshot_download
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -23,6 +21,7 @@ def ensure_models():
     if not os.path.exists(clip_multi_dir):
         logger.info(f"Downloading CLIP model {clip_multi_id} to {clip_multi_dir}...")
         try:
+            from modelscope.hub.snapshot_download import snapshot_download
             snapshot_download(clip_multi_id, local_dir=clip_multi_dir)
             logger.info("CLIP multilingual model downloaded successfully.")
         except Exception as e:
@@ -49,12 +48,12 @@ def ensure_models():
             logger.error(f"Failed to download CLIP base model: {e}")
     else:
         logger.info("CLIP base model already exists.")
-    
+
     # 2. InsightFace Model (Face Recognition)
     # Target: data/models/buffalo_l
     # InsightFace uses 'root' parameter to find models. 
     # If root='data', it looks in 'data/models/buffalo_l'.
-    
+
     insightface_root = settings.MODEL_PATH.rstrip("/").rstrip("models") # Defaults to 'data'
     buffalo_l_path = os.path.join(insightface_root,"models", "buffalo_l")
     
@@ -73,3 +72,21 @@ def ensure_models():
             logger.error(f"Failed to download InsightFace model: {e}")
     else:
         logger.info("InsightFace model already exists.")
+
+    # paddle ocr model
+    paddleocr_dir = os.path.join(base_dir, "official_models", "PP-OCRv5_server_det")
+    if not os.path.exists(paddleocr_dir):
+        logger.info(f"Downloading PaddleOCR model to {paddleocr_dir} ...")
+        try:
+            model_root = settings.MODEL_PATH
+            os.environ['PADDLE_PDX_CACHE_HOME'] = model_root
+            from paddleocr import PaddleOCR
+            ocr = PaddleOCR(
+                use_angle_cls=True, lang='ch',
+            )
+            logger.info("PaddleOCR model downloaded successfully.")
+        except Exception as e:
+            shutil.rmtree(paddleocr_dir, ignore_errors=True)
+            logger.error(f"Failed to download PaddleOCR model: {e}")
+    else:
+        logger.info("PaddleOCR model already exists.")
