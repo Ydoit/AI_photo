@@ -163,6 +163,9 @@ class TaskWorker:
                 # Sync status periodically (every 5s)
                 now = datetime.now()
                 if (now - last_sync).total_seconds() > 5:
+                    # Reload config if changed
+                    config_manager.reload()
+                    
                     self._save_system_state('scan_status', self.scan_status)
                     # Refresh paused categories
                     paused_list = self._load_system_state('paused_categories', [])

@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 class AISettings(BaseModel):
-    ai_api_url: str = Field(default="http://localhost:8001", description="AI Service API URL")
+    ai_api_url: str = Field(default=os.getenv("AI_API_URL", "http://localhost:8001"), description="AI Service API URL")
     face_recognition_threshold: float = Field(default=0.6, description="Face recognition confidence threshold")
     face_recognition_min_photos: int = Field(default=5, description="Minimum photos required for a valid face cluster")
     # OCR settings can be added here later
@@ -36,6 +36,7 @@ class AppSettings(BaseModel):
 class ConfigManager:
     _instance = None
     _config_path = "./data/config.json"
+    _last_mtime = 0
     
     def __new__(cls):
         if cls._instance is None:
@@ -47,10 +48,14 @@ class ConfigManager:
         if not os.path.exists(self._config_path):
             self.config = AppSettings()
             self._save_config()
+            self._last_mtime = os.path.getmtime(self._config_path) if os.path.exists(self._config_path) else 0
         else:
             try:
+                current_mtime = os.path.getmtime(self._config_path)
                 with open(self._config_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
+                
+                self._last_mtime = current_mtime
                 
                 # Migration Logic
                 if data.get("version") == "1.0" or "storage_root" in data:
@@ -86,10 +91,27 @@ class ConfigManager:
     def save(self):
         self._save_config()
 
+    def reload(self):
+        """Reload config from disk if changed"""
+        if not os.path.exists(self._config_path):
+            return
+
+        try:
+            mtime = os.path.getmtime(self._config_path)
+            if mtime > self._last_mtime:
+                # print(f"Config changed on disk, reloading... (old: {self._last_mtime}, new: {mtime})")
+                self._load_config()
+        except Exception as e:
+            print(f"Error checking config file: {e}")
+
     def _save_config(self):
         try:
             with open(self._config_path, 'w', encoding='utf-8') as f:
                 f.write(self.config.model_dump_json(indent=4, ensure_ascii=False))
+            
+            # Update mtime to prevent immediate reload
+            if os.path.exists(self._config_path):
+                self._last_mtime = os.path.getmtime(self._config_path)
         except Exception as e:
             print(f"Error saving config: {e}")
 

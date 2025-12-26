@@ -19,12 +19,15 @@ _STORAGE_ROOT_CACHE = None
 
 def _get_storage_root(db: Session = None) -> str:
     global _STORAGE_ROOT_CACHE
-    if _STORAGE_ROOT_CACHE:
-        return _STORAGE_ROOT_CACHE
-
+    
+    # Get current config
     root = config_manager.config.storage.photo_storage_path
     if not root:
         root = 'uploads'
+        
+    # Return cached if unchanged
+    if _STORAGE_ROOT_CACHE == root:
+        return _STORAGE_ROOT_CACHE
 
     # Ensure directories exist
     try:
