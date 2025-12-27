@@ -76,7 +76,7 @@ class ModelManager:
             time.sleep(10) # Check every minute
             now = time.time()
             for name, wrapper in self.models.items():
-                # print(name)
+                # print(name, wrapper.last_used, now - wrapper.last_used, wrapper.model)
                 # Check without lock first to avoid contention
                 if wrapper.model is not None:
                     # Double check inside lock

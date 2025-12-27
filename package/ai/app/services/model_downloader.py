@@ -7,8 +7,6 @@ from typing import Callable, Dict, Any, Optional
 
 from app.config import settings
 
-logger = logging.getLogger(__name__)
-
 class ModelStatus(Enum):
     PENDING = "pending"
     DOWNLOADING = "downloading"
@@ -47,32 +45,32 @@ class ModelDownloader:
         try:
             # Check if already exists
             if model_info["check_fn"]():
-                logger.info(f"Model '{key}' already exists.")
+                logging.info(f"Model '{key}' already exists.")
                 with self.lock:
                     model_info["status"] = ModelStatus.READY
                 return
 
-            logger.info(f"Starting download for model '{key}'...")
+            logging.info(f"Starting download for model '{key}'...")
             with self.lock:
                 model_info["status"] = ModelStatus.DOWNLOADING
 
             # Execute download
             path = model_info["download_fn"]()
             
-            logger.info(f"Model '{key}' downloaded successfully at {path}.")
+            logging.info(f"Model '{key}' downloaded successfully at {path}.")
             with self.lock:
                 model_info["status"] = ModelStatus.READY
 
         except Exception as e:
-            logger.error(f"Failed to download model '{key}': {e}")
+            logging.error(f"Failed to download model '{key}': {e}")
             
             # Cleanup logic
             if cleanup_dir and os.path.exists(cleanup_dir):
                 try:
-                    logger.info(f"Cleaning up directory: {cleanup_dir}")
+                    logging.info(f"Cleaning up directory: {cleanup_dir}")
                     shutil.rmtree(cleanup_dir, ignore_errors=True)
                 except Exception as cleanup_error:
-                    logger.error(f"Failed to cleanup directory {cleanup_dir}: {cleanup_error}")
+                    logging.error(f"Failed to cleanup directory {cleanup_dir}: {cleanup_error}")
 
             with self.lock:
                 model_info["status"] = ModelStatus.FAILED
@@ -100,5 +98,17 @@ class ModelDownloader:
                 return True
             time.sleep(1)
         return False
+
+    def reset_status(self, key: str):
+        """Reset the status of a model to PENDING."""
+        with self.lock:
+            if key in self.models:
+                self.models[key]["status"] = ModelStatus.PENDING
+                self.models[key]["error"] = None
+
+    def trigger_download(self, key: str):
+        """Trigger download for a specific model."""
+        t = threading.Thread(target=self._download_worker, args=(key,), daemon=True)
+        t.start()
 
 model_downloader = ModelDownloader()

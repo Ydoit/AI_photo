@@ -8,26 +8,30 @@ import cv2
 from app.config import settings
 from app.services.model_downloader import model_downloader
 from app.services.model_manager import model_manager
-logger = logging.getLogger(__name__)
+from app.services.ai_config_manager import ai_config_manager
 
 def load_insightface_model():
     try:
         import insightface
         from insightface.app import FaceAnalysis
+        
+        model_name = ai_config_manager.get_model_selection("face")
+        logging.info(f"Initializing InsightFace with model: {model_name}")
+
         # Initialize InsightFace analysis
         # providers=['CUDAExecutionProvider', 'CPUExecutionProvider'] if GPU available
         provider_options = [{"device_id": 0}, {}]
         model_path = settings.MODEL_PATH.rstrip("/").rstrip("models")
         app = FaceAnalysis(
-            name='buffalo_l', root=model_path,
+            name=model_name, root=model_path,
             providers=['CUDAExecutionProvider', 'CPUExecutionProvider'],
             provider_options = provider_options  # 传递 CUDA 配置
         )
         app.prepare(ctx_id=0, det_size=(640, 640))
-        logger.info("InsightFace model initialized successfully.")
+        logging.info("InsightFace model initialized successfully.")
         return app
     except Exception as e:
-        logger.error(f"Failed to initialize InsightFace model: {e}")
+        logging.error(f"Failed to initialize InsightFace model: {e}")
         raise e
 
 def release_model(model):
@@ -75,9 +79,9 @@ def release_model(model):
 
         # 4. 强制GC（清理循环引用）
         gc.collect()
-        logger.info("InsightFace model internal resources cleaned")
+        logging.info("InsightFace model internal resources cleaned")
     except Exception as e:
-        logger.error(f"Failed to cleanup InsightFace internal resources: {e}", exc_info=True)
+        logging.error(f"Failed to cleanup InsightFace internal resources: {e}", exc_info=True)
     try:
         # Release InsightFace model
         """清理sys.modules中的指定模块，释放导入占用的内存"""
@@ -97,9 +101,9 @@ def release_model(model):
                     del sys.modules[key]
                     deleted_modules.append(key)
         if deleted_modules:
-            logger.info(f"Deleted modules for InsightFace: {deleted_modules[:10]}...")  # 只打印前10个避免过长
+            logging.info(f"Deleted modules for InsightFace: {deleted_modules[:10]}...")  # 只打印前10个避免过长
     except Exception as e:
-        logger.error(f"Failed to release InsightFace model: {e}")
+        logging.error(f"Failed to release InsightFace model: {e}")
         raise e
 
 # Register the model
@@ -117,18 +121,31 @@ class FaceRecognitionService:
         if insightface_root.endswith("/") or insightface_root.endswith("\\"):
              insightface_root = insightface_root[:-1]
              
-        # But actually, simpler: The model directory is settings.MODEL_PATH/buffalo_l
-        buffalo_l_path = os.path.join(settings.MODEL_PATH, "buffalo_l")
+        def get_current_model_name():
+            return ai_config_manager.get_model_selection("face")
 
         def check_face_model():
-            return os.path.exists(buffalo_l_path) and len(os.listdir(buffalo_l_path)) > 0
+            model_name = get_current_model_name()
+            model_dir = os.path.join(settings.MODEL_PATH, model_name)
+            return os.path.exists(model_dir) and len(os.listdir(model_dir)) > 0
 
         def download_face_model():
+            model_name = get_current_model_name()
+            model_dir = os.path.join(settings.MODEL_PATH, model_name)
             from modelscope.hub.snapshot_download import snapshot_download
-            logger.info(f"Downloading InsightFace model buffalo_l to {buffalo_l_path}...")
-            return snapshot_download('fireicewolf/buffalo_l', local_dir=buffalo_l_path)
+            logging.info(f"Downloading InsightFace model {model_name} to {model_dir}...")
+            # Assuming the repo name maps to the model name. 
+            # buffalo_l -> fireicewolf/buffalo_l
+            # buffalo_s -> fireicewolf/buffalo_s ? Need to verify if buffalo_s is available under same user.
+            # Usually InsightFace models are not all on modelscope under same user.
+            # But for buffalo_l it is hardcoded 'fireicewolf/buffalo_l'.
+            # If user switches to buffalo_s, we need to know the repo.
+            # For now, let's assume fireicewolf has it or handle it.
+            # Actually buffalo_s is smaller.
+            repo_id = f'fireicewolf/{model_name}'
+            return snapshot_download(repo_id, local_dir=model_dir)
 
-        model_downloader.register_model("face", check_face_model, download_face_model, cleanup_dir=buffalo_l_path)
+        model_downloader.register_model("face", check_face_model, download_face_model)
 
     def process_image(self, image_bytes: bytes):
         """

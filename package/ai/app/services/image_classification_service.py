@@ -1,7 +1,11 @@
+import traceback
+
 from PIL import Image
 
 from app.config import settings
+from app.services.model_downloader import model_downloader
 from app.services.model_manager import model_manager
+from app.services.ai_config_manager import ai_config_manager
 import logging
 import io
 import json
@@ -19,24 +23,73 @@ class SentenceTransformerWrapper:
 
 class ImageClassificationService:
     def __init__(self):
-        text_model_path = os.path.join(settings.MODEL_PATH, 'clip-ViT-B-32-multilingual-v1')
-        image_model_path = os.path.join(settings.MODEL_PATH, 'clip-ViT-B-32')
-
-        self.text_model_name = text_model_path if os.path.exists(text_model_path) else 'sentence-transformers/clip-ViT-B-32-multilingual-v1'
-        self.image_model_name = image_model_path if os.path.exists(image_model_path) else "clip-ViT-B-32"
-
         self._register_models()
         self.data_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "categories.json")
         self.categories: Dict = {}
         self.category_keys: List[str] = []
         self.simple_prompts: List[str] = []
         self._load_categories()
+        self._register_downloads()
+
+    def _get_model_info(self):
+        selected = ai_config_manager.get_model_selection("classification")
+        # Map selection to actual model repos/paths
+        # This could also be in config, but hardcoding the logic here for now as "Global Variables" equivalent
+        if selected == "clip-ViT-B-32":
+            return {
+                "text_model_repo": "sentence-transformers/clip-ViT-B-32-multilingual-v1",
+                "image_model_repo": "sentence-transformers/clip-ViT-B-32",
+                "text_dir_name": "clip-ViT-B-32-multilingual-v1",
+                "image_dir_name": "clip-ViT-B-32"
+            }
+        return {
+                "text_model_repo": "sentence-transformers/clip-ViT-B-32-multilingual-v1",
+                "image_model_repo": "sentence-transformers/clip-ViT-B-32",
+                "text_dir_name": "clip-ViT-B-32-multilingual-v1",
+                "image_dir_name": "clip-ViT-B-32"
+        }
+
+    def _register_downloads(self):
+        
+        def check_image_model():
+            info = self._get_model_info()
+            path = os.path.join(settings.MODEL_PATH, info["image_dir_name"])
+            return os.path.exists(path) and len(os.listdir(path)) > 0
+
+        def download_image_model():
+            info = self._get_model_info()
+            path = os.path.join(settings.MODEL_PATH, info["image_dir_name"])
+            from modelscope.hub.snapshot_download import snapshot_download
+            logging.info(f"Downloading Image model {info['image_model_repo']} to {path}...")
+            return snapshot_download(info['image_model_repo'], local_dir=path)
+
+        def check_text_model():
+            info = self._get_model_info()
+            path = os.path.join(settings.MODEL_PATH, info["text_dir_name"])
+            return os.path.exists(path) and len(os.listdir(path)) > 0
+
+        def download_text_model():
+            info = self._get_model_info()
+            path = os.path.join(settings.MODEL_PATH, info["text_dir_name"])
+            from modelscope.hub.snapshot_download import snapshot_download
+            logging.info(f"Downloading Text model {info['text_model_repo']} to {path}...")
+            return snapshot_download(info['text_model_repo'], local_dir=path)
+
+        model_downloader.register_model("clip_text", check_text_model, download_text_model)
+        model_downloader.register_model("clip_image", check_image_model, download_image_model)
 
     def _load_text_model(self):
-        return SentenceTransformerWrapper(self.text_model_name)
+        info = self._get_model_info()
+        path = os.path.join(settings.MODEL_PATH, info["text_dir_name"])
+        # If not exists (should be handled by downloader), fallback to repo name which might auto-download by sentence-transformers
+        model_name = path if os.path.exists(path) else info["text_model_repo"]
+        return SentenceTransformerWrapper(model_name)
 
     def _load_image_model(self):
-        return SentenceTransformerWrapper(self.image_model_name)
+        info = self._get_model_info()
+        path = os.path.join(settings.MODEL_PATH, info["image_dir_name"])
+        model_name = path if os.path.exists(path) else info["image_model_repo"]
+        return SentenceTransformerWrapper(model_name)
 
     def _release_model(self, wrapper):
         """Release resources associated with the model"""
@@ -196,7 +249,7 @@ class ImageClassificationService:
             text_emb = wrapper.model.encode(text, convert_to_tensor=False)
             return text_emb.tolist()
         except Exception as e:
-            logging.error(f"Error in text embedding: {e}")
+            logging.error(f"Error in text embedding: {e}\n{traceback.format_exc()}")
             raise e
 
     # --- Management Methods ---

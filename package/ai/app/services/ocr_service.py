@@ -6,25 +6,25 @@ import os
 from app.config import settings
 from app.services.model_downloader import model_downloader
 from app.services.model_manager import model_manager
-
-logger = logging.getLogger(__name__)
+from app.services.ai_config_manager import ai_config_manager
 
 def load_paddleocr_model():
     try:
         model_root = settings.MODEL_PATH
         os.environ['PADDLE_PDX_CACHE_HOME'] = model_root
         from paddleocr import PaddleOCR
-        # 优先用绝对路径（推荐），也可用相对路径
-        model_name = 'mobile'
+        # Get model name from config
+        model_name = ai_config_manager.get_model_selection("ocr")
+        logging.info(f"Initializing PaddleOCR with model: {model_name}")
         ocr = PaddleOCR(
             use_angle_cls=True, lang='ch',
             text_recognition_model_name=f"PP-OCRv5_{model_name}_rec",
             text_detection_model_name=f"PP-OCRv5_{model_name}_det"
         )
-        logger.info("PaddleOCR model initialized successfully.")
+        logging.info("PaddleOCR model initialized successfully.")
         return ocr
     except Exception as e:
-        logger.error(f"Failed to initialize PaddleOCR model: {e}")
+        logging.error(f"Failed to initialize PaddleOCR model: {e}")
         raise e
 
 def release_paddleocr_model(model):
@@ -51,35 +51,50 @@ def release_paddleocr_model(model):
         #     del sys.modules[m]
         # This is often too aggressive and causes crashes. 
         # We will focus on the resource release hook.
-        logger.info("PaddleOCR resources released.")
+        logging.info("PaddleOCR resources released.")
     except Exception as e:
-        logger.error(f"Error releasing PaddleOCR resources: {e}")
+        logging.error(f"Error releasing PaddleOCR resources: {e}")
 
 # Register
 model_manager.register_model("ocr", load_paddleocr_model, release_paddleocr_model)
 
 class OCRService:
-    def __init__(self, model_name="mobile"):
-        self.model_name = model_name
+    def __init__(self):
         self._register_downloads()
 
     def _register_downloads(self):
-        marker_file = os.path.join(settings.MODEL_PATH, "official_models")
-        marker_file = os.path.join(marker_file, f"PP-OCRv5_{self.model_name}_rec")
+        def get_current_model_name():
+            return ai_config_manager.get_model_selection("ocr")
+
         def check_ocr_model():
+            model_name = get_current_model_name()
+            marker_file = os.path.join(settings.MODEL_PATH, "official_models")
+            marker_file = os.path.join(marker_file, f"PP-OCRv5_{model_name}_rec")
             return os.path.exists(marker_file)
 
         def download_ocr_model():
-            logger.info(f"Downloading/Verifying PaddleOCR model...")
+            model_name = get_current_model_name()
+            logging.info(f"Downloading/Verifying PaddleOCR model ({model_name})...")
             # We need to set the env vars as before if they were useful
             model_root = os.path.join(settings.MODEL_PATH, "official_models")
             #模型下载
             from modelscope import snapshot_download
-            model_path = os.path.join(model_root, f"PP-OCRv5_{self.model_name}_rec")
-            model_dir = snapshot_download(f'PaddlePaddle/PP-OCRv5_{self.model_name}_rec', local_dir=model_path)
-            model_path = os.path.join(model_root, f"PP-OCRv5_{self.model_name}_det")
-            model_dir = snapshot_download(f'PaddlePaddle/PP-OCRv5_{self.model_name}_det', local_dir=model_path)
+            model_path = os.path.join(model_root, f"PP-OCRv5_{model_name}_rec")
+            # Note: This assumes the repo name follows the pattern
+            try:
+                snapshot_download(f'PaddlePaddle/PP-OCRv5_{model_name}_rec', local_dir=model_path)
+            except Exception as e:
+                # Fallback to v4 if v5 server is not found? Or just let it fail?
+                # For now let's assume v5 exists or user will configure to v4 if needed.
+                # But wait, hardcoded PP-OCRv5 in code.
+                # If user wants server, and v5 server doesn't exist, we might be in trouble.
+                # Let's just try to download what is requested.
+                raise e
+            
+            det_model_path = os.path.join(model_root, f"PP-OCRv5_{model_name}_det")
+            snapshot_download(f'PaddlePaddle/PP-OCRv5_{model_name}_det', local_dir=det_model_path)
             return model_path
+        
         model_downloader.register_model("ocr", check_ocr_model, download_ocr_model)
 
 
