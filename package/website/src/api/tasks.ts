@@ -18,9 +18,8 @@ export interface Task {
 }
 
 export const tasksApi = {
-  async listTasks(status?: string, limit = 50) {
-    const params: any = { limit }
-    if (status) params.status = status
+  async listTasks(status?: string, type?: string, limit = 50) {
+    const params: any = { status, type, limit }
     const { data } = await api.get<Task[]>('/api/tasks/', { params })
     return data
   },
@@ -37,6 +36,23 @@ export const tasksApi = {
 
   async cancelTask(taskId: string) {
     const { data } = await api.post<Task>(`/api/tasks/${taskId}/cancel`)
+    return data
+  },
+
+  async retryTask(taskId: string) {
+    const { data } = await api.post<Task>(`/api/tasks/${taskId}/retry`)
+    return data
+  },
+
+  async retryAllFailedTasks(types?: string[]) {
+    const params: any = {}
+    if (types && types.length > 0) {
+        params.types = types
+    }
+    const { data } = await api.post<{ message: string, count: number }>('/api/tasks/retry-all-failed', null, {
+        params,
+        paramsSerializer: { indexes: null }
+    })
     return data
   },
 

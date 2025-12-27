@@ -31,6 +31,12 @@
         <!-- Level Toggle -->
         <div class="bg-gray-200 dark:bg-gray-800 p-1 rounded-lg flex">
           <button
+            @click="changeLevel('district')"
+            :class="['px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-white dark:bg-gray-700', level === 'district' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
+          >
+            区县
+          </button>
+          <button
             @click="changeLevel('city')"
             :class="['px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-white dark:bg-gray-700', level === 'city' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
           >
@@ -146,7 +152,7 @@ const fetchLocations = async () => {
   }
 }
 
-const changeLevel = (newLevel: 'city' | 'province', viewState?: { zoom: number, center: number[] }) => {
+const changeLevel = (newLevel: 'city' | 'province' | 'district', viewState?: { zoom: number, center: number[] }) => {
   if (level.value === newLevel) return
   level.value = newLevel
   fetchLocations()
@@ -219,11 +225,11 @@ const initMap = async (viewState?: { zoom: number, center: number[] }) => {
           const zoom = option.geo[0].zoom
           const center = option.geo[0].center
           
-          if (level.value === 'province' && zoom > 2.5) {
-             changeLevel('city', { zoom, center })
-          } else if (level.value === 'city' && zoom < 1.5) {
-             changeLevel('province', { zoom, center })
-          }
+          // if (level.value === 'province' && zoom > 2.5) {
+          //    changeLevel('city', { zoom, center })
+          // } else if (level.value === 'city' && zoom < 1.5) {
+          //    changeLevel('province', { zoom, center })
+          // }
         }
       }, 300)
     })

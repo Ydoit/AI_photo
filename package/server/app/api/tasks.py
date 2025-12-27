@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, Depends, HTTPException, Body, Query
 from sqlalchemy.orm import Session
 from app.dependencies import get_db
 from app.db.models.task import Task, TaskStatus, TaskType
@@ -36,16 +36,19 @@ class TaskCreate(BaseModel):
 @router.get("/", response_model=List[TaskSchema], summary="获取任务列表")
 def list_tasks(
     status: str = None,
+    type: str = None,
     limit: int = 50,
     db: Session = Depends(get_db)
 ):
     """
-    分页查询任务列表，可按状态过滤。
+    分页查询任务列表，可按状态和类型过滤。
     默认按创建时间倒序返回前 50 条。
     """
     query = db.query(Task).order_by(Task.created_at.desc())
     if status:
         query = query.filter(Task.status == status)
+    if type:
+        query = query.filter(Task.type == type)
     return query.limit(limit).all()
 
 
@@ -153,3 +156,46 @@ def cancel_task(task_id: UUID, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(task)
     return task
+
+
+@router.post("/{task_id}/retry", response_model=TaskSchema, summary="重试任务")
+def retry_task(task_id: UUID, db: Session = Depends(get_db)):
+    """
+    重试失败的任务。
+    """
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    if task.status != TaskStatus.FAILED:
+         raise HTTPException(status_code=400, detail="Only failed tasks can be retried")
+
+    task.status = TaskStatus.PENDING
+    task.error = None
+    task.updated_at = datetime.now()
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+@router.post("/retry-all-failed", summary="重试所有失败任务")
+def retry_all_failed_tasks(
+    types: Optional[List[str]] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """
+    重试所有失败的任务。可选指定任务类型。
+    """
+    query = db.query(Task).filter(Task.status == TaskStatus.FAILED)
+    
+    if types:
+        query = query.filter(Task.type.in_(types))
+
+    result = query.update({
+        Task.status: TaskStatus.PENDING,
+        Task.error: None,
+        Task.updated_at: datetime.now()
+    }, synchronize_session=False)
+    
+    db.commit()
+    return {"message": f"Retried {result} failed tasks", "count": result}

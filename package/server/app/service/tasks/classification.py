@@ -2,33 +2,31 @@ import logging
 import os
 import aiohttp
 from aiohttp import FormData
-import json
 from sqlalchemy.orm import Session
 from app.db.models.task import Task, TaskType
 from app.db.models.photo import Photo, FileType
+from app.db.models.tag import PhotoTag, PhotoTagRelation
+from app.db.models.image_vector import ImageVector
 from typing import Dict, Any, List
 from app.core.config_manager import config_manager
 from app.crud import tag as crud_tag
 from app.crud import crud_vector
 from PIL import Image
 
+from app.service import storage
+
 logger = logging.getLogger(__name__)
 
-async def handle_classification_task(task_manager, task: Task, db: Session) -> Dict[str, Any]:
-    """
-    Handle Image Classification task
-    """
+async def handle_classify_image(task_manager, task: Task, db: Session) -> Dict[str, Any]:
     try:
         force = task.payload.get('force', False)
         
-        # 1. Single Photo Mode
         if task.payload and 'photo_id' in task.payload:
             photo_id = task.payload['photo_id']
             photo = db.query(Photo).filter(Photo.id == photo_id).first()
             if not photo:
                 return {'status': 'skipped', 'reason': 'photo not found'}
             
-            # Check if already processed (unless force)
             if not force:
                 tasks_status = photo.processed_tasks or {}
                 if tasks_status.get('classification'):
@@ -36,11 +34,9 @@ async def handle_classification_task(task_manager, task: Task, db: Session) -> D
 
             return await process_single_photo(task_manager, photo, db)
 
-        # 2. Generator Mode (Scan all)
-        photos_to_process = []
+        # Generator Mode
         batch_size = 1000
         offset = 0
-        
         generated_count = 0
         
         while True:
@@ -65,7 +61,7 @@ async def handle_classification_task(task_manager, task: Task, db: Session) -> D
                     tasks_to_create.append({
                         'type': TaskType.CLASSIFY_IMAGE,
                         'payload': {'photo_id': str(p.id), 'force': force},
-                        'priority': 1
+                        'priority': 3
                     })
 
             if tasks_to_create:
@@ -77,7 +73,7 @@ async def handle_classification_task(task_manager, task: Task, db: Session) -> D
         return {
             'processed': 0,
             'generated_tasks': generated_count,
-            'message': f'Generated {generated_count} Classification tasks'
+            'message': f'Generated {generated_count} classification tasks'
         }
 
     except Exception as e:
@@ -85,11 +81,7 @@ async def handle_classification_task(task_manager, task: Task, db: Session) -> D
         raise e
 
 async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[str, Any]:
-    from app.service import storage
-
     try:
-        # 1. Resolve file path
-        # Use preview for speed if available, otherwise original
         target_path = storage.get_preview_path(photo.id, db)
         if not os.path.exists(target_path):
             target_path = photo.file_path
@@ -97,7 +89,6 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                 return {'status': 'failed', 'error': 'file not found'}
 
         async with aiohttp.ClientSession() as session:
-            # 1. Read file
             with open(target_path, 'rb') as f:
                 file_data = f.read()
 
@@ -109,62 +100,60 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                 content_type='image/jpeg'
             )
 
-            # 2. Call AI Service
-            api_url = f"{config_manager.config.ai.ai_api_url}/classification/classify"
-            # Optional parameters can be added to query string if needed
-
-            async with session.post(
-                api_url,
-                data=form_data,
-                timeout=aiohttp.ClientTimeout(total=30)
-            ) as resp:
+            api_url = f"{config_manager.config.ai.ai_api_url}/image_classification/classify"
+            async with session.post(api_url, data=form_data) as resp:
                 if resp.status == 200:
                     result = await resp.json()
-                    # Response structure:
-                    # {
-                    #   "results": [{"label": "...", "confidence": ...}, ...],
-                    #   "embedding": [0.1, ...]
-                    # }
-                    classification_results = result.get('results', [])
+                    results = result.get('results', [])
                     embedding = result.get('embedding', [])
-                    # 2. Process Results
-                    # Remove existing AI tags
                     crud_tag.remove_tags_from_photo(db, photo.id, ai_generated=True)
-                    # 3. Save Tags
-                    tags_added = 0
-                    for item in classification_results:
-                        label = item.get('label')
-                        confidence = item.get('confidence', 0.0)
-                        if confidence < config_manager.config.ai.classification_tag_threshold:
-                            continue
-                        # Add tag
-                        if label:
-                            crud_tag.add_tag_to_photo(db, photo.id, label, confidence)
-                            tags_added += 1
 
-                    # 4. Save Embedding
-                    if embedding:
-                        crud_vector.create_or_update_vector(db, photo.id, embedding)
+                    # Save Embedding
+                    vector = db.query(ImageVector).filter(ImageVector.photo_id == photo.id).first()
+                    if not vector:
+                        vector = ImageVector(photo_id=photo.id)
+                        db.add(vector)
+                    vector.embedding = embedding
 
-                    # 5. Update Status
+                    # Save Tags
+                    for res in results:
+                        tag_name = res['label']
+                        confidence = res['confidence']
+                        
+                        tag = db.query(PhotoTag).filter(PhotoTag.tag_name == tag_name).first()
+                        if not tag:
+                            tag = PhotoTag(tag_name=tag_name)
+                            db.add(tag)
+                            db.flush() # get id
+                        
+                        # Check relation
+                        rel = db.query(PhotoTagRelation).filter(
+                            PhotoTagRelation.photo_id == photo.id,
+                            PhotoTagRelation.tag_id == tag.id
+                        ).first()
+                        
+                        if not rel:
+                            rel = PhotoTagRelation(photo_id=photo.id, tag_id=tag.id, confidence=confidence)
+                            db.add(rel)
+                        else:
+                            rel.confidence = confidence
+
                     tasks_status = dict(photo.processed_tasks or {})
                     tasks_status['classification'] = True
                     photo.processed_tasks = tasks_status
                     db.add(photo)
                     db.commit()
-
-                    return {
-                        'status': 'success',
-                        'tags_added': tags_added,
-                        'embedding_saved': bool(embedding)
-                    }
+                    return {'status': 'success', 'tags_found': len(results)}
                 else:
                     return {'status': 'failed', 'error': f"AI Service error: {resp.status}"}
     except Exception as e:
-        logger.error(f"Error processing classification for photo {photo.id}: {e}")
+        logger.error(f"Error processing Classification for photo {photo.id}: {e}")
         tasks_status = dict(photo.processed_tasks or {})
         tasks_status['classification'] = False
         photo.processed_tasks = tasks_status
         db.add(photo)
         db.commit()
         raise e
+
+def release_resources():
+    pass

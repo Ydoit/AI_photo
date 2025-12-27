@@ -58,6 +58,7 @@ class TaskWorker:
         self.category_map = CATEGORY_MAP
         self.fast_mode = False
         self.active_task_map: Dict[Any, str] = {} # future -> task_type
+        self.last_active_time: Dict[str, datetime] = {} # task_type -> last active time
 
     @classmethod
     def get_instance(cls):
@@ -187,17 +188,55 @@ class TaskWorker:
                     idle_start_time = None
 
                 # Manage Pool Lifecycle (Resource Release)
+                # Check for CPU Pool
+                active_cpu_count = sum(1 for t in self.active_task_map.values() if t in CPU_TASKS)
+                if active_cpu_count == 0 and self.process_pool:
+                    # Check if all CPU tasks have been idle for > 30s
+                    # If any CPU task has run recently, keep pool
+                    last_cpu_run = max([self.last_active_time.get(t, datetime.min) for t in CPU_TASKS], default=datetime.min)
+                    if (datetime.now() - last_cpu_run).total_seconds() > 30:
+                        logging.info("Shutting down process pool (CPU) due to inactivity")
+                        self.process_pool.shutdown(wait=False)
+                        self.process_pool = None
+
+                # Check for IO Pool
+                active_io_count = sum(1 for t in self.active_task_map.values() if t in IO_TASKS)
+                if active_io_count == 0 and self.thread_pool:
+                     # Check if all IO tasks have been idle for > 30s
+                    last_io_run = max([self.last_active_time.get(t, datetime.min) for t in IO_TASKS], default=datetime.min)
+                    if (datetime.now() - last_io_run).total_seconds() > 30:
+                        logging.info("Shutting down thread pool (IO) due to inactivity")
+                        self.thread_pool.shutdown(wait=False)
+                        self.thread_pool = None
+                
+                # Check for Module Resources
+                for task_type in TaskType:
+                    if task_type not in self.last_active_time:
+                        continue
+                    
+                    last_run = self.last_active_time[task_type]
+                    if (datetime.now() - last_run).total_seconds() > 30:
+                        # Release module specific resources
+                        if task_type == TaskType.GENERATE_THUMBNAIL or task_type == TaskType.REBUILD_THUMBNAILS:
+                            thumbnail.release_resources()
+                        elif task_type == TaskType.EXTRACT_METADATA or task_type == TaskType.REBUILD_METADATA:
+                            metadata.release_resources()
+                        elif task_type == TaskType.OCR:
+                            if hasattr(ocr, 'release_resources'): ocr.release_resources()
+                        elif task_type == TaskType.RECOGNIZE_FACE:
+                            if hasattr(face, 'release_resources'): face.release_resources()
+                        elif task_type == TaskType.CLASSIFY_IMAGE:
+                            if hasattr(classification, 'release_resources'): classification.release_resources()
+
                 if active_count == 0:
                     if idle_start_time is None:
                         idle_start_time = datetime.now()
                         self.scan_status['running'] = False
                         self.scan_status['message'] = "Idle"
                         self._save_system_state('scan_status', self.scan_status)
-                    elif (datetime.now() - idle_start_time).total_seconds() > 30:
-                        # Idle for 30s, shutdown pool to release resources
-                        self.release_resources()
                 else:
-                    # Ensure pools exist
+                    # Ensure pools exist (re-create if needed)
+
                     if self.process_pool is None:
                         logging.info(f"Restarting process pool")
                         self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count())
@@ -261,6 +300,8 @@ class TaskWorker:
                         task.status = TaskStatus.PROCESSING
                         db.commit()
                         self.scan_status['current_task'] = f"{task.type} - {task.id}"
+                        # Update last active time
+                        self.last_active_time[task.type] = datetime.now()
                         # Launch async wrapper
                         future = asyncio.create_task(self.execute_task_wrapper(task.id, task.type))
                         self.active_task_map[future] = task.type
@@ -325,11 +366,11 @@ class TaskWorker:
         elif task.type == TaskType.EXTRACT_METADATA:
             return await metadata.handle_extract_metadata(self, task, db)
         elif task.type == TaskType.RECOGNIZE_FACE:
-            return await face.handle_face_recognition(self, task, db)
+            return await face.handle_recognize_face(self, task, db)
         elif task.type == TaskType.OCR:
             return await ocr.handle_ocr_task(self, task, db)
         elif task.type == TaskType.CLASSIFY_IMAGE:
-            return await classification.handle_classification_task(self, task, db)
+            return await classification.handle_classify_image(self, task, db)
         else:
             return {'status': 'not_implemented', 'type': task.type}
 

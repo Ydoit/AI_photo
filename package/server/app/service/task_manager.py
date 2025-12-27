@@ -39,6 +39,7 @@ CATEGORY_MAP = {
     TaskType.PROCESS_BASIC: 'scanning',
     TaskType.PROCESS_IMAGE: 'scanning', # Legacy
     TaskType.GENERATE_THUMBNAIL: 'scanning',
+    TaskType.REBUILD_THUMBNAILS: 'scanning',
 
     TaskType.EXTRACT_METADATA: 'metadata',
     TaskType.REBUILD_METADATA: 'metadata',

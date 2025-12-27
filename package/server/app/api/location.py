@@ -10,7 +10,7 @@ router = APIRouter()
 
 @router.get("", response_model=List[schemas.Location], summary="获取位置列表")
 def get_locations(
-    level: str = Query('city', regex='^(city|province)$', description="分组级别：city 或 province"),
+    level: str = Query('city', regex='^(city|province|district)$', description="分组级别：city 或 province 或 district"),
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
@@ -22,7 +22,7 @@ def get_locations(
 
 @router.get("/distribution", response_model=List[schemas.LocationBase], summary="获取位置分布数据")
 def get_location_distribution(
-    level: str = Query('city', regex='^(city|province)$', description="分组级别：city 或 province"),
+    level: str = Query('city', regex='^(city|province|district)$', description="分组级别：city 或 province 或 district"),
     db: Session = Depends(get_db)
 ):
     """
@@ -33,7 +33,7 @@ def get_location_distribution(
 @router.get("/{name}/photos", response_model=List[photo_schemas.Photo], summary="获取位置照片列表")
 def get_location_photos(
     name: str = Path(..., description="位置名称"),
-    level: str = Query('city', regex='^(city|province)$', description="分组级别：city 或 province"),
+    level: str = Query('city', regex='^(city|province|district)$', description="分组级别：city 或 province 或 district"),
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db)

@@ -14,7 +14,6 @@
                     </span>
                 </el-tooltip>
              </div>
-            <el-button type="primary" @click="showCreateTaskDialog">新建任务</el-button>
         </div>
       </div>
       
@@ -27,26 +26,27 @@
               <el-tag effect="plain" size="small" class="ml-2">
                  优先级: {{ cat.priority }}
               </el-tag>
-              
+
               <!-- Status Logic -->
               <el-tag v-if="cat.status === 'paused'" type="warning" size="small">已暂停</el-tag>
-              <el-tag v-else-if="cat.pending === 0 && cat.completed > 0" type="success" size="small">已完成</el-tag>
+              <el-tag v-else-if="cat.pending === 0" type="success" size="small">已完成</el-tag>
               <el-tag v-else-if="cat.completed === 0 && cat.pending === 0" type="info" size="small">等待中</el-tag>
               <el-tag v-else type="primary" size="small">进行中</el-tag>
             </div>
             <div>
-               <el-button
-                 v-if="cat.status === 'paused'"
-                 type="success"
-                 size="small"
-                 @click="resumeCategory(cat.category)"
-               >继续</el-button>
-               <el-button
-                 v-else
-                 type="warning"
-                 size="small"
-                 @click="pauseCategory(cat.category)"
-               >暂停</el-button>
+                <el-dropdown trigger="click" @command="(cmd: string) => handleCategoryCommand(cat.category, cmd)">
+                    <el-button type="primary" size="small" plain>
+                        操作<i class="el-icon-arrow-down el-icon--right"></i>
+                    </el-button>
+                    <template #dropdown>
+                        <el-dropdown-menu>
+                            <el-dropdown-item v-if="cat.status === 'paused'" command="resume">继续任务</el-dropdown-item>
+                            <el-dropdown-item v-else command="pause">暂停任务</el-dropdown-item>
+                            <el-dropdown-item command="retry" :disabled="cat.failed === 0" divided>重试失败任务</el-dropdown-item>
+                            <el-dropdown-item command="rebuild">强制重做此项</el-dropdown-item>
+                        </el-dropdown-menu>
+                    </template>
+                </el-dropdown>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4 text-center">
@@ -54,8 +54,12 @@
                <div class="text-gray-500 text-xs mb-1">待处理</div>
                <div class="text-xl font-bold text-blue-600">{{ cat.pending }}</div>
              </div>
-             <div class="bg-white dark:bg-gray-900 p-3 rounded shadow-sm">
-               <div class="text-gray-500 text-xs mb-1">失败</div>
+             <div 
+                class="bg-white dark:bg-gray-900 p-3 rounded shadow-sm transition-colors" 
+                :class="{'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800': cat.failed > 0, 'opacity-60': cat.failed === 0}"
+                @click="cat.failed > 0 && showFailedTasks(cat.category)"
+             >
+               <div class="text-gray-500 text-xs mb-1">失败 {{ cat.failed > 0 ? '(点击查看)' : '' }}</div>
                <div class="text-xl font-bold text-red-600">{{ cat.failed }}</div>
              </div>
           </div>
@@ -64,33 +68,25 @@
 
     </div>
 
-    <!-- Create Task Dialog -->
-    <el-dialog v-model="createTaskVisible" title="新建任务" width="500px">
-        <el-form :model="newTaskForm" label-width="120px">
-            <el-form-item label="任务类型">
-                <el-select v-model="newTaskForm.type" placeholder="选择任务类型">
-                    <el-option label="扫描文件夹" value="SCAN_FOLDER" />
-                    <el-option label="重建缩略图" value="REBUILD_THUMBNAILS" />
-                    <el-option label="重建元数据" value="REBUILD_METADATA" />
-                    <el-option label="人脸识别" value="RECOGNIZE_FACE" />
-                    <el-option label="图片分类" value="CLASSIFY_IMAGE" />
-                    <el-option label="OCR识别" value="OCR" />
-                </el-select>
-            </el-form-item>
-             <el-form-item label="范围">
-                <el-select v-model="newTaskForm.scope" placeholder="选择范围">
-                    <el-option label="所有图片" value="all" />
-                </el-select>
-            </el-form-item>
-            <el-form-item label="强制处理">
-                <el-switch v-model="newTaskForm.force" active-text="是" inactive-text="否" />
-                <span class="text-xs text-gray-400 ml-2">是否处理已标记为完成的项目</span>
-            </el-form-item>
-        </el-form>
+    <!-- Failed Tasks Dialog -->
+    <el-dialog v-model="failedTasksVisible" title="失败任务列表" width="900px">
+        <el-table :data="failedTasksList" style="width: 100%" v-loading="failedTasksLoading" height="500">
+            <el-table-column prop="type" label="类型" width="180" />
+            <el-table-column prop="error" label="错误信息" show-overflow-tooltip />
+            <el-table-column prop="created_at" label="创建时间" width="180">
+                <template #default="{ row }">
+                    {{ new Date(row.created_at).toLocaleString() }}
+                </template>
+            </el-table-column>
+            <el-table-column label="操作" width="100" fixed="right">
+                <template #default="{ row }">
+                    <el-button type="primary" link size="small" @click="retrySingleTask(row)">重试</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
         <template #footer>
             <span class="dialog-footer">
-                <el-button @click="createTaskVisible = false">取消</el-button>
-                <el-button type="primary" @click="submitCreateTask">创建</el-button>
+                <el-button @click="failedTasksVisible = false">关闭</el-button>
             </span>
         </template>
     </el-dialog>
@@ -100,7 +96,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { tasksApi } from '@/api/tasks'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 interface GroupedTask {
     category: string
@@ -113,13 +109,12 @@ interface GroupedTask {
 
 const groupedTasks = ref<GroupedTask[]>([])
 const stats = ref({ failed_process_tasks: 0 })
-const createTaskVisible = ref(false)
 const fastMode = ref(false)
-const newTaskForm = ref({
-    type: '',
-    scope: 'all',
-    force: false
-})
+
+const failedTasksVisible = ref(false)
+const failedTasksList = ref<any[]>([])
+const failedTasksLoading = ref(false)
+
 let taskPollTimer: number | null = null
 
 const fetchTasks = async () => {
@@ -147,26 +142,98 @@ const handleFastModeChange = async (val: boolean) => {
     }
 }
 
-const showCreateTaskDialog = () => {
-    newTaskForm.value = { type: '', scope: 'all', force: false }
-    createTaskVisible.value = true
+const categoryMap: Record<string, string[]> = {
+    'scanning': ['SCAN_FOLDER', 'PROCESS_BASIC', 'PROCESS_IMAGE', 'GENERATE_THUMBNAIL', 'REBUILD_THUMBNAILS'],
+    'metadata': ['EXTRACT_METADATA', 'REBUILD_METADATA'],
+    'face': ['RECOGNIZE_FACE'],
+    'classification': ['CLASSIFY_IMAGE'],
+    'ocr': ['OCR'],
 }
 
-const submitCreateTask = async () => {
-    if (!newTaskForm.value.type) {
-        ElMessage.warning('请选择任务类型')
-        return
+const handleCategoryCommand = async (category: string, command: string) => {
+    if (command === 'pause') {
+        await pauseCategory(category)
+    } else if (command === 'resume') {
+        await resumeCategory(category)
+    } else if (command === 'retry') {
+        await retryCategoryFailed(category)
+    } else if (command === 'rebuild') {
+        confirmCategoryRebuild(category)
     }
+}
+
+const retryCategoryFailed = async (category: string) => {
+    const types = categoryMap[category]
+    if (!types) return
     try {
-        await tasksApi.createTask(newTaskForm.value.type, { 
-            scope: newTaskForm.value.scope,
-            force: newTaskForm.value.force
-        })
-        ElMessage.success('任务创建成功')
-        createTaskVisible.value = false
+        const res = await tasksApi.retryAllFailedTasks(types)
+        ElMessage.success(`已重试 ${res.count} 个失败任务`)
         fetchTasks()
     } catch (e) {
-        ElMessage.error('创建失败')
+        ElMessage.error('操作失败')
+    }
+}
+
+const confirmCategoryRebuild = (category: string) => {
+     ElMessageBox.confirm(
+        `此操作将重新创建 "${formatCategory(category)}" 类别下的所有任务，可能会消耗大量时间。是否继续？`,
+        '警告',
+        {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning',
+        }
+    ).then(() => {
+        forceRebuildCategory(category)
+    })
+}
+
+const forceRebuildCategory = async (category: string) => {
+    const types = categoryMap[category]
+    if (!types) return
+    try {
+        for (const type of types) {
+             // Skip some legacy or non-trigger types if necessary, but "Force Rebuild" implies all
+             // For scanning, we usually just need SCAN_FOLDER, but others might be useful to force re-run
+             // Actually, SCAN_FOLDER triggers others. 
+             // But if we want to rebuild thumbnails specifically, we trigger GENERATE_THUMBNAIL.
+             // Let's trigger all defined types for the category.
+            await tasksApi.createTask(type, { scope: 'all', force: true })
+        }
+        ElMessage.success('已触发任务重做')
+        fetchTasks()
+    } catch (e) {
+        ElMessage.error('操作部分失败，请查看日志')
+    }
+}
+
+const showFailedTasks = async (category: string) => {
+    failedTasksVisible.value = true
+    failedTasksLoading.value = true
+    failedTasksList.value = []
+    
+    try {
+       const types = categoryMap[category]
+       console.log('types', types)
+       if (types) {
+          failedTasksList.value = await tasksApi.listTasks('failed', types[0], 1000)
+       }
+    } catch (e) {
+        ElMessage.error('获取失败列表失败')
+    } finally {
+        failedTasksLoading.value = false
+    }
+}
+
+const retrySingleTask = async (row: any) => {
+    try {
+        await tasksApi.retryTask(row.id)
+        ElMessage.success('已重试')
+        // Remove from local list
+        failedTasksList.value = failedTasksList.value.filter(t => t.id !== row.id)
+        fetchTasks()
+    } catch (e) {
+        ElMessage.error('重试失败')
     }
 }
 

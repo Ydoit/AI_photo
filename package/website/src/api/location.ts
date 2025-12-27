@@ -10,14 +10,14 @@ const api = axios.create({
 });
 
 export const locationService = {
-  async getLocations(level: 'city' | 'province' = 'city', skip: number = 0, limit: number = 100) {
+  async getLocations(level: 'city' | 'province' | 'district' = 'city', skip: number = 0, limit: number = 100) {
     const { data } = await api.get<Location[]>('/api/locations', {
       params: { level, skip, limit }
     });
     return data;
   },
 
-  async getDistribution(level: 'city' | 'province' = 'city') {
+  async getDistribution(level: 'city' | 'province' | 'district' = 'city') {
     const { data } = await api.get<{name: string, count: number, level: string}[]>('/api/locations/distribution', {
       params: { level }
     });

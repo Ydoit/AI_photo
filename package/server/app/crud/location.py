@@ -8,6 +8,8 @@ def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 
         group_col = PhotoMetadata.city
     elif level == 'province':
         group_col = PhotoMetadata.province
+    elif level == 'district':
+        group_col = PhotoMetadata.district
     else:
         return []
 
@@ -69,6 +71,8 @@ def get_location_photos(db: Session, name: str, level: str = 'city', skip: int =
         col = PhotoMetadata.city
     elif level == 'province':
         col = PhotoMetadata.province
+    elif level == 'district':
+        col = PhotoMetadata.district
     else:
         return []
         
@@ -85,6 +89,8 @@ def get_location_distribution(db: Session, level: str = 'city'):
         group_col = PhotoMetadata.city
     elif level == 'province':
         group_col = PhotoMetadata.province
+    elif level == 'district':
+        group_col = PhotoMetadata.district
     else:
         return []
 
