@@ -23,6 +23,14 @@ engine = create_engine(
     max_overflow=50,
     pool_timeout=30,
     pool_recycle=1800,  # 定期回收空闲连接（避免失效连接）
+    pool_pre_ping=True,  # 关键：每次从池子里拿连接前，先执行SELECT 1校验连接有效性
+    # ===== psycopg2驱动参数 =====
+    connect_args={
+        "connect_timeout": 10,  # PG连接超时（秒）
+        "keepalives": 1,        # 开启TCP保活
+        "keepalives_idle": 60,  # 60秒无数据则发送保活包
+        "keepalives_interval": 10,  # 保活包发送间隔
+    }
 )
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 

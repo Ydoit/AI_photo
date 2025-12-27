@@ -4,6 +4,7 @@ import logging
 import sys
 import os
 from app.config import settings
+from app.services.model_downloader import model_downloader
 from app.services.model_manager import model_manager
 
 logger = logging.getLogger(__name__)
@@ -13,16 +14,12 @@ def load_paddleocr_model():
         model_root = settings.MODEL_PATH
         os.environ['PADDLE_PDX_CACHE_HOME'] = model_root
         from paddleocr import PaddleOCR
-        # use_angle_cls=True loads the angle classifier
-        # lang='ch' supports Chinese and English
-        # use_gpu will be auto-detected or we can configure it.
-        # PaddleOCR handles its own loading.
-        # We can pass `use_gpu=True` if we want to enforce it, but Paddle usually auto-detects.
-        # 核心：设置PADDLEX_HOME，指定模型默认下载到data/models
         # 优先用绝对路径（推荐），也可用相对路径
-
+        model_name = 'mobile'
         ocr = PaddleOCR(
             use_angle_cls=True, lang='ch',
+            text_recognition_model_name=f"PP-OCRv5_{model_name}_rec",
+            text_detection_model_name=f"PP-OCRv5_{model_name}_det"
         )
         logger.info("PaddleOCR model initialized successfully.")
         return ocr
@@ -62,13 +59,37 @@ def release_paddleocr_model(model):
 model_manager.register_model("ocr", load_paddleocr_model, release_paddleocr_model)
 
 class OCRService:
-    def __init__(self):
-        pass
+    def __init__(self, model_name="mobile"):
+        self.model_name = model_name
+        self._register_downloads()
+
+    def _register_downloads(self):
+        marker_file = os.path.join(settings.MODEL_PATH, "official_models")
+        marker_file = os.path.join(marker_file, f"PP-OCRv5_{self.model_name}_rec")
+        def check_ocr_model():
+            return os.path.exists(marker_file)
+
+        def download_ocr_model():
+            logger.info(f"Downloading/Verifying PaddleOCR model...")
+            # We need to set the env vars as before if they were useful
+            model_root = os.path.join(settings.MODEL_PATH, "official_models")
+            #模型下载
+            from modelscope import snapshot_download
+            model_path = os.path.join(model_root, f"PP-OCRv5_{self.model_name}_rec")
+            model_dir = snapshot_download(f'PaddlePaddle/PP-OCRv5_{self.model_name}_rec', local_dir=model_path)
+            model_path = os.path.join(model_root, f"PP-OCRv5_{self.model_name}_det")
+            model_dir = snapshot_download(f'PaddlePaddle/PP-OCRv5_{self.model_name}_det', local_dir=model_path)
+            return model_path
+        model_downloader.register_model("ocr", check_ocr_model, download_ocr_model)
+
 
     def detect_text(self, image_bytes: bytes):
         """
         Detect text in image bytes
         """
+        if not model_downloader.is_ready("ocr"):
+             raise Exception("OCR model is not ready yet. Please try again later.")
+
         ocr = model_manager.get_model("ocr")
 
         nparr = np.frombuffer(image_bytes, np.uint8)

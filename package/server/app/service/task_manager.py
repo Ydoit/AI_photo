@@ -120,11 +120,11 @@ class TaskManager:
 
         # Priority map for categories (higher is better)
         cat_priority = {
-            'scanning': 10,
-            'metadata': 5,
-            'face': 1,
-            'classification': 1,
-            'ocr': 1
+            'scanning': DEFAULT_PRIORITIES[TaskType.SCAN_FOLDER],
+            'metadata': DEFAULT_PRIORITIES[TaskType.EXTRACT_METADATA],
+            'face': DEFAULT_PRIORITIES[TaskType.RECOGNIZE_FACE],
+            'classification': DEFAULT_PRIORITIES[TaskType.CLASSIFY_IMAGE],
+            'ocr': DEFAULT_PRIORITIES[TaskType.OCR]
         }
 
         for cat in categories:

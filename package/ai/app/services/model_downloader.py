@@ -1,92 +1,104 @@
 import os
 import logging
 import shutil
+import threading
+from enum import Enum
+from typing import Callable, Dict, Any, Optional
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-def ensure_models():
-    """
-    Ensure required models are present. Download if missing.
-    """
-    base_dir = settings.MODEL_PATH
-    if not os.path.exists(base_dir):
-        os.makedirs(base_dir)
+class ModelStatus(Enum):
+    PENDING = "pending"
+    DOWNLOADING = "downloading"
+    READY = "ready"
+    FAILED = "failed"
 
-    # 1. CLIP Models (Image Classification)
-    # 1.1 Multilingual CLIP (Text)
-    clip_multi_id = "sentence-transformers/clip-ViT-B-32-multilingual-v1"
-    clip_multi_dir = os.path.join(base_dir, "clip-ViT-B-32-multilingual-v1")
+class ModelDownloader:
+    def __init__(self):
+        self.models: Dict[str, Dict[str, Any]] = {}
+        self.lock = threading.Lock()
+        self.base_dir = settings.MODEL_PATH
+        if not os.path.exists(self.base_dir):
+            os.makedirs(self.base_dir)
 
-    if not os.path.exists(clip_multi_dir):
-        logger.info(f"Downloading CLIP model {clip_multi_id} to {clip_multi_dir}...")
+    def register_model(self, key: str, check_fn: Callable[[], bool], download_fn: Callable[[], str], cleanup_dir: Optional[str] = None):
+        """
+        Register a model for management.
+        :param key: Unique identifier for the model
+        :param check_fn: Function that returns True if model exists and is valid
+        :param download_fn: Function that performs the download and returns the path
+        :param cleanup_dir: Directory to clean up if download fails
+        """
+        with self.lock:
+            self.models[key] = {
+                "check_fn": check_fn,
+                "download_fn": download_fn,
+                "cleanup_dir": cleanup_dir,
+                "status": ModelStatus.PENDING,
+                "error": None
+            }
+
+    def _download_worker(self, key: str):
+        model_info = self.models[key]
+        cleanup_dir = model_info.get("cleanup_dir")
+        
         try:
-            from modelscope.hub.snapshot_download import snapshot_download
-            snapshot_download(clip_multi_id, local_dir=clip_multi_dir)
-            logger.info("CLIP multilingual model downloaded successfully.")
+            # Check if already exists
+            if model_info["check_fn"]():
+                logger.info(f"Model '{key}' already exists.")
+                with self.lock:
+                    model_info["status"] = ModelStatus.READY
+                return
+
+            logger.info(f"Starting download for model '{key}'...")
+            with self.lock:
+                model_info["status"] = ModelStatus.DOWNLOADING
+
+            # Execute download
+            path = model_info["download_fn"]()
+            
+            logger.info(f"Model '{key}' downloaded successfully at {path}.")
+            with self.lock:
+                model_info["status"] = ModelStatus.READY
+
         except Exception as e:
-            shutil.rmtree(clip_multi_dir, ignore_errors=True)
-            logger.error(f"Failed to download CLIP multilingual model: {e}")
-    else:
-        logger.info("CLIP multilingual model already exists.")
+            logger.error(f"Failed to download model '{key}': {e}")
+            
+            # Cleanup logic
+            if cleanup_dir and os.path.exists(cleanup_dir):
+                try:
+                    logger.info(f"Cleaning up directory: {cleanup_dir}")
+                    shutil.rmtree(cleanup_dir, ignore_errors=True)
+                except Exception as cleanup_error:
+                    logger.error(f"Failed to cleanup directory {cleanup_dir}: {cleanup_error}")
 
-    # 1.2 Base CLIP (Image)
-    # Assuming standard CLIP model is also available or we use multilingual for both?
-    # Original code uses "clip-ViT-B-32".
-    # We will try to download it from ModelScope if available, otherwise we might rely on HF or just skip and let runtime handle it (but that violates requirements).
-    # Let's assume AI-ModelScope/clip-ViT-B-32 exists.
-    clip_base_id = "sentence-transformers/clip-ViT-B-32"
-    clip_base_dir = os.path.join(base_dir, "clip-ViT-B-32")
+            with self.lock:
+                model_info["status"] = ModelStatus.FAILED
+                model_info["error"] = str(e)
 
-    if not os.path.exists(clip_base_dir):
-        logger.info(f"Downloading CLIP model {clip_base_id} to {clip_base_dir}...")
-        try:
-            snapshot_download(clip_base_id, local_dir=clip_base_dir)
-            logger.info("CLIP base model downloaded successfully.")
-        except Exception as e:
-            shutil.rmtree(clip_base_dir, ignore_errors=True)
-            logger.error(f"Failed to download CLIP base model: {e}")
-    else:
-        logger.info("CLIP base model already exists.")
+    def start_downloads(self):
+        """Start all registered model downloads in separate threads."""
+        for key in self.models:
+            t = threading.Thread(target=self._download_worker, args=(key,), daemon=True)
+            t.start()
 
-    # 2. InsightFace Model (Face Recognition)
-    # Target: data/models/buffalo_l
-    # InsightFace uses 'root' parameter to find models. 
-    # If root='data', it looks in 'data/models/buffalo_l'.
+    def get_status(self, key: str) -> ModelStatus:
+        with self.lock:
+            return self.models.get(key, {}).get("status", ModelStatus.FAILED)
 
-    insightface_root = settings.MODEL_PATH.rstrip("/").rstrip("models") # Defaults to 'data'
-    buffalo_l_path = os.path.join(insightface_root,"models", "buffalo_l")
+    def is_ready(self, key: str) -> bool:
+        return self.get_status(key) == ModelStatus.READY
     
-    # Check if we need to download
-    if not os.path.exists(buffalo_l_path) or not os.listdir(buffalo_l_path):
-        logger.info(f"Downloading InsightFace model buffalo_l to {buffalo_l_path}...")
-        try:
-            from insightface.app import FaceAnalysis
-            # Initialize to trigger download
-            # using ctx_id=-1 for CPU to avoid CUDA errors during download if no GPU
-            app = FaceAnalysis(name='buffalo_l', root=insightface_root, providers=['CPUExecutionProvider'])
-            app.prepare(ctx_id=0, det_size=(640, 640))
-            logger.info("InsightFace model downloaded/verified successfully.")
-        except Exception as e:
-            shutil.rmtree(buffalo_l_path, ignore_errors=True)
-            logger.error(f"Failed to download InsightFace model: {e}")
-    else:
-        logger.info("InsightFace model already exists.")
+    def wait_for_model(self, key: str, timeout: int = 60) -> bool:
+        """Wait for a model to become ready."""
+        import time
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if self.is_ready(key):
+                return True
+            time.sleep(1)
+        return False
 
-    # paddle ocr model
-    paddleocr_dir = os.path.join(base_dir, "official_models", "PP-OCRv5_server_det")
-    if not os.path.exists(paddleocr_dir):
-        logger.info(f"Downloading PaddleOCR model to {paddleocr_dir} ...")
-        try:
-            model_root = settings.MODEL_PATH
-            os.environ['PADDLE_PDX_CACHE_HOME'] = model_root
-            from paddleocr import PaddleOCR
-            ocr = PaddleOCR(
-                use_angle_cls=True, lang='ch',
-            )
-            logger.info("PaddleOCR model downloaded successfully.")
-        except Exception as e:
-            shutil.rmtree(paddleocr_dir, ignore_errors=True)
-            logger.error(f"Failed to download PaddleOCR model: {e}")
-    else:
-        logger.info("PaddleOCR model already exists.")
+model_downloader = ModelDownloader()

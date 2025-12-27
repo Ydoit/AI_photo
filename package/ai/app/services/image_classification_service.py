@@ -95,6 +95,9 @@ class ImageClassificationService:
                 self.simple_prompts.append(f"a photo of {self.categories[key].get('en', key)}")
 
     async def classify(self, image_data: bytes, lang: str = "zh", limit: int = 3, precision: str = "high") -> dict:
+        if not model_downloader.is_ready("clip_text") or not model_downloader.is_ready("clip_image"):
+            raise Exception("Models are not ready yet. Please try again later.")
+
         if not self.categories:
             return {"results": [], "embedding": []}
         import torch
@@ -185,6 +188,8 @@ class ImageClassificationService:
             raise e
 
     async def embed_text(self, text: str) -> List[float]:
+        if not model_downloader.is_ready("clip_text"):
+             raise Exception("Models are not ready yet. Please try again later.")
         wrapper = model_manager.get_model("clip_text")
         try:
             # Encode text

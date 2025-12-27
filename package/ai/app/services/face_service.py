@@ -1,10 +1,12 @@
 import logging
+import os
 import sys
 import gc
 import numpy as np
 import cv2
 
 from app.config import settings
+from app.services.model_downloader import model_downloader
 from app.services.model_manager import model_manager
 logger = logging.getLogger(__name__)
 
@@ -105,13 +107,36 @@ model_manager.register_model("face", load_insightface_model, release_model)
 
 class FaceRecognitionService:
     def __init__(self):
-        # Model loading is delegated to ModelManager
-        pass
+        self._register_downloads()
+
+    def _register_downloads(self):
+        # InsightFace expects models in {root}/models/{name}
+        # If MODEL_PATH is .../data/models, we want root to be .../data
+        insightface_root = settings.MODEL_PATH.rstrip("/").rstrip("models")
+        # Ensure 'models' is removed correctly if it was at the end
+        if insightface_root.endswith("/") or insightface_root.endswith("\\"):
+             insightface_root = insightface_root[:-1]
+             
+        # But actually, simpler: The model directory is settings.MODEL_PATH/buffalo_l
+        buffalo_l_path = os.path.join(settings.MODEL_PATH, "buffalo_l")
+
+        def check_face_model():
+            return os.path.exists(buffalo_l_path) and len(os.listdir(buffalo_l_path)) > 0
+
+        def download_face_model():
+            from modelscope.hub.snapshot_download import snapshot_download
+            logger.info(f"Downloading InsightFace model buffalo_l to {buffalo_l_path}...")
+            return snapshot_download('fireicewolf/buffalo_l', local_dir=buffalo_l_path)
+
+        model_downloader.register_model("face", check_face_model, download_face_model, cleanup_dir=buffalo_l_path)
 
     def process_image(self, image_bytes: bytes):
         """
         Process image bytes and return face analysis results
         """
+        if not model_downloader.is_ready("face"):
+             raise Exception("Face model is not ready yet. Please try again later.")
+
         # Get model instance from manager (lazy load if needed)
         app = model_manager.get_model("face")
 

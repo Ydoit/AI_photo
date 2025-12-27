@@ -237,20 +237,10 @@ async def handle_process_basic(task_manager, task: Task, db: Session):
         photo_time=meta["photo_time"]
     )
 
-    # Pass metadata separately? No, PhotoCreate doesn't have metadata fields except photo_time
-    # We need to pass metadata info too.
-    # album_crud.batch_create_photos takes list of {photo: PhotoCreate, metadata: PhotoMetadataCreate}?
-    # Let's check album_crud.batch_create_photos.
-    # For now, I will construct a dict that TaskManager can understand.
-
     metadata_create = PhotoMetadataCreate(
         exif_info=meta["exif_info"],
         # Basic task doesn't have location details yet
     )
-
-    # Attach ID we generated
-    # photo_create doesn't have ID field, but we need to force it to use the one we used for thumbnail
-    # So we need to pass it along.
 
     return {
         'photo_create_data': {
@@ -278,6 +268,7 @@ async def handle_process_image(task_manager, task: Task, db: Session):
         photo_id,
         storage_root
     )
+    # result = process_image_cpu_job(file_path, photo_id, storage_root)
     if not result['success']:
         raise Exception(result.get('error', 'Unknown error'))
     meta = result['meta']

@@ -10,7 +10,7 @@ class AISettings(BaseModel):
     # OCR settings can be added here later
 
 class TaskSettings(BaseModel):
-    max_concurrent_tasks: int = Field(default=3, description="Maximum number of concurrent tasks")
+    max_concurrent_tasks: int = Field(default=10, description="Maximum number of concurrent tasks")
 
 class StorageSettings(BaseModel):
     photo_storage_path: str = Field(default="./data/uploads", description="Main photo storage root path")
