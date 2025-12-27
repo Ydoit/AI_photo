@@ -30,7 +30,7 @@ class AppSettings(BaseModel):
     storage: StorageSettings = Field(default_factory=StorageSettings)
     image: ImageSettings = Field(default_factory=ImageSettings)
     task: TaskSettings = Field(default_factory=TaskSettings)
-    
+
     class Config:
         arbitrary_types_allowed = True
 
@@ -38,7 +38,7 @@ class ConfigManager:
     _instance = None
     _config_path = "./data/config.json"
     _last_mtime = 0
-    
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(ConfigManager, cls).__new__(cls)

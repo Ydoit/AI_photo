@@ -112,7 +112,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
             # 2. Call AI Service
             api_url = f"{config_manager.config.ai.ai_api_url}/classification/classify"
             # Optional parameters can be added to query string if needed
-            
+
             async with session.post(
                 api_url,
                 data=form_data,

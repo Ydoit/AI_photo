@@ -115,10 +115,14 @@ networks:
 
 ```sql
 -- 01_create_vector_extension.sql
-\c postgres;
+-- 连接目标数据库（必须指定，否则默认连postgres库）
+\c trailsnap;
+-- 创建pgvector扩展（IF NOT EXISTS避免重复创建）
 CREATE EXTENSION IF NOT EXISTS vector;
-CREATE DATABASE IF NOT EXISTS trailsnap;
-CREATE DATABASE IF NOT EXISTS railway;
+
+\c postgres
+SELECT 'CREATE DATABASE railway'
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'railway')\gexec
 ```
 
 1. 启动服务

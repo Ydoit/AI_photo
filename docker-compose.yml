@@ -12,6 +12,7 @@ services:
       # 可选：设置PostgreSQL配置（优化向量搜索性能）
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
       PGDATA: /var/lib/postgresql/data/pgdata
+    networks: [ app-network ]  # 显式加入应用网络
     ports:
       - "5532:5432"                  # 端口映射
     volumes:
@@ -39,8 +40,10 @@ services:
       - DB_URL=postgresql://trailsnap:trailsnap@postgres:5432/trailsnap
       - RAILWAY_DB_URL=postgresql://trailsnap:trailsnap@postgres:5432/railway
       - AI_API_URL=http://ai:8001
-    depends_on:
-      - postgres  # 确保数据库服务启动后再启动应用
+    depends_on:  # 增强依赖配置
+      postgres:
+        condition: service_healthy
+        restart: true
 
   ai:
     image: siyuan044/trailsnap-ai:master
