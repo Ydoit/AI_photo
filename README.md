@@ -39,17 +39,97 @@ TrailSnap/
 
 ## 🚀 快速开始
 
-### 后端启动
+### docker一键启动
 
-[查看后端文档](./package/server/README.md)
+1. 确保已安装 Docker 和 Docker Compose。
 
-### AI 微服务启动（OCR/人脸）
+2. docker-compose 和 初始化脚本
 
-[查看 AI 微服务文档](./package/ai/README.md)
+docker-compose.yml 配置文件
+```yml
+services:
+  postgres:
+    image: pgvector/pgvector:pg18-trixie
+    container_name: postgres_container
+    restart: always
+    environment:
+      POSTGRES_DB: trailsnap
+      POSTGRES_USER: trailsnap
+      POSTGRES_PASSWORD: trailsnap
+      # 可选：设置PostgreSQL配置（优化向量搜索性能）
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5532:5432"                  # 端口映射
+    volumes:
+      - ./pg_data:/var/lib/postgresql/data  # 数据持久化
+      # 挂载初始化脚本目录，自动创建pgvector扩展
+      - ./init-scripts:/docker-entrypoint-initdb.d/
+    # 新增：健康检查（确保数据库就绪后，应用再连接）
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trailsnap -d trailsnap -p 5432"]
+      interval: 5s    # 每5秒检查一次
+      timeout: 5s     # 超时时间5秒
+      retries: 5      # 最多重试5次
+      start_period: 10s  # 容器启动后10秒再开始检查
 
-### 前端启动
+  server:
+    image: siyuan044/trailsnap-server:master
+    restart: always
+    expose: [ "8000" ]
+    ports: [ "8800:8000" ]
+    networks: [ app-network ]
+    volumes:
+      - ./data:/app/data        # 挂载数据目录
+      - F:\Photos:/app/Photos/  # 挂载本地照片目录
+    environment:
+      - DB_URL=postgresql://trailsnap:trailsnap@postgres:5432/trailsnap
+      - RAILWAY_DB_URL=postgresql://trailsnap:trailsnap@postgres:5432/railway
+      - AI_API_URL=http://ai:8001
+    depends_on:
+      - postgres  # 确保数据库服务启动后再启动应用
 
-[查看前端文档](./package/website/README.md)
+  ai:
+    image: siyuan044/trailsnap-ai:master
+    restart: always
+    expose: [ "8001" ]
+    ports: [ "8801:8001" ]
+    networks: [ app-network ]
+    volumes:
+      - ./data:/app/data        # 挂载数据目录
+
+  frontend:
+    image: siyuan044/trailsnap-frontend:master
+    restart: always
+    ports: [ "8082:80" ]
+    depends_on: [ server ]
+    networks: [ app-network ]
+
+networks:
+  app-network:
+    driver: bridge
+```
+
+在项目根目录下，创建一个名为 `init-scripts` 的文件夹，用于存放初始化脚本。
+**初始化脚本**: 需要在 `docker-compose.yml` 中指定的 `init-scripts` 目录下创建 `01_create_vector_extension.sql` (如果尚未创建)。
+
+```sql
+-- 01_create_vector_extension.sql
+\c postgres;
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE DATABASE IF NOT EXISTS trailsnap;
+CREATE DATABASE IF NOT EXISTS railway;
+```
+
+1. 启动服务
+
+```bash
+docker-compose up -d
+```
+
+### 源码部署
+
+[源码部署](doc/developer_guide.md)
 
 ## 🧭 功能概览
 

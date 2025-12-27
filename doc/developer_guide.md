@@ -62,13 +62,7 @@ TrailSnap/
 后端位于 `package/server`。
 
 ### 4.1 启动数据库
-项目依赖 PostgreSQL 和 pgvector 插件。推荐使用 Docker 启动：
-
-```bash
-# 在项目根目录
-docker-compose up -d
-```
-确保数据库 `trailsnap` 和 `railway` 已创建。
+项目依赖 PostgreSQL 和 pgvector 插件。推荐使用 Docker 启动：[查看server文档](package/server/README.md)
 
 ### 4.2 安装依赖
 推荐使用 `uv` 进行包管理，也可以使用 `pip`。
@@ -86,6 +80,7 @@ pip install -r requirements.txt
 ```env
 DB_URL=postgresql://user:password@localhost:5432/trailsnap
 RAILWAY_DB_URL=postgresql://user:password@localhost:5432/railway
+AI_URL=http://localhost:8001
 ```
 
 ### 4.4 运行服务
