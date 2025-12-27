@@ -209,7 +209,7 @@ import AlbumTimeline from '@/components/AlbumTimeline.vue'
 import PhotoLightbox from '@/components/PhotoLightbox.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ParticleExplosion from '@/components/ParticleExplosion.vue'
-import type { AlbumImage } from '@/stores/photoStore'
+import type { AlbumImage } from '@/types/album'
 
 const props = withDefaults(defineProps<{
   title?: string

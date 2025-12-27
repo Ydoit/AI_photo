@@ -224,8 +224,8 @@
                                 <!-- Info Overlay -->
                                 <div class="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex justify-between items-end">
                                     <p class="text-white text-xs font-medium truncate flex items-center gap-1">
-                                    <MapPin v-if="img.location" class="w-3 h-3 text-white/80" />
-                                    {{ img.location || formatTime(img.timestamp) }}
+                                    <MapPin v-if="img.filename" class="w-3 h-3 text-white/80" />
+                                    {{ img.filename || formatTime(img.timestamp) }}
                                     </p>
                                     <slot name="overlay-actions" :photo="img"></slot>
                                 </div>

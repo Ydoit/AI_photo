@@ -125,16 +125,18 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                     #   "results": [{"label": "...", "confidence": ...}, ...],
                     #   "embedding": [0.1, ...]
                     # }
-                    
                     classification_results = result.get('results', [])
                     embedding = result.get('embedding', [])
-
+                    # 2. Process Results
+                    # Remove existing AI tags
+                    crud_tag.remove_tags_from_photo(db, photo.id, ai_generated=True)
                     # 3. Save Tags
                     tags_added = 0
                     for item in classification_results:
                         label = item.get('label')
                         confidence = item.get('confidence', 0.0)
-                        
+                        if confidence < config_manager.config.ai.classification_tag_threshold:
+                            continue
                         # Add tag
                         if label:
                             crud_tag.add_tag_to_photo(db, photo.id, label, confidence)
@@ -150,10 +152,10 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                     photo.processed_tasks = tasks_status
                     db.add(photo)
                     db.commit()
-                    
+
                     return {
-                        'status': 'success', 
-                        'tags_added': tags_added, 
+                        'status': 'success',
+                        'tags_added': tags_added,
                         'embedding_saved': bool(embedding)
                     }
                 else:

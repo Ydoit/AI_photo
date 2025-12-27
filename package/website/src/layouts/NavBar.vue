@@ -24,7 +24,7 @@
       <div class="relative transition-all duration-300 ease-in-out" :class="[isSearchExpanded ? 'w-48' : 'w-8']">
         <button 
           @click="toggleSearch"
-          class="absolute left-0 top-1/2 -translate-y-1/2 p-1.5 text-gray-500 hover:text-primary-500 transition-colors z-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+          class="absolute left-0 top-1/2 -translate-y-1/2 p-1.5 text-gray-700 dark:text-gray-200 hover:text-primary-500 transition-colors z-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
           :class="{'bg-transparent hover:bg-transparent dark:hover:bg-transparent': isSearchExpanded}"
           title="搜索"
         >
@@ -77,77 +77,14 @@
           </RouterLink>
         </div>
       </div>
-
-      <div class="relative">
-        <button 
-          @click="showThemeMenu = !showThemeMenu"
-          class="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 transition-colors"
-        >
-          <Palette class="w-5 h-5" />
-        </button>
-        
-        <div 
-          v-if="showThemeMenu" 
-          ref="themeMenuRef" 
-          class="absolute right-0 top-12 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-4 z-50 animate-in fade-in zoom-in-95 duration-200"
-        >
-          <div class="space-y-4">
-            
-            <div>
-              <h3 class="text-xs font-bold text-slate-400 uppercase mb-2">显示模式</h3>
-              <div class="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
-                
-                <button 
-                  @click="setMode('light')" 
-                  :class="['flex-1 flex items-center justify-center py-1.5 rounded-md text-xs font-medium transition-all', currentMode === 'light' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 dark:text-slate-400']"
-                >
-                  <Sun class="w-3.5 h-3.5 mr-1" /> 浅色
-                </button>
-                
-                <button 
-                  @click="setMode('auto')" 
-                  :class="['flex-1 flex items-center justify-center py-1.5 rounded-md text-xs font-medium transition-all', currentMode === 'auto' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 dark:text-slate-400']"
-                >
-                  <Palette class="w-3.5 h-3.5 mr-1" /> 自动
-                </button>
-                
-                <button 
-                  @click="setMode('dark')"
-                  :class="['flex-1 flex items-center justify-center py-1.5 rounded-md text-xs font-medium transition-all', currentMode === 'dark' ? 'bg-slate-600 shadow-sm text-white' : 'text-slate-500 dark:text-slate-400']"
-                >
-                  <Moon class="w-3.5 h-3.5 mr-1" /> 深色
-                </button>
-              </div>
-            </div>
-            
-            <div>
-              <h3 class="text-xs font-bold text-slate-400 uppercase mb-2">主题颜色</h3>
-              <div class="grid grid-cols-5 gap-2">
-                <button
-                  v-for="color in themeColors"
-                  :key="color.name"
-                  @click="setTheme(color)"
-                  class="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center"
-                  :style="{ backgroundColor: color.primary, borderColor: currentTheme.name === color.name ? 'var(--text-color)' : 'transparent' }"
-                  :title="color.label"
-                >
-                  <Check v-if="currentTheme.name === color.name" class="w-4 h-4 text-white drop-shadow-md" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        </div>
     </nav>
   </header>
 </template>
 
 <script setup>
-import { injectTheme } from '@/composables/useTheme.js'
 import { ref, watch, nextTick } from 'vue'
 import {
-  Palette, Sun, Moon, Check, Image as ImageIcon, Images, MoreHorizontal, ChevronDown, Search, X
+  Image as ImageIcon, Images, MoreHorizontal, ChevronDown, Search, X
 } from 'lucide-vue-next';
 import { useRouter } from 'vue-router'
 import { onClickOutside } from '@vueuse/core'
@@ -224,29 +161,6 @@ const clearSearch = () => {
 onClickOutside(moreMenuRef, () => {
   showMoreMenu.value = false;
 });
-
-
-// 关键步骤：注入全局状态和修改函数
-const {
-  isDarkMode,
-  currentMode, // 🚨 新增：用户选择的模式状态
-  currentTheme,
-  themeColors,
-  setMode, // 🚨 修改：替换 toggleDarkMode
-  setTheme 
-} = injectTheme();
-
-const showThemeMenu = ref(false);
-const themeMenuRef = ref(null); // 菜单容器的引用
-
-// 实现：点击菜单外部自动关闭
-onClickOutside(themeMenuRef, () => {
-  if (showThemeMenu.value) {
-    showThemeMenu.value = false;
-  }
-});
-
-// 移除 watchEffect 和 updateTheme，主题逻辑完全由 useTheme.js 集中管理
 
 </script>
 

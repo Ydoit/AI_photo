@@ -11,7 +11,7 @@
           :key="item.key"
           @click="activeTab = item.key"
           class="flex items-center px-6 py-3 text-gray-600 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
-          :class="{ 'bg-blue-50 text-primary-500 border-r-2 border-primary-500 dark:bg-gray-700': activeTab === item.key }"
+          :class="{ 'bg-blue-50 text-primary-500 border-r-2 border-primary-500 dark:bg-gray-700 dark:text-primary-400': activeTab === item.key }"
         >
           <component :is="item.icon" class="w-5 h-5 mr-3" />
           {{ item.label }}

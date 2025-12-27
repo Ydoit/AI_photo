@@ -50,11 +50,11 @@
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4 text-center">
-             <div class="bg-white dark:bg-gray-800 p-3 rounded shadow-sm">
+             <div class="bg-white dark:bg-gray-900 p-3 rounded shadow-sm">
                <div class="text-gray-500 text-xs mb-1">待处理</div>
                <div class="text-xl font-bold text-blue-600">{{ cat.pending }}</div>
              </div>
-             <div class="bg-white dark:bg-gray-800 p-3 rounded shadow-sm">
+             <div class="bg-white dark:bg-gray-900 p-3 rounded shadow-sm">
                <div class="text-gray-500 text-xs mb-1">失败</div>
                <div class="text-xl font-bold text-red-600">{{ cat.failed }}</div>
              </div>
@@ -65,10 +65,10 @@
     </div>
 
     <!-- Create Task Dialog -->
-    <el-dialog v-model="createTaskVisible" title="新建任务" width="500px" class="dark:bg-gray-800 dark:text-white">
-        <el-form :model="newTaskForm" label-width="120px" class="dark:text-white">
-            <el-form-item label="任务类型" class="dark:text-white">
-                <el-select v-model="newTaskForm.type" placeholder="选择任务类型" class="dark:text-white">
+    <el-dialog v-model="createTaskVisible" title="新建任务" width="500px">
+        <el-form :model="newTaskForm" label-width="120px">
+            <el-form-item label="任务类型">
+                <el-select v-model="newTaskForm.type" placeholder="选择任务类型">
                     <el-option label="扫描文件夹" value="SCAN_FOLDER" />
                     <el-option label="重建缩略图" value="REBUILD_THUMBNAILS" />
                     <el-option label="重建元数据" value="REBUILD_METADATA" />
@@ -77,12 +77,12 @@
                     <el-option label="OCR识别" value="OCR" />
                 </el-select>
             </el-form-item>
-             <el-form-item label="范围" class="dark:text-white">
-                <el-select v-model="newTaskForm.scope" placeholder="选择范围" class="dark:text-white">
+             <el-form-item label="范围">
+                <el-select v-model="newTaskForm.scope" placeholder="选择范围">
                     <el-option label="所有图片" value="all" />
                 </el-select>
             </el-form-item>
-            <el-form-item label="强制处理" class="dark:text-white">
+            <el-form-item label="强制处理">
                 <el-switch v-model="newTaskForm.force" active-text="是" inactive-text="否" />
                 <span class="text-xs text-gray-400 ml-2">是否处理已标记为完成的项目</span>
             </el-form-item>

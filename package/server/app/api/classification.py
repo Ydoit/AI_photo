@@ -19,15 +19,15 @@ def get_tags(
     """
     return crud.get_tags_with_stats(db, skip, limit)
 
-@router.get("/{name}/photos", response_model=List[photo_schemas.Photo], summary="获取分类照片列表")
+# 核心改造：{path:path} 匹配包含/的全部剩余路径
+@router.get("/{path:path}/photos", response_model=List[photo_schemas.Photo], summary="获取分类照片列表")
 def get_tag_photos(
-    name: str = Path(..., description="标签名称"),
+    # path=True 声明：匹配剩余的全部路径（支持包含/）
+    path: str = Path(..., description="标签名称（支持多级/包含/）", path=True),
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db)
 ):
-    """
-    获取指定标签分类的照片列表。
-    """
-    photos = crud.get_photos_by_tag_name(db, name, skip, limit)
+    # 注意：参数名从name改为path，传给crud层即可
+    photos = crud.get_photos_by_tag_name(db, path, skip, limit)
     return photos

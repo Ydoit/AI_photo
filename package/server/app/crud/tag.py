@@ -21,7 +21,7 @@ def get_photo_tags(db: Session, photo_id: UUID) -> List[schemas.PhotoTagResponse
         .join(PhotoTagRelation, PhotoTag.id == PhotoTagRelation.tag_id)\
         .filter(PhotoTagRelation.photo_id == photo_id, PhotoTagRelation.is_deleted == False)\
         .all()
-    
+
     tags = []
     for tag, confidence in results:
         tags.append(schemas.PhotoTagResponse(
@@ -36,13 +36,13 @@ def add_tag_to_photo(db: Session, photo_id: UUID, tag_name: str, confidence: flo
     tag = get_tag_by_name(db, tag_name)
     if not tag:
         tag = create_tag(db, tag_name)
-    
+
     # Check if relation exists
     relation = db.query(PhotoTagRelation).filter(
         PhotoTagRelation.photo_id == photo_id,
         PhotoTagRelation.tag_id == tag.id
     ).first()
-    
+
     if relation:
         if relation.is_deleted:
             relation.is_deleted = False
@@ -66,12 +66,25 @@ def add_tag_to_photo(db: Session, photo_id: UUID, tag_name: str, confidence: flo
 def remove_tag_from_photo(db: Session, photo_id: UUID, tag_id: UUID):
     relation = db.query(PhotoTagRelation).filter(
         PhotoTagRelation.photo_id == photo_id,
-        PhotoTagRelation.tag_id == tag_id
+        PhotoTagRelation.tag_id == tag_id,
     ).first()
-    
+
     if relation:
         db.delete(relation)
         db.commit()
+    return True
+
+def remove_tags_from_photo(db: Session, photo_id: UUID, ai_generated: bool = False):
+    if ai_generated:
+        db.query(PhotoTagRelation).filter(
+            PhotoTagRelation.photo_id == photo_id,
+            PhotoTagRelation.confidence < 1.0
+        ).update({"is_deleted": True})
+    else:
+        db.query(PhotoTagRelation).filter(
+            PhotoTagRelation.photo_id == photo_id
+        ).update({"is_deleted": True})
+    db.commit()
     return True
 
 from sqlalchemy import func, desc

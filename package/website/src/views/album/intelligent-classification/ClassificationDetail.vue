@@ -59,19 +59,25 @@ const calculateTimelineStats = (photos: AlbumImage[]) => {
 const loadMore = async () => {
   if (loading.value || !hasMore.value) return
   loading.value = true
+  console.log('Loading more photos for tag:', name, 'skip:', skip.value)
   try {
-    const limit = 50
-    const rawPhotos = await classificationService.getTagPhotos(name, skip.value, limit)
-    
-    if (rawPhotos.length < limit) {
-      hasMore.value = false
+    const limit = 500
+    let hasNext = true
+
+    while (hasNext) {
+      const rawPhotos = await classificationService.getTagPhotos(name, skip.value, limit)
+
+      if (rawPhotos.length < limit) {
+        hasMore.value = false
+        hasNext = false
+      }
+
+      const newPhotos = rawPhotos.map(mapPhotoToImage)
+      photos.value.push(...newPhotos)
+      skip.value += limit
+
+      calculateTimelineStats(photos.value)
     }
-    
-    const newPhotos = rawPhotos.map(mapPhotoToImage)
-    photos.value.push(...newPhotos)
-    skip.value += limit
-    
-    calculateTimelineStats(photos.value)
   } catch (e) {
     console.error('Failed to load tag photos:', e)
   } finally {

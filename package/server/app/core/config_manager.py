@@ -7,6 +7,7 @@ class AISettings(BaseModel):
     ai_api_url: str = Field(default=os.getenv("AI_API_URL", "http://localhost:8001"), description="AI Service API URL")
     face_recognition_threshold: float = Field(default=0.6, description="Face recognition confidence threshold")
     face_recognition_min_photos: int = Field(default=5, description="Minimum photos required for a valid face cluster")
+    classification_tag_threshold: float = Field(default=0.2, description="Classification tag confidence threshold")
     # OCR settings can be added here later
 
 class TaskSettings(BaseModel):
