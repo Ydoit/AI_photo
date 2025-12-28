@@ -118,7 +118,7 @@ async def log_requests(request: Request, call_next):
 
 # Include Routers
 app.include_router(system.router, tags=["System"])
-app.include_router(face.router, tags=["Face Recognition"])
+app.include_router(face.router, prefix="/face", tags=["Face Recognition"])
 app.include_router(ocr.router, prefix="/ocr", tags=["OCR"])
 app.include_router(object_detection.router, prefix="/object-detection", tags=["Object Detection"])
 app.include_router(tickets.router, prefix="/tickets", tags=["Ticket Recognition"])

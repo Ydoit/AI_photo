@@ -15,13 +15,29 @@
             <div
                 v-for="(cat, index) in topCategories"
                 :key="cat.name"
-                class="flex items-center justify-between bg-white/50 dark:bg-white/5 p-3 rounded-xl backdrop-blur-sm"
+                class="relative overflow-hidden flex items-center justify-between bg-white/50 dark:bg-white/5 p-3 rounded-xl backdrop-blur-sm"
             >
-                <div class="flex items-center gap-3">
-                    <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: ['#F97316', '#FBBF24', '#EC4899'][index] || '#ccc' }"></div>
-                    <span class="font-medium text-light-text1 dark:text-gray-200">{{ cat.name }}</span>
+                <!-- Hand-drawn style progress bar -->
+                <div 
+                    class="absolute top-0 left-0 h-full transition-all duration-1000 ease-out z-0"
+                    :style="{ 
+                        width: `calc(${cat.percent}% + 10px)`, 
+                        backgroundColor: ['#F97316', '#FBBF24', '#EC4899'][index] || '#ccc',
+                        opacity: 0.2,
+                        borderRadius: '0 12px 12px 0',
+                        transform: 'skewX(-10deg) translateX(-5px)'
+                    }"
+                ></div>
+                
+                <!-- Content -->
+                <div class="relative z-10 flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full" :style="{ backgroundColor: ['#F97316', '#FBBF24', '#EC4899'][index] || '#ccc' }"></div>
+                    <span class="font-medium text-sm text-light-text1 dark:text-gray-200">{{ cat.name }}</span>
+                    <span class="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5 ml-1">{{ cat.percent }}%</span>
                 </div>
-                <span class="text-primary-amber font-bold">{{ cat.value }}%</span>
+                <div class="relative z-10 flex items-center">
+                    <span class="text-primary-amber font-bold text-sm">{{ cat.value }}</span>
+                </div>
             </div>
         </div>
     </div>
@@ -32,7 +48,7 @@
 <script setup lang="ts">
 import ReportPage from './ReportPage.vue';
 import type { MemoryMetrics } from '@/types/annualReport';
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import * as echarts from 'echarts';
 
 const props = defineProps<{
@@ -45,7 +61,7 @@ let chartInstance: echarts.ECharts | null = null;
 const initChart = () => {
   if (!chartRef.value) return;
   chartInstance = echarts.init(chartRef.value);
-
+  const isMobile = window.innerWidth < 768;
   const option = {
     series: [
       {
@@ -54,7 +70,7 @@ const initChart = () => {
         center: ['50%', '40%'],
         data: props.data.categoryDistribution,
         color: ['#F97316', '#FBBF24', '#EC4899', '#8B5CF6', '#10B981'],
-        label: { show: false },
+        label: { show: !isMobile },
         emphasis: {
             itemStyle: {
                 scale: true,
@@ -68,10 +84,9 @@ const initChart = () => {
     ],
     tooltip: {
       trigger: 'item',
-      formatter: '{b}: {c}%' // Assuming value is percentage or count
+      formatter: '{b}: {c} ({d}%)'
     }
   };
-  
   chartInstance.setOption(option);
 };
 
@@ -83,10 +98,13 @@ onMounted(() => {
 
 // Top 3 Categories
 const topCategories = computed(() => {
+    const total = props.data.categoryDistribution.reduce((acc, cur) => acc + cur.value, 0);
     return [...props.data.categoryDistribution]
         .sort((a, b) => b.value - a.value)
-        .slice(0, 3);
+        .slice(0, 3)
+        .map(cat => ({
+            ...cat,
+            percent: total ? ((cat.value / total) * 100).toFixed(1) : '0'
+        }));
 });
-
-import { computed } from 'vue';
 </script>

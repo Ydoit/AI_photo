@@ -256,8 +256,12 @@ const confirmMerge = async () => {
   if (selectedIds.value.length < 2) return
   const targetId = selectedIds.value[0]
   const target = identities.value.find(i => i.id === targetId)
+  // 取选中人物中第一个非“未命名”的人物名称
+  const targetName = selectedIds.value
+    .map(id => identities.value.find(i => i.id === id))
+    .find(i => i?.identity_name !== '未命名')?.identity_name || target?.identity_name || '合并人物'
   try {
-    await ElMessageBox.confirm(`确定合并为 "${target?.identity_name}" 吗？`, '合并确认')
+    await ElMessageBox.confirm(`确定合并为 "${targetName}" 吗？`, '合并确认')
     await faceApi.mergeIdentities(targetId, selectedIds.value)
     ElMessage.success('合并成功')
     isMergeMode.value = false

@@ -50,7 +50,7 @@ const items = [
   },
   {
     icon: Video,
-    value: props.emotion.backupPhotos,
+    value: `${(props.emotion.totalVideoDuration / 60).toFixed(0)}分钟`,
     label: '年度拍摄视频时长',
     desc: '流动的时光，都被温柔留存',
     color: 'text-cyan-500'

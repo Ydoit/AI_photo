@@ -31,6 +31,7 @@ export interface EmotionMetrics {
   starredPhotos: number;
   backupPhotos: number;
   totalOpenTimes: number;
+  totalVideoDuration: number; // 总视频播放时长（秒）
   starredPhotosList: string[]; // URLs
   sharedPhotosList: string[]; // URLs
   emotionCarouselGroups: CarouselGroup[]; // New field for carousel
@@ -49,6 +50,7 @@ export interface LocationMetrics {
     lat: number;               // 纬度
     name: string;              // 地点名称
     count: number;             // 该地点拍摄照片数
+    coverUrl?: string;         // 城市封面图
   }>;
 }
 

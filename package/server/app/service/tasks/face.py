@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.db.models.task import Task, TaskType
 from app.db.models.photo import Photo, FileType
 from app.db.models.face import Face
+from app.service.face_cluster import FaceClusterService
 from typing import Dict, Any, List
 from app.core.config_manager import config_manager
 from app.service import storage
@@ -77,6 +78,7 @@ async def handle_recognize_face(task_manager, task: Task, db: Session) -> Dict[s
 
 async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[str, Any]:
     try:
+        cluster_service = FaceClusterService(db)
         target_path = storage.get_preview_path(photo.id, db)
         if not os.path.exists(target_path):
             target_path = photo.file_path
@@ -105,6 +107,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                     db.query(Face).filter(Face.photo_id == photo.id).delete()
 
                     count = 0
+                    has_unassigned = False
                     for face_data in faces:
                         face = Face(
                             photo_id=photo.id,
@@ -114,7 +117,25 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                             recognize_confidence=0.0 # Placeholder
                         )
                         db.add(face)
+                        # Flush to get ID
+                        db.flush()
+                        
                         count += 1
+                        if face.face_feature:
+                            try:
+                                assigned_id = cluster_service.assign_face_to_identity(face.id, face.face_feature)
+                                if not assigned_id:
+                                    has_unassigned = True
+                            except Exception as ce:
+                                logging.error(f"Clustering failed for face {face.id}: {ce}")
+
+                    if has_unassigned:
+                         # Commit faces first to ensure they exist for clustering
+                         db.commit()
+                         try:
+                             cluster_service.process_unassigned_faces()
+                         except Exception as ce:
+                             logging.error(f"Batch clustering failed: {ce}")
 
                     tasks_status = dict(photo.processed_tasks or {})
                     tasks_status['face'] = True

@@ -50,75 +50,47 @@ class FaceClusterService:
 
     def assign_face_to_identity(self, face_id: int, embedding: list) -> uuid.UUID | None:
         """
-        优化版：用Identity下所有人脸的均值向量匹配，而非单个default_face
-        将新人脸分配到已有Identity，无匹配则触发聚类
+        优化版：利用pgvector索引查找最近邻人脸，快速分配Identity
         :param face_id: 人脸ID
         :param embedding: 人脸特征向量
         :return: 匹配的Identity ID / None（无匹配）
         """
         target_emb = self.normalize_embedding(embedding)
-        best_match_id = None
-        min_dist = 2.0  # 余弦距离最大值为2
-
+        
         try:
-            # 1. 查询所有未删除的Identity
-            identities = crud_face.get_identities(self.db, limit=100000)
+            # 1. 利用pgvector <=> 操作符查找最近邻人脸（排除当前人脸，且必须有Identity）
+            # <=> 是 cosine distance
+            nearest_face = self.db.query(Face).filter(
+                Face.id != face_id,
+                Face.face_identity_id.isnot(None),
+                Face.is_deleted == False
+            ).order_by(
+                Face.face_feature.cosine_distance(target_emb)
+            ).limit(1).first()
 
-            if not identities:
-                # logger.info("无已存在的Identity，触发新聚类")
-                self._try_create_new_cluster(face_id, embedding)
+            if not nearest_face:
+                # 无参考人脸，返回None由外部决定是否触发聚类
                 return None
 
-            # 2. 遍历Identity，计算均值向量并匹配
-            for identity in identities:
-                # 查询该Identity下所有有效人脸向量
-                face_embeddings = self.db.query(Face.face_feature).filter(
-                    Face.face_identity_id == identity.id,
-                    Face.is_deleted == False,
-                    Face.face_feature.isnot(None)
-                ).all()
-
-                if not face_embeddings:
-                    continue
-
-                # 计算均值向量（核心优化：替代单个default_face）
-                emb_list = [self.normalize_embedding(emb[0]) for emb in face_embeddings]
-                mean_emb = np.mean(emb_list, axis=0)
-                mean_emb = self.normalize_embedding(mean_emb)  # 二次归一化
-
-                # 计算余弦距离（1 - 点积，归一化后等价）
-                dist = 1.0 - np.dot(target_emb, mean_emb)
-
-                # 更新最优匹配
-                if dist < min_dist:
-                    min_dist = dist
-                    best_match_id = identity.id
+            # 2. 计算距离
+            # 注意：数据库中的向量通常应该是归一化的，但为了保险起见，再次归一化
+            nearest_emb = self.normalize_embedding(nearest_face.face_feature)
+            dist = 1.0 - np.dot(target_emb, nearest_emb)
 
             # 3. 判断是否匹配成功
-            if best_match_id and min_dist < self.DISTANCE_THRESHOLD:
+            if dist < self.DISTANCE_THRESHOLD:
                 # 分配到已有Identity
-                face = crud_face.get_face(self.db, face_id)
-                if not face:
-                    logger.error(f"人脸ID {face_id} 不存在")
-                    return None
-
+                best_match_id = nearest_face.face_identity_id
+                
                 # 使用 update_face 更新
                 update_data = schemas.FaceUpdate(
                     face_identity_id=best_match_id,
-                    recognize_confidence=float(1.0 - min_dist)
+                    recognize_confidence=float(1.0 - dist)
                 )
                 crud_face.update_face(self.db, face_id, update_data)
 
-                # logger.info(
-                #     f"人脸 {face_id} 匹配到Identity {best_match_id}，"
-                #     f"余弦距离={min_dist:.4f}，相似度={1 - min_dist:.4f}"
-                # )
                 return best_match_id
             else:
-                # logger.info(
-                #     f"无匹配的Identity（最小距离={min_dist:.4f} > 阈值={self.DISTANCE_THRESHOLD}），触发新聚类"
-                # )
-                self._try_create_new_cluster(face_id, embedding)
                 return None
 
         except PendingRollbackError:
@@ -134,27 +106,31 @@ class FaceClusterService:
             logger.error(f"分配Identity异常：{str(e)}", exc_info=True)
             raise
 
-    def _try_create_new_cluster(self, current_face_id: int, current_embedding: list):
+    def process_unassigned_faces(self):
+        """
+        批量处理未分配的人脸（DBSCAN聚类）
+        """
+        # 只要有未分配的人脸，就尝试聚类
+        # 为了避免过多无效调用，可以先count一下? 
+        # _try_create_new_cluster 内部有查询逻辑，可以直接调用，但我们需要稍微修改一下 _try_create_new_cluster
+        # 让它不依赖 current_face_id
+        self._cluster_unassigned_faces()
+
+    def _cluster_unassigned_faces(self):
         """
         优化版：调整DBSCAN参数 + 簇合并逻辑，解决聚类分散问题
         对未分配的人脸做DBSCAN聚类，合并相似簇后创建新Identity
         """
         try:
-            # 1. 查询未分配的人脸（含当前人脸）
+            # 1. 查询未分配的人脸
             unassigned_faces = self.db.query(Face).filter(
                 Face.face_identity_id == None,
                 Face.is_deleted == False,
                 Face.face_feature.isnot(None)
             ).limit(1000).all()  # 限制数量，避免全表扫描
 
-            # 包含当前人脸（若未在查询结果中）
-            current_face = crud_face.get_face(self.db, current_face_id)
-            if current_face and current_face not in unassigned_faces:
-                unassigned_faces.append(current_face)
-
             face_count = len(unassigned_faces)
             if face_count < self.DBSCAN_MIN_SAMPLES:
-                # logger.info(f"未分配人脸数 {face_count} < 最小样本数 {self.DBSCAN_MIN_SAMPLES}，不聚类")
                 return
 
             # 2. 提取并归一化向量
@@ -175,8 +151,7 @@ class FaceClusterService:
             ).fit(X)
 
             labels = clustering.labels_
-            # logger.info(f"DBSCAN聚类完成，共生成 {len(set(labels)) - (1 if -1 in labels else 0)} 个簇")
-
+            
             # 4. 计算簇中心，合并相似簇（核心：解决同一人拆分为多个簇）
             cluster_centers = {}  # label -> 簇中心向量
             cluster_members = {}  # label -> 成员face ID列表
@@ -229,7 +204,6 @@ class FaceClusterService:
             for cluster in merged_clusters:
                 cluster_size = len(cluster)
                 if cluster_size < self.MIN_CLUSTER_SIZE_FOR_IDENTITY:
-                    # logger.info(f"簇大小 {cluster_size} < 阈值 {self.MIN_CLUSTER_SIZE_FOR_IDENTITY}，跳过创建Identity")
                     continue
 
                 # 创建新Identity

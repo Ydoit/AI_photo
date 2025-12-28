@@ -30,7 +30,7 @@ class Face(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     photo_id = Column(UUID(as_uuid=True), ForeignKey("photos.id", ondelete="CASCADE"), nullable=False)
     face_identity_id = Column(UUID(as_uuid=True), ForeignKey("face_identities.id"), nullable=True)
-    face_feature = Column(JSON)  # Human face feature vector
+    face_feature = Column(VECTOR(512))  # Human face feature vector
     face_rect = Column(JSON)     # 人脸检测框 [x1, y1, x2, y2]
     face_confidence = Column(DECIMAL(5, 4))
     recognize_confidence = Column(DECIMAL(5, 4))
@@ -48,6 +48,8 @@ class Face(Base):
         Index("idx_face_photo_id", "photo_id"),
         # 为face_identity_id加索引
         Index("idx_face_identity_id", "face_identity_id"),
+        # 向量索引
+        Index("idx_face_feature", "face_feature", postgresql_using="hnsw", postgresql_ops={"face_feature": "vector_cosine_ops"}),
         # 可选：添加常用联合索引（如按用户+身份查询，需结合user_id字段，若有）
         # Index("idx_face_user_identity", "user_id", "face_identity_id"),
     )

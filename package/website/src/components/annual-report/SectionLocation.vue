@@ -80,7 +80,7 @@ import ReportPage from './ReportPage.vue';
 import type { LocationMetrics } from '@/types/annualReport';
 import * as echarts from 'echarts';
 import { useIntersectionObserver } from '@vueuse/core';
-import 'mingcute_icon/font/mingcute.css'; // Ensure icons are available if not globally imported
+import { is } from 'date-fns/locale';
 
 const props = defineProps<{
   data: LocationMetrics;
@@ -157,17 +157,17 @@ const initMap = async () => {
   
   try {
       // 获取地图数据
-      const response = await fetch('/api/medias/geojson?level=province');
+      const response = await fetch('/api/medias/geojson?level=city');
       if (!response.ok) throw new Error('Map fetch failed');
       const chinaJson = await response.json();
-      
+
       echarts.registerMap('china', chinaJson);
-      
+
       myMap = echarts.init(mapContainer.value);
-      
+
       renderMap();
       mapStatus.value = 'loaded';
-      
+
       // 监听窗口大小变化
       window.addEventListener('resize', handleResize);
   } catch (e) {
@@ -178,66 +178,61 @@ const initMap = async () => {
 
 const renderMap = () => {
     if (!myMap) return;
-    
-    // 准备数据
-    // 1. 点亮省份：根据 topCities 中的 provinceName 或者 locationPoints 推断
-    // 由于后端没直接给 visitedProvinces 列表，我们可以从 topCities 或 points 中提取
-    // 这里简单处理：假设所有有点的省份都点亮。
-    // 为了更准确，最好后端给 visitedProvinces，但接口定义只有 lightenProvinceNum。
-    // 我们用 locationPoints 里的数据无法直接映射到省份名（除非有逆地理编码）。
-    // 暂时用 topCities 中的 provinceName 作为已访问省份的高亮依据（如果不全也没办法，Mock数据里有几个）。
-    // 更好的方式：Mock数据里 locationPoints 应该包含 provinceName，或者我们假设 China Map 的 feature name 匹配 provinceName。
-    // 在 Mock 数据中，points 有 'name' (城市名)。
-    // 实际上 ECharts 'china' map 的 regions 是省份。
-    // 我们需要把城市点映射到省份。
-    // 既然没有直接的省份列表，我们可以构造一个简单的 mapData，所有省份默认颜色，特定省份高亮。
-    // 但因为不知道所有点对应的省份，我们主要展示 Points 和 Top Cities 所在省份。
-    
-    const visitedProvinces = new Set(props.data.topCities.map(c => c.provinceName));
-    // 补充：从 locationPoints 猜测省份？太复杂且不准。
-    // 简化：只高亮 topCities 里的省份，或者如果 Mock 数据不够全，就只高亮几个示例。
-    // 用户要求："Light up areas: User visited provinces/cities".
-    // 让我们假设 API 能返回所有 visited provinces。当前接口没给 list。
-    // 为了效果，我手动添加一些 Mock 省份到 visitedProvinces 集合中（仅用于演示效果），或者仅使用 topCities。
-    // 鉴于这是前端任务，我会尽量利用现有数据。
-    
-    const mapData = Array.from(visitedProvinces).map(p => ({
-        name: p,
+
+    // 收集所有有数据的城市名称
+    const cityNames = new Set(props.data.locationPoints.map(p => p.name));
+    const isMobile = window.innerWidth < 768
+    // 构建 regions：只把有数据的城市区域点亮
+    const mapData = props.data.locationPoints.map(p => ({
+        name: p.name,
         itemStyle: {
-            areaColor: {
-                type: 'linear',
-                x: 0, y: 0, x2: 1, y2: 1,
-                colorStops: [{ offset: 0, color: '#FEE2D0' }, { offset: 1, color: '#F97316' }] // 浅橙 -> 深橙
-            },
-            borderColor: '#F59E0B', // 暖金
-            borderWidth: 1
+            areaColor: p.name === props.data.topCities[0]?.cityName ? '#F97316' : '#FDBA74'
+        },
+        emphasis: {
+            itemStyle: {
+                areaColor: p.name === props.data.topCities[0]?.cityName ? '#EA580C' : '#FB923C'
+            }
         }
     }));
 
     const scatterData = props.data.locationPoints.map(p => ({
         name: p.name,
         value: [p.lng, p.lat, p.count],
+        coverUrl: p.coverUrl,
         itemStyle: {
             color: p.name === props.data.topCities[0]?.cityName ? '#F97316' : '#FDBA74'
         }
     }));
-    
+
     const topCity = props.data.topCities[0];
-    
+    const cityData = props.data.locationPoints.map(c => ({
+        name: c.name,
+        value: 1
+    }));
     const option = {
         backgroundColor: 'transparent',
         tooltip: {
             trigger: 'item',
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
             borderColor: '#F97316',
             textStyle: { color: '#333' },
+            padding: 0,
             formatter: (params: any) => {
                 if (params.seriesType === 'scatter' || params.seriesType === 'effectScatter') {
+                    const data = params.data;
+                    const imgHtml = data.coverUrl
+                        ? `<div style="width: 140px; height: 90px; border-radius: 8px 8px 0 0; overflow: hidden; background-color: #f1f5f9;">
+                             <img src="${data.coverUrl}" style="width: 100%; height: 100%; object-fit: cover;" />
+                           </div>`
+                        : '';
+                    const paddingStyle = 'padding: 12px;';
                     return `
-                        <div class="p-1">
-                           <div class="font-bold text-orange-500 mb-1">${params.name}</div>
-                           <div class="text-xs text-slate-500">共拍摄 ${params.value[2]} 张照片</div>
-                           <div class="text-xs text-slate-600 mt-1">这一程的风景，都被你好好收藏</div>
+                        <div style="border-radius: 8px; overflow: hidden;">
+                           ${imgHtml}
+                           <div style="${paddingStyle}">
+                               <div style="font-weight: bold; color: #F97316; margin-bottom: 2px;">${params.name}</div>
+                               <div style="font-size: 12px; color: #64748b;">共拍摄 ${params.value[2]} 张照片</div>
+                           </div>
                         </div>
                     `;
                 }
@@ -248,11 +243,10 @@ const renderMap = () => {
             map: 'china',
             roam: true, // 允许缩放
             zoom: 1.2,
-            center: topCity ? [props.data.locationPoints.find(p=>p.name===topCity.cityName)?.lng || 104.1, props.data.locationPoints.find(p=>p.name===topCity.cityName)?.lat || 37.5] : [104.1, 37.5], // Focus on Top 1 or Center
             label: { emphasis: { show: false } },
             itemStyle: {
                 normal: {
-                    areaColor: '#f1f5f9', // 浅灰
+                    areaColor: '#f1f5f9', // 默认浅灰
                     borderColor: '#cbd5e1',
                     borderWidth: 1
                 },
@@ -268,14 +262,14 @@ const renderMap = () => {
                 type: 'scatter',
                 coordinateSystem: 'geo',
                 data: scatterData,
-                symbolSize: (val: any) => Math.min(Math.max(val[2] / 5, 6), 20), // 根据照片数调整大小
+                symbolSize: (val: any) => Math.min(Math.max(val[2] / 5, 6), 12), // 根据照片数调整大小
                 label: {
                     formatter: '{b}',
                     position: 'right',
                     show: false
                 },
                 itemStyle: {
-                    color: '#F97316',
+                    color: isMobile ? '#F97316' : '#FDBA74',
                     shadowBlur: 10,
                     shadowColor: 'rgba(249, 115, 22, 0.5)'
                 }
@@ -285,11 +279,24 @@ const renderMap = () => {
                 type: 'effectScatter',
                 coordinateSystem: 'geo',
                 data: topCity ? scatterData.filter(p => p.name === topCity.cityName) : [],
-                symbolSize: 20,
+                symbolSize: isMobile ? 8 : 12,
                 showEffectOn: 'render',
                 rippleEffect: {
                     brushType: 'stroke',
                     scale: 3
+                },
+                label: {
+                    show: false,
+                    formatter: '{b}',
+                    position: 'right',
+                    color: '#F97316',
+                    fontWeight: 'bold',
+                    fontSize: 12,
+                    backgroundColor: 'rgba(255,255,255,0.9)',
+                    padding: [4, 8],
+                    borderRadius: 4,
+                    shadowColor: 'rgba(0, 0, 0, 0.1)',
+                    shadowBlur: 4
                 },
                 itemStyle: {
                     color: '#F97316',
@@ -300,7 +307,7 @@ const renderMap = () => {
             }
         ]
     };
-    
+
     myMap.setOption(option);
 };
 
