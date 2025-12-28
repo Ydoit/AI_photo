@@ -10,7 +10,7 @@ import logging
 import io
 import json
 import os
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 class SentenceTransformerWrapper:
     def __init__(self, model_name="sentence-transformers/clip-ViT-B-32-multilingual-v1"):
@@ -28,6 +28,7 @@ class ImageClassificationService:
         self.categories: Dict = {}
         self.category_keys: List[str] = []
         self.simple_prompts: List[str] = []
+        self.category_embeddings_cache: Dict[str, Any] = {}
         self._load_categories()
         self._register_downloads()
 
@@ -95,6 +96,10 @@ class ImageClassificationService:
         """Release resources associated with the model"""
         model_name = getattr(wrapper, 'model_name', 'unknown')
         logging.info(f"Releasing resources for {model_name}")
+        
+        # Clear category embeddings cache as it depends on the model
+        self.category_embeddings_cache.clear()
+        
         if hasattr(wrapper, 'model'):
             del wrapper.model
         import torch
@@ -167,50 +172,55 @@ class ImageClassificationService:
             # convert_to_tensor=True to keep it on device if possible
             image_emb = image_wrapper.model.encode(image, convert_to_tensor=True)
             
-            # Determine prompts based on precision
-            if precision == "normal":
-                text_inputs = self.simple_prompts
-                text_embs = text_wrapper.model.encode(text_inputs, convert_to_tensor=True)
-                
-                if image_emb.device != text_embs.device:
-                    text_embs = text_embs.to(image_emb.device)
-
-                # Compute cosine similarity
-                cos_scores = util.cos_sim(image_emb, text_embs)[0]
-                
-            else: # precision == "high" (default)
-                all_prompts = []
-                prompt_category_map = [] 
-                
-                for i, key in enumerate(self.category_keys):
-                    prompts = self.categories[key].get("prompts", [])
-                    if not prompts:
-                        prompts = [f"a photo of {self.categories[key].get('en', key)}"]
+            # Check cache for category embeddings
+            category_embs = self.category_embeddings_cache.get(precision)
+            
+            if category_embs is None:
+                logging.info(f"Computing category embeddings for precision: {precision}")
+                # Determine prompts based on precision
+                if precision == "normal":
+                    text_inputs = self.simple_prompts
+                    category_embs = text_wrapper.model.encode(text_inputs, convert_to_tensor=True)
                     
-                    for p in prompts:
-                        all_prompts.append(p)
-                        prompt_category_map.append(i)
+                else: # precision == "high" (default)
+                    all_prompts = []
+                    prompt_category_map = [] 
+                    
+                    for i, key in enumerate(self.category_keys):
+                        prompts = self.categories[key].get("prompts", [])
+                        if not prompts:
+                            prompts = [f"a photo of {self.categories[key].get('en', key)}"]
+                        
+                        for p in prompts:
+                            all_prompts.append(p)
+                            prompt_category_map.append(i)
+                    
+                    text_embs = text_wrapper.model.encode(all_prompts, convert_to_tensor=True)
+                    
+                    # Aggregate embeddings per category
+                    # We create category_embs on the same device as text_embs initially
+                    category_embs = torch.zeros((len(self.category_keys), text_embs.shape[1]), device=text_embs.device)
+                    category_counts = torch.zeros(len(self.category_keys), device=text_embs.device)
+                    
+                    for prompt_idx, cat_idx in enumerate(prompt_category_map):
+                        category_embs[cat_idx] += text_embs[prompt_idx]
+                        category_counts[cat_idx] += 1
+                    
+                    # Average
+                    category_embs = category_embs / category_counts.unsqueeze(1)
                 
-                text_embs = text_wrapper.model.encode(all_prompts, convert_to_tensor=True)
-                
-                # Aggregate embeddings per category
-                category_embs = torch.zeros((len(self.category_keys), text_embs.shape[1]), device=image_emb.device)
-                category_counts = torch.zeros(len(self.category_keys), device=image_emb.device)
-                
-                # Ensure text_embs is on same device for aggregation if needed, or aggregate on its device then move?
-                # Simpler: move text_embs to image_emb device (which is where category_embs is)
-                if text_embs.device != image_emb.device:
-                    text_embs = text_embs.to(image_emb.device)
+                # Cache the computed embeddings
+                self.category_embeddings_cache[precision] = category_embs
 
-                for prompt_idx, cat_idx in enumerate(prompt_category_map):
-                    category_embs[cat_idx] += text_embs[prompt_idx]
-                    category_counts[cat_idx] += 1
-                
-                # Average
-                category_embs = category_embs / category_counts.unsqueeze(1)
-                
-                # Compute cosine similarity
-                cos_scores = util.cos_sim(image_emb, category_embs)[0]
+            # Ensure category_embs is on the same device as image_emb
+            if category_embs.device != image_emb.device:
+                category_embs = category_embs.to(image_emb.device)
+                # We update the cache with the tensor on the new device to avoid repeated transfers
+                # if the model stays on this device.
+                self.category_embeddings_cache[precision] = category_embs
+
+            # Compute cosine similarity
+            cos_scores = util.cos_sim(image_emb, category_embs)[0]
 
             # Convert to probabilities (softmax)
             scores = cos_scores * 100
