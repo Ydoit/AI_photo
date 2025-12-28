@@ -11,15 +11,18 @@ from app.services.ai_config_manager import ai_config_manager
 def load_paddleocr_model():
     try:
         model_root = settings.MODEL_PATH
-        os.environ['PADDLE_PDX_CACHE_HOME'] = model_root
-        from paddleocr import PaddleOCR
-        # Get model name from config
-        model_name = ai_config_manager.get_model_selection("ocr")
-        logging.info(f"Initializing PaddleOCR with model: {model_name}")
-        ocr = PaddleOCR(
-            use_angle_cls=True, lang='ch',
-            text_recognition_model_name=f"PP-OCRv5_{model_name}_rec",
-            text_detection_model_name=f"PP-OCRv5_{model_name}_det"
+        from rapidocr import EngineType, LangDet, LangRec, ModelType, OCRVersion, RapidOCR
+        ocr = RapidOCR(
+            params={
+                "Det.engine_type": EngineType.ONNXRUNTIME,
+                "Det.lang_type": LangDet.CH,
+                "Det.model_type": ModelType.MOBILE,
+                "Det.ocr_version": OCRVersion.PPOCRV5,
+                "Rec.engine_type": EngineType.ONNXRUNTIME,
+                "Rec.lang_type": LangRec.CH,
+                "Rec.model_type": ModelType.MOBILE,
+                "Rec.ocr_version": OCRVersion.PPOCRV5,
+            }
         )
         logging.info("PaddleOCR model initialized successfully.")
         return ocr
@@ -29,28 +32,6 @@ def load_paddleocr_model():
 
 def release_paddleocr_model(model):
     try:
-        # PaddleOCR doesn't have an explicit close/release method for the object itself easily exposed
-        # But we can try to unload modules if we want to go extreme, though dangerous in async env.
-        # Generally, just deleting the object and gc.collect() (handled by wrapper) is enough for object memory.
-        # To clear GPU cache for Paddle:
-        import paddle
-        if paddle.is_compiled_with_cuda():
-            paddle.device.cuda.empty_cache()
-
-        # Optional: Unload heavy modules if they were lazy imported and we want to reclaim code memory?
-        # Typically not recommended to unload modules in Python servers as re-importing is tricky.
-        # But user asked to "clean import modules".
-        # We can try to remove 'paddleocr' and 'paddle' from sys.modules if we are sure no one else uses it.
-        # WARNING: This is risky if other threads are using it or if re-import fails.
-        # A safer approach is just releasing GPU memory.
-
-        # Let's stick to GPU cache clearing and object deletion first. 
-        # If user explicitly wants module unloading:
-        # modules_to_unload = [m for m in sys.modules if m.startswith('paddle')]
-        # for m in modules_to_unload:
-        #     del sys.modules[m]
-        # This is often too aggressive and causes crashes. 
-        # We will focus on the resource release hook.
         logging.info("PaddleOCR resources released.")
     except Exception as e:
         logging.error(f"Error releasing PaddleOCR resources: {e}")
@@ -95,34 +76,36 @@ class OCRService:
             snapshot_download(f'PaddlePaddle/PP-OCRv5_{model_name}_det', local_dir=det_model_path)
             return model_path
         
-        model_downloader.register_model("ocr", check_ocr_model, download_ocr_model)
+        # model_downloader.register_model("ocr", check_ocr_model, download_ocr_model)
 
 
     def detect_text(self, image_bytes: bytes):
         """
         Detect text in image bytes
         """
-        if not model_downloader.is_ready("ocr"):
-             raise Exception("OCR model is not ready yet. Please try again later.")
+        # if not model_downloader.is_ready("ocr"):
+        #      raise Exception("OCR model is not ready yet. Please try again later.")
 
         ocr = model_manager.get_model("ocr")
 
-        nparr = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        if img is None:
-            raise ValueError("Invalid image data")
+        # nparr = np.frombuffer(image_bytes, np.uint8)
+        # img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        #
+        # if img is None:
+        #     raise ValueError("Invalid image data")
 
-        results = ocr.ocr(img)
+        result = ocr(image_bytes, use_det=True, use_cls=True, use_rec=True)
 
         parsed_results = []
-        for res in results:
-            parsed_results.append(
-                {
-                    "prunedResult": res.json['res'],
-
-                }
-            )
+        parsed_results.append(
+            {
+                "prunedResult": {
+                    "rec_texts": result.txts,
+                    "rec_scores": result.scores,
+                    "rec_polys": result.boxes.tolist() if result.boxes is not None else [],
+                },
+            }
+        )
         return parsed_results
 
 ocr_service = OCRService()

@@ -22,16 +22,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends --fix-missing \
 #     # 优先尝试安装预编译版本（如果3.0.0不行，可换2.7.0等稳定版）
 #     && pip install insightface==3.0.0 -f https://download.pytorch.org/whl/torch_stable.html -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-
-# 复制依赖文件并安装
-COPY requirements.txt .
-# RUN pip install uv -i https://pypi.tuna.tsinghua.edu.cn/simple
-RUN pip install -r requirements.txt
-
 # 复制项目所有文件到工作目录
 COPY . .
 
-# RUN uv sync
+# 复制依赖文件并安装
+COPY requirements.txt .
+RUN pip install uv -i https://pypi.tuna.tsinghua.edu.cn/simple
+# RUN pip install -r requirements.txt
+
+RUN uv sync
 
 # 可选：清理编译依赖以减小镜像体积（如果对镜像体积敏感）
 # RUN apt-get purge -y --auto-remove build-essential g++

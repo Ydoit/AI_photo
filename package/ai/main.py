@@ -1,6 +1,8 @@
 import uvicorn
 import logging
 import time
+import asyncio
+import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -11,6 +13,38 @@ from app.routers import system, face, ocr, object_detection, tickets, image_clas
 from app.core.logger import setup_logging
 from app.services.model_downloader import model_downloader
 
+# Memory management globals
+active_requests = 0
+last_request_time = time.time()
+
+async def check_idle_and_restart():
+    """Check if the service has been idle for too long and restart if necessary."""
+    while True:
+        try:
+            await asyncio.sleep(settings.CHECK_INTERVAL)
+            
+            # If there are active requests, we are not idle
+            if active_requests > 0:
+                continue
+                
+            current_time = time.time()
+            idle_duration = current_time - last_request_time
+            
+            if idle_duration > settings.IDLE_TIMEOUT:
+                logging.getLogger("app.main").warning(
+                    f"Service idle for {idle_duration:.0f} seconds (Threshold: {settings.IDLE_TIMEOUT}s). "
+                    f"Restarting to release memory..."
+                )
+                # Exit the process. The container orchestrator or process manager should restart it.
+                sys.exit(0)
+                
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logging.getLogger("app.main").error(f"Error in idle check task: {e}")
+            # Don't stop the loop on error, just wait and retry
+            await asyncio.sleep(settings.CHECK_INTERVAL)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global log_listener
@@ -19,7 +53,18 @@ async def lifespan(app: FastAPI):
     # Start model downloads in background
     model_downloader.start_downloads()
     
+    # Start idle check task
+    idle_check_task = asyncio.create_task(check_idle_and_restart())
+
     yield
+    
+    # Cleanup
+    idle_check_task.cancel()
+    try:
+        await idle_check_task
+    except asyncio.CancelledError:
+        pass
+        
     if log_listener:
         log_listener.stop()
 
@@ -36,6 +81,9 @@ log_listener = None
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
+    global active_requests, last_request_time
+    active_requests += 1
+
     start_time = time.time()
     operation = f"{request.method} {request.url.path}"
     params = dict(request.query_params)
@@ -50,7 +98,7 @@ async def log_requests(request: Request, call_next):
             "result": response.status_code,
             "duration_ms": f"{process_time:.2f}"
         }
-        logging.getLogger("app.middleware").info("Request processed", extra=extra)
+        # logging.getLogger("app.middleware").info("Request processed", extra=extra)
 
         return response
     except Exception as e:
@@ -63,6 +111,9 @@ async def log_requests(request: Request, call_next):
         }
         logging.getLogger("app.middleware").error(f"Request failed: {str(e)}", exc_info=e, extra=extra)
         raise e
+    finally:
+        active_requests -= 1
+        last_request_time = time.time()
 
 
 # Include Routers

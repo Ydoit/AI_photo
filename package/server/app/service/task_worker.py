@@ -236,10 +236,10 @@ class TaskWorker:
                         self._save_system_state('scan_status', self.scan_status)
                 else:
                     # Ensure pools exist (re-create if needed)
-
-                    if self.process_pool is None:
-                        logging.info(f"Restarting process pool")
-                        self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count())
+                    if active_cpu_count > 0:
+                        if self.process_pool is None:
+                            logging.info(f"Restarting process pool")
+                            self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count())
                     if self.thread_pool is None:
                         max_workers = config_manager.config.task.max_concurrent_tasks
                         logging.info(f"Restarting thread pool")

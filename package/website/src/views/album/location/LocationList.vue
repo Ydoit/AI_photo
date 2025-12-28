@@ -332,7 +332,30 @@ const renderMap = (data: any[], max: number, viewState?: { zoom: number, center:
           borderWidth: 0.5
         }
       }
-    ]
+    ],
+    // 工具栏：保存为图片
+    toolbox: {
+      show: true,
+      right: isMobile ? 10 : 20,
+      top: 20,
+      feature: {
+        saveAsImage: {
+          title: '保存为图片',
+          name: '位置分布图',
+          backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
+          excludeComponents: ['toolbox'],
+          pixelRatio: isMobile ? 5 : 3,
+        }
+      },
+      iconStyle: {
+        borderColor: isDarkMode ? '#cbd5e1' : '#475569'
+      },
+      emphasis: {
+        iconStyle: {
+          borderColor: isDarkMode ? '#fff' : '#0f172a'
+        }
+      }
+    }
   }
 
   myMap.setOption(option)

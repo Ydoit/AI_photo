@@ -100,7 +100,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                 content_type='image/jpeg'
             )
 
-            api_url = f"{config_manager.config.ai.ai_api_url}/image_classification/classify"
+            api_url = f"{config_manager.config.ai.ai_api_url}/classification/classify"
             async with session.post(api_url, data=form_data) as resp:
                 if resp.status == 200:
                     result = await resp.json()

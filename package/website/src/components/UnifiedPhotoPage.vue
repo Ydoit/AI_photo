@@ -10,8 +10,8 @@
             <ArrowLeft class="w-5 h-5 text-gray-600 dark:text-gray-300" />
           </button>
           <div class="pr-2" v-if="!loadingTitle">
-            <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight flex items-center gap-2">
-              {{ title }}
+            <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight flex items-center gap-2 truncate">
+              {{ title.length > 5 ? title.slice(0, 5) + '···' : title }}
               <slot name="title-extra"></slot>
             </h1>
             <p class="text-xs text-gray-500">{{ subtitle }}</p>

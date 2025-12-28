@@ -9,6 +9,11 @@ class Settings(BaseSettings):
 
     # AI Models Configuration
     MODEL_PATH: str = os.getenv("MODEL_PATH", os.path.expanduser("data/models"))
+
+    # Memory Management
+    IDLE_TIMEOUT: int = 600  # Default 1 hour in seconds
+    CHECK_INTERVAL: int = 60  # Check every minute
+
     class Config:
         env_file = ".env"
 
