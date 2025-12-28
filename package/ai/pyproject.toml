@@ -19,8 +19,8 @@ dependencies = [
 # GPU可选依赖分组：仅--extra gpu时生效，自动替换GPU版依赖
 [project.optional-dependencies]
 cpu = [
-    "torch==2.9.1+cpu",
-    "torchvision==0.24.1+cpu",
+    "torch>=2.5.0",
+    "torchvision>=0.20.0",
     "transformers>=4.37.0",
     "onnxruntime>=1.17.0",
     "sentence-transformers",
