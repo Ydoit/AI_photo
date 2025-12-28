@@ -57,9 +57,9 @@ def get_annual_report(
         .filter(extract('year', Photo.photo_time) == year)\
         .group_by(PhotoTag.tag_name)\
         .order_by(desc('count'))\
-        .limit(5).all()
-
-    category_distribution = [CategoryDistributionItem(name=t[0], value=t[1]) for t in top_tags]
+        .limit(50).all()
+    exclude_tags = {"二维码", "文档/截图"}
+    category_distribution = [CategoryDistributionItem(name=t[0], value=t[1]) for t in top_tags if t[0] not in exclude_tags][:5]
     if not category_distribution:
         # Fallback if no tags
         category_distribution = [CategoryDistributionItem(name="生活日常", value=total_photos)]

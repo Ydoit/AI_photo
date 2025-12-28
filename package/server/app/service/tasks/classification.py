@@ -119,7 +119,8 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                     for res in results:
                         tag_name = res['label']
                         confidence = res['confidence']
-                        
+                        if confidence < config_manager.config.ai.classification_tag_threshold:
+                            continue
                         tag = db.query(PhotoTag).filter(PhotoTag.tag_name == tag_name).first()
                         if not tag:
                             tag = PhotoTag(tag_name=tag_name)

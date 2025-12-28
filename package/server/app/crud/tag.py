@@ -79,11 +79,11 @@ def remove_tags_from_photo(db: Session, photo_id: UUID, ai_generated: bool = Fal
         db.query(PhotoTagRelation).filter(
             PhotoTagRelation.photo_id == photo_id,
             PhotoTagRelation.confidence < 1.0
-        ).update({"is_deleted": True})
+        ).delete()
     else:
         db.query(PhotoTagRelation).filter(
             PhotoTagRelation.photo_id == photo_id
-        ).update({"is_deleted": True})
+        ).delete()
     db.commit()
     return True
 

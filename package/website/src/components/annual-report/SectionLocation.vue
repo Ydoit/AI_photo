@@ -1,9 +1,9 @@
 <template>
   <ReportPage class="section-location" :class="{ 'animate-in': isActive }">
-    <div class="h-full flex flex-col p-2" ref="sectionRef">
+    <div class="h-full w-full flex flex-col p-0" ref="sectionRef">
       <!-- 标题区域 -->
       <div class="text-center mb-6 fade-in-up" :style="{ animationDelay: '0.1s' }">
-        <h2 class="text-2xl font-bold text-orange-500 mb-2">步履所至 · 你的年度足迹地图</h2>
+        <h2 class="text-2xl font-bold text-orange-500 mb-2">步履所至 · 年度足迹地图</h2>
         <p class="text-sm text-slate-600 dark:text-slate-600 font-light">用镜头丈量山河，每一座城，都藏着你的独家时光</p>
       </div>
 

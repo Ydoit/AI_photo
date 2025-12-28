@@ -1,8 +1,8 @@
 {
     "person_portrait": {
-        "zh": "人物肖像",
+        "zh": "人像",
         "en": "Person Portrait",
-        "prompts": ["a photo of a person portrait", "human face", "portrait photography", "close-up of a person", "professional portrait"]
+        "prompts": ["a photo of people", "human face", "portrait photography", "a person", "professional portrait"]
     },
     "selfie": {
         "zh": "自拍",
