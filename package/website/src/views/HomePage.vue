@@ -20,6 +20,25 @@
 
     <!-- Content -->
     <div v-else-if="dashboardData" class="py-3 space-y-2">
+      <!-- Annual Report Banner -->
+      <div 
+        class="mx-4 p-4 rounded-xl bg-gradient-to-r from-orange-100 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/20 border border-orange-200 dark:border-orange-800/50 flex items-center justify-between cursor-pointer hover:shadow-md transition-shadow"
+        @click="$router.push('/annual-report')"
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white">
+             <i class="mgc_calendar_line text-xl"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-orange-800 dark:text-orange-200 text-sm">2025 年度回忆录</h3>
+            <p class="text-xs text-orange-600 dark:text-orange-300/80">一帧一画，定格步履与温柔</p>
+          </div>
+        </div>
+        <div class="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-white/10 text-orange-500">
+           <i class="mgc_right_line"></i>
+        </div>
+      </div>
+
       <OverviewCards :data="dashboardData.card" @show-storage="showStorageDialog = true" />
       
       <FaceSection :data="dashboardData.face" />

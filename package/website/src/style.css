@@ -1,6 +1,13 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .page-item {
+    @apply snap-start h-screen w-full flex flex-col justify-center items-center p-6 box-border;
+  }
+}
+
 /* src/styles/theme.css */
 [class^='mgc_']::before, [class*=' mgc_']::before {
   color: inherit !important;

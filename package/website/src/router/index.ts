@@ -49,6 +49,14 @@ const routes: RouteRecordRaw[] = [
     ],
   },
 
+  // Annual Report (Standalone Layout)
+  {
+    path: '/annual-report',
+    name: 'AnnualReport',
+    component: () => import('@/views/annual-report/index.vue'),
+    meta: { layout: 'blank', title: '年度回忆录' },
+  },
+
   // 404 页面（使用空白布局）
   {
     path: '/:pathMatch(.*)*', // 匹配所有未定义路由

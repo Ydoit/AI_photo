@@ -1,0 +1,22 @@
+<template>
+  <div class="report-page page-item relative w-full h-full flex flex-col justify-center items-center overflow-hidden">
+    <!-- Gradient Background (Global) -->
+    <div class="absolute inset-0 bg-gradient-to-b from-bg-top to-bg-bottom dark:from-dark-navy dark:to-dark-gray-blue z-0"></div>
+    
+    <!-- Content Wrapper -->
+    <div class="content-wrapper relative z-10 w-full max-w-lg flex flex-col gap-6 px-4 md:px-0 h-full justify-center">
+      <transition name="page-fade" appear>
+        <div class="w-full h-full flex flex-col justify-center relative">
+            <slot />
+        </div>
+      </transition>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.page-fade-enter-active { transition: all 0.8s ease-out; }
+.page-fade-leave-active { transition: all 0.5s ease-in; }
+.page-fade-enter-from { opacity: 0; transform: translateY(20px); }
+.page-fade-leave-to { opacity: 0; transform: translateY(-20px); }
+</style>
