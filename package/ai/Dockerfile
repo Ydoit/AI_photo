@@ -30,7 +30,7 @@ COPY requirements.txt .
 RUN pip install uv -i https://pypi.tuna.tsinghua.edu.cn/simple
 # RUN pip install -r requirements.txt
 
-RUN uv sync
+RUN uv sync --extra cpu
 
 # 可选：清理编译依赖以减小镜像体积（如果对镜像体积敏感）
 # RUN apt-get purge -y --auto-remove build-essential g++
