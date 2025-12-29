@@ -193,7 +193,7 @@ const performSearch = async (isLoadMore = false) => {
       text: query.value,
       limit: limit,
       skip: skip.value,
-      threshold: 0.2
+      threshold: 0.22
     })
 
     const newPhotos = res.map(item => mapPhotoToImage(item.photo))

@@ -49,22 +49,24 @@ async def check_idle_and_restart():
 async def lifespan(app: FastAPI):
     global log_listener
     log_listener = setup_logging('ai')
-    
+
     # Start model downloads in background
     model_downloader.start_downloads()
-    
-    # Start idle check task
-    idle_check_task = asyncio.create_task(check_idle_and_restart())
+    # 判断当前平台是否为Windows，Windows平台下不启动空闲检查任务
+    if sys.platform != 'win32':
+        # Start idle check task
+        idle_check_task = asyncio.create_task(check_idle_and_restart())
 
     yield
-    
+
     # Cleanup
-    idle_check_task.cancel()
-    try:
-        await idle_check_task
-    except asyncio.CancelledError:
-        pass
-        
+    if sys.platform != 'win32':
+        idle_check_task.cancel()
+        try:
+            await idle_check_task
+        except asyncio.CancelledError:
+            pass
+
     if log_listener:
         log_listener.stop()
 

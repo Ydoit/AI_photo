@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
 import random
 from fastapi import APIRouter, Depends, Query
@@ -18,6 +18,39 @@ from app.schemas.annual_report import (
 )
 
 router = APIRouter()
+
+from app.schemas.photo import Photo as PhotoSchema
+
+@router.get("/photos", response_model=Dict[int, List[PhotoSchema]])
+def get_annual_report_photos(
+        start_time: datetime = Query(..., description="Start Time"),
+        end_time: datetime = Query(..., description="End Time"),
+        db: Session = Depends(get_db)
+):
+    # Query photos within the time range, ordered by time descending
+    photos = db.query(Photo).filter(
+        Photo.photo_time >= start_time,
+        Photo.photo_time <= end_time
+    ).order_by(Photo.photo_time.desc()).all()
+
+    # Group by month
+    monthly_groups: Dict[int, List[PhotoSchema]] = {}
+
+    # We can iterate and filter.
+    # Since we need max 10 per month, and we sorted by time desc,
+    # we can just fill the buckets until they are full.
+
+    for p in photos:
+        if not p.photo_time:
+            continue
+        month = p.photo_time.month
+        if month not in monthly_groups:
+            monthly_groups[month] = []
+
+        if len(monthly_groups[month]) < 10:
+            monthly_groups[month].append(p)
+
+    return monthly_groups
 
 @router.get("", response_model=AnnualReportData)
 def get_annual_report(

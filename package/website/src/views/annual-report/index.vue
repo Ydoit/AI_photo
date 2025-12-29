@@ -4,6 +4,7 @@ import { getAnnualReport } from '@/api/annualReport';
 import type { AnnualReportData } from '@/types/annualReport';
 import AnnualContainer from '@/components/annual-report/AnnualContainer.vue';
 import SectionCover from '@/components/annual-report/SectionCover.vue';
+import SectionPhotoWall from '@/components/annual-report/SectionPhotoWall.vue';
 import SectionTime from '@/components/annual-report/SectionTime.vue';
 import SectionAccount from '@/components/annual-report/SectionAccount.vue';
 import SectionCategory from '@/components/annual-report/SectionCategory.vue';
@@ -52,19 +53,22 @@ const handleReplay = () => {
     <AnnualContainer v-else-if="reportData" ref="containerRef">
         <!-- 1. Cover -->
         <SectionCover :user="reportData.user" :year="reportData.year" />
-        
+
+        <!-- 1. Photo Wall -->
+        <SectionPhotoWall :year="reportData.year" />
+
         <!-- 2. Time -->
         <SectionTime :data="reportData.time" />
-        
+
         <!-- 3. Account -->
         <SectionAccount :time="reportData.time" :emotion="reportData.emotion" />
-        
+
         <!-- 4. Category -->
         <SectionCategory :data="reportData.memory" />
-        
+
         <!-- 5. Highlight -->
         <SectionHighlight :memory="reportData.memory" />
-        
+
         <!-- 6. Emotion -->
         <SectionEmotion :data="reportData.emotion" />
 
