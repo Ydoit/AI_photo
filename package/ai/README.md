@@ -38,7 +38,7 @@ TrailSnap 的 AI 微服务模块，负责处理所有计算机视觉相关的任
 使用 Uvicorn 启动服务：
 
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 ```
 
 服务默认运行在 `8001` 端口。

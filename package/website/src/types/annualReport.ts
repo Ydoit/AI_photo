@@ -9,6 +9,7 @@ export interface TimeMetrics {
   firstPhotoDate?: string;
   lastPhotoDate?: string;
   lateNightPhotoCount?: number;
+  photoDates: string[];
 }
 
 export interface MemoryMetrics {

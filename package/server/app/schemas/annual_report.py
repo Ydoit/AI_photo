@@ -11,6 +11,7 @@ class TimeMetrics(BaseModel):
     firstPhotoDate: Optional[str] = None
     lastPhotoDate: Optional[str] = None
     lateNightPhotoCount: Optional[int] = 0
+    photoDates: List[str] = []
 
 class CategoryDistributionItem(BaseModel):
     name: str

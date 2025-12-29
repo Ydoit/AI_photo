@@ -1,62 +1,90 @@
 <template>
-  <div class="section-photo-wall relative w-full h-screen bg-bg-light dark:bg-dark-navy overflow-hidden perspective-container snap-start"
-       @mousedown="handleMouseDown"
-       @mousemove="handleMouseMove"
-       @touchstart="handleMouseDown"
-       @touchmove="handleMouseMove"
-       @click="togglePause">
-       
-    <div v-if="loading" class="absolute inset-0 flex items-center justify-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-amber"></div>
-    </div>
+  <ReportPage class="section-photo-wall w-full max-w-screen max-h-full" :class="{ 'animate-in': isVisible }" ref="sectionRef" :max-width="'max'">
+    <div class="relative w-full h-full overflow-hidden perspective-container snap-start"
+        @mousedown="handleMouseDown"
+        @mousemove="handleMouseMove"
+        @touchstart="handleMouseDown"
+        @touchmove="handleMouseMove"
+        @click="togglePause">
 
-    <div v-else
-         class="scene w-full h-full absolute top-0 left-0 flex items-center justify-center transform-style-3d"
-         :style="getSceneStyle">
-        <div v-for="(photo, index) in photos"
-             :key="index"
-             :ref="(el) => setPhotoRef(el, index)"
-             class="photo-card absolute bg-white dark:bg-gray-800 p-1 shadow-lg rounded-sm overflow-hidden cursor-pointer hover:scale-110 hover:z-[9999]"
-             :style="{
-                 width: isMobile ? '60px' : '80px',
-                 height: isMobile ? '45px' : '60px',
-                 ...getPhotoStyle(index),
-             }">
-             <!-- Fixed size for simplicity in 3D, could be responsive -->
-            <img :src="getPhotoUrl(photo)"
-                 class="w-full h-full object-cover"
-                 loading="lazy"
-                 alt="Memory" />
+        <div v-if="loading" class="absolute inset-0 flex items-center justify-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-amber"></div>
+        </div>
+
+        <div v-else
+            class="scene w-full h-full absolute top-0 left-0 flex items-center justify-center transform-style-3d"
+            :style="getSceneStyle">
+            <div v-for="(photo, index) in photos"
+                :key="index"
+                :ref="(el) => setPhotoRef(el, index)"
+                class="photo-card absolute bg-white dark:bg-gray-800 p-1 shadow-lg rounded-sm overflow-hidden cursor-pointer hover:scale-110 hover:z-[9999]"
+                :style="{
+                    width: isMobile ? '60px' : '80px',
+                    height: isMobile ? '45px' : '60px',
+                    ...getPhotoStyle(index),
+                }">
+                <!-- Fixed size for simplicity in 3D, could be responsive -->
+                <img :src="getPhotoUrl(photo)"
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                    alt="Memory" />
+            </div>
+        </div>
+
+        <!-- Controls / Hints -->
+        <div v-if="currentStage === 4" class="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-white/50 text-sm bg-black/20 px-4 py-1 rounded-full backdrop-blur-sm pointer-events-none">
+            {{ isPaused ? '已暂停' : '点击暂停/继续' }}
         </div>
     </div>
-
-    <!-- Controls / Hints -->
-    <div v-if="currentStage === 4" class="absolute bottom-10 left-1/2 transform -translate-x-1/2 text-white/50 text-sm bg-black/20 px-4 py-1 rounded-full backdrop-blur-sm pointer-events-none">
-        {{ isPaused ? '已暂停' : '点击暂停/继续' }}
-    </div>
-  </div>
+  </ReportPage>
 </template>
 
 
 <script setup lang="ts">
 import { ref, onMounted, computed, onUnmounted, watch } from 'vue';
 import { getAnnualReportPhotos } from '@/api/annualReport';
+import ReportPage from './ReportPage.vue';
 import type { Photo } from '@/types/album';
 import { useWindowSize } from '@vueuse/core';
 
 const props = defineProps<{
-  year?: number;
+  startTime: string;
+  endTime: string;
 }>();
+
+import { useIntersectionObserver } from '@vueuse/core';
+const isVisible = ref(false);
+const sectionRef = ref<HTMLElement | null>(null);
+
+useIntersectionObserver(
+    sectionRef,
+    ([{ isIntersecting }]) => {
+        if (isIntersecting && !isVisible.value) {
+            console.log(isVisible)
+            isVisible.value = true;
+        }
+    },
+    { threshold: 0.1 }
+);
+
+// 监听 isVisible 触发动画
+watch(isVisible, (newVal) => {
+  if (newVal) {
+    startAnimationSequence();
+  }
+});
 
 const { width: windowWidth, height: windowHeight } = useWindowSize();
 
 // State
+const rootEl = ref<HTMLElement | null>(null);
 const photos = ref<Photo[]>([]);
 const photoRefs = ref<(HTMLElement | null)[]>([]);
 const loading = ref(true);
 const currentStage = ref(0); // 0: Init, 1: FlyIn, 2: Shape, 3: Grid, 4: Scroll
 const scrollOffset = ref(0);
 const isPaused = ref(false);
+const hasStartedAnimation = ref(false);
 let animationFrameId: number;
 
 const isMobile = computed(() => windowWidth.value < 768);
@@ -79,9 +107,8 @@ const getPhotoUrl = (photo: Photo) => {
 // Fetch Photos
 const fetchPhotos = async () => {
   try {
-    const year = props.year || new Date().getFullYear();
-    const start = `${year}-01-01T00:00:00`;
-    const end = `${year}-12-31T23:59:59`;
+    const start = props.startTime;
+    const end = props.endTime;
 
     const monthlyGroups = await getAnnualReportPhotos(start, end);
 
@@ -120,8 +147,8 @@ const fetchPhotos = async () => {
 
     loading.value = false;
 
-    // Start Animation Sequence
-    startAnimationSequence();
+    // Check if we should start animation (if already visible)
+    // checkVisibilityAndAnimate();
 
   } catch (e) {
     console.error("Failed to fetch photos for wall", e);
@@ -150,13 +177,13 @@ const initPositions = (count: number) => {
 // Animation Sequence
 const startAnimationSequence = async () => {
     // Wait a bit for render
-    await new Promise(r => setTimeout(r, 100));
+    // await new Promise(r => setTimeout(r, 100));
 
     // Stage 1: Fly In (Random Scatter on screen)
     currentStage.value = 1;
     updatePositionsForStage1();
 
-    // Wait for fly-in (2.5s) + hold
+    // Wait for fly-in (3.5s) + hold
     setTimeout(() => {
         // Stage 2: Shape (Sphere)
         currentStage.value = 2;
@@ -186,7 +213,7 @@ const startAnimationSequence = async () => {
             }, 2000); // Wait 2s after grid
 
         }, 5500); // Shape hold 4s + transition 1.5s
-    }, 3500); // Fly in 2.5s
+    }, 3500); // Fly in 3.5s
 };
 
 const updatePositionsForStage1 = () => {
@@ -376,13 +403,13 @@ const getPhotoStyle = (index: number) => {
     let duration = '1.5s';
     if (currentStage.value === 1) duration = '2.5s';
     if (currentStage.value === 4) duration = '0s'; // No transition during scroll loop
-    if (currentStage.value === 3) {
+    if (currentStage.value === 3 || currentStage.value === 4) {
         return {
             transform: `translate3d(${p.x}px, ${p.y}px, ${p.z}px) rotateX(${p.rX}deg) rotateY(${p.rY}deg) rotateZ(${p.rZ}deg) scale(${p.scale})`,
             width: p.width ? `${p.width}px` : undefined,
             height: p.height ? `${p.height}px` : undefined,
             opacity: p.opacity,
-            transition: `all ${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+            transition: currentStage.value === 4 ? 'none' : `all ${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
             transitionDelay: `${delay}s`,
         };
     } else {
@@ -445,6 +472,14 @@ const togglePause = () => {
         isPaused.value = !isPaused.value;
     }
 };
+
+const checkVisibilityAndAnimate = () => {
+    if (!loading.value && !hasStartedAnimation.value && isVisible.value) {
+        hasStartedAnimation.value = true;
+        startAnimationSequence();
+    }
+};
+
 
 onMounted(() => {
     fetchPhotos();

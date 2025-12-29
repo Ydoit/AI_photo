@@ -3,7 +3,8 @@ from datetime import datetime
 import random
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract, desc, and_
+from sqlalchemy import func, extract, desc
+from pydantic import BaseModel
 
 from app.dependencies import get_db
 from app.db.models.photo import Photo
@@ -52,66 +53,94 @@ def get_annual_report_photos(
 
     return monthly_groups
 
-@router.get("", response_model=AnnualReportData)
-def get_annual_report(
-    year: int = Query(default=datetime.now().year, description="Report Year"),
+
+def get_date_range_filter(query, start_time: datetime, end_time: datetime):
+    return query.filter(
+        Photo.photo_time >= start_time,
+        Photo.photo_time <= end_time
+    )
+
+class ReportSummary(BaseModel):
+    user: UserInfo
+    time: TimeMetrics
+
+@router.get("/summary", response_model=ReportSummary)
+def get_report_summary(
+    start_time: datetime = Query(..., description="Start Time"),
+    end_time: datetime = Query(..., description="End Time"),
     db: Session = Depends(get_db)
 ):
-    # Base query for the year
-    base_query = db.query(Photo).filter(extract('year', Photo.photo_time) == year)
+    base_query = get_date_range_filter(db.query(Photo), start_time, end_time)
     total_photos = base_query.count()
 
     # --- Time Metrics ---
-    # Accompany Days (distinct dates)
-    # Note: SQLite/Postgres compatibility for date extraction might differ, assuming Postgres or standard SQL
     accompany_days = base_query.with_entities(func.date(Photo.photo_time)).distinct().count()
 
-    # First/Last Photo
     first_photo = base_query.order_by(Photo.photo_time.asc()).first()
     last_photo = base_query.order_by(Photo.photo_time.desc()).first()
 
-    # Late Night Photos (00:00 - 05:00)
     late_night_count = base_query.filter(extract('hour', Photo.photo_time) < 5).count()
+
+    # Get all dates with photos
+    photo_dates_rows = base_query.with_entities(func.date(Photo.photo_time)).distinct().all()
+    photo_dates = [str(row[0]) for row in photo_dates_rows]
 
     time_metrics = TimeMetrics(
         totalPhotos=total_photos,
         accompanyDays=accompany_days,
         firstPhotoDate=first_photo.photo_time.strftime('%Y-%m-%d') if first_photo else None,
         lastPhotoDate=last_photo.photo_time.strftime('%Y-%m-%d') if last_photo else None,
-        lateNightPhotoCount=late_night_count
+        lateNightPhotoCount=late_night_count,
+        photoDates=photo_dates
     )
+
+    # --- User Info (Mock/Static) ---
+    user_info = UserInfo(
+        nickname="时光旅人",
+        avatarUrl="/avatar.png"
+    )
+
+    return ReportSummary(user=user_info, time=time_metrics)
+
+
+@router.get("/memory", response_model=MemoryMetrics)
+def get_report_memory(
+    start_time: datetime = Query(..., description="Start Time"),
+    end_time: datetime = Query(..., description="End Time"),
+    db: Session = Depends(get_db)
+):
+    base_query = get_date_range_filter(db.query(Photo), start_time, end_time)
+    total_photos = base_query.count()
 
     # --- Memory Metrics ---
     # Category Distribution (Top Tags)
-    # Join Photo -> PhotoTagRelation -> PhotoTag
     top_tags = db.query(PhotoTag.tag_name, func.count(PhotoTagRelation.photo_id).label('count'))\
         .join(PhotoTagRelation, PhotoTag.id == PhotoTagRelation.tag_id)\
         .join(Photo, Photo.id == PhotoTagRelation.photo_id)\
-        .filter(extract('year', Photo.photo_time) == year)\
+        .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
         .group_by(PhotoTag.tag_name)\
         .order_by(desc('count'))\
         .limit(50).all()
+    
     exclude_tags = {"二维码", "文档/截图"}
     category_distribution = [CategoryDistributionItem(name=t[0], value=t[1]) for t in top_tags if t[0] not in exclude_tags][:5]
     if not category_distribution:
-        # Fallback if no tags
         category_distribution = [CategoryDistributionItem(name="生活日常", value=total_photos)]
 
     # Top Person
     top_person = db.query(FaceIdentity.identity_name, func.count(Face.id).label('count'))\
         .join(Face, Face.face_identity_id == FaceIdentity.id)\
         .join(Photo, Photo.id == Face.photo_id)\
-        .filter(extract('year', Photo.photo_time) == year)\
+        .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
         .group_by(FaceIdentity.identity_name)\
         .order_by(desc('count')).first()
 
     top_person_count = top_person[1] if top_person else 0
-    # TODO: Identify Top Person Name properly
 
     # Top Location
     top_location_row = db.query(PhotoMetadata.city, func.count(Photo.id).label('count'))\
         .join(Photo, Photo.id == PhotoMetadata.photo_id)\
-        .filter(extract('year', Photo.photo_time) == year)\
+        .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
         .filter(PhotoMetadata.city.isnot(None))\
         .group_by(PhotoMetadata.city)\
         .order_by(desc('count')).first()
@@ -126,33 +155,39 @@ def get_annual_report(
         .group_by('date')\
         .order_by(desc('count')).first()
 
-    max_photo_day = str(max_photo_day_row[0]) if max_photo_day_row else "2024-01-01"
+    max_photo_day = str(max_photo_day_row[0]) if max_photo_day_row else start_time.strftime('%Y-%m-%d')
     max_photo_day_count = max_photo_day_row[1] if max_photo_day_row else 0
 
-    memory_metrics = MemoryMetrics(
+    return MemoryMetrics(
         categoryDistribution=category_distribution,
         topPersonCount=top_person_count,
         topLocation=top_location,
         maxPhotoDay=max_photo_day,
         maxPhotoDayCount=max_photo_day_count,
-        topFeature="实况模式", # TODO: Implement feature detection
-        topFeatureCount=int(total_photos * 0.3) # Mock
+        topFeature="实况模式", 
+        topFeatureCount=int(total_photos * 0.3) 
     )
 
+
+@router.get("/location", response_model=LocationMetrics)
+def get_report_location(
+    start_time: datetime = Query(..., description="Start Time"),
+    end_time: datetime = Query(..., description="End Time"),
+    db: Session = Depends(get_db)
+):
     # --- Location Metrics ---
-    # Lighten Province/City
     lighten_province = db.query(func.count(func.distinct(PhotoMetadata.province)))\
         .join(Photo, Photo.id == PhotoMetadata.photo_id)\
-        .filter(extract('year', Photo.photo_time) == year).scalar()
+        .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time).scalar()
 
     lighten_city = db.query(func.count(func.distinct(PhotoMetadata.city)))\
         .join(Photo, Photo.id == PhotoMetadata.photo_id)\
-        .filter(extract('year', Photo.photo_time) == year).scalar()
+        .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time).scalar()
 
     # Top Cities
     top_cities_rows = db.query(PhotoMetadata.city, PhotoMetadata.province, func.count(Photo.id).label('count'))\
         .join(Photo, Photo.id == PhotoMetadata.photo_id)\
-        .filter(extract('year', Photo.photo_time) == year)\
+        .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
         .filter(PhotoMetadata.city.isnot(None))\
         .group_by(PhotoMetadata.city, PhotoMetadata.province)\
         .order_by(desc('count'))\
@@ -160,7 +195,7 @@ def get_annual_report(
 
     top_cities = [TopCity(cityName=row[0], provinceName=row[1] or "", photoCount=row[2]) for row in top_cities_rows]
 
-    # Location Points (Aggregated by City for Map Display)
+    # Location Points
     points_rows = db.query(
         func.max(PhotoMetadata.longitude),
         func.max(PhotoMetadata.latitude),
@@ -168,7 +203,7 @@ def get_annual_report(
         func.count(Photo.id)
     )\
     .join(Photo, Photo.id == PhotoMetadata.photo_id)\
-    .filter(extract('year', Photo.photo_time) == year)\
+    .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
     .filter(PhotoMetadata.city.isnot(None))\
     .filter(PhotoMetadata.longitude.isnot(None))\
     .group_by(PhotoMetadata.city)\
@@ -181,9 +216,8 @@ def get_annual_report(
         if not city:
             continue
             
-        # Get representative photo for cover
         cover_photo = db.query(Photo).join(PhotoMetadata)\
-            .filter(extract('year', Photo.photo_time) == year)\
+            .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
             .filter(PhotoMetadata.city == city)\
             .first()
             
@@ -199,14 +233,22 @@ def get_annual_report(
             )
         )
 
-    location_metrics = LocationMetrics(
+    return LocationMetrics(
         lightenProvinceNum=lighten_province or 0,
         lightenCityNum=lighten_city or 0,
         topCities=top_cities,
         locationPoints=location_points
     )
 
-    # --- Season Metrics ---
+
+@router.get("/season", response_model=SeasonMetrics)
+def get_report_season(
+    start_time: datetime = Query(..., description="Start Time"),
+    end_time: datetime = Query(..., description="End Time"),
+    db: Session = Depends(get_db)
+):
+    base_query = get_date_range_filter(db.query(Photo), start_time, end_time)
+    
     seasons_def = [
         ("春", [3, 4, 5], "嫩芽"),
         ("夏", [6, 7, 8], "蝉鸣"),
@@ -216,29 +258,38 @@ def get_annual_report(
     season_list = []
     
     for name, months, default_tag in seasons_def:
-        # Filter photos in these months
         season_query = base_query.filter(extract('month', Photo.photo_time).in_(months))
         count = season_query.count()
         
-        # Get one representative photo (e.g., random or first)
         rep_photo = season_query.first()
-        # TODO: Replace with real URL generation logic
         rep_photo_url = f"/api/medias/{rep_photo.id}/thumbnail" if rep_photo else f"https://picsum.photos/seed/{name}/400/600"
 
         season_list.append(SeasonData(
             seasonName=name,
             photoCount=count,
-            topTag=default_tag, # TODO: Calculate top tag per season
+            topTag=default_tag, 
             representativePhoto=rep_photo_url,
-            highlight=f"记录了{count}个精彩瞬间", # Mock highlight
+            highlight=f"记录了{count}个精彩瞬间", 
             shootMonth=f"{months[0]}-{months[-1]}月" if len(months) > 1 else f"{months[0]}月"
         ))
 
-    season_metrics = SeasonMetrics(seasonList=season_list)
-    total_video_duration = db.query(func.sum(Photo.duration)).scalar() or 0
-    # --- Emotion Metrics (Mock) ---
-    # TODO: Implement Favorites/Sharing tracking
-    emotion_metrics = EmotionMetrics(
+    return SeasonMetrics(seasonList=season_list)
+
+
+@router.get("/emotion", response_model=EmotionMetrics)
+def get_report_emotion(
+    start_time: datetime = Query(..., description="Start Time"),
+    end_time: datetime = Query(..., description="End Time"),
+    db: Session = Depends(get_db)
+):
+    base_query = get_date_range_filter(db.query(Photo), start_time, end_time)
+    total_photos = base_query.count()
+    total_video_duration = db.query(func.sum(Photo.duration)).filter(
+        Photo.photo_time >= start_time,
+        Photo.photo_time <= end_time
+    ).scalar() or 0
+
+    return EmotionMetrics(
         starredPhotos=128,
         backupPhotos=total_photos,
         totalVideoDuration=total_video_duration,
@@ -254,27 +305,15 @@ def get_annual_report(
         ]
     )
 
-    # --- Easter Egg (Mock) ---
-    easter_egg = EasterEgg(
+
+@router.get("/easter-egg", response_model=EasterEgg)
+def get_report_easter_egg(
+    start_time: datetime = Query(..., description="Start Time"),
+    end_time: datetime = Query(..., description="End Time"),
+    db: Session = Depends(get_db)
+):
+    return EasterEgg(
         bestPhotoUrl=f"https://picsum.photos/seed/best/400/600",
         bestPhotoDate="2024-10-01",
         tags=EasterEggTags(main="生活记录家", sub=['偏爱人像', '乐于收藏', '心怀温柔'])
-    )
-
-    # --- User Info (Mock/Static) ---
-    # TODO: Get real user info
-    user_info = UserInfo(
-        nickname="时光旅人",
-        avatarUrl="/avatar.png"
-    )
-
-    return AnnualReportData(
-        year=year,
-        user=user_info,
-        time=time_metrics,
-        memory=memory_metrics,
-        emotion=emotion_metrics,
-        location=location_metrics,
-        season=season_metrics,
-        easterEgg=easter_egg
     )

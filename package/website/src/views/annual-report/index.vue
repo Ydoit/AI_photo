@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { getAnnualReport } from '@/api/annualReport';
+import { getReportEasterEgg, getReportSummary ,getReportMemory, getReportLocation, getReportSeason, getReportEmotion} from '@/api/annualReport';
 import type { AnnualReportData } from '@/types/annualReport';
 import AnnualContainer from '@/components/annual-report/AnnualContainer.vue';
 import SectionCover from '@/components/annual-report/SectionCover.vue';
@@ -18,12 +18,26 @@ import SectionEnd from '@/components/annual-report/SectionEnd.vue';
 import { Loader2 } from 'lucide-vue-next';
 
 const loading = ref(true);
-const reportData = ref<AnnualReportData | null>(null);
+const reportData = ref<AnnualReportData>({} as AnnualReportData);
 const containerRef = ref<InstanceType<typeof AnnualContainer> | null>(null);
-
+let startTime = '2025-01-01 00:00:00';
+let endTime = '2025-12-31 23:59:59';
 onMounted(async () => {
   try {
-    reportData.value = await getAnnualReport();
+
+    const data = await getReportSummary(startTime, endTime);
+    reportData.value.user = data.user;
+    reportData.value.time = data.time;
+    const memoryData = await getReportMemory(startTime, endTime);
+    reportData.value.memory = memoryData;
+    const locationData = await getReportLocation(startTime, endTime);
+    reportData.value.location = locationData;
+    const seasonData = await getReportSeason(startTime, endTime);
+    reportData.value.season = seasonData;
+    const emotionData = await getReportEmotion(startTime, endTime);
+    reportData.value.emotion = emotionData;
+    const easterEggData = await getReportEasterEgg(startTime, endTime);
+    reportData.value.easterEgg = easterEggData;
   } catch (error) {
     console.error('Failed to load report data', error);
   } finally {
@@ -55,7 +69,7 @@ const handleReplay = () => {
         <SectionCover :user="reportData.user" :year="reportData.year" />
 
         <!-- 1. Photo Wall -->
-        <SectionPhotoWall :year="reportData.year" />
+        <SectionPhotoWall :startTime="startTime" :endTime="endTime" />
 
         <!-- 2. Time -->
         <SectionTime :data="reportData.time" />
@@ -77,17 +91,17 @@ const handleReplay = () => {
 
         <!-- 8. Season -->
         <SectionSeason :data="reportData.season" />
-        
+
         <!-- 9. Easter Egg -->
         <SectionEasterEgg :data="reportData.easterEgg" />
-        
+
         <!-- 10. Message -->
         <SectionMessage />
-        
+
         <!-- 11. End -->
         <SectionEnd @replay="handleReplay" />
     </AnnualContainer>
-    
+
     <!-- Error State -->
     <div v-else class="w-full h-full flex flex-col items-center justify-center">
         <p class="text-light-text3">时光数据加载失败，请刷新重试</p>

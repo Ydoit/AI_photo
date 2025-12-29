@@ -80,7 +80,6 @@ import ReportPage from './ReportPage.vue';
 import type { LocationMetrics } from '@/types/annualReport';
 import * as echarts from 'echarts';
 import { useIntersectionObserver } from '@vueuse/core';
-import { is } from 'date-fns/locale';
 
 const props = defineProps<{
   data: LocationMetrics;
