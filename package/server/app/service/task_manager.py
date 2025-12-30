@@ -45,6 +45,7 @@ CATEGORY_MAP = {
     TaskType.REBUILD_METADATA: 'metadata',
 
     TaskType.RECOGNIZE_FACE: 'face',
+    TaskType.RECOGNIZE_TICKET: 'tickets',
     TaskType.CLASSIFY_IMAGE: 'classification',
     TaskType.OCR: 'ocr',
 }

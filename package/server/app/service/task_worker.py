@@ -17,7 +17,7 @@ from app.core.config_manager import config_manager
 from app.service.task_manager import DEFAULT_SCAN_STATUS, CATEGORY_MAP, DEFAULT_PRIORITIES
 
 # Import handlers
-from app.service.tasks import thumbnail, metadata, scan, face, ocr, classification
+from app.service.tasks import thumbnail, metadata, scan, face, ocr, classification, tickets
 
 CPU_TASKS = {
     TaskType.PROCESS_BASIC,
@@ -367,6 +367,8 @@ class TaskWorker:
             return await metadata.handle_extract_metadata(self, task, db)
         elif task.type == TaskType.RECOGNIZE_FACE:
             return await face.handle_recognize_face(self, task, db)
+        elif task.type == TaskType.RECOGNIZE_TICKET:
+            return await tickets.handle_ticket_task(self, task, db)
         elif task.type == TaskType.OCR:
             return await ocr.handle_ocr_task(self, task, db)
         elif task.type == TaskType.CLASSIFY_IMAGE:
