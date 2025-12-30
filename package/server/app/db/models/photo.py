@@ -14,6 +14,11 @@ class FileType(enum.Enum):
     video = 'video'
     live_photo = 'live_photo'
 
+class ImageType(str, enum.Enum):
+    SCREENSHOT = "Screenshot"
+    CAMERA = "Camera"
+    OTHER = "Other"
+
 class Photo(Base):
     __tablename__ = "photos"
 
@@ -27,7 +32,7 @@ class Photo(Base):
     width = Column(Integer)
     height = Column(Integer)
     duration = Column(Float, default=0)
-    
+    image_type = Column(Enum(ImageType))  # Screenshot, Camera, Other
     # Task Status Tracking: {"thumbnail": true, "metadata": true, "face": false}
     processed_tasks = Column(JSON, default={})
 

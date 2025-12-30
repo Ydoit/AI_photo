@@ -3,6 +3,7 @@ import asyncio
 import logging
 import concurrent.futures
 import json
+from re import S
 from typing import List, Dict, Set, Any
 from uuid import UUID
 from datetime import datetime
@@ -152,6 +153,27 @@ class TaskWorker:
         scan.release_resources()
         face.release_resources()
 
+    def check_task_for_release(self):
+        # Check for Module Resources
+        for task_type in TaskType:
+            if task_type not in self.last_active_time:
+                continue
+
+            last_run = self.last_active_time[task_type]
+            if (datetime.now() - last_run).total_seconds() > 30:
+                # Release module specific resources
+                if task_type == TaskType.GENERATE_THUMBNAIL or task_type == TaskType.REBUILD_THUMBNAILS:
+                    thumbnail.release_resources()
+                elif task_type == TaskType.EXTRACT_METADATA or task_type == TaskType.REBUILD_METADATA:
+                    metadata.release_resources()
+                elif task_type == TaskType.OCR:
+                    if hasattr(ocr, 'release_resources'): ocr.release_resources()
+                elif task_type == TaskType.RECOGNIZE_FACE:
+                    if hasattr(face, 'release_resources'): face.release_resources()
+                elif task_type == TaskType.CLASSIFY_IMAGE:
+                    if hasattr(classification, 'release_resources'): classification.release_resources()
+
+
     async def worker_loop(self):
         logging.info("TaskWorker loop started")
         # active_tasks set is replaced by self.active_task_map keys
@@ -181,7 +203,7 @@ class TaskWorker:
                     del self.active_task_map[f]
 
                 active_count = len(self.active_task_map)
-                
+
                 # Update status
                 if active_count > 0:
                     self.scan_status['running'] = True
@@ -195,7 +217,7 @@ class TaskWorker:
                     # If any CPU task has run recently, keep pool
                     last_cpu_run = max([self.last_active_time.get(t, datetime.min) for t in CPU_TASKS], default=datetime.min)
                     if (datetime.now() - last_cpu_run).total_seconds() > 30:
-                        logging.info("Shutting down process pool (CPU) due to inactivity")
+                        # logging.info("Shutting down process pool (CPU) due to inactivity")
                         self.process_pool.shutdown(wait=False)
                         self.process_pool = None
 
@@ -205,28 +227,11 @@ class TaskWorker:
                      # Check if all IO tasks have been idle for > 30s
                     last_io_run = max([self.last_active_time.get(t, datetime.min) for t in IO_TASKS], default=datetime.min)
                     if (datetime.now() - last_io_run).total_seconds() > 30:
-                        logging.info("Shutting down thread pool (IO) due to inactivity")
+                        # logging.info("Shutting down thread pool (IO) due to inactivity")
                         self.thread_pool.shutdown(wait=False)
                         self.thread_pool = None
-                
-                # Check for Module Resources
-                for task_type in TaskType:
-                    if task_type not in self.last_active_time:
-                        continue
-                    
-                    last_run = self.last_active_time[task_type]
-                    if (datetime.now() - last_run).total_seconds() > 30:
-                        # Release module specific resources
-                        if task_type == TaskType.GENERATE_THUMBNAIL or task_type == TaskType.REBUILD_THUMBNAILS:
-                            thumbnail.release_resources()
-                        elif task_type == TaskType.EXTRACT_METADATA or task_type == TaskType.REBUILD_METADATA:
-                            metadata.release_resources()
-                        elif task_type == TaskType.OCR:
-                            if hasattr(ocr, 'release_resources'): ocr.release_resources()
-                        elif task_type == TaskType.RECOGNIZE_FACE:
-                            if hasattr(face, 'release_resources'): face.release_resources()
-                        elif task_type == TaskType.CLASSIFY_IMAGE:
-                            if hasattr(classification, 'release_resources'): classification.release_resources()
+
+                self.check_task_for_release()
 
                 if active_count == 0:
                     if idle_start_time is None:
@@ -240,14 +245,14 @@ class TaskWorker:
                         if self.process_pool is None:
                             logging.info(f"Restarting process pool")
                             self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count())
-                    if self.thread_pool is None:
+                    if self.thread_pool is None and active_io_count > 0:
                         max_workers = config_manager.config.task.max_concurrent_tasks
                         logging.info(f"Restarting thread pool")
                         self.thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers * 2)
 
                 # Scheduling Logic
                 allowed_types = []
-                
+
                 if self.fast_mode:
                     # Fast Mode: Smart Scheduling
                     active_cpu = sum(1 for t in self.active_task_map.values() if t in CPU_TASKS)
@@ -265,7 +270,7 @@ class TaskWorker:
                     other_types = [t for t in TaskType if t not in CPU_TASKS and t not in IO_TASKS]
                     if active_cpu + active_io < max_cpu + max_io:
                         allowed_types.extend(other_types)
-                        
+
                 else:
                     # Normal Mode: Strict Concurrency Limit
                     max_concurrency = config_manager.config.task.max_concurrent_tasks

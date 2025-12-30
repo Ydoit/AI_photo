@@ -1,12 +1,61 @@
 import asyncio
 import logging
 import os
+import json
 from uuid import UUID
 from sqlalchemy.orm import Session
 from app.db.models.task import Task, TaskStatus, TaskType
-from app.db.models.photo import Photo
+from app.db.models.photo import Photo, ImageType
 from app.db.models.photo_metadata import PhotoMetadata
 from app.utils import exif
+
+def determine_image_type(filename: str, width: int, height: int, exif_data: dict) -> ImageType:
+    """
+    Determine image type based on filename, dimensions, and EXIF data.
+    """
+    filename_lower = filename.lower()
+
+    # 1. Check for Screenshot
+    # Keywords
+    screenshot_keywords = ['screenshot', 'qq截图', '屏幕截图']
+    if any(keyword in filename_lower for keyword in screenshot_keywords):
+        return ImageType.SCREENSHOT
+
+    # Common screen dimensions (width, height) - covering both landscape and portrait
+    common_resolutions = {
+        # (1920, 1080), (1080, 1920),
+        # (2560, 1440), (1440, 2560),
+        (1366, 768), (768, 1366),
+        # (1280, 720), (720, 1280),
+        # (3840, 2160), (2160, 3840), # 4K
+        (1440, 900), (900, 1440),
+        (1600, 900), (900, 1600),
+        (1680, 1050), (1050, 1680),
+        (1536, 864), (864, 1536),
+        # Mobile common resolutions
+        (1170, 2532), (2532, 1170), # iPhone 12/13/14
+        (1284, 2778), (2778, 1284), # iPhone 12/13/14 Pro Max
+        (1290, 2796), (2796, 1290), # iPhone 14 Pro Max
+        (1179, 2556), (2556, 1179), # iPhone 14 Pro
+        (1080, 2340), (2340, 1080), # Common Android
+        (1080, 2400), (2400, 1080), # Common Android
+        (1440, 3088), (3088, 1440), # Samsung Ultra
+        (1440, 3200), (3200, 1440),
+        (1260, 2800), (2800, 1260),
+        (1600, 2560), (2560, 1600)
+    }
+
+    if width and height:
+        if (width, height) in common_resolutions:
+             return ImageType.SCREENSHOT
+    # 2. Check for Camera
+    if exif_data:
+        make = exif_data.get('Make')
+        model = exif_data.get('Model')
+        if make or model:
+            return ImageType.CAMERA
+    # 3. Default
+    return ImageType.OTHER
 
 def rebuild_metadata_cpu_job(file_path: str, file_id: UUID):
     try:
@@ -67,7 +116,14 @@ async def handle_extract_metadata(task_manager, task: Task, db: Session):
 
         # Update fields
         if meta.get("exif_info"):
-            db_meta.exif_info = meta["exif_info"]
+            # Serialize for storage
+            # Convert non-serializable objects to string
+            def default_serializer(obj):
+                if isinstance(obj, (bytes, bytearray)):
+                    return str(obj)
+                return str(obj)
+
+            db_meta.exif_info = json.dumps(meta["exif_info"], default=default_serializer, ensure_ascii=False)
 
         loc_details = meta.get("location_details", {})
         if loc_details:
@@ -81,6 +137,7 @@ async def handle_extract_metadata(task_manager, task: Task, db: Session):
 
         if meta.get("photo_time"):
             photo.photo_time = meta["photo_time"]
+        photo.image_type = determine_image_type(photo.filename, photo.width, photo.height, meta.get("exif_info", {}))
 
         # Mark as processed
         tasks_status = dict(photo.processed_tasks or {})

@@ -120,29 +120,35 @@ def extract_metadata(file_path: str, filename: str, image_obj: Optional[Image.Im
     metadata = {
         "photo_time": None,
         "exif_info": None,
-        "location": None
+        "location": None,
+        "width": None,
+        "height": None
     }
 
     # 1. Try EXIF
     try:
-        if file_path.lower().endswith(('.jpg', '.jpeg', '.tiff', '.webp')):
+        if file_path.lower().endswith(('.jpg', '.jpeg', '.tiff', '.webp', '.png')):
             exif_dict = None
+            img = None
+            should_close = False
+            
             if image_obj:
-                exif_dict = get_exif_data(image_obj)
+                img = image_obj
             else:
-                with Image.open(file_path) as img:
-                    # Extract full EXIF
-                    exif_dict = get_exif_data(img)
+                img = Image.open(file_path)
+                should_close = True
+            
+            try:
+                metadata["width"] = img.width
+                metadata["height"] = img.height
+                exif_dict = get_exif_data(img)
+            finally:
+                if should_close:
+                    img.close()
 
             if exif_dict:
-                # Serialize for storage
-                # Convert non-serializable objects to string
-                def default_serializer(obj):
-                    if isinstance(obj, (bytes, bytearray)):
-                        return str(obj)
-                    return str(obj)
 
-                metadata["exif_info"] = json.dumps(exif_dict, default=default_serializer, ensure_ascii=False)
+                metadata["exif_info"] = exif_dict
 
                 # Extract Date (DateTimeOriginal)
                 date_str = exif_dict.get("DateTimeOriginal")
