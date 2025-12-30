@@ -1,6 +1,5 @@
 name: Build and Push Multi-Platform Docker Images
 
-# 保留原触发规则：仅 master 分支 push、v*.*.* 标签 push 才会进入工作流
 on:
   push:
     branches: [ "master" ]
@@ -13,71 +12,78 @@ jobs:
     # 关键词支持自定义，多个关键词用 || 分隔（满足其一即可），默认大小写不敏感
     if: |
       (
-        (github.ref_type == 'tag' && contains(github.event.head_commit.message, 'BUILD_DOCKER')) ||
+        (github.ref_type == 'tag') ||
         (github.ref_type == 'branch' && contains(github.event.commits[0].message, 'BUILD_DOCKER'))
       ) ||
       (
-        (github.ref_type == 'tag' && contains(github.event.head_commit.message, '构建镜像')) ||
+        (github.ref_type == 'tag') ||
         (github.ref_type == 'branch' && contains(github.event.commits[0].message, '构建镜像'))
       )
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 启用 Buildx + 安装 QEMU（支持多平台构建，原配置保留）
+      # 启用 Buildx 并安装 QEMU（支持多平台）
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
-          install: true
+          install: true  # 安装 QEMU 模拟器
 
-      # Docker Hub 登录（原配置保留）
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      # ✅ 优化替换：用官方工具自动生成镜像标签（替代原手动拼接的 shell 脚本，更健壮）
-      - name: Generate Docker metadata (统一标签规则)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          # 镜像名称前缀（适配你的 3 个镜像统一规则）
-          images: |
-            ${{ secrets.DOCKER_HUB_USERNAME }}/trailsnap-server
-            ${{ secrets.DOCKER_HUB_USERNAME }}/trailsnap-ai
-            ${{ secrets.DOCKER_HUB_USERNAME }}/trailsnap-frontend
-          # 自动化标签规则（核心：完全替代原手动拼接逻辑）
-          tags: |
-            # 标签推送时：自动取标签名（如 v1.0.0 → 1.0.0），并追加 latest 标签
-            type=semver,pattern={{version}},prefix=v
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
-            # 分支推送时：自动取分支名（master → master）
-            type=ref,event=branch
+      # 生成标签（同上）
+      - name: Determine image tags
+        id: set-tags
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            BASE_TAG=${GITHUB_REF#refs/tags/v}
+            EXTRA_TAGS="latest"
+          else
+            BASE_TAG=${GITHUB_REF#refs/heads/}
+            EXTRA_TAGS=""
+          fi
+          ALL_TAGS="$BASE_TAG"
+          if [ -n "$EXTRA_TAGS" ]; then
+            ALL_TAGS="$BASE_TAG,$EXTRA_TAGS"
+          fi
+          echo "BASE_TAG=$BASE_TAG" >> $GITHUB_ENV
+          echo "EXTRA_TAGS=$EXTRA_TAGS" >> $GITHUB_ENV
+          echo "ALL_TAGS=$ALL_TAGS" >> $GITHUB_ENV
+          echo "DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}" >> $GITHUB_ENV
 
-      # 构建并推送后端镜像（简化标签配置，复用自动生成的标签）
+      # 构建并推送后端多平台镜像
       - name: Build and push server
         uses: docker/build-push-action@v5
         with:
-          context: ./package/server
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags_0 }} # 对应 server 镜像的自动标签
+          context: ./package/server  # 后端 Dockerfile 路径
+          platforms: linux/amd64,linux/arm64  # 目标平台
+          push: true  # 直接推送
+          tags: |
+            ${{ env.DOCKER_HUB_USERNAME }}/trailsnap-server:${{ env.BASE_TAG }}
+            ${{ env.EXTRA_TAGS != '' && format('{0}/trailsnap-server:latest', env.DOCKER_HUB_USERNAME) || '' }}
 
-      # 构建并推送 AI 镜像
+      # 构建并推送后端多平台镜像
       - name: Build and push ai
         uses: docker/build-push-action@v5
         with:
-          context: ./package/ai
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags_1 }} # 对应 ai 镜像的自动标签
+          context: ./package/ai  # AI Dockerfile 路径
+          platforms: linux/amd64,linux/arm64  # 目标平台
+          push: true  # 直接推送
+          tags: |
+            ${{ env.DOCKER_HUB_USERNAME }}/trailsnap-ai:${{ env.BASE_TAG }}
+            ${{ env.EXTRA_TAGS != '' && format('{0}/trailsnap-ai:latest', env.DOCKER_HUB_USERNAME) || '' }}
 
-      # 构建并推送前端镜像
+      # 构建并推送前端多平台镜像
       - name: Build and push frontend
         uses: docker/build-push-action@v5
         with:
-          context: ./package/website
-          platforms: linux/amd64,linux/arm64
+          context: ./package/website  # 前端 Dockerfile 路径
+          platforms: linux/amd64,linux/arm64  # 目标平台
           push: true
-          tags: ${{ steps.meta.outputs.tags_2 }} # 对应 frontend 镜像的自动标签
+          tags: |
+            ${{ env.DOCKER_HUB_USERNAME }}/trailsnap-frontend:${{ env.BASE_TAG }}
+            ${{ env.EXTRA_TAGS != '' && format('{0}/trailsnap-frontend:latest', env.DOCKER_HUB_USERNAME) || '' }}
