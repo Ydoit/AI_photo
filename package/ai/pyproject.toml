@@ -1,7 +1,7 @@
 [project]
 name = "project"
 version = "0.1.0"
-requires-python = ">=3.12.0"
+requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.110.0",
   "insightface>=0.7.3",
@@ -13,57 +13,47 @@ dependencies = [
   "pydantic-settings>=2.2.0",
   "python-multipart>=0.0.9",
   "rapidocr>=3.0.0",
+  "sentence-transformers",
+  "ultralytics>=8.3.243",
   "uvicorn>=0.27.0",
 ]
 
-# GPU可选依赖分组：仅--extra gpu时生效，自动替换GPU版依赖
 [project.optional-dependencies]
 cpu = [
-    "torch>=2.5.0",
-    "torchvision>=0.20.0",
-    "transformers>=4.37.0",
-    "onnxruntime>=1.17.0",
-    "sentence-transformers",
+  "torch~=2.6.0",
+  "torchvision~=0.21.0",
+  "onnxruntime>=1.17.0",
+]
+cu128 = [
+  "torch==2.9.1",
+  "torchvision==0.24.1",
+  "onnxruntime-gpu>=1.17.0",
 ]
 
-gpu = [
-    "sentence-transformers",
-    "torch>=2.5.1",
-    "torchvision>=0.20.1",
-    "transformers>=4.37.0",
-    "onnxruntime-gpu>=1.17.0",
+[tool.uv]
+conflicts = [
+  [
+    { extra = "cpu" },
+    { extra = "cu128" },
+  ],
 ]
 
-# ✅ 核心修复：CPU规则优先级最高 + 严格条件限制，默认强制CPU
-# 规则逻辑：UV优先匹配「条件完全满足」的项，无GPU参数时100%命中CPU源
 [tool.uv.sources]
 torch = [
-    # ✅ 最高优先级：默认CPU（无GPU参数+非Mac）→ 强制匹配CPU源，杜绝GPU下载
-    { index = "pytorch-cpu", marker = "extra == 'cpu'" },
-    # ✅ 次级优先级：GPU（有GPU参数+非Mac）→ 仅--extra gpu时匹配
-    { index = "pytorch-gpu-cu124", marker = "extra == 'gpu' and platform_system != 'Darwin' and extra != 'cpu'" },
-    # ✅ 兜底：Mac平台GPU → 仅Mac+--extra gpu时匹配
-    { index = "pytorch-gpu-macos", marker = "extra == 'gpu' and platform_system == 'Darwin' and extra != 'cpu'" }
+  { index = "pytorch-cpu", extra = "cpu" },
+  { index = "pytorch-cu128", extra = "cu128" },
 ]
-
 torchvision = [
-    { index = "pytorch-cpu", marker = "extra == 'cpu'" },
-    { index = "pytorch-gpu-cu124", marker = "extra == 'gpu' and platform_system != 'Darwin' and extra != 'cpu'" },
-    { index = "pytorch-gpu-macos", marker = "extra == 'gpu' and platform_system == 'Darwin' and extra != 'cpu'" }
+  { index = "pytorch-cpu", extra = "cpu" },
+  { index = "pytorch-cu128", extra = "cu128" },
 ]
 
-# PyTorch 官方索引源配置（CPU源+GPU源分离）
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
 [[tool.uv.index]]
-name = "pytorch-gpu-cu124"
-url = "https://download.pytorch.org/whl/cu124"
-explicit = true
-
-[[tool.uv.index]]
-name = "pytorch-gpu-macos"
-url = "https://download.pytorch.org/whl/nightly/cpu"
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
 explicit = true

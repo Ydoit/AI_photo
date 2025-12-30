@@ -4,15 +4,16 @@ TrailSnap 的 AI 微服务模块，负责处理所有计算机视觉相关的任
 
 ## 功能特性
 
-- **OCR 识别**: 基于 PaddleOCR，支持多语言文字识别，专门针对火车票、行程单优化。
+- **OCR 识别**: 基于 PaddleOCR (RapidOCR)，支持多语言文字识别，专门针对火车票、行程单优化。
 - **人脸识别**: 基于 InsightFace，支持人脸检测、特征提取、人脸聚类。
 - **物体检测**: 基于 YOLO，用于识别照片场景和物体。
-- **车票识别**: 基于 YOLO + PaddleOCR，支持火车票关键信息结构化提取（车次、日期、车站、座次、姓名等）。
+- **车票识别**: 基于 YOLO + PaddleOCR (RapidOCR)，支持火车票关键信息结构化提取（车次、日期、车站、座次、姓名等）。
 
 ## 环境要求
 
-- Python 3.10+
-- CUDA (如果使用 GPU 加速)
+- Python 3.12+
+- [uv](https://github.com/astral-sh/uv) (依赖管理工具)
+- CUDA 12.x (如果使用 GPU 加速)
 
 ## 安装
 
@@ -22,21 +23,23 @@ TrailSnap 的 AI 微服务模块，负责处理所有计算机视觉相关的任
    ```
 
 2. 安装依赖：
-   
+
+   本项目使用 `uv` 进行依赖管理，请根据硬件环境选择安装命令。
+
    **CPU 版本**:
    ```bash
-   pip install -r requirements.txt
+   uv sync --extra cpu
    ```
 
-   **GPU 版本** (推荐，需先安装 CUDA):
+   **GPU 版本 (CUDA 12.8)**:
    ```bash
-   pip install -r requirements-gpu.txt
+   uv sync --extra cu128
    ```
-   *(注意：如果 `requirements-gpu.txt` 不存在，请手动安装 `paddlepaddle-gpu` 和 `onnxruntime-gpu`)*
+   *(注意：GPU 版本需要系统已安装对应的 CUDA 驱动)*
 
 ## 运行
 
-使用 Uvicorn 启动服务：
+使用 `uvicorn` 启动服务：
 
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8001 --reload
@@ -48,3 +51,15 @@ uvicorn main:app --host 0.0.0.0 --port 8001 --reload
 
 启动服务后，访问 Swagger UI 查看接口文档：
 http://localhost:8001/docs
+
+## Docker 部署
+
+构建并运行 Docker 镜像：
+
+```bash
+# 构建镜像
+docker build -t trailsnap-ai .
+
+# 运行容器
+docker run -d -p 8001:8001 --name trailsnap-ai trailsnap-ai
+```
