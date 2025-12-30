@@ -102,6 +102,7 @@ const positions = ref<{ x: number; y: number; z: number; rX: number; rY: number;
 
 const getPhotoUrl = (photo: Photo) => {
     return `/api/medias/${photo.id}/thumbnail`;
+    return `https://picsum.photos/seed/${photo.id}/400/600`;
 }
 
 // Fetch Photos

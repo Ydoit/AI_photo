@@ -8,7 +8,7 @@ from sqlalchemy import func, extract, desc
 from pydantic import BaseModel
 
 from app.dependencies import get_db
-from app.db.models.photo import Photo
+from app.db.models.photo import Photo, ImageType, FileType
 from app.db.models.photo_metadata import PhotoMetadata
 from app.db.models.face import Face, FaceIdentity
 from app.db.models.tag import PhotoTag, PhotoTagRelation
@@ -30,10 +30,15 @@ def get_annual_report_photos(
         db: Session = Depends(get_db)
 ):
     # Query photos within the time range, ordered by time descending
-    photos = db.query(Photo).filter(
+    photos = db.query(Photo).join(PhotoMetadata, PhotoMetadata.photo_id == Photo.id)\
+    .filter(
         Photo.photo_time >= start_time,
         Photo.photo_time <= end_time
-    ).order_by(Photo.photo_time.desc()).all()
+    )\
+    .filter(Photo.file_type == FileType.image)\
+    .filter(Photo.image_type != ImageType.SCREENSHOT)\
+    .filter(PhotoMetadata.exif_info.isnot(None))\
+    .order_by(Photo.photo_time.desc()).all()
 
     # Group by month
     monthly_groups: Dict[int, List[PhotoSchema]] = {}
@@ -118,11 +123,15 @@ def get_report_memory(
     top_tags = db.query(PhotoTag.tag_name, func.count(PhotoTagRelation.photo_id).label('count'))\
         .join(PhotoTagRelation, PhotoTag.id == PhotoTagRelation.tag_id)\
         .join(Photo, Photo.id == PhotoTagRelation.photo_id)\
+        .join(PhotoMetadata, PhotoMetadata.photo_id == Photo.id)\
+        .filter(Photo.file_type == FileType.image)\
+        .filter(Photo.image_type != ImageType.SCREENSHOT)\
         .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
+        .filter(PhotoMetadata.exif_info.isnot(None))\
         .group_by(PhotoTag.tag_name)\
         .order_by(desc('count'))\
         .limit(50).all()
-    
+
     exclude_tags = {"二维码", "文档/截图"}
     category_distribution = [CategoryDistributionItem(name=t[0], value=t[1]) for t in top_tags if t[0] not in exclude_tags][:5]
     if not category_distribution:
@@ -297,7 +306,7 @@ def get_report_location(
             if dist > max_dist:
                 max_dist = dist
                 target_city_name = city_name
-        
+
         if target_city_name:
             farthest_city = target_city_name
             farthest_distance = round(max_dist, 2)
@@ -338,12 +347,14 @@ def get_report_season(
     season_list = []
     
     for name, months, default_tag in seasons_def:
-        season_query = base_query.filter(extract('month', Photo.photo_time).in_(months))
+        season_query = base_query.filter(Photo.file_type == FileType.image)\
+            .filter(Photo.image_type != ImageType.SCREENSHOT)\
+            .filter(extract('month', Photo.photo_time).in_(months))
         count = season_query.count()
-        
+
         rep_photo = season_query.first()
         rep_photo_url = f"/api/medias/{rep_photo.id}/thumbnail" if rep_photo else f"https://picsum.photos/seed/{name}/400/600"
-
+        # rep_photo_url = f"https://picsum.photos/seed/{name}/400/600"
         season_list.append(SeasonData(
             seasonName=name,
             photoCount=count,

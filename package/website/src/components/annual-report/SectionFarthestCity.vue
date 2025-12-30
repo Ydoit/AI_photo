@@ -232,6 +232,7 @@ const previewPhoto = (photo: Photo, index: number) => {
 };
 
 const getPhotoUrl = (photo: Photo) => {
+  // return `https://picsum.photos/seed/${photo.id}/400/600`;
     return `/api/medias/${photo.id}/thumbnail`;
 }
 

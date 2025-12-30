@@ -203,11 +203,35 @@ const renderMap = () => {
         }
     }));
 
-    const topCity = props.data.topCities[0];
     const cityData = props.data.locationPoints.map(c => ({
         name: c.name,
-        value: 1
+        value: [c.lng, c.lat, c.count],
+        coverUrl: c.coverUrl,
+        itemStyle: {
+            color: c.name === props.data.topCities[0]?.cityName ? '#F97316' : '#FDBA74'
+        }
     }));
+    const topCity = props.data.topCities[0];
+    
+    // 计算包围盒
+    let minLng = 180, maxLng = -180, minLat = 90, maxLat = -90;
+    props.data.locationPoints.forEach(p => {
+        minLng = Math.min(minLng, p.lng);
+        maxLng = Math.max(maxLng, p.lng);
+        minLat = Math.min(minLat, p.lat);
+        maxLat = Math.max(maxLat, p.lat);
+    });
+
+    // 添加内边距 (20%)
+    const lngSpan = maxLng - minLng || 0.5;
+    const latSpan = maxLat - minLat || 0.5;
+    const paddingFactor = 0.2;
+    
+    const boundingCoords = [
+        [minLng - lngSpan * paddingFactor, maxLat + latSpan * paddingFactor],
+        [maxLng + lngSpan * paddingFactor, minLat - latSpan * paddingFactor]
+    ];
+
     const option = {
         backgroundColor: 'transparent',
         tooltip: {
@@ -217,7 +241,7 @@ const renderMap = () => {
             textStyle: { color: '#333' },
             padding: 0,
             formatter: (params: any) => {
-                if (params.seriesType === 'scatter' || params.seriesType === 'effectScatter') {
+                if (params.data && params.data.value) {
                     const data = params.data;
                     const imgHtml = data.coverUrl
                         ? `<div style="width: 140px; height: 90px; border-radius: 8px 8px 0 0; overflow: hidden; background-color: #f1f5f9;">
@@ -229,8 +253,8 @@ const renderMap = () => {
                         <div style="border-radius: 8px; overflow: hidden;">
                            ${imgHtml}
                            <div style="${paddingStyle}">
-                               <div style="font-weight: bold; color: #F97316; margin-bottom: 2px;">${params.name}</div>
-                               <div style="font-size: 12px; color: #64748b;">共拍摄 ${params.value[2]} 张照片</div>
+                               <div style="font-weight: bold; color: #F97316; margin-bottom: 2px;">${data.name}</div>
+                               <div style="font-size: 12px; color: #64748b;">共拍摄 ${data.value[2]} 张照片</div>
                            </div>
                         </div>
                     `;
@@ -241,7 +265,7 @@ const renderMap = () => {
         geo: {
             map: 'china',
             roam: true, // 允许缩放
-            zoom: 1.2,
+            boundingCoords: boundingCoords,
             label: { emphasis: { show: false } },
             itemStyle: {
                 normal: {
@@ -256,23 +280,6 @@ const renderMap = () => {
             regions: mapData
         },
         series: [
-            {
-                name: '足迹点',
-                type: 'scatter',
-                coordinateSystem: 'geo',
-                data: scatterData,
-                symbolSize: (val: any) => Math.min(Math.max(val[2] / 5, 6), 12), // 根据照片数调整大小
-                label: {
-                    formatter: '{b}',
-                    position: 'right',
-                    show: false
-                },
-                itemStyle: {
-                    color: isMobile ? '#F97316' : '#FDBA74',
-                    shadowBlur: 10,
-                    shadowColor: 'rgba(249, 115, 22, 0.5)'
-                }
-            },
             {
                 name: 'Top1焦点',
                 type: 'effectScatter',
@@ -303,6 +310,17 @@ const renderMap = () => {
                     shadowColor: '#333'
                 },
                 zlevel: 1
+            },
+            {
+              name: '照片数量',
+              type: 'map',
+              geoIndex: 0,
+              data: cityData,
+              // Add specific border to data items to make them pop against empty regions
+              itemStyle: {
+                borderColor:  '#fff',
+                borderWidth: 0.5
+              }
             }
         ]
     };
