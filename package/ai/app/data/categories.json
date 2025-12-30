@@ -133,5 +133,10 @@
         "zh": "手工/DIY",
         "en": "Handmade & DIY",
         "prompts": ["a photo of handmade craft", "a photo of DIY artwork", "a photo of homemade craft"]
+    },
+    "game": {
+        "zh": "游戏",
+        "en": "Game",
+        "prompts": ["a photo of game character", "a photo of game screenshot", "a photo of game play"]
     }
 }

@@ -1,3 +1,6 @@
+import logging
+import traceback
+
 from fastapi import APIRouter, UploadFile, File, Query, HTTPException, Body
 from app.services.image_classification_service import image_classification_service
 from pydantic import BaseModel
@@ -36,6 +39,8 @@ async def embed_text(request: TextEmbeddingRequest):
         embedding = await image_classification_service.embed_text(request.text)
         return embedding
     except Exception as e:
+        logging.info(traceback.format_exc())
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/classify", response_model=ClassificationResponse)

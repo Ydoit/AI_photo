@@ -11,6 +11,8 @@ import SectionCategory from '@/components/annual-report/SectionCategory.vue';
 import SectionHighlight from '@/components/annual-report/SectionHighlight.vue';
 import SectionEmotion from '@/components/annual-report/SectionEmotion.vue';
 import SectionLocation from '@/components/annual-report/SectionLocation.vue';
+import SectionFarthestCity from '@/components/annual-report/SectionFarthestCity.vue';
+
 import SectionSeason from '@/components/annual-report/SectionSeason.vue';
 import SectionEasterEgg from '@/components/annual-report/SectionEasterEgg.vue';
 import SectionMessage from '@/components/annual-report/SectionMessage.vue';
@@ -89,16 +91,19 @@ const handleReplay = () => {
         <!-- 7. Location -->
         <SectionLocation :data="reportData.location" />
 
-        <!-- 8. Season -->
+        <!-- 8. Farthest City -->
+        <SectionFarthestCity :data="reportData.location" />
+
+        <!-- 9. Season -->
         <SectionSeason :data="reportData.season" />
 
-        <!-- 9. Easter Egg -->
+        <!-- 10. Easter Egg -->
         <SectionEasterEgg :data="reportData.easterEgg" />
 
-        <!-- 10. Message -->
+        <!-- 11. Message -->
         <SectionMessage />
 
-        <!-- 11. End -->
+        <!-- 12. End -->
         <SectionEnd @replay="handleReplay" />
     </AnnualContainer>
 

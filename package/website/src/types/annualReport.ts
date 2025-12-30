@@ -1,3 +1,5 @@
+import { Photo } from "./album";
+
 export interface UserInfo {
   nickname: string;
   avatarUrl: string;
@@ -53,6 +55,9 @@ export interface LocationMetrics {
     count: number;             // 该地点拍摄照片数
     coverUrl?: string;         // 城市封面图
   }>;
+  farthestCity: string; // 年度最远打卡城市
+  farthestDistance: number; // 年度最远打卡城市距离（公里）
+  farthestCityPhotos: Photo[]; // 年度最远打卡城市照片URL列表
 }
 
 export interface SeasonData {

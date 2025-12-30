@@ -1,6 +1,5 @@
 import uuid
 import json
-import tempfile
 import numpy as np
 import cv2
 import logging
@@ -8,10 +7,10 @@ import os
 from app.config import settings
 from app.services.model_manager import model_manager
 from app.services.ticket_parser import parse_ticket_info, extract_text
-from ultralytics import YOLO
 
 def load_yolo_model():
     try:
+        from ultralytics import YOLO
         # 优先查找配置的AI模型目录
         model_path = os.path.join(settings.MODEL_PATH, "tickets", "best.pt")
         

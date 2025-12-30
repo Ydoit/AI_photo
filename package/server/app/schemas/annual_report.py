@@ -1,6 +1,9 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
+from app.schemas.photo import Photo
+
+
 class UserInfo(BaseModel):
     nickname: str
     avatarUrl: str
@@ -57,6 +60,9 @@ class LocationMetrics(BaseModel):
     lightenCityNum: int
     topCities: List[TopCity]
     locationPoints: List[LocationPoint]
+    farthestCity: Optional[str] = None
+    farthestDistance: Optional[int] = 0
+    farthestCityPhotos: List[Photo] = []
 
 class SeasonData(BaseModel):
     seasonName: str

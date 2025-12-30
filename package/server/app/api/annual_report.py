@@ -1,6 +1,7 @@
 from typing import List, Optional, Dict
 from datetime import datetime
 import random
+import math
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract, desc
@@ -169,6 +170,22 @@ def get_report_memory(
     )
 
 
+def haversine_distance(lat1, lon1, lat2, lon2):
+    """
+    Calculate the great circle distance between two points 
+    on the earth (specified in decimal degrees)
+    """
+    # Convert decimal degrees to radians 
+    lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
+
+    # Haversine formula 
+    dlon = lon2 - lon1 
+    dlat = lat2 - lat1 
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    c = 2 * math.asin(math.sqrt(a)) 
+    r = 6371 # Radius of earth in kilometers
+    return c * r
+
 @router.get("/location", response_model=LocationMetrics)
 def get_report_location(
     start_time: datetime = Query(..., description="Start Time"),
@@ -197,8 +214,8 @@ def get_report_location(
 
     # Location Points
     points_rows = db.query(
-        func.max(PhotoMetadata.longitude),
-        func.max(PhotoMetadata.latitude),
+        func.avg(PhotoMetadata.longitude),
+        func.avg(PhotoMetadata.latitude),
         PhotoMetadata.city,
         func.count(Photo.id)
     )\
@@ -233,11 +250,74 @@ def get_report_location(
             )
         )
 
+    # Calculate Farthest City
+    farthest_city = None
+    farthest_distance = 0.0
+    farthest_city_photos = []
+
+    # 1. Find the "Current City" (Top 1 by photo count)
+    top_city_ref = db.query(
+        PhotoMetadata.city,
+        func.avg(PhotoMetadata.latitude),
+        func.avg(PhotoMetadata.longitude)
+    )\
+    .join(Photo, Photo.id == PhotoMetadata.photo_id)\
+    .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
+    .filter(PhotoMetadata.city.isnot(None))\
+    .group_by(PhotoMetadata.city)\
+    .order_by(desc(func.count(Photo.id)))\
+    .first()
+
+    if top_city_ref and top_city_ref[1] and top_city_ref[2]:
+        curr_city_name = top_city_ref[0]
+        curr_lat = float(top_city_ref[1])
+        curr_lng = float(top_city_ref[2])
+
+        # 2. Get all other cities with coordinates
+        other_cities = db.query(
+            PhotoMetadata.city,
+            func.avg(PhotoMetadata.latitude),
+            func.avg(PhotoMetadata.longitude)
+        )\
+        .join(Photo, Photo.id == PhotoMetadata.photo_id)\
+        .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
+        .filter(PhotoMetadata.city.isnot(None))\
+        .filter(PhotoMetadata.city != curr_city_name)\
+        .filter(PhotoMetadata.latitude.isnot(None))\
+        .filter(PhotoMetadata.longitude.isnot(None))\
+        .group_by(PhotoMetadata.city)\
+        .all()
+
+        max_dist = 0.0
+        target_city_name = None
+
+        for row in other_cities:
+            city_name, lat, lng = row
+            dist = haversine_distance(curr_lat, curr_lng, float(lat), float(lng))
+            if dist > max_dist:
+                max_dist = dist
+                target_city_name = city_name
+        
+        if target_city_name:
+            farthest_city = target_city_name
+            farthest_distance = round(max_dist, 2)
+
+            # Get 10 photos from farthest city
+            f_photos = db.query(Photo).join(PhotoMetadata)\
+                .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
+                .filter(PhotoMetadata.city == target_city_name)\
+                .limit(20).all()
+
+            farthest_city_photos = f_photos
+
     return LocationMetrics(
         lightenProvinceNum=lighten_province or 0,
         lightenCityNum=lighten_city or 0,
         topCities=top_cities,
-        locationPoints=location_points
+        locationPoints=location_points,
+        farthestCity=farthest_city,
+        farthestDistance=int(farthest_distance),
+        farthestCityPhotos=farthest_city_photos
     )
 
 

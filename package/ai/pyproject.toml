@@ -13,7 +13,6 @@ dependencies = [
   "pydantic-settings>=2.2.0",
   "python-multipart>=0.0.9",
   "rapidocr>=3.0.0",
-  "sentence-transformers",
   "ultralytics>=8.3.243",
   "uvicorn>=0.27.0",
 ]
@@ -23,11 +22,15 @@ cpu = [
   "torch~=2.6.0",
   "torchvision~=0.21.0",
   "onnxruntime>=1.17.0",
+  "transformers>=4.37.0",
+  "sentence-transformers==5.2.0"
 ]
 cu128 = [
   "torch==2.9.1",
   "torchvision==0.24.1",
   "onnxruntime-gpu>=1.17.0",
+  "transformers>=4.37.0",
+  "sentence-transformers==5.2.0"
 ]
 
 [tool.uv]
