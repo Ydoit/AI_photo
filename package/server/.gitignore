@@ -245,5 +245,4 @@ test*
 
 *.db
 
-alembic
 .trae
