@@ -17,6 +17,7 @@ DEFAULT_PRIORITIES = {
     TaskType.REBUILD_METADATA: 5,
     TaskType.REBUILD_THUMBNAILS: 4,
     TaskType.RECOGNIZE_FACE: 2,
+    TaskType.RECOGNIZE_TICKET: 2,
     TaskType.CLASSIFY_IMAGE: 3,
     TaskType.OCR: 1,
 }
@@ -118,15 +119,16 @@ class TaskManager:
 
         stats = []
         # Define categories to show
-        categories = ['scanning', 'metadata', 'face', 'classification', 'ocr']
+        categories = ['scanning', 'metadata', 'face', 'classification', 'ocr', 'tickets']
 
         # Priority map for categories (higher is better)
         cat_priority = {
-            'scanning': DEFAULT_PRIORITIES[TaskType.SCAN_FOLDER],
-            'metadata': DEFAULT_PRIORITIES[TaskType.EXTRACT_METADATA],
-            'face': DEFAULT_PRIORITIES[TaskType.RECOGNIZE_FACE],
-            'classification': DEFAULT_PRIORITIES[TaskType.CLASSIFY_IMAGE],
-            'ocr': DEFAULT_PRIORITIES[TaskType.OCR]
+            'scanning': DEFAULT_PRIORITIES.get(TaskType.SCAN_FOLDER, 0),
+            'metadata': DEFAULT_PRIORITIES.get(TaskType.EXTRACT_METADATA, 0),
+            'face': DEFAULT_PRIORITIES.get(TaskType.RECOGNIZE_FACE, 0),
+            'classification': DEFAULT_PRIORITIES.get(TaskType.CLASSIFY_IMAGE, 0),
+            'ocr': DEFAULT_PRIORITIES.get(TaskType.OCR, 0),
+            'tickets': DEFAULT_PRIORITIES.get(TaskType.RECOGNIZE_TICKET, 0)
         }
 
         for cat in categories:

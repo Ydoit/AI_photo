@@ -27,6 +27,8 @@ from app.schemas import photo as schemas
 from app.schemas.metadata import PhotoMetadata, PhotoMetadataUpdate
 from app.schemas import tag as tag_schemas
 from app.service import storage
+from app.service.task_manager import TaskManager
+from app.db.models.task import TaskType
 import uuid
 import os
 import shutil
@@ -154,7 +156,28 @@ async def upload_photo_generic(
     file_path = storage.save_upload_file(file, photo_id, db)
 
     # Create and Save
-    return save_and_create_photo(db, file_path, file.filename, album_id, photo_id)
+    photo = save_and_create_photo(db, file_path, file.filename, album_id, photo_id)
+
+    TaskManager.get_instance().add_tasks(db, [
+        {
+            'type': TaskType.EXTRACT_METADATA,
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+        },
+        {
+            'type': TaskType.RECOGNIZE_FACE,
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+        },
+        {
+            'type': TaskType.OCR,
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+        },
+        {
+            'type': TaskType.RECOGNIZE_TICKET,
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+        }
+    ])
+
+    return photo
 
 @router.delete("/{photo_id}", response_model=schemas.Photo)
 def delete_photo_global(photo_id: UUID, db: Session = Depends(get_db)):

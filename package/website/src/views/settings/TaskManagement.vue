@@ -148,6 +148,7 @@ const categoryMap: Record<string, string[]> = {
     'face': ['RECOGNIZE_FACE'],
     'classification': ['CLASSIFY_IMAGE'],
     'ocr': ['OCR'],
+    'tickets': ['RECOGNIZE_TICKET'],
 }
 
 const handleCategoryCommand = async (category: string, command: string) => {
@@ -264,6 +265,7 @@ const formatCategory = (cat: string) => {
         'face': '识别人物',
         'ocr': 'OCR识别',
         'classification': '图片分类',
+        'tickets': '车票检测',
     }
     return map[cat] || cat
 }
