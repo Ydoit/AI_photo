@@ -26,7 +26,8 @@ flowchart TD
     subgraph AI_Service[AI 微服务]
       AI8001 --> OCR[PaddleOCR]
       AI8001 --> Face[InsightFace]
-      AI8001 --> OD[对象检测(预留)]
+      AI8001 --> OD[对象检测]
+      AI8001 --> Ticket[车票识别(YOLO+OCR)]
     end
 
     subgraph Data_Layer[数据层]

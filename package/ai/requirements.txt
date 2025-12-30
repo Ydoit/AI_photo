@@ -10,10 +10,8 @@ opencv-python-headless>=4.9.0
 pydantic>=2.6.0
 pydantic-settings>=2.2.0
 modelscope
-
 insightface>=0.7.3
 onnxruntime>=1.17.0
 transformers>=4.37.0
-
 sentence-transformers>=2.2.2
 rapidocr>=3.0.0
