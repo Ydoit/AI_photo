@@ -516,6 +516,13 @@ class TaskWorker:
                         priority=DEFAULT_PRIORITIES[TaskType.CLASSIFY_IMAGE],
                         status=TaskStatus.PENDING
                     ))
+                    # 5. Ticket Recognition Task (Low Priority)
+                    db.add(Task(
+                        type=TaskType.RECOGNIZE_TICKET,
+                        payload={'file_path': file_path, 'photo_id': photo_id},
+                        priority=DEFAULT_PRIORITIES.get(TaskType.RECOGNIZE_TICKET, 2),
+                        status=TaskStatus.PENDING
+                    ))
 
             # Mark tasks as completed/failed in DB?
             # Actually, execute_task_wrapper doesn't update Task status in DB, it only puts result in queue.

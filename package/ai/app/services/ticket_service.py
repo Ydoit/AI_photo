@@ -154,12 +154,14 @@ class TicketService:
                     texts, polys = extract_text(json_path)
                     
                     # 调试日志：打印 OCR 识别到的文本
-                    logging.info(f"Ticket detection {i}: extracted texts from JSON: {texts}")
+                    # logging.info(f"Ticket detection {i}: extracted texts from JSON: {texts}")
 
                     # 5. 解析车票信息
                     info = parse_ticket_info(texts, polys)
-                    info['detection_id'] = i
-                    tickets.append(info)
+                    logging.info(f"Ticket detection {i}: parsed info: {info}")
+                    if info:
+                        info['detection_id'] = i
+                        tickets.append(info)
                     
                 except Exception as e:
                     logging.error(f"Error processing JSON flow for ticket {i}: {e}")
