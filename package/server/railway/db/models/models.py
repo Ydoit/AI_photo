@@ -65,7 +65,7 @@ class TrainOperationPlan(Base):
     run_rule = Column(SmallInteger, nullable=False, default=0, comment="开行规律：0=每日，1=工作日，2=周末，3=单日，4=双日，5=自定义")
     custom_run_days = Column(JSON, nullable=True, comment="自定义开行日期（run_rule=5时用，如[\"2025-11-20\",\"2025-11-22\"]）")
     station_num = Column(SmallInteger, nullable=False, default=2, comment="该版本途经车站数（含起止站）")
-    total_mileage = Column(Integer, nullable=False, default=0, comment="该版本全程里程（公里）")
+    total_mileage = Column(DECIMAL(10, 1), nullable=False, default=0, comment="该版本全程里程（公里）")
     total_running_time = Column(Integer, nullable=False, default=0, comment="累计运行时间（分钟）")
     status = Column(SmallInteger, nullable=False, default=1, comment="该版本是否停运：1=正常，0=停运")
 

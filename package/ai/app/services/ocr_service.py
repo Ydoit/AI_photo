@@ -100,8 +100,8 @@ class OCRService:
         parsed_results.append(
             {
                 "prunedResult": {
-                    "rec_texts": result.txts,
-                    "rec_scores": result.scores,
+                    "rec_texts": result.txts if result.txts is not None else [],
+                    "rec_scores": result.scores if result.scores is not None else [],
                     "rec_polys": result.boxes.tolist() if result.boxes is not None else [],
                 },
             }

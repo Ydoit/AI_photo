@@ -1,26 +1,20 @@
 import os
 import sys
-import subprocess
-from urllib.parse import urlparse
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine.url import make_url
 
-from dotenv import load_dotenv
+from sqlalchemy import text, make_url, create_engine
 
-if not os.path.exists('./data'):
-    os.mkdir('./data')
-load_dotenv('./data/.env')
-def main():
+def create_database():
+    """
+    构建数据库，包括创建表、初始化数据
+    """
+    # 创建所有表
     print("Starting application initialization...")
 
-    from railway import start
-    start.create_database()
-
     # 1. Check environment variable DATABASE_URL
-    database_url = os.environ.get("DB_URL")
+    database_url = os.environ.get("RAILWAY_DB_URL")
     if not database_url:
-        print("Error: DATABASE_URL environment variable is not set.")
-        print("Please set DATABASE_URL (e.g., postgresql://user:password@host:5432/dbname)")
+        print("Error: RAILWAY_DB_URL environment variable is not set.")
+        print("Please set RAILWAY_DB_URL (e.g., postgresql://user:password@host:5432/dbname)")
         sys.exit(1)
 
     is_db_exists = False
@@ -70,29 +64,6 @@ def main():
         print(f"Error during database initialization: {e}")
         print("Ensure the database server is running and reachable.")
         sys.exit(1)
-    if is_db_exists:
-        # 4. Run Alembic migrations
-        print("Running Alembic migrations...")
-        try:
-            subprocess.run(["alembic", "upgrade", "head"], check=True)
-            print("Alembic migrations completed successfully.")
-        except subprocess.CalledProcessError as e:
-            print(f"Alembic migration failed with exit code {e.returncode}")
-        except FileNotFoundError:
-            print("Error: 'alembic' command not found. Ensure it is installed and in PATH.")
-            sys.exit(1)
-
-    # 5. Start application
-    print("Starting uvicorn...")
-    # Using execvp to replace the current process with uvicorn
-    # This ensures uvicorn receives signals (like SIGTERM) directly
-    try:
-        # Arguments must be passed as a list, starting with the program name
-        sys.stdout.flush()
-        os.execvp("uvicorn", ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"])
-    except OSError as e:
-        print(f"Error starting application: {e}")
-        sys.exit(1)
-
-if __name__ == "__main__":
-    main()
+    print("数据库表已创建")
+    from railway import build_database
+    build_database.rebuild_database()

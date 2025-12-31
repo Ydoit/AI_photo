@@ -8,13 +8,13 @@
 @File        : server-build_database.py
 @Description : 
 """
-
+import sys
 from typing import Dict, Type, List, Optional
 import csv
 import os
 from datetime import datetime, date, time
 
-from sqlalchemy import text
+from sqlalchemy import text, make_url, create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -34,8 +34,7 @@ TABLE_MODEL_MAPPING: Dict[str, Type[Base]] = {
 
 # CSV文件路径配置
 tables = ['station', 'train_operation_plan', 'train', 'train_schedule']
-source_dir = 'source'
-
+source_dir = 'railway/source'
 
 def convert_value(value: str, field_type: Optional[type] = None) -> Optional[any]:
     """
