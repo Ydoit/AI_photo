@@ -9,23 +9,19 @@ services:
       POSTGRES_DB: trailsnap
       POSTGRES_USER: trailsnap
       POSTGRES_PASSWORD: trailsnap
-      # 可选：设置PostgreSQL配置（优化向量搜索性能）
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
       PGDATA: /var/lib/postgresql/data/pgdata
-    networks: [ app-network ]  # 显式加入应用网络
+    networks: [ app-network ]
     ports:
       - "5532:5432"                  # 端口映射
     volumes:
       - ./pg_data:/var/lib/postgresql/data  # 数据持久化
-      # 挂载初始化脚本目录，自动创建pgvector扩展
-      - ./init-scripts:/docker-entrypoint-initdb.d/
-    # 新增：健康检查（确保数据库就绪后，应用再连接）
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U trailsnap -d trailsnap -p 5432"]
-      interval: 5s    # 每5秒检查一次
-      timeout: 5s     # 超时时间5秒
-      retries: 5      # 最多重试5次
-      start_period: 10s  # 容器启动后10秒再开始检查
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   server:
     image: siyuan044/trailsnap-server:master
@@ -34,8 +30,8 @@ services:
     ports: [ "8800:8000" ]
     networks: [ app-network ]
     volumes:
-      - ./data:/app/data        # 挂载数据目录
-      - F:\Photos:/app/Photos/  # 挂载本地照片目录
+      - ./data:/app/data
+      - F:\Photos:/app/Photos/
     environment:
       - DB_URL=postgresql://trailsnap:trailsnap@postgres:5432/trailsnap
       - RAILWAY_DB_URL=postgresql://trailsnap:trailsnap@postgres:5432/railway

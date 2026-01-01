@@ -14,38 +14,19 @@ TrailSnap 是一个智能化的 AI 相册应用，致力于帮助用户轻松记
   - AI自动剪视频生成VLOG
   - AI修图，自动识别高质量照片
 
+## 🧭 功能概览
+
+- 智能相册：瀑布流展示、相册管理、位置解析。
+- AI 能力：OCR 识别，人脸检测与特征抽取，智能分类。
+- 行程票据：火车票信息管理，支持创建、编辑、删除与列表展示。
+- 数据可视化：出行统计图表、时间轴与线路里程。
+- 年度报告：自动生成2025年的出行统计报告，包括照片墙、出行城市、出行景点、行程时间轴、线路里程等。
+
 ## 2025 年度报告（预览版）
 
 2025 相册年度报告正在制作中，敬请期待！（docker部署可以体验半成品，也可以先star项目等待后续发布正式版）
 
 ![年度报告](./doc/image/年度报告.jpg)
-
-## 🛠️ 技术栈
-
-### 前端 (Web)
-- **框架**: Vue 3, TypeScript, Vite
-- **UI**: Element Plus, TailwindCSS
-- **状态管理**: Pinia
-- **路由**: Vue Router
-- **可视化**: ECharts
-
-### 后端 (Server)
-- **核心**: Python 3.12+, FastAPI
-- **数据库**: PostgreSQL, SQLAlchemy (Async)
-- **AI/CV**: PaddleOCR（AI 微服务）, InsightFace（AI 微服务）, YOLO (Ultralytics 脚本), OpenCV
-- **任务调度**: Custom Task Manager
-
-## 📂 目录结构
-
-```
-TrailSnap/
-├── package/
-│   ├── server/      # 后端 FastAPI 服务
-│   └── website/     # 前端 Vue 应用
-│   └── ai/          # AI 微服务 (OCR/Face)
-├── doc/             # 项目技术文档
-└── ...
-```
 
 ## 🚀 快速开始
 
@@ -53,10 +34,12 @@ TrailSnap/
 
 1. 确保已安装 Docker 和 Docker Compose。
 
-2. docker-compose 和 初始化脚本
+2. docker-compose
 
-docker-compose.yml 配置文件
+docker-compose.yml 配置文件（注意修改挂载路径为本地路径，不然无法扫描本地照片目录）
 ```yml
+version: '3.8'
+
 services:
   postgres:
     image: pgvector/pgvector:pg18-trixie
@@ -66,22 +49,19 @@ services:
       POSTGRES_DB: trailsnap
       POSTGRES_USER: trailsnap
       POSTGRES_PASSWORD: trailsnap
-      # 可选：设置PostgreSQL配置（优化向量搜索性能）
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
       PGDATA: /var/lib/postgresql/data/pgdata
+    networks: [ app-network ]
     ports:
-      - "5532:5432"                  # 端口映射
+      - "5532:5432"
     volumes:
-      - ./pg_data:/var/lib/postgresql/data  # 数据持久化
-      # 挂载初始化脚本目录，自动创建pgvector扩展
-      - ./init-scripts:/docker-entrypoint-initdb.d/
-    # 新增：健康检查（确保数据库就绪后，应用再连接）
+      - ./pg_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U trailsnap -d trailsnap -p 5432"]
-      interval: 5s    # 每5秒检查一次
-      timeout: 5s     # 超时时间5秒
-      retries: 5      # 最多重试5次
-      start_period: 10s  # 容器启动后10秒再开始检查
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   server:
     image: siyuan044/trailsnap-server:master
@@ -97,7 +77,9 @@ services:
       - RAILWAY_DB_URL=postgresql://trailsnap:trailsnap@postgres:5432/railway
       - AI_API_URL=http://ai:8001
     depends_on:
-      - postgres  # 确保数据库服务启动后再启动应用
+      postgres:
+        condition: service_healthy
+        restart: true
 
   ai:
     image: siyuan044/trailsnap-ai:master
@@ -130,13 +112,32 @@ docker-compose up -d
 
 [源码部署](doc/developer_guide.md)
 
-## 🧭 功能概览
+## 🛠️ 技术栈
 
-- 智能相册：瀑布流展示、相册管理、照片元数据解析。
-- AI 能力：OCR 识别（支持文本检测与识别、多边形坐标返回），人脸检测与特征抽取。
-- 行程票据：火车票信息管理，支持创建、编辑、删除与列表展示。
-- 数据可视化：出行统计图表、时间轴与线路里程。
-- 高性能：异步任务处理、虚拟滚动、坐标归一化绘制。
+### 前端 (Web)
+- **框架**: Vue 3, TypeScript, Vite
+- **UI**: Element Plus, TailwindCSS
+- **状态管理**: Pinia
+- **路由**: Vue Router
+- **可视化**: ECharts
+
+### 后端 (Server)
+- **核心**: Python 3.12+, FastAPI
+- **数据库**: PostgreSQL, SQLAlchemy (Async)
+- **AI/CV**: PaddleOCR（AI 微服务）, InsightFace（AI 微服务）, YOLO (Ultralytics 脚本), OpenCV
+- **任务调度**: Custom Task Manager
+
+## 📂 目录结构
+
+```
+TrailSnap/
+├── package/
+│   ├── server/      # 后端 FastAPI 服务
+│   └── website/     # 前端 Vue 应用
+│   └── ai/          # AI 微服务 (OCR/Face)
+├── doc/             # 项目技术文档
+└── ...
+```
 
 ## 📚 文档
 
@@ -149,5 +150,3 @@ docker-compose up -d
 
 ## 🔍 备注
 
-- YOLO_OCR 脚本位于 `package/server/yolo_ocr/`，用于票据区域检测与字段解析的实验/批处理场景；
-  AI 微服务当前提供通用 OCR 接口（`/ocr/predict`），服务端任务将结果落库并在前端展示。

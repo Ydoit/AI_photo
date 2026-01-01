@@ -19,8 +19,8 @@ def main():
     # 1. Check environment variable DATABASE_URL
     database_url = os.environ.get("DB_URL")
     if not database_url:
-        print("Error: DATABASE_URL environment variable is not set.")
-        print("Please set DATABASE_URL (e.g., postgresql://user:password@host:5432/dbname)")
+        print("Error: DB_URL environment variable is not set.")
+        print("Please set DB_URL (e.g., postgresql://user:password@host:5432/dbname)")
         sys.exit(1)
 
     is_db_exists = False
