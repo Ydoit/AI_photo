@@ -59,11 +59,11 @@ def create_database():
              conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
              print("'vector' extension enabled.")
         target_engine.dispose()
-        
     except Exception as e:
         print(f"Error during database initialization: {e}")
         print("Ensure the database server is running and reachable.")
         sys.exit(1)
     print("数据库表已创建")
-    from railway import build_database
-    build_database.rebuild_database()
+    if not is_db_exists:
+        from railway import build_database
+        build_database.rebuild_database()

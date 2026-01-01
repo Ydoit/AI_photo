@@ -1,6 +1,10 @@
 # TrailSnap 行影集
 
-TrailSnap 是一个智能化的 AI 相册应用，致力于帮助用户轻松记录、整理和回顾自己的出行经历。通过现代化的 UI 设计和强大的后端 AI 处理能力，让每一张照片和每一段旅程都成为值得珍藏的记忆。
+TrailSnap 是一个智能化的 AI 相册应用，致力于帮助用户轻松记录、整理和回顾自己的出行经历。通过强大的 AI 处理能力，让每一张照片和每一段旅程都成为值得珍藏的记忆。
+
+我相信未来每个人（至少每个家庭）都有一个属于自己的 AI 数据中心，而相册是数据中心的一个重要数据来源，它留存了你生活中的很多瞬间，而 AI 相册则是将这些瞬间转化为有价值的记忆，它可以帮你默默地记录下相册里的车票、景点门票，可以帮你记录旅行中的所见所闻，可以帮你自动整理出可以发朋友圈的照片（甚至帮你准备好文案），可以帮你剪一段15s的短视频······。
+
+所以，我给这个项目命名为 **《行影集》**，在这里你的数据才 “真正属于你”。
 
 ## ✨ 核心特色
 
@@ -114,21 +118,6 @@ services:
 networks:
   app-network:
     driver: bridge
-```
-
-在项目根目录下，创建一个名为 `init-scripts` 的文件夹，用于存放初始化脚本。
-**初始化脚本**: 需要在 `docker-compose.yml` 中指定的 `init-scripts` 目录下创建 `01_create_vector_extension.sql` (如果尚未创建)。
-
-```sql
--- 01_create_vector_extension.sql
--- 连接目标数据库（必须指定，否则默认连postgres库）
-\c trailsnap;
--- 创建pgvector扩展（IF NOT EXISTS避免重复创建）
-CREATE EXTENSION IF NOT EXISTS vector;
-
-\c postgres
-SELECT 'CREATE DATABASE railway'
-WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'railway')\gexec
 ```
 
 1. 启动服务

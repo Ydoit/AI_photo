@@ -54,9 +54,9 @@ def main():
             else:
                 is_db_exists = True
                 print(f"Database '{db_name}' already exists.")
-        
+
         engine.dispose()
-        
+
         # 3. Connect to the target database to enable vector extension
         print(f"Connecting to target database '{db_name}'...")
         target_engine = create_engine(database_url, isolation_level="AUTOCOMMIT")
@@ -65,7 +65,7 @@ def main():
              conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
              print("'vector' extension enabled.")
         target_engine.dispose()
-        
+
     except Exception as e:
         print(f"Error during database initialization: {e}")
         print("Ensure the database server is running and reachable.")
