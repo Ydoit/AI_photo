@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  base: '/TrailSnap/', 
+  base: '/TrailSnap/',
   title: "TrailSnap 行影集",
   description: "AI 驱动的智能相册与旅行足迹记录工具",
   themeConfig: {
@@ -35,12 +35,12 @@ export default defineConfig({
     },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/your-repo/trailsnap' }
+      { icon: 'github', link: 'https://github.com/LC044/TrailSnap' }
     ],
 
     footer: {
-      message: '基于 MIT 许可发布',
-      copyright: '版权所有 © 2024-至今 TrailSnap 贡献者'
+      message: '基于 AGPL-3.0 许可发布',
+      copyright: '版权所有 © 2025-至今 TrailSnap'
     }
   }
 })

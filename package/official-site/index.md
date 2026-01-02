@@ -11,7 +11,7 @@ hero:
       link: /docs/guide/user
     - theme: alt
       text: "GitHub 源码"
-      link: https://github.com/your-repo/trailsnap
+      link: https://github.com/LC044/TrailSnap
 
 features:
   - title: AI 智能识别
