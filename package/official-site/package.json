@@ -12,7 +12,13 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "autoprefixer": "^10.4.23",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
     "vitepress": "^1.0.0",
     "vue": "^3.5.0"
+  },
+  "dependencies": {
+    "@giscus/vue": "^3.1.1"
   }
 }

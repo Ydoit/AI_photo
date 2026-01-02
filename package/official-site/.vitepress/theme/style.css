@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global Styles and Overrides */
+
+:root {
+  --vp-c-brand-1: #4A9DFF;
+  --vp-c-brand-2: #3b8ce6;
+  --vp-c-brand-3: #2c7bd6;
+  --vp-font-family-base: 'Source Han Sans CN', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+}
+
+/* Custom Home Page Layout Overrides */
+.custom-home-page .VPContent {
+  padding: 0 !important;
+  max-width: 100% !important;
+}
+
+.custom-home-page .VPDoc {
+  padding: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Hide the default doc container background/border if present */
+.custom-home-page .container {
+  max-width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Ensure no extra margins on the page content */
+.custom-home-page div[class*="_doc"] {
+  max-width: 100% !important;
+  padding: 0 !important;
+}
