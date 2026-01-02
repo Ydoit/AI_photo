@@ -8,7 +8,7 @@ hero:
   actions:
     - theme: brand
       text: "快速开始"
-      link: /docs/guide/user
+      link: /docs/guide/install
     - theme: brand
       text: "年度报告"
       link: https://siyuan.ink/annual-report

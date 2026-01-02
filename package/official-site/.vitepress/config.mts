@@ -7,8 +7,9 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: '首页', link: '/' },
-      { text: '用户指南', link: '/docs/guide/user' },
-      { text: '开发者文档', link: '/docs/dev/guide' }
+      { text: '用户指南', link: '/docs/guide/install' },
+      { text: '开发者文档', link: '/docs/dev/guide' },
+      { text: '问题反馈', link: '/docs/guide/feedback' }
     ],
 
     sidebar: {
@@ -16,7 +17,9 @@ export default defineConfig({
         {
           text: '用户指南',
           items: [
-            { text: '使用简介', link: '/docs/guide/user' }
+            { text: '安装指南', link: '/docs/guide/install' },
+            { text: '使用简介', link: '/docs/guide/user' },
+            { text: '问题反馈', link: '/docs/guide/feedback' }
           ]
         }
       ],
