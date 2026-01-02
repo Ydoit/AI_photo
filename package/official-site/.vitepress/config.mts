@@ -41,6 +41,21 @@ export default defineConfig({
       { icon: 'github', link: 'https://github.com/LC044/TrailSnap' }
     ],
 
+    outline: {
+      label: '页面导航'
+    },
+    
+    sidebarMenuLabel: '菜单',
+    returnToTopLabel: '回到顶部',
+    darkModeSwitchLabel: '主题',
+    lightModeSwitchTitle: '切换到浅色模式',
+    darkModeSwitchTitle: '切换到深色模式',
+    
+    docFooter: {
+      prev: '上一页',
+      next: '下一页'
+    },
+
     footer: {
       message: '基于 AGPL-3.0 许可发布',
       copyright: '版权所有 © 2025-至今 TrailSnap'

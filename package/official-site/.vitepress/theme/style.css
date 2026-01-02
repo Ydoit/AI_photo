@@ -34,3 +34,10 @@
   max-width: 100% !important;
   padding: 0 !important;
 }
+
+/* Hide Return to Top button on mobile */
+@media (max-width: 960px) {
+  .VPBackToTop {
+    display: none !important;
+  }
+}
