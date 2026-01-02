@@ -26,6 +26,8 @@ TrailSnap 是一个智能化的 AI 相册应用，致力于帮助用户轻松记
 
 2025 相册年度报告正在制作中，敬请期待！（docker部署可以体验半成品，也可以先star项目等待后续发布正式版）
 
+[查看预览版](https://siyuan.ink/annual-report)
+
 ![年度报告](./doc/image/年度报告.jpg)
 
 ## 🚀 快速开始
@@ -148,5 +150,8 @@ TrailSnap/
 - [开发者文档](doc/developer_guide.md)
 - [用户指南](doc/user_guide.md)
 
-## 🔍 备注
+## 🔍 其他
 
+### QQ交流群
+
+![QQ群](./doc/image/QQ1.jpg)
