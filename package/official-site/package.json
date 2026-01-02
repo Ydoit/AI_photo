@@ -1,0 +1,18 @@
+{
+  "name": "trailsnap-docs",
+  "version": "1.0.0",
+  "description": "Official documentation and website for TrailSnap",
+  "main": "index.js",
+  "scripts": {
+    "docs:dev": "vitepress dev",
+    "docs:build": "vitepress build",
+    "docs:preview": "vitepress preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vitepress": "^1.0.0",
+    "vue": "^3.5.0"
+  }
+}
