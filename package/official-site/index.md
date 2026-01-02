@@ -9,15 +9,28 @@ hero:
     - theme: brand
       text: "快速开始"
       link: /docs/guide/user
+    - theme: brand
+      text: "年度报告"
+      link: https://siyuan.ink/annual-report
     - theme: alt
       text: "GitHub 源码"
       link: https://github.com/LC044/TrailSnap
 
 features:
+  - title: 智能相册
+    details: 自动将照片分类整理，无需手动操作。
+  - title: 旅行日志
+    details: 记录每一个细节，从出发到到达，每一个瞬间都被保存。
   - title: AI 智能识别
     details: 自动识别人脸、物体和文字 (OCR)，智能分类整理你的照片库。
   - title: 旅行足迹地图
     details: 在地图上点亮你的足迹，通过票据识别自动生成旅行时间轴。
   - title: 私有部署 & 隐私安全
     details: 数据完全掌握在自己手中，支持本地服务器部署，守护你的珍贵记忆。
+  - title: docker 部署
+    details: 简单快捷，无需复杂配置，即可在 docker 中部署 TrailSnap。
+  - title: 数据可视化
+    details: 提供丰富的图表和统计分析，帮助你更好地理解和管理你的旅行数据。
+  - title: AI 赋能
+    details: AI自动剪视频生成VLOG，自动修图，自动识别高质量照片，自动生成朋友圈图文。
 ---
