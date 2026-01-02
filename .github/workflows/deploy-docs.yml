@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,8 +37,6 @@ jobs:
           echo "::group::开始构建文档站点"
           npm run docs:build
           echo "::endgroup::"
-
-    # Deployment job
   deploy:
     environment:
       name: github-pages
