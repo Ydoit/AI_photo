@@ -1,5 +1,6 @@
 name: Deploy Official Site
 
+# 触发条件：1.master分支推送且改动指定文件 2.手动触发（新增核心）
 on:
   push:
     branches:
@@ -7,7 +8,9 @@ on:
     paths:
       - 'package/official-site/**'
       - '.github/workflows/deploy-docs.yml'
+  workflow_dispatch:  # ✅ 新增：开启手动触发，测试/重部署超方便
 
+# 权限配置：赋予写入仓库内容的权限（自包含，无需仓库额外配置）
 permissions:
   contents: write
 
@@ -17,27 +20,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # ✅ 你的配置完全正确：拉取全提交记录，解决VitePress git信息缺失
 
-      - name: Setup Node
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
+          # ✅ 你的配置完全正确：指定子目录的lock文件，精准缓存依赖
           cache-dependency-path: 'package/official-site/package-lock.json'
 
+      # ✅ 优化：用working-directory替代cd，配置更整洁
       - name: Install Dependencies
-        run: |
-          cd package/official-site
-          npm install
+        working-directory: ./package/official-site
+        run: npm install
 
-      - name: Build
+      # ✅ 优化：用working-directory替代cd，搭配日志分组
+      - name: Build VitePress Site
+        working-directory: ./package/official-site
         run: |
-          cd package/official-site
+          echo "::group::开始构建文档站点"
           npm run docs:build
+          echo "::endgroup::"
 
+      # ✅ 修复核心：升级为v4稳定版
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # ✅ 你的配置完全正确：VitePress打包产物目录，无需修改
           publish_dir: ./package/official-site/.vitepress/dist

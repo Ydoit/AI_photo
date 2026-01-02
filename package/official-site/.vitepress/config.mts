@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
+  base: '/TrailSnap/', 
   title: "TrailSnap 行影集",
   description: "AI 驱动的智能相册与旅行足迹记录工具",
   themeConfig: {
