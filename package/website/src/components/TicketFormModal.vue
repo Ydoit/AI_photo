@@ -6,9 +6,28 @@
       <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-2xl relative z-10 overflow-hidden flex flex-col max-h-[90vh]">
         <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800">
           <h2 class="text-lg font-bold text-slate-800 dark:text-white">{{ isEditing ? '编辑车票' : '新增车票' }}</h2>
-          <button @click="handleCancel" class="text-slate-400 hover:text-red-500 transition-colors">
-            <X class="w-6 h-6" />
-          </button>
+          <div class="flex items-center gap-2">
+             <button 
+              @click="triggerFileInput"
+              :disabled="recognizing"
+              class="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 rounded-md hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+              title="上传车票图片自动识别"
+            >
+              <Sparkles v-if="!recognizing" class="w-4 h-4" />
+              <span v-else class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+              {{ recognizing ? '识别中...' : '智能填充' }}
+            </button>
+            <input 
+              ref="fileInput"
+              type="file" 
+              accept="image/*" 
+              class="hidden" 
+              @change="handleFileChange"
+            />
+            <button @click="handleCancel" class="text-slate-400 hover:text-red-500 transition-colors ml-2">
+              <X class="w-6 h-6" />
+            </button>
+          </div>
         </div>
         <div class="p-6 overflow-y-auto dark:text-slate-200">
           <form @submit.prevent="handleSubmit" class="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -241,6 +260,67 @@ const axiosInstance = axios.create({
   },
 });
 
+// 识别相关
+const fileInput = ref(null);
+const recognizing = ref(false);
+
+const triggerFileInput = () => {
+  fileInput.value.click();
+};
+
+const handleFileChange = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Reset input
+  event.target.value = '';
+
+  recognizing.value = true;
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // 直接使用 axiosInstance 调用后端接口
+    // 注意：这里需要根据实际 API 路径调整，假设 apiBaseUrl 是后端根地址
+    // 如果 ticketService 已经封装好了，最好通过 props 传入 ticketService 或者 emit 事件让父组件处理
+    // 但为了保持组件独立性，这里我们直接调用 /api/train-ticket/recognize
+    
+    // 由于 props.apiBaseUrl 可能包含 /api 也可能不包含，这里假设它指向后端根目录
+    // 检查 apiBaseUrl 是否以 /api 结尾
+    let url = '/api/train-ticket/recognize';
+    if (!props.apiBaseUrl.includes('/api')) {
+        // 如果 base url 没有 /api，保持原样
+    }
+    
+    const response = await axiosInstance.post('/train-ticket/recognize', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    
+    const data = response.data;
+    
+    // 填充表单
+    if (data.train_code) form.value.train_code = data.train_code;
+    if (data.departure_station) form.value.from = data.departure_station;
+    if (data.arrival_station) form.value.to = data.arrival_station;
+    if (data.datetime) form.value.dateTime = data.datetime;
+    if (data.carriage) form.value.carriage = data.carriage;
+    if (data.seat_num) form.value.seatNumber = data.seat_num;
+    if (data.price) form.value.price = data.price;
+    if (data.seat_type) form.value.seatType = data.seat_type;
+    if (data.name) form.value.name = data.name;
+    
+    ElMessage.success('车票识别成功，已自动填充');
+    
+  } catch (error) {
+    console.error('Recognition failed:', error);
+    ElMessage.error(error.response?.data?.detail || '识别失败，请重试');
+  } finally {
+    recognizing.value = false;
+  }
+};
+
 // 表单模型
 const form = ref({
   id: null,
@@ -319,7 +399,7 @@ async function fetchSchedules() {
   scheduleError.value = '';
   try {
     // 只传递train_code，其他参数留空
-    const response = await axiosInstance.get('/api/railway/train-schedules', {
+    const response = await axiosInstance.get('/railway/train-schedules', {
       params: {
         train_code: trainCode,
         page: 1,

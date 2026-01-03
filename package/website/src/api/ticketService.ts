@@ -12,33 +12,45 @@ const api = axios.create({
 export const ticketService = {
   // 获取列表
   async getTickets(params: TicketQueryParams) {
-    const { data } = await api.get<{ items: TicketBackend[], total: number }>('/api/train-ticket', { params });
+    const { data } = await api.get<{ items: TicketBackend[], total: number }>('/train-ticket', { params });
     return data;
   },
 
   // 创建
   async createTicket(data: Partial<TicketBackend>) {
-    const { data: res } = await api.post<TicketBackend>('/api/train-ticket', data);
+    const { data: res } = await api.post<TicketBackend>('/train-ticket', data);
     return res;
   },
 
   // 更新
   async updateTicket(id: number, data: Partial<TicketBackend>) {
-    const { data: res } = await api.put<TicketBackend>(`/api/train-ticket/${id}`, data);
+    const { data: res } = await api.put<TicketBackend>(`/train-ticket/${id}`, data);
     return res;
   },
 
   // 删除
   async deleteTicket(id: number) {
-    await api.delete(`/api/train-ticket/${id}`);
+    await api.delete(`/train-ticket/${id}`);
     return true;
   },
 
   // 批量删除 (前端循环调用或后端支持批量接口)
   async batchDeleteTickets(ids: number[]) {
     // 假设后端没有批量接口，使用 Promise.all
-    const promises = ids.map(id => api.delete(`/api/train-ticket/${id}`));
+    const promises = ids.map(id => api.delete(`/train-ticket/${id}`));
     await Promise.all(promises);
     return true;
+  },
+
+  // 识别车票
+  async recognizeTicket(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await api.post('/train-ticket/recognize', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return data;
   }
 };

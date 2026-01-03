@@ -267,7 +267,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { 
   TrainFront, Search, Plus, MapPin, Clock, Route,
-  ChevronDown, Trash2, X, User, RefreshCw
+  ChevronDown, Trash2, X, User, RefreshCw, Database
 } from 'lucide-vue-next';
 import { ElMessage } from 'element-plus';
 import { ListTree, LayoutGrid } from 'lucide-vue-next'; // 引入图标
