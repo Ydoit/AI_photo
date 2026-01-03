@@ -82,6 +82,31 @@ export interface EasterEgg {
   };
 }
 
+export interface MonthlyExpense {
+  month: string;
+  amount: number;
+}
+
+export interface ExpenseMetrics {
+  totalAmount: number;
+  totalCount: number;
+  averagePrice: number;
+  monthlyTrend: MonthlyExpense[];
+  maxExpenseTicket?: string;
+  maxExpenseAmount?: number;
+}
+
+export interface TicketDetail {
+  id: string;
+  train_code: string;
+  departure_station: string;
+  arrival_station: string;
+  date_time: string;
+  price: number;
+  seat_type: string;
+  name: string;
+}
+
 export interface AnnualReportData {
   year: number;
   user: UserInfo;
@@ -91,4 +116,5 @@ export interface AnnualReportData {
   location: LocationMetrics;
   season: SeasonMetrics;
   easterEgg: EasterEgg;
+  expense: ExpenseMetrics;
 }
