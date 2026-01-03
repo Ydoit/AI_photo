@@ -5,9 +5,12 @@ from aiohttp import FormData
 from sqlalchemy.orm import Session
 from app.db.models.task import Task, TaskType
 from app.db.models.photo import Photo, FileType
+from app.db.models.trip import TrainTicket
 from typing import Dict, Any, List
+from datetime import datetime
 from app.core.config_manager import config_manager
 from app.service import storage
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -100,14 +103,89 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                 if response.status == 200:
                     result = await response.json()
                     
+                    # === Auto-add tickets to database ===
+                    if result and 'tickets' in result:
+                        tickets_data = result['tickets']
+                        added_count = 0
+                        for t_info in tickets_data:
+                            try:
+                                # Validation
+                                if not t_info.get('train_code') or not t_info.get('datetime'):
+                                    continue
+                                
+                                # Parse datetime
+                                dt_str = t_info.get('datetime')
+                                dt = None
+                                # Try standard formats
+                                formats = [
+                                    "%Y年%m月%d日 %H:%M",
+                                    "%Y年%m月%d日%H:%M",
+                                    "%Y-%m-%d %H:%M",
+                                    "%Y/%m/%d %H:%M"
+                                ]
+                                for fmt in formats:
+                                    try:
+                                        dt = datetime.strptime(dt_str, fmt)
+                                        break
+                                    except ValueError:
+                                        continue
+                                
+                                if not dt:
+                                    logger.warning(f"Skipping ticket due to invalid datetime: {dt_str}")
+                                    continue
+
+                                # Parse Price
+                                price_val = 0.0
+                                price_str = str(t_info.get('price', '0')).replace('元', '').replace('￥', '').strip()
+                                try:
+                                    price_val = float(price_str)
+                                except:
+                                    pass
+
+                                # Check duplicate
+                                existing = db.query(TrainTicket).filter(
+                                    TrainTicket.train_code == t_info['train_code'],
+                                    TrainTicket.date_time == dt,
+                                    TrainTicket.seat_num == (t_info.get('seat_num') or '无座')
+                                ).first()
+                                
+                                if existing:
+                                    logger.info(f"Duplicate ticket found: {t_info['train_code']} {dt}")
+                                    continue
+
+                                # Create Ticket
+                                new_ticket = TrainTicket(
+                                    train_code=t_info['train_code'],
+                                    departure_station=t_info.get('departure_station', '未知'),
+                                    arrival_station=t_info.get('arrival_station', '未知'),
+                                    date_time=dt,
+                                    carriage=t_info.get('carriage') or '无',
+                                    seat_num=t_info.get('seat_num') or '无座',
+                                    berth_type=t_info.get('berth_type') or '无',
+                                    price=price_val,
+                                    seat_type=t_info.get('seat_type') or '二等座',
+                                    name=t_info.get('name') or '未知',
+                                    discount_type=t_info.get('discount_type') or '全价票',
+                                    total_mileage=0,
+                                    total_running_time=0,
+                                    stop_stations="[]",
+                                    comments=f"自动识别自图片: {photo.filename}"
+                                )
+                                db.add(new_ticket)
+                                db.flush()
+                                t_info['saved_id'] = new_ticket.id
+                                added_count += 1
+                                
+                            except Exception as ex:
+                                logger.error(f"Error saving ticket to DB: {ex}")
+                        
+                        if added_count > 0:
+                            logger.info(f"Successfully added {added_count} tickets from photo {photo.id}")
+
                     # Update processed status
                     tasks_status = photo.processed_tasks or {}
                     tasks_status['tickets'] = True
                     photo.processed_tasks = tasks_status
-                    
-                    # NOTE: Here we could save the structured ticket info to a DB table if one existed.
-                    # For now, the result is returned and will be stored in Task.result
-                    # logger.info(f"Ticket task result for photo {photo.id}: {result}")
                     
                     db.add(photo)
                     db.commit()

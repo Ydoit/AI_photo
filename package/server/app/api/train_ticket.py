@@ -28,10 +28,103 @@ from app.crud.train_ticket import (
 from app.db.models.trip import TrainTicket
 from app.schemas.train_ticket import TrainTicketResponse, TrainTicketCreate, TrainTicketListResponse, TrainTicketUpdate
 from app.dependencies import get_db
+from app.core.config_manager import config_manager
+import aiohttp
+from aiohttp import FormData
 
 router = APIRouter()
 
 # ------------------- 火车票接口 -------------------
+
+@router.post("/recognize", summary="识别车票图片")
+async def recognize_ticket(
+    file: UploadFile = File(..., description="车票图片"),
+):
+    """
+    上传车票图片并调用AI服务进行识别
+    返回识别到的结构化数据
+    """
+    try:
+        # 1. 读取文件内容
+        file_content = await file.read()
+        
+        # 2. 构造请求发送给AI服务
+        async with aiohttp.ClientSession() as session:
+            form_data = FormData()
+            form_data.add_field(
+                name='file',
+                value=file_content,
+                filename=file.filename,
+                content_type=file.content_type or 'image/jpeg'
+            )
+            
+            api_url = f"{config_manager.config.ai.ai_api_url}/tickets/predict"
+            
+            async with session.post(api_url, data=form_data) as response:
+                if response.status != 200:
+                    raise HTTPException(status_code=500, detail=f"AI服务请求失败: {response.status}")
+                
+                result = await response.json()
+                
+                if not result or 'tickets' not in result or not result['tickets']:
+                    raise HTTPException(status_code=400, detail="未能识别出车票信息")
+                
+                # 获取第一张识别出的车票
+                ticket_info = result['tickets'][0]
+                
+                # 3. 数据格式化
+                processed_data = {}
+                
+                # 映射字段
+                field_mapping = {
+                    'train_code': 'train_code',
+                    'departure_station': 'departure_station',
+                    'arrival_station': 'arrival_station',
+                    'seat_num': 'seat_num',
+                    'seat_type': 'seat_type',
+                    'name': 'name',
+                    'carriage': 'carriage'
+                }
+                
+                for k, v in field_mapping.items():
+                    if ticket_info.get(k):
+                        processed_data[v] = ticket_info[k]
+                
+                # 处理日期时间
+                if ticket_info.get('datetime'):
+                    dt_str = ticket_info.get('datetime')
+                    dt = None
+                    formats = [
+                        "%Y年%m月%d日 %H:%M",
+                        "%Y年%m月%d日%H:%M",
+                        "%Y-%m-%d %H:%M",
+                        "%Y/%m/%d %H:%M"
+                    ]
+                    for fmt in formats:
+                        try:
+                            dt = datetime.strptime(dt_str, fmt)
+                            # 转换为前端友好的 ISO 格式 (YYYY-MM-DDTHH:mm)
+                            processed_data['datetime'] = dt.strftime("%Y-%m-%dT%H:%M")
+                            break
+                        except ValueError:
+                            continue
+                
+                # 处理价格
+                if ticket_info.get('price'):
+                    price_str = str(ticket_info.get('price')).replace('元', '').replace('￥', '').strip()
+                    try:
+                        processed_data['price'] = float(price_str)
+                    except:
+                        processed_data['price'] = 0
+                        
+                return processed_data
+
+    except Exception as e:
+        # 如果是 HTTPException 直接抛出
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=f"识别处理失败: {str(e)}")
+
 
 @router.post("/import", summary="导入车票数据")
 async def import_tickets(

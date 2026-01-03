@@ -33,7 +33,8 @@ IO_TASKS = {
     TaskType.SCAN_FOLDER,
     TaskType.RECOGNIZE_FACE,
     TaskType.OCR,
-    TaskType.CLASSIFY_IMAGE
+    TaskType.CLASSIFY_IMAGE,
+    TaskType.RECOGNIZE_TICKET
 }
 
 class TaskWorker:
