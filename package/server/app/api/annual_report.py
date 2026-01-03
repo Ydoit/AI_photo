@@ -2,7 +2,9 @@ from typing import List, Optional, Dict
 from datetime import datetime
 import random
 import math
-from fastapi import APIRouter, Depends, Query
+import logging
+
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract, desc
 from pydantic import BaseModel
@@ -12,14 +14,17 @@ from app.db.models.photo import Photo, ImageType, FileType
 from app.db.models.photo_metadata import PhotoMetadata
 from app.db.models.face import Face, FaceIdentity
 from app.db.models.tag import PhotoTag, PhotoTagRelation
+from app.db.models.trip import TrainTicket
 from app.schemas.annual_report import (
     AnnualReportData, UserInfo, TimeMetrics, MemoryMetrics, 
     EmotionMetrics, LocationMetrics, SeasonMetrics, SeasonData,
     EasterEgg, EasterEggTags, CategoryDistributionItem, TopCity,
-    LocationPoint, CarouselGroup
+    LocationPoint, CarouselGroup, ExpenseMetrics, MonthlyExpense,
+    TicketDetail
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 from app.schemas.photo import Photo as PhotoSchema
 
@@ -58,6 +63,92 @@ def get_annual_report_photos(
             monthly_groups[month].append(p)
 
     return monthly_groups
+
+
+@router.get("/expenses", response_model=ExpenseMetrics)
+def get_report_expenses(
+    start_time: datetime = Query(..., description="Start Time"),
+    end_time: datetime = Query(..., description="End Time"),
+    db: Session = Depends(get_db)
+):
+    query = db.query(TrainTicket).filter(
+        TrainTicket.date_time >= start_time,
+        TrainTicket.date_time <= end_time
+    )
+    
+    total_count = query.count()
+    
+    # Calculate total amount
+    total_amount_result = query.with_entities(func.sum(TrainTicket.price)).scalar()
+    total_amount = float(total_amount_result) if total_amount_result else 0.0
+    
+    average_price = total_amount / total_count if total_count > 0 else 0.0
+    
+    # Max expense
+    max_expense_ticket = query.order_by(TrainTicket.price.desc()).first()
+    max_expense_amount = float(max_expense_ticket.price) if max_expense_ticket else 0.0
+    max_expense_name = f"{max_expense_ticket.train_code} ({max_expense_ticket.departure_station}-{max_expense_ticket.arrival_station})" if max_expense_ticket else None
+    
+    # Monthly trend
+    # Group by month
+    monthly_data = db.query(
+        extract('year', TrainTicket.date_time).label('year'),
+        extract('month', TrainTicket.date_time).label('month'),
+        func.sum(TrainTicket.price).label('amount')
+    ).filter(
+        TrainTicket.date_time >= start_time,
+        TrainTicket.date_time <= end_time
+    ).group_by(
+        'year', 'month'
+    ).order_by(
+        'year', 'month'
+    ).all()
+    
+    monthly_trend = []
+    for row in monthly_data:
+        # row is (year, month, amount)
+        monthly_trend.append(MonthlyExpense(
+            month=f"{int(row.year)}-{int(row.month):02d}",
+            amount=float(row.amount)
+        ))
+        
+    return ExpenseMetrics(
+        totalAmount=total_amount,
+        totalCount=total_count,
+        averagePrice=average_price,
+        monthlyTrend=monthly_trend,
+        maxExpenseTicket=max_expense_name,
+        maxExpenseAmount=max_expense_amount
+    )
+
+@router.get("/expenses/details", response_model=List[TicketDetail])
+def get_report_expense_details(
+    start_time: datetime = Query(..., description="Start Time"),
+    end_time: datetime = Query(..., description="End Time"),
+    db: Session = Depends(get_db)
+):
+    try:
+        tickets = db.query(TrainTicket).filter(
+            TrainTicket.date_time >= start_time,
+            TrainTicket.date_time <= end_time
+        ).order_by(TrainTicket.date_time.desc()).all()
+        
+        result = []
+        for t in tickets:
+            result.append(TicketDetail(
+                id=str(t.id),
+                train_code=t.train_code,
+                departure_station=t.departure_station,
+                arrival_station=t.arrival_station,
+                date_time=t.date_time,
+                price=float(t.price),
+                seat_type=t.seat_type,
+                name=t.name
+            ))
+        return result
+    except Exception as e:
+        logger.error(f"Failed to fetch expense details: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch expense details")
 
 
 def get_date_range_filter(query, start_time: datetime, end_time: datetime):

@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import datetime
 from pydantic import BaseModel
 
 from app.schemas.photo import Photo
@@ -74,6 +75,28 @@ class SeasonData(BaseModel):
 
 class SeasonMetrics(BaseModel):
     seasonList: List[SeasonData]
+
+class MonthlyExpense(BaseModel):
+    month: str
+    amount: float
+
+class ExpenseMetrics(BaseModel):
+    totalAmount: float
+    totalCount: int
+    averagePrice: float
+    monthlyTrend: List[MonthlyExpense]
+    maxExpenseTicket: Optional[str] = None
+    maxExpenseAmount: Optional[float] = 0
+
+class TicketDetail(BaseModel):
+    id: str
+    train_code: str
+    departure_station: str
+    arrival_station: str
+    date_time: datetime
+    price: float
+    seat_type: str
+    name: str
 
 class EasterEggTags(BaseModel):
     main: str
