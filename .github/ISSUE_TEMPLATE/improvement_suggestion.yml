@@ -1,0 +1,30 @@
+name: 改进建议 (Improvement Suggestion)
+description: 针对现有功能的改进建议
+title: "[Improvement]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢您的建议！请描述您认为可以改进的地方。
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: 当前行为
+      description: 描述当前的功能是如何工作的。
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: 建议的改进
+      description: 描述您希望如何改进它。
+    validations:
+      required: true
+  - type: textarea
+    id: reason
+    attributes:
+      label: 理由
+      description: 为什么您认为这是一个好的改进？
+    validations:
+      required: true
