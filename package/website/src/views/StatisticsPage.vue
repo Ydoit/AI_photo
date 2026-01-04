@@ -15,8 +15,11 @@
         </h1>
       </div>
       
-      <div class="flex bg-white dark:bg-slate-800 rounded-lg p-1 border border-slate-200 dark:border-slate-700">
-        <span class="px-3 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 self-center">2024</span>
+      <div class="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-lg p-1 border border-slate-200 dark:border-slate-700">
+        <span class="px-3 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 self-center">年份</span>
+        <select v-model="selectedYear" class="px-3 py-1 text-xs bg-transparent text-slate-700 dark:text-slate-200 outline-none">
+          <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
+        </select>
       </div>
     </div>
 
@@ -40,6 +43,9 @@
               超过了 <span class="text-blue-600 dark:text-blue-400 font-bold">92%</span> 的旅行者
             </div>
           </div>
+          <div v-if="loading" class="absolute inset-0 flex items-center justify-center">
+            <div class="w-8 h-8 border-4 border-slate-200 dark:border-slate-700 border-t-primary-500 rounded-full animate-spin"></div>
+          </div>
         </div>
 
         <div class="relative overflow-hidden bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700">
@@ -52,10 +58,16 @@
             </div>
             <div class="flex items-baseline gap-2">
               <span class="text-4xl font-bold text-slate-800 dark:text-white font-mono">{{ totalStats.cities }}</span>
-              <span class="text-sm text-slate-500">个</span>
+             <span class="text-sm text-slate-500">个</span>
             </div>
              <div class="mt-2 text-xs text-slate-400">
-              最北到达 <span class="text-emerald-600 dark:text-emerald-400 font-bold">哈尔滨</span>
+              最北到达 
+              <span 
+                class="text-emerald-600 dark:text-emerald-400 font-bold"
+                :title="northCities.length ? northCities.map(c => `${c.name}(${c.lon.toFixed(6)}, ${c.lat.toFixed(6)})`).join('；') : ''"
+              >
+                {{ northCities.length ? northCities.map(c => c.name).join('、') : '未知' }}
+              </span>
             </div>
           </div>
         </div>
@@ -69,11 +81,11 @@
               <span class="text-sm text-slate-500 dark:text-slate-400 font-medium">在路上</span>
             </div>
             <div class="flex items-baseline gap-2">
-              <span class="text-4xl font-bold text-slate-800 dark:text-white font-mono">{{ totalStats.hours }}</span>
-              <span class="text-sm text-slate-500">小时</span>
+              <span class="text-4xl font-bold text-slate-800 dark:text-white font-mono">{{ totalStats.days }}</span>
+              <span class="text-sm text-slate-500">天</span>
             </div>
-             <div class="mt-2 text-xs text-slate-400">
-              约等于连续乘坐 <span class="text-purple-600 dark:text-purple-400 font-bold">2.5</span> 天
+            <div class="mt-2 text-xs text-slate-400">
+              去重乘车天数 <span class="text-purple-600 dark:text-purple-400 font-bold">{{ totalStats.days }}</span> 天
             </div>
           </div>
         </div>
@@ -88,14 +100,31 @@
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 h-80 flex flex-col">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 h-80 flex flex-col relative">
           <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-4">出行频率趋势</h3>
           <div ref="trendChart" class="flex-1 w-full"></div>
+          <div v-if="loading" class="absolute inset-0 flex items-center justify-center">
+            <div class="w-8 h-8 border-4 border-slate-200 dark:border-slate-700 border-t-primary-500 rounded-full animate-spin"></div>
+          </div>
+          <div v-else-if="computeAggregates(selectedYear).monthlyCounts.reduce((a,b)=>a+b,0)===0" class="absolute inset-0 flex items-center justify-center text-slate-400 text-sm">
+            暂无数据
+          </div>
         </div>
         
-        <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 h-80 flex flex-col">
-          <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-4">最爱去的城市</h3>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 h-80 flex flex-col relative">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-slate-800 dark:text-white">最爱去的城市</h3>
+            <button @click="toggleShowAllCities" class="text-xs px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600">
+              {{ showAllCities ? '收起' : '查看更多' }}
+            </button>
+          </div>
           <div ref="barChart" class="flex-1 w-full"></div>
+          <div v-if="loading" class="absolute inset-0 flex items-center justify-center">
+            <div class="w-8 h-8 border-4 border-slate-200 dark:border-slate-700 border-t-primary-500 rounded-full animate-spin"></div>
+          </div>
+          <div v-else-if="computeAggregates(selectedYear).cityRanking.length===0" class="absolute inset-0 flex items-center justify-center text-slate-400 text-sm">
+            暂无数据
+          </div>
         </div>
       </div>
 
@@ -103,48 +132,77 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, watch, onUnmounted, computed } from 'vue';
 import * as echarts from 'echarts';
 import { ArrowLeft, Route, MapPin, Clock } from 'lucide-vue-next';
 import { injectTheme } from '@/composables/useTheme';
+import { useTicketStore } from '@/stores/ticketStore';
+import { useStorage } from '@vueuse/core';
+import { railwayRequest } from '@/api/requestFactory';
+import { ticketService } from '@/api/ticketService';
 
-// 接收父组件传入的主题和模式
-const props = defineProps({
-  isDarkMode: Boolean,
-  themeColor: String, // '#1E88E5' etc
-  tickets: {
-    type: Array,
-    default: () => []
-  }
-});
+// 接收父组件传入的主题和模式（移除未使用的props）
 
 // 2. 注入全局状态
 const { isDarkMode, currentTheme } = injectTheme();
 
 // 3. 提取所需的响应式值
-const isDark = isDarkMode;
 const themeColor = computed(() => currentTheme.value.primary);
 defineEmits(['back']);
 
 // --- DOM Refs ---
-const mapContainer = ref(null);
-const trendChart = ref(null);
-const barChart = ref(null);
-let myMap = null;
-let myTrend = null;
-let myBar = null;
+const mapContainer = ref<HTMLDivElement | null>(null);
+const trendChart = ref<HTMLDivElement | null>(null);
+const barChart = ref<HTMLDivElement | null>(null);
+let myMap: echarts.ECharts | null = null;
+let myTrend: echarts.ECharts | null = null;
+let myBar: echarts.ECharts | null = null;
 
-// --- 模拟数据 (Demo用，实际应由 props.tickets 计算) ---
+// --- 车票数据接入与统计 ---
+const ticketStore = useTicketStore();
+const loading = ref(false);
+const error = ref('');
+
+const selectedYear = useStorage<number>('stats-selected-year', new Date().getFullYear());
+const availableYears = ref<number[]>([selectedYear.value]);
+
+interface Aggregates {
+  distance: number;
+  cities: number;
+  days: number;
+  monthlyCounts: number[];
+  cityRanking: { name: string; count: number }[];
+  routes: { from: string; to: string }[];
+  points: { name: string; value: [number, number, number] }[];
+}
+const cache = new Map<number, Aggregates>();
+const missingLinearDistanceCache = new Map<number, number>();
+
 const totalStats = ref({
-  distance: 12580,
-  cities: 14,
-  hours: 68
+  distance: 0,
+  cities: 0,
+  days: 0
 });
+const showAllCities = ref(false);
+
+function getTicketYear(t: any): number {
+  const s = String(t?.date_time || t?.datetime || t?.dateTime || '');
+  const y = Number(s.slice(0, 4));
+  return isFinite(y) ? y : 0;
+}
+
+function safeMileage(val: any): number {
+  const n = Number(val);
+  if (!isFinite(n) || isNaN(n)) return 0;
+  if (n < 0) return 0;
+  if (n > 1000000) return 0;
+  return n;
+}
 
 // --- 城市经纬度字典 (核心：ECharts 需要经纬度) ---
 // 实际项目中建议后端返回或引入完整的城市坐标库
-const cityCoords = {
+const cityCoords: Record<string, [number, number]> = {
   '北京南': [116.407526, 39.90403], '北京': [116.407526, 39.90403],
   '上海虹桥': [121.473701, 31.230416], '上海': [121.473701, 31.230416],
   '广州南': [113.264434, 23.129162], '广州': [113.264434, 23.129162],
@@ -159,45 +217,177 @@ const cityCoords = {
   '哈尔滨': [126.534967, 45.803775],
   '兰州西': [103.834303, 36.061089],
   '拉萨': [91.140856, 29.645554],
-  '乌鲁木齐': [87.616848, 43.825592]
+  '乌鲁木齐': [87.616848, 43.825592],
+  '南京': [118.796877, 32.060255],
+  '长沙': [112.938814, 28.228209],
+  '兰州': [103.834303, 36.061089],
+  '柳州': [109.41552, 24.32543],
+  '郑州': [113.665412, 34.757975],
+  '济南': [117.000923, 36.675807],
+  '合肥': [117.283042, 31.86119],
+  '福州': [119.306239, 26.074507],
+  '南宁': [108.320004, 22.82402],
+  '昆明': [102.712251, 25.040609],
+  '贵阳': [106.713478, 26.578343],
+  '天津': [117.200983, 39.084158],
+  '青岛': [120.38264, 36.067082],
+  '厦门': [118.089425, 24.479834],
+  '苏州': [120.619586, 31.299379],
+  '宁波': [121.550357, 29.874556],
+  '沈阳': [123.431475, 41.686982],
+  '大连': [121.618622, 38.91459],
+  '长春': [125.323544, 43.817072]
 };
 
-// --- ECharts 初始化逻辑 ---
+function computeFeatureCenter(feature: any): [number, number] | null {
+  const geom = feature?.geometry;
+  if (!geom) return null;
+  const type = geom.type;
+  const coords = geom.coordinates;
+  let xs = 0, ys = 0, n = 0;
+  if (type === 'Polygon' && Array.isArray(coords)) {
+    const ring = coords[0];
+    if (Array.isArray(ring)) {
+      for (let i = 0; i < ring.length; i++) {
+        const p = ring[i];
+        if (Array.isArray(p) && p.length >= 2) {
+          xs += Number(p[0]) || 0;
+          ys += Number(p[1]) || 0;
+          n += 1;
+        }
+      }
+    }
+  } else if (type === 'MultiPolygon' && Array.isArray(coords)) {
+    const poly = coords[0];
+    if (Array.isArray(poly)) {
+      const ring = poly[0];
+      if (Array.isArray(ring)) {
+        for (let i = 0; i < ring.length; i++) {
+          const p = ring[i];
+          if (Array.isArray(p) && p.length >= 2) {
+            xs += Number(p[0]) || 0;
+            ys += Number(p[1]) || 0;
+            n += 1;
+          }
+        }
+      }
+    }
+  }
+  if (n === 0) return null;
+  return [xs / n, ys / n];
+}
+
+function buildCityCoordsFromGeojson(geojson: any) {
+  const features = geojson?.features || [];
+  for (const f of features) {
+    const props = (f as any).properties || {};
+    const name: string | undefined = props.name || props.fullname;
+    let cp: [number, number] | undefined = props.cp || props.center;
+    if ((!cp || cp.length < 2) && f?.geometry) {
+      const c = computeFeatureCenter(f);
+      if (c) cp = c;
+    }
+    if (name && Array.isArray(cp) && cp.length >= 2) {
+      const norm = normalizeCity(name);
+      cityCoords[norm] = [cp[0], cp[1]];
+      if (name.endsWith('市')) {
+        const alias = name.slice(0, -1);
+        cityCoords[normalizeCity(alias)] = [cp[0], cp[1]];
+      }
+    }
+  }
+}
+
+// 站点到城市归一化
+function normalizeCity(station: string): string {
+  const explicit: Record<string, string> = {
+    '北京南': '北京', '北京北': '北京', '北京西': '北京', '北京朝阳': '北京', '北京大兴': '北京', '北京': '北京',
+    '天津南': '天津', '天津西': '天津', '天津': '天津',
+    '上海虹桥': '上海', '上海南': '上海', '上海西': '上海', '上海': '上海',
+    '广州南': '广州', '广州北': '广州', '广州': '广州',
+    '深圳北': '深圳', '深圳': '深圳',
+    '成都东': '成都', '成都': '成都',
+    '重庆北': '重庆', '重庆东': '重庆', '重庆西': '重庆', '重庆南': '重庆', '重庆': '重庆',
+    '杭州东': '杭州', '杭州': '杭州',
+    '西安北': '西安', '西安': '西安',
+    '南京南': '南京', '南京': '南京',
+    '长沙南': '长沙', '长沙': '长沙',
+    '兰州西': '兰州', '兰州': '兰州',
+    '哈尔滨': '哈尔滨', '拉萨': '拉萨', '乌鲁木齐': '乌鲁木齐',
+    '青岛北': '青岛', '青岛': '青岛',
+    '厦门北': '厦门', '厦门': '厦门',
+    '苏州北': '苏州', '苏州': '苏州',
+    '宁波东': '宁波', '宁波': '宁波',
+    '沈阳北': '沈阳', '沈阳': '沈阳',
+    '大连北': '大连', '大连': '大连',
+    '长春西': '长春', '长春': '长春'
+  };
+  if (explicit[station]) return explicit[station];
+  return (station || '').replace(/(东|西|南|北|虹桥|火车站)$/u, '') || station;
+}
+
+function computeAggregates(year: number): Aggregates {
+  const cached = cache.get(year);
+  if (cached) return cached;
+  const tickets = (ticketStore.tickets || []).filter(t => getTicketYear(t) === year);
+  let distance = 0;
+  for (let i = 0; i < tickets.length; i++) {
+    distance += safeMileage((tickets[i] as any).total_mileage);
+  }
+  distance = Math.round(distance);
+  const extraMissing = missingLinearDistanceCache.get(year) || 0;
+  distance += Math.round(extraMissing);
+  const daySet = new Set();
+  tickets.forEach(t => {
+    const date = (t.date_time || '').split(' ')[0];
+    if (date) daySet.add(date);
+  });
+  const days = daySet.size;
+  const citySet = new Set();
+  tickets.forEach(t => {
+    citySet.add(normalizeCity(t.departure_station));
+    citySet.add(normalizeCity(t.arrival_station));
+  });
+  const cities = citySet.size;
+  const monthlyCounts = Array(12).fill(0);
+  tickets.forEach(t => {
+    const m = Number((t.date_time || '').slice(5, 7));
+    if (m >= 1 && m <= 12) monthlyCounts[m - 1] += 1;
+  });
+  const cityCountMap = new Map<string, number>();
+  tickets.forEach(t => {
+    const city = normalizeCity(t.arrival_station);
+    cityCountMap.set(city, (cityCountMap.get(city) || 0) + 1);
+  });
+  const cityRanking = Array.from(cityCountMap.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+  const routes = tickets.map(t => ({ from: normalizeCity(t.departure_station), to: normalizeCity(t.arrival_station) }));
+  const pointSet = new Map<string, [number, number, number]>();
+  routes.forEach(r => {
+    const fc = cityCoords[r.from] || cityCoords[normalizeCity(r.from)];
+    const tc = cityCoords[r.to] || cityCoords[normalizeCity(r.to)];
+    if (fc) pointSet.set(r.from, [fc[0], fc[1], 10]);
+    if (tc) pointSet.set(r.to, [tc[0], tc[1], 10]);
+  });
+  const points = Array.from(pointSet.entries()).map(([name, value]) => ({ name, value }));
+  const result: Aggregates = { distance, cities, days, monthlyCounts, cityRanking, routes, points };
+  cache.set(year, result);
+  return result;
+}
 
 // 1. 准备地图数据 (Lines 和 Points)
 const getMapData = () => {
-  // 模拟一些线路数据，实际应遍历 props.tickets
-  const routes = [
-    { from: '北京南', to: '上海虹桥' },
-    { from: '上海虹桥', to: '成都东' },
-    { from: '成都东', to: '重庆北' },
-    { from: '广州南', to: '长沙南' },
-    { from: '长沙南', to: '武汉' },
-    { from: '武汉', to: '北京南' },
-    { from: '西安北', to: '兰州西' },
-    { from: '兰州西', to: '乌鲁木齐' } // 长距离展示曲线效果好
-  ];
-
-  const linesData = [];
-  const pointsData = new Set();
-
+  const { routes, points } = computeAggregates(selectedYear.value);
+  const linesData: { coords: [[number, number], [number, number]] }[] = [];
   routes.forEach(route => {
-    const fromCoord = cityCoords[route.from];
-    const toCoord = cityCoords[route.to];
-    
+    const fromCoord = cityCoords[route.from] || cityCoords[normalizeCity(route.from)];
+    const toCoord = cityCoords[route.to] || cityCoords[normalizeCity(route.to)];
     if (fromCoord && toCoord) {
-      linesData.push({
-        coords: [fromCoord, toCoord]
-      });
-      pointsData.add(JSON.stringify({ name: route.from, value: [...fromCoord, 10] })); // value[2] can be weight
-      pointsData.add(JSON.stringify({ name: route.to, value: [...toCoord, 10] }));
+      linesData.push({ coords: [fromCoord, toCoord] });
     }
   });
-
-  return {
-    lines: linesData,
-    points: Array.from(pointsData).map(JSON.parse)
-  };
+  return { lines: linesData, points };
 };
 
 // 2. 初始化地图
@@ -211,6 +401,7 @@ const initMap = async () => {
     const response = await fetch('/api/medias/geojson?level=city');
     const chinaJson = await response.json();
     echarts.registerMap('china', chinaJson);
+    buildCityCoordsFromGeojson(chinaJson);
 
     renderMap();
   } catch (e) {
@@ -223,7 +414,7 @@ const renderMap = () => {
   if (!myMap) return;
 
   const { lines, points } = getMapData();
-  const isDark = props.isDarkMode;
+  const isDark = isDarkMode.value;
   const mainColor = themeColor.value || '#1E88E5';
 
   const option = {
@@ -321,11 +512,13 @@ const renderMap = () => {
 
 // 3. 初始化普通图表
 const initCharts = () => {
-  const isDark = props.isDarkMode;
+  if (!trendChart.value || !barChart.value) return;
+  const isDark = isDarkMode.value;
   const textColor = isDark ? '#cbd5e1' : '#475569';
   const mainColor = themeColor.value || '#1E88E5';
 
-  // --- 趋势图 (Line) ---
+  myTrend?.dispose();
+  myBar?.dispose();
   myTrend = echarts.init(trendChart.value);
   myTrend.setOption({
     backgroundColor: 'transparent',
@@ -333,7 +526,7 @@ const initCharts = () => {
     grid: { top: 30, right: 20, bottom: 20, left: 40, containLabel: true },
     xAxis: {
       type: 'category',
-      data: ['1月', '2月', '3月', '4月', '5月', '6月'],
+      data: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
       axisLine: { lineStyle: { color: isDark ? '#475569' : '#cbd5e1' } },
       axisLabel: { color: textColor }
     },
@@ -343,7 +536,7 @@ const initCharts = () => {
       axisLabel: { color: textColor }
     },
     series: [{
-      data: [1, 3, 2, 5, 4, 8],
+      data: computeAggregates(selectedYear.value).monthlyCounts,
       type: 'line',
       smooth: true,
       symbol: 'none',
@@ -358,8 +551,9 @@ const initCharts = () => {
     }]
   });
 
-  // --- 柱状图 (Bar) ---
   myBar = echarts.init(barChart.value);
+  const ranking = computeAggregates(selectedYear.value).cityRanking;
+  const top = showAllCities ? ranking : ranking.slice(0, 5);
   myBar.setOption({
     backgroundColor: 'transparent',
     tooltip: { trigger: 'axis' },
@@ -370,14 +564,14 @@ const initCharts = () => {
     },
     yAxis: {
       type: 'category',
-      data: ['武汉', '重庆', '上海', '北京'],
+      data: top.map(i => i.name),
       axisLine: { show: false },
       axisTick: { show: false },
       axisLabel: { color: textColor, fontWeight: 'bold' }
     },
     series: [{
       type: 'bar',
-      data: [3, 5, 8, 12],
+      data: top.map(i => i.count),
       barWidth: 20,
       itemStyle: {
         borderRadius: [0, 10, 10, 0],
@@ -396,9 +590,25 @@ const initCharts = () => {
 };
 
 // --- Lifecycle ---
-onMounted(() => {
-  initMap();
-  initCharts();
+onMounted(async () => {
+  loading.value = true;
+  error.value = '';
+  try {
+    await ticketStore.fetchTickets();
+    const years = Array.from(new Set(ticketStore.tickets.map(t => getTicketYear(t)).filter(y => isFinite(y) && y > 0))).sort((a, b) => b - a);
+    availableYears.value = years.length ? years : [selectedYear.value];
+    await ensureLinearDistancesForYear(selectedYear.value);
+    const agg = computeAggregates(selectedYear.value);
+    totalStats.value = { distance: agg.distance, cities: agg.cities, days: agg.days };
+    initMap();
+    initCharts();
+  } catch (e) {
+    const msg = (e as any)?.message || '加载失败';
+    console.error('Load tickets failed', e);
+    error.value = msg;
+  } finally {
+    loading.value = false;
+  }
   
   window.addEventListener('resize', handleResize);
 });
@@ -421,6 +631,74 @@ watch(() => [isDarkMode.value, currentTheme.value], () => {
   renderMap(); // Map needs specific option rebuild
   initCharts(); // Charts simple rebuild
 });
+
+watch(() => ticketStore.tickets, async () => {
+  cache.clear();
+  missingLinearDistanceCache.clear();
+  await ensureLinearDistancesForYear(selectedYear.value);
+  const agg = computeAggregates(selectedYear.value);
+  totalStats.value = { distance: agg.distance, cities: agg.cities, days: agg.days };
+  renderMap();
+  initCharts();
+}, { deep: true });
+
+watch(selectedYear, async () => {
+  await ensureLinearDistancesForYear(selectedYear.value);
+  const agg = computeAggregates(selectedYear.value);
+  totalStats.value = { distance: agg.distance, cities: agg.cities, days: agg.days };
+  renderMap();
+  initCharts();
+});
+
+function toggleShowAllCities() {
+  showAllCities.value = !showAllCities.value;
+  initCharts();
+}
+
+const northCities = computed<{ name: string; lon: number; lat: number }[]>(() => {
+  const pts = computeAggregates(selectedYear.value).points || [];
+  const valid = pts
+    .map(p => {
+      const v = Array.isArray(p.value) ? p.value : [NaN, NaN];
+      const lon = Number(v[0]);
+      const lat = Number(v[1]);
+      return { name: String(p.name || ''), lon, lat };
+    })
+    .filter(p => isFinite(p.lon) && isFinite(p.lat));
+  if (!valid.length) return [];
+  let maxLat = -Infinity;
+  for (const p of valid) {
+    if (p.lat > maxLat) maxLat = p.lat;
+  }
+  const eps = 1e-9;
+  return valid.filter(p => Math.abs(p.lat - maxLat) <= eps);
+});
+
+async function ensureLinearDistancesForYear(year: number) {
+  if (missingLinearDistanceCache.has(year)) return;
+  const tickets = (ticketStore.tickets || []).filter(t => {
+    const y = getTicketYear(t);
+    const d = Number(t.total_mileage || 0);
+    return y === year && (!isFinite(d) || d <= 0);
+  });
+  const pairs = tickets.map(t => ({ from: t.departure_station, to: t.arrival_station }));
+  if (!pairs.length) {
+    missingLinearDistanceCache.set(year, 0);
+    return;
+  }
+  try {
+    const res = await railwayRequest<{ list: { from: string; to: string; distance_km: number | null }[]; added_total_km: number; total_km: number }>({
+      url: '/railway/distance/batch',
+      method: 'POST',
+      data: pairs
+    });
+    const list = (res.data?.list || []) as any[];
+    const sum = list.reduce((s, i) => s + (typeof i.distance_km === 'number' ? i.distance_km : 0), 0);
+    missingLinearDistanceCache.set(year, sum);
+  } catch (e) {
+    missingLinearDistanceCache.set(year, 0);
+  }
+}
 
 </script>
 
