@@ -99,9 +99,9 @@ class TrainOperationPlanCreate(BaseModel):
     status: int = Field(ge=0, le=1, default=1, description="状态：1=正常，0=停运")
 
     @field_validator("custom_run_days")
-    def check_custom_run_days(cls, v, values):
+    def check_custom_run_days(cls, v, info):
         """验证自定义开行日期：run_rule=5时必填，格式正确"""
-        if values.data.get("run_rule") == 5 and not v:
+        if info.data.get("run_rule") == 5 and not v:
             raise ValueError("run_rule=5时，custom_run_days不能为空")
         if v:
             for day in v:
@@ -112,10 +112,12 @@ class TrainOperationPlanCreate(BaseModel):
         return v
 
     @field_validator("end_date")
-    def check_date_order(cls, v, values):
+    def check_date_order(cls, v, info):
         """验证开始日期<=结束日期"""
-        if v and values.get("start_date") > v:
-            raise ValueError("开始日期不能晚于结束日期")
+        if v:
+            start_date = info.data.get("start_date")
+            if start_date and start_date > v:
+                raise ValueError("开始日期不能晚于结束日期")
         return v
 
 
@@ -333,3 +335,23 @@ class TrainWithOperationPlanRead(TrainRead):
 class TrainScheduleWithStationRead(TrainScheduleRead):
     """包含车站信息的时刻表响应"""
     station: Optional[StationRead] = Field(None, description="关联车站信息")
+
+# ------------------------------ 统计查询相关（新增）------------------------------
+class TicketItem(BaseModel):
+    id: Optional[str] = Field(None, description="车票唯一标识（可选，用于回传）")
+    train_code: str = Field(..., description="车次号（如G123）")
+    departure_station: str = Field(..., description="出发站名称")
+    arrival_station: str = Field(..., description="到达站名称")
+    date_time: Optional[str] = Field(None, description="乘车日期（YYYY-MM-DD或YYYY-MM-DD HH:MM:SS，可选）")
+
+class TicketBatchRequest(BaseModel):
+    items: List[TicketItem] = Field(..., description="车票列表")
+
+class TicketStats(BaseModel):
+    id: Optional[str] = Field(None, description="车票唯一标识")
+    distance_km: float = Field(0, description="旅程距离（公里）")
+    duration_minutes: int = Field(0, description="旅程时长（分钟）")
+    train_no: Optional[str] = Field(None, description="匹配到的内部车次号")
+
+class TicketBatchResponse(BaseResponse[List[TicketStats]]):
+    pass

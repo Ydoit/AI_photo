@@ -66,17 +66,29 @@
               </template>
             </StatsCard>
 
-            <StatsCard label="累计旅程时长" :icon="Clock">
+            <StatsCard label="总时长" :icon="Clock">
               <template #value>
-                <span class="text-3xl font-bold text-slate-800 dark:text-white">{{ totalDuration.hours }}<span class="text-sm font-normal text-slate-500 ml-0.5">h</span></span>
-                <span class="text-lg font-semibold text-slate-600 dark:text-slate-300">{{ totalDuration.minutes }}<span class="text-xs font-normal text-slate-500 ml-0.5">m</span></span>
+                <div v-if="loading && tickets.length > 0 && !statsMap" class="flex items-center gap-2">
+                  <div class="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span class="text-sm text-slate-400">计算中...</span>
+                </div>
+                <div v-else>
+                  <span class="text-3xl font-bold text-slate-800 dark:text-white">{{ totalDuration.hours }}<span class="text-sm font-normal text-slate-500 ml-0.5">小时</span></span>
+                  <span class="text-lg font-semibold text-slate-600 dark:text-slate-300">{{ totalDuration.minutes }}<span class="text-xs font-normal text-slate-500 ml-0.5">分钟</span></span>
+                </div>
               </template>
             </StatsCard>
 
-            <StatsCard :label="`绕赤道 ${(totalDistance / 40075).toFixed(2)} 圈`" :icon="Route">
+            <StatsCard label="总里程" :icon="Route">
               <template #value>
-                <span class="text-3xl font-bold text-slate-800 dark:text-white">{{ totalDistance.toLocaleString() }}</span>
-                <span class="text-xs text-slate-500 dark:text-slate-400">km</span>
+                <div v-if="loading && tickets.length > 0 && !statsMap" class="flex items-center gap-2">
+                  <div class="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span class="text-sm text-slate-400">计算中...</span>
+                </div>
+                <div v-else>
+                  <span class="text-3xl font-bold text-slate-800 dark:text-white">{{ totalDistance.toLocaleString() }}</span>
+                  <span class="text-xs text-slate-500 dark:text-slate-400">km</span>
+                </div>
               </template>
             </StatsCard>
           </div>
@@ -264,7 +276,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { 
   TrainFront, Search, Plus, MapPin, Clock, Route,
   ChevronDown, Trash2, X, User, RefreshCw, Database
@@ -283,6 +295,7 @@ import type {
   FilterType
 } from '@/types/ticket';
 import { ticketService } from '@/api/ticketService';
+import { railwayService, type TicketStats } from '@/api/railway';
 import { formatTicketToFrontend, formatFormToBackend, debounce } from '@/utils/ticketFormatters';
 import { injectTheme } from '@/composables/useTheme';
 
@@ -304,7 +317,8 @@ const {
   selectedPassenger,
   viewMode,
   loading,
-  error
+  error,
+  statsMap
 } = storeToRefs(ticketStore);
 
 const selectedTickets = ref<number[]>([]);
@@ -314,6 +328,19 @@ const showCityModal = ref(false);
 const saving = ref(false);
 // 初始编辑对象，使用 Partial 或特定类型
 const currentTicket = ref<Partial<TicketFormData>>({});
+
+// 监听车票变化，自动更新统计数据
+watch(tickets, () => {
+  // 已经在 Store 的 fetchTickets 中触发了 fetchAndCacheStats，但如果是本地修改导致的 tickets 变化，
+  // 也应该尝试刷新统计（如果需要）。
+  // 由于 fetchTickets 已经包含了调用，这里其实主要是为了应对非 fetchTickets 引起的 tickets 变化
+  // 或者为了确保数据最新。
+  // 考虑到性能，我们可以加一个防抖，或者只在必要时调用。
+  // 目前 Store 中的 fetchTickets 已经处理了大部分情况。
+  // 如果是新增/编辑车票，updateLocalTicket 被调用，此时 tickets 变了。
+  // 我们可以在这里调用 store.fetchAndCacheStats()。
+  ticketStore.fetchAndCacheStats();
+}, { deep: true });
 
 // 排序选项配置
 const sortOptions: { label: string; value: SortType }[] = [
@@ -415,12 +442,29 @@ const uniquePassengers = computed(() => {
   return Array.from(passengers).sort();
 });
 
-const totalDistance = computed(() => 
-  tickets.value.reduce((sum, t) => sum + (t.total_mileage || 0), 0)
-);
+const totalDistance = computed(() => {
+  // 优先使用 Store 中的 statsMap
+  let sum = 0;
+  for (const t of tickets.value) {
+    if (t.id && statsMap.value[t.id]) {
+      sum += statsMap.value[t.id].distance_km;
+    } else {
+      sum += (t.total_mileage || 0);
+    }
+  }
+  return Math.round(sum);
+});
 
 const totalDuration = computed(() => {
-  const totalMinutes = tickets.value.reduce((sum, t) => sum + (t.total_running_time || 0), 0);
+  let totalMinutes = 0;
+  for (const t of tickets.value) {
+    if (t.id && statsMap.value[t.id]) {
+      totalMinutes += statsMap.value[t.id].duration_minutes;
+    } else {
+      totalMinutes += (t.total_running_time || 0);
+    }
+  }
+  
   return {
     hours: Math.floor(totalMinutes / 60),
     minutes: totalMinutes % 60
