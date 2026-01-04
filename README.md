@@ -104,7 +104,7 @@ networks:
     driver: bridge
 ```
 
-1. 启动服务
+3. 启动服务
 
 ```bash
 docker-compose up -d

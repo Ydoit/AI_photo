@@ -116,7 +116,7 @@ const prevTestimonial = () => {
         <div class="flex justify-between items-center">
           <!-- Logo -->
           <div class="flex items-center cursor-pointer" @click="goLink('/')">
-            <div class="text-primary text-2xl mr-2">📷</div> <!-- Placeholder for Logo Icon -->
+            <img src="/logo.svg" alt="行影集 Logo" class="w-8 h-8 mr-2">
             <div class="flex flex-col">
               <span class="text-xl font-bold text-neutral-dark dark:text-white leading-none">行影集</span>
               <span class="text-xs text-primary font-light">TrailSnap</span>
@@ -425,7 +425,7 @@ const prevTestimonial = () => {
           <div>
             <h4 class="text-lg font-bold mb-6">联系我们</h4>
             <ul class="space-y-3 text-sm text-white/80">
-              <li>邮箱：sixyuan@gmail.com</li>
+              <li>邮箱：sixyuan044@gmail.com</li>
               <li>微信公众号：忆墨痕</li>
               <li class="relative group">
                 QQ群：

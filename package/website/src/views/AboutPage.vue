@@ -3,9 +3,9 @@
   <div class="about-page max-w-4xl mx-auto p-6 space-y-12">
     <!-- 项目介绍 -->
     <section class="space-y-4">
-      <h1 class="text-4xl font-bold text-slate-800 dark:text-slate-100">关于拾光物语 (TrailSnap)</h1>
+      <h1 class="text-4xl font-bold text-slate-800 dark:text-slate-100">关于行影集 (TrailSnap)</h1>
       <p class="text-lg text-slate-600 dark:text-slate-300">
-        拾光物语是一个基于 Vue 3 + TypeScript 开发的现代化 Web 应用，旨在记录和管理个人的出行轨迹与车票信息。
+        TrailSnap 是一个智能化的 AI 相册应用，致力于帮助用户轻松记录、整理和回顾自己的出行经历。通过强大的 AI 处理能力，让每一张照片和每一段旅程都成为值得珍藏的记忆。
       </p>
     </section>
 
@@ -13,40 +13,11 @@
     <section class="space-y-4">
       <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">项目背景</h2>
       <p class="text-slate-600 dark:text-slate-300">
-        在快节奏的现代生活中，我们常常忘记记录那些珍贵的出行瞬间。拾光物语致力于帮助用户轻松记录、整理和回顾自己的出行经历，
-        让每一段旅程都成为值得珍藏的记忆。
+        我相信未来每个人（至少每个家庭）都有一个属于自己的 AI 数据中心，而相册是数据中心的一个重要数据来源，它留存了你生活中的很多瞬间，而 AI 相册则是将这些瞬间转化为有价值的记忆，它可以帮你默默地记录下相册里的车票、景点门票，可以帮你记录旅行中的所见所闻，可以帮你自动整理出可以发朋友圈的照片（甚至帮你准备好文案），可以帮你剪一段15s的短视频······。
       </p>
-    </section>
-
-    <!-- 技术栈 -->
-    <section class="space-y-4">
-      <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">技术栈</h2>
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-          <h3 class="font-semibold text-slate-700 dark:text-slate-300">前端框架</h3>
-          <p class="text-slate-500 dark:text-slate-400">Vue 3 + TypeScript</p>
-        </div>
-        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-          <h3 class="font-semibold text-slate-700 dark:text-slate-300">路由管理</h3>
-          <p class="text-slate-500 dark:text-slate-400">Vue Router</p>
-        </div>
-        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-          <h3 class="font-semibold text-slate-700 dark:text-slate-300">UI组件库</h3>
-          <p class="text-slate-500 dark:text-slate-400">Element Plus</p>
-        </div>
-        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-          <h3 class="font-semibold text-slate-700 dark:text-slate-300">样式方案</h3>
-          <p class="text-slate-500 dark:text-slate-400">Tailwind CSS</p>
-        </div>
-        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-          <h3 class="font-semibold text-slate-700 dark:text-slate-300">状态管理</h3>
-          <p class="text-slate-500 dark:text-slate-400">Pinia</p>
-        </div>
-        <div class="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-          <h3 class="font-semibold text-slate-700 dark:text-slate-300">图表库</h3>
-          <p class="text-slate-500 dark:text-slate-400">ECharts</p>
-        </div>
-      </div>
+      <p class="text-slate-600 dark:text-slate-300">
+        所以，我给这个项目命名为<strong>《行影集》</strong>，在这里你的数据才 “真正属于你”。
+      </p>
     </section>
 
     <!-- 主要功能 -->
@@ -55,19 +26,19 @@
       <ul class="space-y-2 text-slate-600 dark:text-slate-300">
         <li class="flex items-start gap-2">
           <span class="text-primary-500 mt-1">•</span>
-          <span>车票信息管理：添加、编辑、删除和查看车票信息</span>
+          <span>智能相册：自动分类、标签和搜索照片</span>
         </li>
         <li class="flex items-start gap-2">
           <span class="text-primary-500 mt-1">•</span>
-          <span>数据可视化：通过图表展示出行统计信息</span>
+          <span>AI能力：一句话生成游记、Vlog智能剪辑（待实现）</span>
         </li>
         <li class="flex items-start gap-2">
           <span class="text-primary-500 mt-1">•</span>
-          <span>响应式设计：适配不同屏幕尺寸的设备</span>
+          <span>行程票据：自动识别和分类行程中的票据</span>
         </li>
         <li class="flex items-start gap-2">
           <span class="text-primary-500 mt-1">•</span>
-          <span>深色模式：支持亮色和暗色主题切换</span>
+          <span>数据可视化：足迹地图、旅行统计图表、城市打卡点</span>
         </li>
       </ul>
     </section>
@@ -77,15 +48,26 @@
       <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">联系方式</h2>
       <div class="flex flex-col gap-3">
         <div class="flex items-center gap-4 text-slate-600 dark:text-slate-300">
-          <span class="font-semibold">作者：</span>
-          <span>SiYuan</span>
-        </div>
-        <div class="flex items-center gap-4 text-slate-600 dark:text-slate-300">
           <span class="font-semibold">邮箱：</span>
           <a href="mailto:sixyuan044@gmail.com" class="text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 transition-colors">
             sixyuan044@gmail.com
           </a>
         </div>
+        <div class="flex items-center gap-4 text-slate-600 dark:text-slate-300">
+          <span class="font-semibold">QQ群：</span>
+          <span>1078946004</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 官网 -->
+     <section class="space-y-4">
+      <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">官网</h2>
+      <div class="flex items-center gap-4 text-slate-600 dark:text-slate-300">
+        <span class="font-semibold">TrailSnap 官网：</span>
+        <a href="https://trailsnap.cn/" target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 transition-colors flex items-center gap-2">
+          <span>trailsnap.cn</span>
+        </a>
       </div>
     </section>
 
