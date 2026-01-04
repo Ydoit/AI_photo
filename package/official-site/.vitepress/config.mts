@@ -4,6 +4,9 @@ export default defineConfig({
   base: '/',
   title: "TrailSnap 行影集",
   description: "AI 驱动的智能相册与旅行足迹记录工具",
+  head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }]
+  ],
   themeConfig: {
     nav: [
       { text: '首页', link: '/' },
