@@ -19,7 +19,8 @@ from railway.schemas import (
     StationRead, StationCreate, BaseResponse, StationSingleQuery, StationListQuery, StationListResponse,
     TrainScheduleRead, TrainScheduleListQuery, TrainScheduleSingleQuery, TrainScheduleBatchCreate, TrainListQuery,
     TrainSingleQuery, TrainRead, TrainCreate, TrainOperationPlanRead, TrainOperationPlanListQuery,
-    TrainOperationPlanSingleQuery, TrainOperationPlanCreate, TrainListResponse, TrainScheduleResponse
+    TrainOperationPlanSingleQuery, TrainOperationPlanCreate, TrainListResponse, TrainScheduleResponse,
+    TicketBatchRequest, TicketStats, TicketBatchResponse
 )
 from railway.crud import (
     create_station, get_station_single, get_station_list, get_train_full_schedule, delete_train_schedule,
@@ -28,7 +29,7 @@ from railway.crud import (
     get_train_operation_plan_list, get_train_operation_plan_single, create_train_operation_plan,
     get_schedule_by_train_code_and_date,
 )
-from railway.db.models.models import Train
+from railway.db.models.models import Train, TrainSchedule, TrainOperationPlan
 from railway.db.dependencies import get_db
 
 router = APIRouter()
@@ -353,6 +354,88 @@ def query_schedule_by_train_code_and_date(
     """
     code, msg, data = get_schedule_by_train_code_and_date(db, train_code, query_date)
     return BaseResponse(code=code, msg=msg, data=data)
+
+# ------------------------------ 统计查询接口（新增）------------------------------
+@router.post("/stats/batch", response_model=TicketBatchResponse, summary="批量计算车票里程和时长")
+def batch_calculate_stats(
+    request: TicketBatchRequest,
+    db: Session = Depends(get_db)
+):
+    results = []
+    # 1. 收集所有车次号
+    train_codes = set(item.train_code for item in request.items)
+    if not train_codes:
+        return BaseResponse(data=[])
+
+    # 2. 批量查询车次对应关系 (Train Code -> Train No)
+    trains = db.query(Train).filter(Train.train_code.in_(train_codes)).all()
+    
+    code_to_train_nos = {}
+    for t in trains:
+        if t.train_code not in code_to_train_nos:
+            code_to_train_nos[t.train_code] = []
+        code_to_train_nos[t.train_code].append(t.train_no)
+
+    # 3. 收集相关的 train_no，准备查询时刻表
+    all_train_nos = []
+    for nos in code_to_train_nos.values():
+        all_train_nos.extend(nos)
+    
+    # 4. 批量查询时刻表
+    if all_train_nos:
+        schedules = db.query(TrainSchedule).filter(
+            TrainSchedule.train_no.in_(all_train_nos)
+        ).all()
+    else:
+        schedules = []
+
+    # 构建内存索引: train_no -> { station_name -> schedule_record }
+    schedule_map = {}
+    for s in schedules:
+        if s.train_no not in schedule_map:
+            schedule_map[s.train_no] = {}
+        schedule_map[s.train_no][s.station_name] = s
+
+    # 5. 遍历请求项计算结果
+    for item in request.items:
+        stats = TicketStats(id=item.id, distance_km=0, duration_minutes=0)
+        
+        candidate_nos = code_to_train_nos.get(item.train_code, [])
+        best_no = None
+        
+        # 寻找包含出发和到达站的 train_no
+        for no in candidate_nos:
+            s_map = schedule_map.get(no, {})
+            if item.departure_station in s_map and item.arrival_station in s_map:
+                best_no = no
+                break
+        
+        if best_no:
+            s_map = schedule_map[best_no]
+            dep = s_map[item.departure_station]
+            arr = s_map[item.arrival_station]
+            
+            # 计算距离
+            try:
+                dist = float(arr.accumulated_mileage) - float(dep.accumulated_mileage)
+                if dist < 0: dist = 0
+                stats.distance_km = dist
+            except:
+                stats.distance_km = 0
+            
+            # 计算时长
+            try:
+                dur = arr.running_time - dep.running_time
+                if dur < 0: dur = 0
+                stats.duration_minutes = dur
+            except:
+                stats.duration_minutes = 0
+                
+            stats.train_no = best_no
+            
+        results.append(stats)
+
+    return BaseResponse(data=results)
 
 if __name__ == "__main__":
     import uvicorn

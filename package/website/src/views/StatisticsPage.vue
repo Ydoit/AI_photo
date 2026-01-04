@@ -328,11 +328,24 @@ function normalizeCity(station: string): string {
 
 function computeAggregates(year: number): Aggregates {
   const cached = cache.get(year);
-  if (cached) return cached;
+  // 我们想要实时性，所以如果 store 更新了，最好不要使用太久的缓存。
+  // 但为了性能，可以暂时保留缓存逻辑，或者依赖 ticketStore 的响应性。
+  // 这里的 cache 是组件内的 Map，如果 ticketStore 变了，selectedYear 变了，会重新计算。
+  // 但是 cache.get(year) 会阻止重新计算。
+  // 建议移除这个简单的 cache，或者确保 cache key 包含 ticketStore 的 version/timestamp。
+  // 简单起见，移除 cache 检查，或者清空 cache on update。
+  // if (cached) return cached;
+  
   const tickets = (ticketStore.tickets || []).filter(t => getTicketYear(t) === year);
   let distance = 0;
   for (let i = 0; i < tickets.length; i++) {
-    distance += safeMileage((tickets[i] as any).total_mileage);
+    const t = tickets[i];
+    // 优先使用 Store 中的 statsMap (精确计算值)
+    if (t.id && ticketStore.statsMap && ticketStore.statsMap[t.id]) {
+      distance += ticketStore.statsMap[t.id].distance_km;
+    } else {
+      distance += safeMileage((t as any).total_mileage);
+    }
   }
   distance = Math.round(distance);
   const extraMissing = missingLinearDistanceCache.get(year) || 0;
@@ -632,7 +645,7 @@ watch(() => [isDarkMode.value, currentTheme.value], () => {
   initCharts(); // Charts simple rebuild
 });
 
-watch(() => ticketStore.tickets, async () => {
+watch(() => [ticketStore.tickets, ticketStore.statsMap], async () => {
   cache.clear();
   missingLinearDistanceCache.clear();
   await ensureLinearDistancesForYear(selectedYear.value);
@@ -678,6 +691,10 @@ async function ensureLinearDistancesForYear(year: number) {
   if (missingLinearDistanceCache.has(year)) return;
   const tickets = (ticketStore.tickets || []).filter(t => {
     const y = getTicketYear(t);
+    // 如果 statsMap 中有数据，则不需要降级计算直线距离
+    if (t.id && ticketStore.statsMap && ticketStore.statsMap[t.id] && ticketStore.statsMap[t.id].distance_km > 0) {
+      return false;
+    }
     const d = Number(t.total_mileage || 0);
     return y === year && (!isFinite(d) || d <= 0);
   });

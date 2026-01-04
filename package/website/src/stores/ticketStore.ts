@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useStorage } from '@vueuse/core';
 import type { TicketBackend, TicketQueryParams } from '@/types/ticket';
 import { ticketService } from '@/api/ticketService';
+import { railwayService, type TicketStats, type TicketItem } from '@/api/railway';
 
 export const useTicketStore = defineStore('ticket', () => {
   // --- State Persistence (LocalStorage) ---
@@ -15,6 +16,9 @@ export const useTicketStore = defineStore('ticket', () => {
 
   // 搜索状态
   const searchQuery = useStorage<string>('ticket-search-query', '');
+  
+  // 统计数据缓存 (ID -> Stats)
+  const statsMap = useStorage<Record<string, TicketStats>>('ticket-stats-map', {});
 
   // --- Data Cache (In-Memory) ---
   const tickets = ref<TicketBackend[]>([]);
@@ -26,6 +30,38 @@ export const useTicketStore = defineStore('ticket', () => {
   const CACHE_DURATION = 5 * 60 * 1000; // 5分钟缓存
 
   // --- Actions ---
+
+  /**
+   * 批量获取统计数据并更新缓存
+   */
+  async function fetchAndCacheStats() {
+    if (tickets.value.length === 0) return;
+
+    try {
+      const items: TicketItem[] = tickets.value.map(t => ({
+        id: String(t.id),
+        train_code: t.train_code,
+        departure_station: t.departure_station,
+        arrival_station: t.arrival_station,
+        date_time: t.date_time
+      }));
+
+      const res = await railwayService.getBatchStats(items);
+      if (res.code === 200 && res.data) {
+        // 更新缓存
+        const newMap = { ...statsMap.value };
+        res.data.forEach(stat => {
+          if (stat.id) {
+            newMap[stat.id] = stat;
+          }
+        });
+        statsMap.value = newMap;
+      }
+    } catch (err) {
+      console.error('Failed to fetch batch stats:', err);
+      // 不抛出错误，以免影响主流程，仅记录日志
+    }
+  }
 
   /**
    * 获取车票数据
@@ -54,6 +90,11 @@ export const useTicketStore = defineStore('ticket', () => {
       const res = await ticketService.getTickets(params);
       tickets.value = res.items || [];
       lastFetchTime.value = now;
+      
+      // 获取车票后，自动触发统计数据更新
+      // 不等待其完成，异步执行
+      fetchAndCacheStats();
+      
     } catch (err: any) {
       error.value = err.response?.data?.detail || '获取车票失败，请重试';
       console.error('Fetch tickets error:', err);
@@ -112,12 +153,14 @@ export const useTicketStore = defineStore('ticket', () => {
     loading,
     error,
     lastFetchTime,
+    statsMap,
     
     // Actions
     fetchTickets,
     refreshData,
     resetFilters,
     updateLocalTicket,
-    removeLocalTickets
+    removeLocalTickets,
+    fetchAndCacheStats
   };
 });
