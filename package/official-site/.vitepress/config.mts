@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitepress'
-
-export default defineConfig({
+import { withMermaid } from "vitepress-plugin-mermaid";
+export default withMermaid(defineConfig({
   base: '/',
   title: "TrailSnap 行影集",
   description: "AI 驱动的智能相册与旅行足迹记录工具",
@@ -64,4 +64,4 @@ export default defineConfig({
       copyright: '版权所有 © 2025-至今 TrailSnap'
     }
   }
-})
+}))

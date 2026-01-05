@@ -65,14 +65,14 @@ TrailSnap/
 项目依赖 PostgreSQL 和 pgvector 插件。推荐使用 Docker 启动：由于文档部署限制，请直接查看项目源码中 `package/server/README.md` 文件。
 
 ### 4.2 安装依赖
-推荐使用 `uv` 进行包管理，也可以使用 `pip`。
+推荐使用 `uv` 进行包管理。
 
 ```bash
 cd package/server
+# 安装 uv
+pip install uv
 # 使用 uv
 uv sync
-# 或者使用 pip
-pip install -r requirements.txt
 ```
 
 ### 4.3 配置文件
@@ -85,8 +85,11 @@ AI_URL=http://localhost:8001
 
 ### 4.4 运行服务
 ```bash
+# 第一次运行是需要初始化数据库
+python start.py
+
 # 开发模式启动
-uvicorn app.main:app --reload --port 8000
+uvicorn main:app --reload --port 8000
 ```
 API 文档地址：`http://localhost:8000/docs`
 
@@ -148,3 +151,22 @@ uvicorn app.main:app --reload --port 8001
    - `alembic current`: 查看当前版本
    - `alembic history`: 查看历史版本
    - `alembic downgrade -1`: 回滚上一个版本
+
+## 8. 打包docker镜像
+
+```bash
+cd TrailSnap
+# 一键打包docker镜像
+docker-compose up -d --build
+```
+
+```bash
+# 打包前端镜像
+docker build -t siyuan044/trailsnap-frontend:master -f package/website/Dockerfile .
+
+# 打包后端镜像
+docker build -t siyuan044/trailsnap-backend:master -f package/server/Dockerfile .
+
+# 打包AI镜像
+docker build -t siyuan044/trailsnap-ai:master -f package/ai/Dockerfile .
+```

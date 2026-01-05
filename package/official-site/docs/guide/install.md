@@ -105,9 +105,9 @@ TrailSnap 支持多种部署方式，推荐使用 Docker Compose 进行快速部
    ```
 
 4. **访问应用**
+   服务启动后，通过浏览器访问: `http://localhost:8082`
 
-   服务启动后，通过浏览器访问：
-   - 前端页面: `http://localhost:8082`
+5. **访问后端 API**
    - 后端 API: `http://localhost:8800/docs`
    - AI 服务文档: `http://localhost:8801/docs`
 

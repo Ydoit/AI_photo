@@ -176,8 +176,8 @@ const prevTestimonial = () => {
             
             <!-- Tags -->
             <div class="flex flex-wrap justify-center lg:justify-start gap-3 mb-10">
-              <span class="px-4 py-2 bg-secondary dark:bg-secondary/20 rounded-full text-sm text-neutral-dark dark:text-gray-200 hover:-translate-y-1 transition-transform cursor-default">AI自动整理</span>
-              <span class="px-4 py-2 bg-secondary dark:bg-secondary/20 rounded-full text-sm text-neutral-dark dark:text-gray-200 hover:-translate-y-1 transition-transform cursor-default">票据智能识别</span>
+              <span class="px-4 py-2 bg-secondary dark:bg-secondary/20 rounded-full text-sm text-neutral-dark dark:text-gray-200 hover:-translate-y-1 transition-transform cursor-default">AI智能分类</span>
+              <span class="px-4 py-2 bg-secondary dark:bg-secondary/20 rounded-full text-sm text-neutral-dark dark:text-gray-200 hover:-translate-y-1 transition-transform cursor-default">车票智能识别</span>
               <span class="px-4 py-2 bg-secondary dark:bg-secondary/20 rounded-full text-sm text-neutral-dark dark:text-gray-200 hover:-translate-y-1 transition-transform cursor-default">可视化数据</span>
             </div>
 
@@ -189,7 +189,7 @@ const prevTestimonial = () => {
           </div>
 
           <!-- Visual Content -->
-          <div class="w-[80%] lg:w-[45%] relative flex justify-center">
+          <div class="w-[60%] lg:w-[30%] relative flex justify-center">
             <div class="relative w-full max-w-md animate-float">
               <!-- Main Visual Placeholder (Phone App Interface) -->
               <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-float overflow-hidden border-8 border-white dark:border-slate-700 transform rotate-3 relative z-10 aspect-[9/16] flex items-center justify-center bg-gray-100 dark:bg-slate-900">
@@ -233,7 +233,7 @@ const prevTestimonial = () => {
     <section class="py-20 bg-white dark:bg-slate-900">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
-          <h2 class="text-3xl font-bold text-neutral-dark dark:text-white mb-4">核心特色 · 重新定义出行记忆</h2>
+          <h2 class="text-3xl font-bold text-neutral-dark dark:text-white mb-4">核心特色 · 重新定义相册记忆</h2>
           <div class="w-16 h-1 bg-primary mx-auto rounded-full"></div>
         </div>
 
@@ -425,7 +425,7 @@ const prevTestimonial = () => {
           <div>
             <h4 class="text-lg font-bold mb-6">联系我们</h4>
             <ul class="space-y-3 text-sm text-white/80">
-              <li>邮箱：sixyuan044@gmail.com</li>
+              <li>邮箱：<a href="mailto:sixyuan044@gmail.com" class="hover:text-primary transition-colors">sixyuan044@gmail.com</a></li>
               <li>微信公众号：忆墨痕</li>
               <li class="relative group">
                 QQ群：
@@ -440,6 +440,7 @@ const prevTestimonial = () => {
                   <div class="absolute top-full left-4 border-8 border-transparent border-t-white"></div>
                 </div>
               </li>
+              <li>GitHub：<a href="https://github.com/LC044/TrailSnap" target="_blank" class="cursor-pointer border-b border-dashed border-white/40 hover:text-primary hover:border-primary transition-colors">LC044/TrailSnap</a></li>
             </ul>
           </div>
           <!-- Col 4 -->

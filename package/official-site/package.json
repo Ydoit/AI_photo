@@ -13,9 +13,11 @@
   "license": "ISC",
   "devDependencies": {
     "autoprefixer": "^10.4.23",
+    "mermaid": "^11.12.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "vitepress": "^1.0.0",
+    "vitepress-plugin-mermaid": "^2.0.17",
     "vue": "^3.5.0"
   },
   "dependencies": {
