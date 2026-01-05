@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { getReportEasterEgg, getReportSummary ,getReportMemory, getReportLocation, getReportSeason, getReportEmotion, getReportExpenses} from '@/api/annualReport';
+import { getReportEasterEgg, getReportSummary ,getReportMemory, getReportLocation, getReportSeason, getReportEmotion, getReportExpenses, getReportTransportAnalysis } from '@/api/annualReport';
 import type { AnnualReportData } from '@/types/annualReport';
 import AnnualContainer from '@/components/annual-report/AnnualContainer.vue';
 import SectionCover from '@/components/annual-report/SectionCover.vue';
@@ -8,6 +8,7 @@ import SectionPhotoWall from '@/components/annual-report/SectionPhotoWall.vue';
 import SectionTime from '@/components/annual-report/SectionTime.vue';
 import SectionAccount from '@/components/annual-report/SectionAccount.vue';
 import SectionExpense from '@/components/annual-report/SectionExpense.vue';
+import SectionTransportAnalysis from '@/components/annual-report/SectionTransportAnalysis.vue';
 import SectionCategory from '@/components/annual-report/SectionCategory.vue';
 import SectionHighlight from '@/components/annual-report/SectionHighlight.vue';
 import SectionEmotion from '@/components/annual-report/SectionEmotion.vue';
@@ -43,6 +44,8 @@ onMounted(async () => {
     reportData.value.easterEgg = easterEggData;
     const expenseData = await getReportExpenses(startTime, endTime);
     reportData.value.expense = expenseData;
+    const transportAnalysisData = await getReportTransportAnalysis(startTime, endTime);
+    reportData.value.transportAnalysis = transportAnalysisData;
   } catch (error) {
     console.error('Failed to load report data', error);
   } finally {
@@ -84,6 +87,9 @@ const handleReplay = () => {
 
         <!-- 3.5 Expense -->
         <SectionExpense v-if="reportData.expense" :data="reportData.expense" :startTime="startTime" :endTime="endTime" />
+
+        <!-- 3.6 Transport Analysis (Merged Behavior & Comprehensive) -->
+        <SectionTransportAnalysis v-if="reportData.transportAnalysis" :data="reportData.transportAnalysis" />
 
         <!-- 4. Category -->
         <SectionCategory :data="reportData.memory" />
