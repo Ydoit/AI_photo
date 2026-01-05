@@ -8,7 +8,10 @@ import type {
   EmotionMetrics, 
   EasterEgg,
   ExpenseMetrics,
-  TicketDetail
+  TicketDetail,
+  TravelBehaviorMetrics,
+  ComprehensiveMetrics,
+  TransportAnalysisMetrics
 } from '@/types/annualReport';
 import type { Photo } from '@/types/album';
 import axios from 'axios'
@@ -113,6 +116,26 @@ export async function getReportEasterEgg(startTime: string, endTime: string): Pr
 
 export async function getAnnualReportPhotos(startTime: string, endTime: string): Promise<Record<number, Photo[]>> {
   const { data } = await api.get<Record<number, Photo[]>>('/api/annual-report/photos', {
+    params: {
+        start_time: startTime,
+        end_time: endTime
+    }
+  });
+  return data
+}
+
+export async function getReportTravelBehavior(startTime: string, endTime: string): Promise<TravelBehaviorMetrics> {
+  const { data } = await api.get<TravelBehaviorMetrics>('/api/annual-report/travel-behavior', {
+    params: {
+        start_time: startTime,
+        end_time: endTime
+    }
+  });
+  return data
+}
+
+export async function getReportTransportAnalysis(startTime: string, endTime: string): Promise<TransportAnalysisMetrics> {
+  const { data } = await api.get<TransportAnalysisMetrics>('/api/annual-report/transport-analysis', {
     params: {
         start_time: startTime,
         end_time: endTime
