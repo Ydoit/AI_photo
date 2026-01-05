@@ -92,8 +92,48 @@ export interface ExpenseMetrics {
   totalCount: number;
   averagePrice: number;
   monthlyTrend: MonthlyExpense[];
+  totalAmountLastYear?: number;
+  monthlyTrendLastYear?: MonthlyExpense[];
   maxExpenseTicket?: string;
   maxExpenseAmount?: number;
+}
+
+export interface MonthlyFrequency {
+  month: string;
+  count: number;
+}
+
+export interface RouteStats {
+  route: string;
+  count: number;
+}
+
+export interface DestinationStats {
+  city: string;
+  count: number;
+}
+
+export interface TripTypeDistribution {
+  workday: number;
+  weekend: number;
+  holiday: number;
+}
+
+export interface TravelBehaviorMetrics {
+  monthlyFrequency: MonthlyFrequency[];
+  topRoutes: RouteStats[];
+  topDestinations: DestinationStats[];
+  tripTypeDistribution: TripTypeDistribution;
+}
+
+export interface ComprehensiveMetrics {
+  totalMileage: number;
+  costPerKm: number;
+}
+
+export interface TransportAnalysisMetrics {
+  behavior: TravelBehaviorMetrics;
+  comprehensive: ComprehensiveMetrics;
 }
 
 export interface TicketDetail {
@@ -116,5 +156,8 @@ export interface AnnualReportData {
   location: LocationMetrics;
   season: SeasonMetrics;
   easterEgg: EasterEgg;
-  expense: ExpenseMetrics;
+  expense?: ExpenseMetrics;
+  travelBehavior?: TravelBehaviorMetrics;
+  comprehensive?: ComprehensiveMetrics;
+  transportAnalysis?: TransportAnalysisMetrics;
 }

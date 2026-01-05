@@ -85,8 +85,41 @@ class ExpenseMetrics(BaseModel):
     totalCount: int
     averagePrice: float
     monthlyTrend: List[MonthlyExpense]
+    totalAmountLastYear: Optional[float] = 0.0
+    monthlyTrendLastYear: List[MonthlyExpense] = []
     maxExpenseTicket: Optional[str] = None
     maxExpenseAmount: Optional[float] = 0
+
+class MonthlyFrequency(BaseModel):
+    month: str
+    count: int
+
+class RouteStats(BaseModel):
+    route: str
+    count: int
+
+class DestinationStats(BaseModel):
+    city: str
+    count: int
+
+class TripTypeDistribution(BaseModel):
+    workday: int
+    weekend: int
+    holiday: int
+
+class TravelBehaviorMetrics(BaseModel):
+    monthlyFrequency: List[MonthlyFrequency]
+    topRoutes: List[RouteStats]
+    topDestinations: List[DestinationStats]
+    tripTypeDistribution: TripTypeDistribution
+
+class ComprehensiveMetrics(BaseModel):
+    totalMileage: int
+    costPerKm: float
+
+class TransportAnalysisMetrics(BaseModel):
+    behavior: TravelBehaviorMetrics
+    comprehensive: ComprehensiveMetrics
 
 class TicketDetail(BaseModel):
     id: str
@@ -116,3 +149,7 @@ class AnnualReportData(BaseModel):
     location: LocationMetrics
     season: SeasonMetrics
     easterEgg: EasterEgg
+    expense: Optional[ExpenseMetrics] = None
+    travelBehavior: Optional[TravelBehaviorMetrics] = None
+    comprehensive: Optional[ComprehensiveMetrics] = None
+    transportAnalysis: Optional[TransportAnalysisMetrics] = None

@@ -189,39 +189,12 @@ const initCharts = () => {
   if (trendChartRef.value && props.data.monthlyTrend) {
     trendChart = echarts.init(trendChartRef.value);
     
-    const months = props.data.monthlyTrend.map(m => m.month);
+    const monthLabels = props.data.monthlyTrend.map(m => parseInt(m.month.split('-')[1]) + '月');
     const amounts = props.data.monthlyTrend.map(m => m.amount);
 
-    trendChart.setOption({
-      title: {
-        text: '月度支出趋势',
-        left: 'center',
-        textStyle: { fontSize: 14, color: '#888' }
-      },
-      tooltip: {
-        trigger: 'axis',
-        formatter: '{b}: ¥{c}'
-      },
-      grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '3%',
-        containLabel: true
-      },
-      xAxis: {
-        type: 'category',
-        data: months,
-        axisLine: { lineStyle: { color: '#ccc' } },
-        axisLabel: { color: '#888', interval: 0, rotate: 30 }
-      },
-      yAxis: {
-        type: 'value',
-        axisLine: { show: false },
-        axisLabel: { color: '#888' },
-        splitLine: { lineStyle: { type: 'dashed', color: '#eee' } }
-      },
-      series: [
+    const series: any[] = [
         {
+          name: '本年度',
           data: amounts,
           type: 'bar',
           itemStyle: {
@@ -236,7 +209,67 @@ const initCharts = () => {
             color: 'rgba(180, 180, 180, 0.1)'
           }
         }
-      ]
+    ];
+
+    if (props.data.monthlyTrendLastYear && props.data.monthlyTrendLastYear.length > 0) {
+        const lastYearMap = new Map(props.data.monthlyTrendLastYear.map(m => [parseInt(m.month.split('-')[1]), m.amount]));
+        const lastYearAmounts = props.data.monthlyTrend.map(m => {
+            const monthInt = parseInt(m.month.split('-')[1]);
+            return lastYearMap.get(monthInt) || 0;
+        });
+
+        series.push({
+            name: '去年同期',
+            data: lastYearAmounts,
+            type: 'line',
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 6,
+            itemStyle: { color: '#9CA3AF' },
+            lineStyle: { width: 2, type: 'dashed' }
+        });
+    }
+
+    trendChart.setOption({
+      title: {
+        text: '月度支出趋势 (同比)',
+        left: 'center',
+        textStyle: { fontSize: 14, color: '#888' }
+      },
+      tooltip: {
+        trigger: 'axis',
+        formatter: (params: any) => {
+            let res = `${params[0].name}<br/>`;
+            params.forEach((param: any) => {
+                res += `${param.marker}${param.seriesName}: ¥${param.value}<br/>`;
+            });
+            return res;
+        }
+      },
+      legend: {
+          bottom: 0,
+          data: ['本年度', '去年同期'],
+          textStyle: { color: '#888' }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '10%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category',
+        data: monthLabels,
+        axisLine: { lineStyle: { color: '#ccc' } },
+        axisLabel: { color: '#888', interval: 0 }
+      },
+      yAxis: {
+        type: 'value',
+        axisLine: { show: false },
+        axisLabel: { color: '#888' },
+        splitLine: { lineStyle: { type: 'dashed', color: '#eee' } }
+      },
+      series: series
     });
   }
 
