@@ -20,7 +20,9 @@ from app.schemas.annual_report import (
     EmotionMetrics, LocationMetrics, SeasonMetrics, SeasonData,
     EasterEgg, EasterEggTags, CategoryDistributionItem, TopCity,
     LocationPoint, CarouselGroup, ExpenseMetrics, MonthlyExpense,
-    TicketDetail
+    TicketDetail, TravelBehaviorMetrics, ComprehensiveMetrics,
+    MonthlyFrequency, RouteStats, DestinationStats, TripTypeDistribution,
+    TransportAnalysisMetrics
 )
 
 router = APIRouter()
@@ -28,11 +30,23 @@ logger = logging.getLogger(__name__)
 
 from app.schemas.photo import Photo as PhotoSchema
 
+@router.get("/transport-analysis", response_model=TransportAnalysisMetrics)
+def get_report_transport_analysis(
+    start_time: datetime = Query(..., description="Start Time"),
+    end_time: datetime = Query(..., description="End Time"),
+    db: Session = Depends(get_db)
+):
+    behavior = get_report_travel_behavior(start_time, end_time, db)
+    comprehensive = get_report_comprehensive(start_time, end_time, db)
+    return TransportAnalysisMetrics(
+        behavior=behavior,
+        comprehensive=comprehensive
+    )
 @router.get("/photos", response_model=Dict[int, List[PhotoSchema]])
 def get_annual_report_photos(
-        start_time: datetime = Query(..., description="Start Time"),
-        end_time: datetime = Query(..., description="End Time"),
-        db: Session = Depends(get_db)
+    start_time: datetime = Query(..., description="Start Time"),
+    end_time: datetime = Query(..., description="End Time"),
+    db: Session = Depends(get_db)
 ):
     # Query photos within the time range, ordered by time descending
     photos = db.query(Photo).join(PhotoMetadata, PhotoMetadata.photo_id == Photo.id)\
@@ -111,12 +125,50 @@ def get_report_expenses(
             month=f"{int(row.year)}-{int(row.month):02d}",
             amount=float(row.amount)
         ))
+
+    # Last Year Comparison
+    try:
+        start_time_last_year = start_time.replace(year=start_time.year - 1)
+        end_time_last_year = end_time.replace(year=end_time.year - 1)
+    except ValueError:
+        # Handle leap year case if necessary (e.g. Feb 29)
+        start_time_last_year = start_time.replace(year=start_time.year - 1, day=28)
+        end_time_last_year = end_time.replace(year=end_time.year - 1, day=28)
+
+    query_last_year = db.query(TrainTicket).filter(
+        TrainTicket.date_time >= start_time_last_year,
+        TrainTicket.date_time <= end_time_last_year
+    )
+    total_amount_last_year_result = query_last_year.with_entities(func.sum(TrainTicket.price)).scalar()
+    total_amount_last_year = float(total_amount_last_year_result) if total_amount_last_year_result else 0.0
+
+    monthly_data_last_year = db.query(
+        extract('year', TrainTicket.date_time).label('year'),
+        extract('month', TrainTicket.date_time).label('month'),
+        func.sum(TrainTicket.price).label('amount')
+    ).filter(
+        TrainTicket.date_time >= start_time_last_year,
+        TrainTicket.date_time <= end_time_last_year
+    ).group_by(
+        'year', 'month'
+    ).order_by(
+        'year', 'month'
+    ).all()
+
+    monthly_trend_last_year = []
+    for row in monthly_data_last_year:
+        monthly_trend_last_year.append(MonthlyExpense(
+            month=f"{int(row.year)}-{int(row.month):02d}",
+            amount=float(row.amount)
+        ))
         
     return ExpenseMetrics(
         totalAmount=total_amount,
         totalCount=total_count,
         averagePrice=average_price,
         monthlyTrend=monthly_trend,
+        totalAmountLastYear=total_amount_last_year,
+        monthlyTrendLastYear=monthly_trend_last_year,
         maxExpenseTicket=max_expense_name,
         maxExpenseAmount=max_expense_amount
     )
@@ -498,4 +550,121 @@ def get_report_easter_egg(
         bestPhotoUrl=f"https://picsum.photos/seed/best/400/600",
         bestPhotoDate="2024-10-01",
         tags=EasterEggTags(main="生活记录家", sub=['偏爱人像', '乐于收藏', '心怀温柔'])
+    )
+
+@router.get("/travel-behavior", response_model=TravelBehaviorMetrics)
+def get_report_travel_behavior(
+    start_time: datetime = Query(..., description="Start Time"),
+    end_time: datetime = Query(..., description="End Time"),
+    db: Session = Depends(get_db)
+):
+    # Monthly Frequency
+    monthly_data = db.query(
+        extract('year', TrainTicket.date_time).label('year'),
+        extract('month', TrainTicket.date_time).label('month'),
+        func.count(TrainTicket.id).label('count')
+    ).filter(
+        TrainTicket.date_time >= start_time,
+        TrainTicket.date_time <= end_time
+    ).group_by(
+        'year', 'month'
+    ).order_by(
+        'year', 'month'
+    ).all()
+
+    monthly_frequency = [
+        MonthlyFrequency(month=f"{int(row.year)}-{int(row.month):02d}", count=int(row.count))
+        for row in monthly_data
+    ]
+
+    # Top Routes
+    top_routes_data = db.query(
+        TrainTicket.departure_station,
+        TrainTicket.arrival_station,
+        func.count(TrainTicket.id).label('count')
+    ).filter(
+        TrainTicket.date_time >= start_time,
+        TrainTicket.date_time <= end_time
+    ).group_by(
+        TrainTicket.departure_station,
+        TrainTicket.arrival_station
+    ).order_by(
+        desc('count')
+    ).limit(5).all()
+
+    top_routes = [
+        RouteStats(route=f"{row.departure_station} -> {row.arrival_station}", count=int(row.count))
+        for row in top_routes_data
+    ]
+
+    # Top Destinations
+    top_destinations_data = db.query(
+        TrainTicket.arrival_station,
+        func.count(TrainTicket.id).label('count')
+    ).filter(
+        TrainTicket.date_time >= start_time,
+        TrainTicket.date_time <= end_time
+    ).group_by(
+        TrainTicket.arrival_station
+    ).order_by(
+        desc('count')
+    ).limit(5).all()
+
+    top_destinations = [
+        DestinationStats(city=row.arrival_station, count=int(row.count))
+        for row in top_destinations_data
+    ]
+
+    # Trip Type Distribution
+    tickets = db.query(TrainTicket).filter(
+        TrainTicket.date_time >= start_time,
+        TrainTicket.date_time <= end_time
+    ).all()
+    
+    workday_count = 0
+    weekend_count = 0
+    holiday_count = 0 
+    
+    for t in tickets:
+        wd = t.date_time.weekday() # 0-6, 5=Sat, 6=Sun
+        if wd >= 5:
+            weekend_count += 1
+        else:
+            workday_count += 1
+            
+    return TravelBehaviorMetrics(
+        monthlyFrequency=monthly_frequency,
+        topRoutes=top_routes,
+        topDestinations=top_destinations,
+        tripTypeDistribution=TripTypeDistribution(
+            workday=workday_count,
+            weekend=weekend_count,
+            holiday=holiday_count
+        )
+    )
+
+@router.get("/comprehensive", response_model=ComprehensiveMetrics)
+def get_report_comprehensive(
+    start_time: datetime = Query(..., description="Start Time"),
+    end_time: datetime = Query(..., description="End Time"),
+    db: Session = Depends(get_db)
+):
+    query = db.query(TrainTicket).filter(
+        TrainTicket.date_time >= start_time,
+        TrainTicket.date_time <= end_time
+    )
+    
+    # Total Mileage
+    total_mileage_result = query.with_entities(func.sum(TrainTicket.total_mileage)).scalar()
+    total_mileage = int(total_mileage_result) if total_mileage_result else 0
+    
+    # Cost per Km
+    total_price_result = query.with_entities(func.sum(TrainTicket.price)).scalar()
+    total_price = float(total_price_result) if total_price_result else 0.0
+    
+    cost_per_km = total_price / total_mileage if total_mileage > 0 else 0.0
+    
+    return ComprehensiveMetrics(
+        totalMileage=total_mileage,
+        costPerKm=round(cost_per_km, 2)
     )
