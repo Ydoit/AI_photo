@@ -4,7 +4,7 @@
 """
 @Time        : 2025/12/19 13:45
 @Author      : SiYuan
-@Email       : siyuan044@gmail.com
+@Email       : sixyuan044@gmail.com
 @File        : ai-logger.py
 @Description : 
 """

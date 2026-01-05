@@ -4,8 +4,8 @@
 """
 @Time        : 2025/8/10 22:29 
 @Author      : SiYuan 
-@Email       : siyuan044@gmail.com
-@File        : backend-album.py 
+@Email       : sixyuan044@gmail.com
+@File        : server-album.py 
 @Description : 
 """
 from sqlalchemy import Column, String, DateTime, Text, Integer, ForeignKey

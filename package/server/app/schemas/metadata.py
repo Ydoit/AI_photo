@@ -4,7 +4,7 @@
 """
 @Time        : 2025/12/21 21:15
 @Author      : SiYuan
-@Email       : siyuan044@gmail.com
+@Email       : sixyuan044@gmail.com
 @File        : server-metadata.py
 @Description : 
 """

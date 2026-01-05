@@ -4,7 +4,7 @@
 """
 @Time        : 2025/11/20 19:58
 @Author      : SiYuan
-@Email       : siyuan044@gmail.com
+@Email       : sixyuan044@gmail.com
 @File        : server-__init__.py.py
 @Description : 
 """

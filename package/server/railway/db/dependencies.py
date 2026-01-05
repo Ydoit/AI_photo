@@ -4,7 +4,7 @@
 """
 @Time        : 2025/11/18 21:18
 @Author      : SiYuan
-@Email       : siyuan044@gmail.com
+@Email       : sixyuan044@gmail.com
 @File        : server-dependencies.py
 @Description : 
 """

@@ -4,7 +4,7 @@
 """
 @Time        : 2025/11/23 23:14
 @Author      : SiYuan
-@Email       : siyuan044@gmail.com
+@Email       : sixyuan044@gmail.com
 @File        : server-train_ticket.py
 @Description : 
 """

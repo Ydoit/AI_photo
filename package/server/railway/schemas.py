@@ -4,7 +4,7 @@
 """
 @Time        : 2025/11/18 20:50
 @Author      : SiYuan
-@Email       : siyuan044@gmail.com
+@Email       : sixyuan044@gmail.com
 @File        : server-schemas.py
 @Description : 铁路时刻表系统 Pydantic Schema（适配版本化运行计划）
 """

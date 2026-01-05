@@ -4,7 +4,7 @@
 """
 @Time        : 2025/12/7 23:20
 @Author      : SiYuan
-@Email       : siyuan044@gmail.com
+@Email       : sixyuan044@gmail.com
 @File        : server-photo.py
 @Description : 
 """

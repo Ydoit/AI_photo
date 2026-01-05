@@ -5,7 +5,7 @@
 @Time        : 2025/5/10 22:31 
 @Author      : SiYuan 
 @Email       : sixyuan044@gmail.com 
-@File        : backend-dependencies.py 
+@File        : server-dependencies.py 
 @Description : 
 """
 from app.db.base import Base
