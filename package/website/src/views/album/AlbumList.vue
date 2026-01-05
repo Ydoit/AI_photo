@@ -3,13 +3,22 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-8">
       <h1 class="text-2xl font-bold text-gray-800 dark:text-white">我的相册</h1>
-      <button 
-        @click="openCreateModal"
-        class="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-primary-500/20 active:scale-95"
-      >
-        <Plus class="w-5 h-5" />
-        <span>新建相册</span>
-      </button>
+      
+      <el-dropdown trigger="click" @command="openCreateModal">
+        <button 
+          class="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-primary-500/20 active:scale-95"
+        >
+          <Plus class="w-5 h-5" />
+          <span>新建相册</span>
+        </button>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="user">普通相册</el-dropdown-item>
+            <el-dropdown-item command="conditional">条件相册</el-dropdown-item>
+            <el-dropdown-item command="smart">智能相册</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
     </div>
 
     <!-- Smart Albums Section -->
@@ -67,13 +76,16 @@
             <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
             <!-- Type Badge -->
             <div class="absolute top-2 right-2 flex gap-1">
-               <span v-if="album.type === 'smart' || album.type === 'conditional'" class="bg-black/50 backdrop-blur-sm text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
-                 <Sparkles class="w-3 h-3 text-yellow-400" /> 智能
+               <span v-if="album.type === 'smart'" class="bg-purple-500/80 backdrop-blur-sm text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                 <Sparkles class="w-3 h-3 text-white" /> 智能
+               </span>
+               <span v-if="album.type === 'conditional'" class="bg-blue-500/80 backdrop-blur-sm text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                 <Filter class="w-3 h-3 text-white" /> 条件
                </span>
             </div>
 
             <!-- Actions (Only for User Albums) -->
-            <div v-if="album.type === 'user'" class="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+            <div class="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10" v-if="album.type !== 'system'">
               <button
                 @click.stop="openEditModal(album)"
                 class="p-1.5 bg-white/90 dark:bg-gray-800/90 rounded-full text-gray-600 dark:text-gray-300 hover:text-primary-500 shadow-sm backdrop-blur-sm"
@@ -107,58 +119,122 @@
           <FolderOpen class="w-8 h-8 text-gray-300 dark:text-gray-600" />
         </div>
         <p>暂无自定义相册</p>
-        <button @click="openCreateModal" class="mt-4 text-primary-500 hover:underline">创建一个？</button>
+        <button @click="openCreateModal('user')" class="mt-4 text-primary-500 hover:underline">创建一个？</button>
       </div>
     </div>
 
     <!-- Create/Edit Modal -->
-    <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div class="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-        <div class="p-6">
-          <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">
-            {{ isEditing ? '编辑相册' : '新建相册' }}
-          </h3>
-          
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">相册名称</label>
-              <input 
-                v-model="form.name"
-                type="text" 
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
-                placeholder="请输入相册名称"
-                @keyup.enter="submitForm"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">描述 (可选)</label>
-              <textarea 
-                v-model="form.description"
-                rows="3"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all resize-none"
-                placeholder="相册描述..."
-              ></textarea>
-            </div>
-          </div>
-
-          <div class="flex justify-end gap-3 mt-6">
-            <button 
-              @click="closeModal" 
-              class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            >
-              取消
-            </button>
-            <button 
-              @click="submitForm" 
-              class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg shadow-lg shadow-primary-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-              :disabled="!form.name.trim() || loading"
-            >
-              {{ loading ? '保存中...' : '保存' }}
-            </button>
-          </div>
+    <el-dialog
+      v-model="showModal"
+      :title="isEditing ? '编辑相册' : '新建相册'"
+      width="500px"
+      class="rounded-xl"
+      destroy-on-close
+    >
+      <div class="space-y-4">
+        <!-- Name -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">相册名称</label>
+          <input 
+            v-model="form.name"
+            type="text" 
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+            placeholder="请输入相册名称"
+          />
         </div>
+
+        <!-- Description (Smart Album or User Album) -->
+        <div v-if="form.type === 'smart' || form.type === 'user'">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            {{ form.type === 'smart' ? '智能描述 (AI 自动匹配)' : '描述 (可选)' }}
+          </label>
+          <textarea 
+            v-model="form.description"
+            rows="3"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 outline-none transition-all resize-none"
+            :placeholder="form.type === 'smart' ? '例如：去年夏天的海边旅行，有沙滩和大海...' : '相册描述...'"
+          ></textarea>
+        </div>
+
+        <!-- Conditional Album Fields -->
+        <div v-if="form.type === 'conditional'" class="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-4">
+            <h4 class="font-medium text-gray-900 dark:text-white">筛选条件</h4>
+            
+            <!-- Time Range -->
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">时间范围</label>
+                <el-date-picker
+                    v-model="form.timeRange"
+                    type="daterange"
+                    range-separator="至"
+                    start-placeholder="开始日期"
+                    end-placeholder="结束日期"
+                    value-format="YYYY-MM-DDTHH:mm:ss"
+                    class="w-full"
+                    style="width: 100%"
+                />
+            </div>
+            
+            <!-- Locations -->
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <label class="block text-xs font-medium text-gray-500">地点</label>
+                    <button @click="addLocation" class="text-xs text-primary-500 hover:text-primary-600 flex items-center gap-1">
+                        <Plus class="w-3 h-3" /> 添加
+                    </button>
+                </div>
+                <div class="space-y-2">
+                    <div v-for="(loc, index) in form.locations" :key="index" class="flex gap-2 items-center">
+                        <input v-model="loc.province" placeholder="省" class="flex-1 px-2 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700" />
+                        <input v-model="loc.city" placeholder="市" class="flex-1 px-2 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700" />
+                        <input v-model="loc.district" placeholder="区" class="flex-1 px-2 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700" />
+                        <button @click="removeLocation(index)" class="text-gray-400 hover:text-red-500">
+                            <X class="w-4 h-4" />
+                        </button>
+                    </div>
+                    <div v-if="form.locations.length === 0" class="text-xs text-gray-400 italic">暂无地点条件</div>
+                </div>
+            </div>
+
+            <!-- People -->
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">人物</label>
+                <el-select 
+                    v-model="form.people" 
+                    multiple 
+                    placeholder="选择人物" 
+                    class="w-full"
+                    filterable
+                >
+                    <el-option
+                        v-for="face in faces"
+                        :key="face.id"
+                        :label="face.identity_name || '未知'"
+                        :value="face.id"
+                    />
+                </el-select>
+            </div>
+        </div>
+
       </div>
-    </div>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <button 
+            @click="closeModal" 
+            class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            取消
+          </button>
+          <button 
+            @click="submitForm" 
+            class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg shadow-lg shadow-primary-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="!form.name.trim() || loading"
+          >
+            {{ loading ? '保存中...' : '保存' }}
+          </button>
+        </div>
+      </template>
+    </el-dialog>
 
   </div>
 </template>
@@ -167,9 +243,10 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAlbumStore } from '@/stores/albumStore'
-import type { Album } from '@/types/album'
-import { Plus, Sparkles, Edit2, Trash2, Clock, Users, MapPin, FolderHeart, FolderOpen, Tag } from 'lucide-vue-next'
+import type { Album, FaceIdentity, CreateAlbumDto } from '@/types/album'
+import { Plus, Sparkles, Edit2, Trash2, Clock, Users, MapPin, FolderHeart, FolderOpen, Tag, Filter, X } from 'lucide-vue-next'
 import { albumService } from '@/api/album'
+import { faceApi } from '@/api/face'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { format } from 'date-fns'
 
@@ -229,24 +306,82 @@ const showModal = ref(false)
 const isEditing = ref(false)
 const loading = ref(false)
 const currentAlbumId = ref<string | null>(null)
+const faces = ref<FaceIdentity[]>([])
+
+interface LocationForm {
+    province: string;
+    city: string;
+    district: string;
+}
+
 const form = reactive({
   name: '',
-  description: ''
+  description: '',
+  type: 'user', // user, smart, conditional
+  timeRange: [] as string[],
+  locations: [] as LocationForm[],
+  people: [] as string[]
 })
 
-const openCreateModal = () => {
+const fetchFaces = async () => {
+    try {
+        const data = await faceApi.listIdentities(1, 1000); // Fetch all/many faces
+        faces.value = data;
+    } catch (e) {
+        console.error("Failed to fetch faces", e);
+    }
+}
+
+const openCreateModal = async (type: string = 'user') => {
   isEditing.value = false
   currentAlbumId.value = null
   form.name = ''
   form.description = ''
+  form.type = type
+  form.timeRange = []
+  form.locations = []
+  form.people = []
+  
+  if (type === 'conditional') {
+      await fetchFaces()
+  }
+  
   showModal.value = true
 }
 
-const openEditModal = (album: any) => {
+const openEditModal = async (album: any) => {
   isEditing.value = true
   currentAlbumId.value = album.id
-  form.name = album.title 
+  form.name = album.title || album.name
   form.description = album.description || ''
+  form.type = album.type || 'user'
+  
+  // Reset fields
+  form.timeRange = []
+  form.locations = []
+  form.people = []
+
+  if (form.type === 'conditional' && album.condition) {
+      await fetchFaces()
+      // Populate condition fields
+      if (album.condition.time_range) {
+          form.timeRange = [
+              album.condition.time_range.start || '',
+              album.condition.time_range.end || ''
+          ].filter(Boolean)
+      }
+      if (album.condition.locations) {
+          form.locations = album.condition.locations.map((l: any) => ({
+              province: l.province || '',
+              city: l.city || '',
+              district: l.district || ''
+          }))
+      }
+      if (album.condition.people) {
+          form.people = album.condition.people
+      }
+  }
+
   showModal.value = true
 }
 
@@ -254,25 +389,48 @@ const closeModal = () => {
   showModal.value = false
 }
 
+const addLocation = () => {
+    form.locations.push({ province: '', city: '', district: '' })
+}
+
+const removeLocation = (index: number) => {
+    form.locations.splice(index, 1)
+}
+
 const submitForm = async () => {
   if (!form.name.trim()) return
   loading.value = true
   try {
-    if (isEditing.value && currentAlbumId.value) {
-      // Update
-      // Note: Store might not have update method, we can call service directly or add to store.
-      // For now, call service and refresh store
-      await albumService.updateAlbum(currentAlbumId.value, {
-          name: form.name,
-          description: form.description
-      })
-      // Refresh list
-      await store.fetchAlbums()
-    } else {
-      // Create
-      await store.createCustomAlbum(form.name, form.description)
+    const payload: CreateAlbumDto = {
+        name: form.name,
+        description: form.description,
+        type: form.type
     }
+
+    if (form.type === 'conditional') {
+        payload.condition = {
+            time_range: form.timeRange && form.timeRange.length === 2 ? {
+                start: form.timeRange[0],
+                end: form.timeRange[1]
+            } : undefined,
+            locations: form.locations.filter(l => l.province || l.city || l.district).map(l => ({
+                province: l.province || undefined,
+                city: l.city || undefined,
+                district: l.district || undefined
+            })),
+            people: form.people.length > 0 ? form.people : undefined
+        }
+    }
+
+    if (isEditing.value && currentAlbumId.value) {
+      await albumService.updateAlbum(currentAlbumId.value, payload)
+    } else {
+      await albumService.createAlbum(payload)
+    }
+    
+    await store.fetchAlbums()
     closeModal()
+    ElMessage.success(isEditing.value ? '相册更新成功' : '相册创建成功')
   } catch (error) {
     console.error("Operation failed", error)
     ElMessage.error("操作失败")
@@ -284,7 +442,7 @@ const submitForm = async () => {
 const confirmDelete = async (album: Album) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除相册 "${album.title}" 吗？里面的照片也会被删除。`,
+      `确定要删除相册 "${album.title}" 吗？`,
       '删除相册',
       {
         confirmButtonText: '删除',

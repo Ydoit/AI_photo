@@ -8,6 +8,8 @@ from app.schemas.photo import Photo
 class AlbumBase(BaseModel):
     name: str
     description: Optional[str] = None
+    type: str = "user"
+    condition: Optional[Dict[str, Any]] = None
 
 class AlbumCreate(AlbumBase):
     pass
@@ -21,6 +23,7 @@ class Album(AlbumBase):
     create_time: datetime
     cover: Optional[Photo] = None
     type: str = "user"
+    condition: Optional[Dict[str, Any]] = None
     num_photos: int = 0
 
     class Config:

@@ -3,7 +3,7 @@ from uuid import UUID
 import os
 
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import extract, cast, String, func
+from sqlalchemy import extract, cast, String, func, and_, or_
 from datetime import datetime
 
 from app.db.models.album import Album
@@ -11,6 +11,7 @@ from app.db.models.photo import Photo
 from app.db.models.photo_metadata import PhotoMetadata
 from app.db.models.face import Face
 from app.db.models.tag import PhotoTag
+from app.db.models.image_vector import ImageVector
 from app.schemas import album as album_schemas
 from app.schemas import photo as photo_schemas
 from app.schemas.metadata import PhotoMetadataUpdate,PhotoMetadataCreate
@@ -20,10 +21,77 @@ from app.db.models.photo import FileType
 from app.utils.exif import extract_metadata
 
 # Album CRUD
+def _build_album_query(db: Session, album: Album):
+    query = db.query(Photo)
+
+    if album.type == 'conditional' and album.condition:
+        query = query.outerjoin(PhotoMetadata)
+        
+        cond = album.condition
+        
+        # Time Range
+        if 'time_range' in cond:
+            tr = cond['time_range']
+            if tr.get('start'):
+                try:
+                    s = datetime.fromisoformat(tr['start'].replace('Z', '+00:00'))
+                    query = query.filter(Photo.photo_time >= s)
+                except:
+                    pass
+            if tr.get('end'):
+                try:
+                    e = datetime.fromisoformat(tr['end'].replace('Z', '+00:00'))
+                    query = query.filter(Photo.photo_time <= e)
+                except:
+                    pass
+        
+        # Location
+        if 'locations' in cond and isinstance(cond['locations'], list) and cond['locations']:
+             loc_filters = []
+             for loc in cond['locations']:
+                 sub_filters = []
+                 if loc.get('province'):
+                     sub_filters.append(PhotoMetadata.province == loc['province'])
+                 if loc.get('city'):
+                     sub_filters.append(PhotoMetadata.city == loc['city'])
+                 if loc.get('district'):
+                     sub_filters.append(PhotoMetadata.district == loc['district'])
+                 if sub_filters:
+                     loc_filters.append(and_(*sub_filters))
+             if loc_filters:
+                 query = query.filter(or_(*loc_filters))
+
+        # People
+        if 'people' in cond and isinstance(cond['people'], list) and cond['people']:
+             people_ids = cond['people']
+             # Assuming people_ids are UUID strings
+             query = query.join(Photo.faces).filter(Face.face_identity_id.in_(people_ids))
+
+        # Deduplicate
+        query = query.group_by(Photo.id)
+
+    elif album.type == 'smart' and album.query_embedding is not None:
+        # Vector Search
+        query = query.join(ImageVector)
+
+        # Cosine distance
+        distance = ImageVector.embedding.cosine_distance(album.query_embedding)
+        # Threshold (hardcoded for now, could be in condition/config)
+        threshold = 0.7 # Approx 0.65 similarity
+
+        query = query.filter(distance < threshold)
+
+    else:
+        # Standard User Album
+        query = query.join(Photo.albums).filter(Album.id == album.id)
+    
+    return query
+
 def _update_album_photo_count(db: Session, album_id: UUID):
     album = db.query(Album).filter(Album.id == album_id).first()
     if album:
-        count = db.query(Photo).join(Photo.albums).filter(Album.id == album_id).count()
+        query = _build_album_query(db, album)
+        count = query.count()
         album.num_photos = count
         db.add(album)
         db.commit()
@@ -37,11 +105,18 @@ def get_albums_by_photo_id(db: Session, photo_id: UUID):
 def get_albums(db: Session, skip: int = 0, limit: int = 100):
     return db.query(Album).options(joinedload(Album.cover)).offset(skip).limit(limit).all()
 
-def create_album(db: Session, album: album_schemas.AlbumCreate):
-    db_album = Album(name=album.name, description=album.description)
+def create_album(db: Session, album: album_schemas.AlbumCreate, query_embedding: Optional[List[float]] = None):
+    db_album = Album(
+        name=album.name, 
+        description=album.description,
+        type=album.type,
+        condition=album.condition,
+        query_embedding=query_embedding
+    )
     db.add(db_album)
     db.commit()
     db.refresh(db_album)
+    
     return db_album
 
 def delete_album(db: Session, album_id: UUID):
@@ -51,14 +126,22 @@ def delete_album(db: Session, album_id: UUID):
         db.commit()
     return db_album
 
-def update_album(db: Session, album_id: UUID, album: album_schemas.AlbumCreate):
+def update_album(db: Session, album_id: UUID, album: album_schemas.AlbumCreate, query_embedding: Optional[List[float]] = None):
     db_album = get_album(db, album_id)
     if db_album:
         db_album.name = album.name
         if album.description is not None:
             db_album.description = album.description
+        if album.condition is not None:
+            db_album.condition = album.condition
+        if query_embedding is not None:
+            db_album.query_embedding = query_embedding
+
         db.commit()
         db.refresh(db_album)
+
+        return db_album
+
     return db_album
 
 
@@ -106,19 +189,33 @@ def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id:
 
 # Photo CRUD
 def get_photos(db: Session, album_id: UUID, skip: int = 0, limit: int = 100, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None):
-    query = db.query(Photo).join(Photo.albums).filter(Album.id == album_id).options(joinedload(Photo.albums))
+    # Retrieve album details first
+    album = db.query(Album).filter(Album.id == album_id).first()
+    if not album:
+        return []
 
+    query = _build_album_query(db, album)
+
+    # Ordering
+    if album.type == 'smart' and album.query_embedding is not None:
+        # Order by similarity
+        distance = ImageVector.embedding.cosine_distance(album.query_embedding)
+        query = query.order_by(distance)
+    else:
+        # Default order by time
+        query = query.order_by(Photo.photo_time.desc())
+    
+    # Common filters (start_time, end_time from args)
     if start_time:
         query = query.filter(Photo.photo_time >= start_time)
-    
     if end_time:
         query = query.filter(Photo.photo_time <= end_time)
 
-    # 按拍摄时间倒序
-    query = query.order_by(Photo.photo_time.desc())
+    # Optimization for user albums
+    if album.type == 'user':
+        query = query.options(joinedload(Photo.albums))
 
     if limit == 0:
-        # 不限制数量，返回所有照片
         return query.offset(skip).all()
     return query.offset(skip).limit(limit).all()
 

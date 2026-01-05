@@ -8,11 +8,12 @@
 @File        : server-album.py 
 @Description : 
 """
-from sqlalchemy import Column, String, DateTime, Text, Integer, ForeignKey
+from sqlalchemy import Column, String, DateTime, Text, Integer, ForeignKey, JSON, UUID, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
 from datetime import datetime
+from pgvector.sqlalchemy import Vector
 
 from app.db.base import Base
 
@@ -32,12 +33,23 @@ class Album(Base):
     cover = relationship("Photo", foreign_keys=[cover_id])
 
     # New Fields
-    type = Column(String(20), nullable=False, default="user") # user, smart, etc.
+    type = Column(String(20), nullable=False, default="user") # user, smart, conditional
+    condition = Column(JSON, nullable=True)
+    query_embedding = Column(Vector(512), nullable=True)
     num_photos = Column(Integer, default=0)
 
     # M:N relationship with Photo
     photos = relationship("Photo", secondary="album_photos", back_populates="albums")
 
 
-if __name__ == '__main__':
-    pass
+class AlbumPhoto(Base):
+    __tablename__ = 'album_photos'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    album_id = Column(UUID(as_uuid=True), ForeignKey('albums.id', ondelete='CASCADE'), nullable=False)
+    photo_id = Column(UUID(as_uuid=True), ForeignKey('photos.id', ondelete='CASCADE'), nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('album_id', 'photo_id', name='uq_album_photo'),
+    )

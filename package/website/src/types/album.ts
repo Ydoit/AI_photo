@@ -82,6 +82,19 @@ export interface AlbumImage {
   duration?: string
 }
 
+export interface AlbumCondition {
+  time_range?: {
+    start?: string;
+    end?: string;
+  };
+  locations?: {
+    province?: string;
+    city?: string;
+    district?: string;
+  }[];
+  people?: string[]; // Face Identity IDs
+}
+
 export interface ApiAlbum {
   id: string;
   name: string;
@@ -91,6 +104,7 @@ export interface ApiAlbum {
   type: string;
   num_photos: number;
   photos?: Photo[];
+  condition?: AlbumCondition;
 }
 
 export interface Album {
@@ -98,6 +112,7 @@ export interface Album {
   title: string
   name: string
   type: string
+  condition?: AlbumCondition
   cover: AlbumImage
   count: number
   description?: string
@@ -107,6 +122,8 @@ export interface Album {
 export interface CreateAlbumDto {
   name: string;
   description?: string;
+  type?: string;
+  condition?: AlbumCondition;
 }
 
 export interface CoverPhotoInfo {

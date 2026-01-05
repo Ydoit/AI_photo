@@ -1,13 +1,18 @@
+import logging
+import traceback
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, Form, BackgroundTasks
 from sqlalchemy.orm import Session
+import aiohttp
 
 from app.api.photo import upload_photo_generic
 from app.dependencies import get_db
 from app.crud import album as crud
 from app.schemas import album as schemas
+from app.core.config_manager import config_manager
+from app.service.tasks.album import scan_album_task
 
 
 router = APIRouter()
@@ -15,8 +20,32 @@ router = APIRouter()
 # Album Endpoints
 
 @router.post("", response_model=schemas.Album)
-def create_album(album: schemas.AlbumCreate, db: Session = Depends(get_db)):
-    return crud.create_album(db=db, album=album)
+async def create_album(album: schemas.AlbumCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    query_embedding = None
+    if album.type == 'smart' and album.description:
+        # Call AI service
+        try:
+            async with aiohttp.ClientSession() as session:
+                url = f"{config_manager.config.ai.ai_api_url}/classification/embed/text"
+                payload = {'text': album.description}
+                async with session.post(url, json=payload) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        query_embedding = data
+                    else:
+                        logging.info(resp.status, await resp.text())
+                        raise HTTPException(status_code=500, detail=f"AI Service error: {resp.status}")
+        except Exception as e:
+            logging.info(traceback.format_exc())
+            raise HTTPException(status_code=500, detail=f"Failed to connect to AI service: {e}")
+
+    db_album = crud.create_album(db=db, album=album, query_embedding=query_embedding)
+    
+    # Trigger async scan for conditional/smart albums
+    if db_album.type in ['conditional', 'smart']:
+        background_tasks.add_task(scan_album_task, db_album.id)
+        
+    return db_album
 
 @router.get("", response_model=List[schemas.Album])
 def read_albums(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
@@ -51,10 +80,35 @@ def delete_album(album_id: UUID, db: Session = Depends(get_db)):
     return db_album
 
 @router.put("/{album_id}", response_model=schemas.Album)
-def update_album(album_id: UUID, album: schemas.AlbumCreate, db: Session = Depends(get_db)):
-    db_album = crud.update_album(db, album_id=album_id, album=album)
-    if db_album is None:
+async def update_album(album_id: UUID, album: schemas.AlbumCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    current_album = crud.get_album(db, album_id)
+    if not current_album:
         raise HTTPException(status_code=404, detail="Album not found")
+
+    query_embedding = None
+    if current_album.type == 'smart':
+        if album.description and album.description != current_album.description:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    url = f"{config_manager.config.ai.ai_api_url}/classification/embed/text"
+                    payload = {'text': album.description}
+                    async with session.post(url, json=payload) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            query_embedding = data
+                        else:
+                            logging.info(resp.status, await resp.text())
+                            raise HTTPException(status_code=500, detail=f"AI Service error: {resp.status}")
+            except Exception as e:
+                logging.info(traceback.format_exc())
+                raise HTTPException(status_code=500, detail=f"Failed to connect to AI service: {e}")
+
+    db_album = crud.update_album(db, album_id=album_id, album=album, query_embedding=query_embedding)
+    
+    # Trigger async scan for conditional/smart albums
+    if db_album.type in ['conditional', 'smart']:
+        background_tasks.add_task(scan_album_task, db_album.id)
+        
     return db_album
 
 @router.put("/{album_id}/cover", response_model=schemas.Album)
