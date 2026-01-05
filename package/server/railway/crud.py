@@ -548,7 +548,10 @@ def get_train_schedule_list(db: Session, query: TrainScheduleListQuery) -> Tuple
         if query.train_no:
             db_query = db_query.filter(TrainSchedule.train_no==query.train_no)
         if query.train_code:
-            db_query = db_query.filter(TrainSchedule.train_code==query.train_code)
+            train_no = db.query(Train.train_no).filter(Train.train_code==query.train_code).first()
+            if not train_no:
+                return 404, f"关联的运行计划（train_code={query.train_code}）不存在", None
+            db_query = db_query.filter(TrainSchedule.train_no==train_no[0])
         if query.station_telecode:
             db_query = db_query.filter(TrainSchedule.station_telecode == query.station_telecode)
         if query.station_name:
