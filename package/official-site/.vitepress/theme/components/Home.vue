@@ -1,112 +1,3 @@
-<script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vitepress'
-
-const router = useRouter()
-const isMobileMenuOpen = ref(false)
-const isScrolled = ref(false)
-
-// Carousel State
-const activeFeatureIndex = ref(0)
-const testimonialIndex = ref(0)
-
-const toggleMobileMenu = () => {
-  isMobileMenuOpen.value = !isMobileMenuOpen.value
-}
-
-const handleScroll = () => {
-  isScrolled.value = window.scrollY > 50
-}
-
-onMounted(() => {
-  window.addEventListener('scroll', handleScroll)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
-})
-
-const goLink = (path: string) => {
-  router.go(path)
-  isMobileMenuOpen.value = false
-}
-
-// Mock Data
-const features = [
-  {
-    title: '智能相册',
-    icon: '📸',
-    desc: '精准人物识别、场景智能分类、照片OCR识别，轻松找到每一张旅行照片。瀑布流展示设计，浏览体验更流畅。',
-    tags: ['人物识别', '智能分类', 'OCR识别']
-  },
-  {
-    title: '行程记录',
-    icon: '🎫',
-    desc: '专属火车票、景区门票、演唱会门票管理功能，自动识别票据信息，生成完整行程 timeline，清晰回顾每一段出行轨迹。',
-    status: '开发中',
-    statusColor: 'bg-orange-100 text-orange-600'
-  },
-  {
-    title: 'AI赋能',
-    icon: '🤖',
-    desc: '一句话生成旅行日记，自动剪辑15s旅行Vlog，智能修图筛选高质量照片，轻松打造专属旅行分享内容。',
-    status: '待开发',
-    statusColor: 'bg-blue-100 text-blue-600'
-  }
-]
-
-const overviewFeatures = [
-  { title: '智能相册', icon: '📸', items: ['精准人脸识别归类', '场景/物体智能标签', '照片OCR文字提取'] },
-  { title: 'AI能力', icon: '🤖', items: ['一句话生成游记', 'Vlog智能剪辑', '照片智能精修'] },
-  { title: '行程票据', icon: '🎫', items: ['票据自动识别录入', '行程时间轴生成', '多票据统一管理'] },
-  { title: '数据可视化', icon: '📊', items: ['足迹地图点亮', '出行里程统计', '城市打卡记录'] },
-  { title: '年度报告', icon: '📅', items: ['年度出行总结', '专属回忆生成', '分享朋友圈'] }
-]
-
-const testimonials = [
-  {
-    text: '每次旅行拍的照片都乱七八糟，用了行影集后自动分类，还能识别车票生成行程，年底的年度报告更是惊喜，满满的回忆！',
-    user: '旅行爱好者小A',
-    role: '行影集内测用户'
-  },
-  {
-    text: '最喜欢它的AI功能，自动剪辑的Vlog非常有感觉，省去了我大量剪辑视频的时间，强烈推荐给喜欢记录生活的朋友。',
-    user: '摄影师大白',
-    role: '资深用户'
-  }
-]
-
-const socialLinks = [
-  {
-    name: 'WeChat',
-    icon: '/icons/wechat.svg',
-    qrCode: '/qrcodes/wechat_qr.jpg',
-    alt: '微信公众号'
-  },
-  {
-    name: 'RedBook',
-    icon: '/icons/xiaohongshu.svg',
-    qrCode: '/qrcodes/xiaohongshu_qr.jpg',
-    alt: '小红书'
-  },
-  {
-    name: 'Bilibili',
-    icon: '/icons/bilibili.svg',
-    qrCode: '/qrcodes/bilibili_qr.jpg',
-    alt: 'B站'
-  }
-]
-
-const nextTestimonial = () => {
-  testimonialIndex.value = (testimonialIndex.value + 1) % testimonials.length
-}
-
-const prevTestimonial = () => {
-  testimonialIndex.value = (testimonialIndex.value - 1 + testimonials.length) % testimonials.length
-}
-
-</script>
-
 <template>
   <div class="min-h-screen bg-white dark:bg-slate-900 text-neutral-dark dark:text-gray-100 font-sans overflow-x-hidden">
     
@@ -176,9 +67,9 @@ const prevTestimonial = () => {
             
             <!-- Tags -->
             <div class="flex flex-wrap justify-center lg:justify-start gap-3 mb-10">
-              <span class="px-4 py-2 bg-secondary dark:bg-secondary/20 rounded-full text-sm text-neutral-dark dark:text-gray-200 hover:-translate-y-1 transition-transform cursor-default">AI智能分类</span>
-              <span class="px-4 py-2 bg-secondary dark:bg-secondary/20 rounded-full text-sm text-neutral-dark dark:text-gray-200 hover:-translate-y-1 transition-transform cursor-default">车票智能识别</span>
-              <span class="px-4 py-2 bg-secondary dark:bg-secondary/20 rounded-full text-sm text-neutral-dark dark:text-gray-200 hover:-translate-y-1 transition-transform cursor-default">可视化数据</span>
+              <span class="px-4 py-2 bg-secondary dark:bg-secondary/20 rounded-full text-sm text-neutral-dark dark:text-gray-200 hover:-translate-y-1 transition-transform cursor-default">智能相册</span>
+              <span class="px-4 py-2 bg-secondary dark:bg-secondary/20 rounded-full text-sm text-neutral-dark dark:text-gray-200 hover:-translate-y-1 transition-transform cursor-default">AI识别车票</span>
+              <span class="px-4 py-2 bg-secondary dark:bg-secondary/20 rounded-full text-sm text-neutral-dark dark:text-gray-200 hover:-translate-y-1 transition-transform cursor-default">数据可视化</span>
             </div>
 
             <!-- Actions -->
@@ -384,7 +275,7 @@ const prevTestimonial = () => {
           <div class="flex justify-center gap-10 md:gap-20">
             <div class="flex flex-col items-center gap-2 group cursor-pointer">
               <div class="text-3xl text-primary group-hover:scale-110 transition-transform">🔒</div>
-              <span class="text-sm text-neutral-gray dark:text-gray-400">数据加密</span>
+              <span class="text-sm text-neutral-gray dark:text-gray-400">全链路数据掌控</span>
             </div>
             <div class="flex flex-col items-center gap-2 group cursor-pointer">
               <div class="text-3xl text-primary group-hover:scale-110 transition-transform">💾</div>
@@ -474,7 +365,114 @@ const prevTestimonial = () => {
     </footer>
   </div>
 </template>
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vitepress'
 
+const router = useRouter()
+const isMobileMenuOpen = ref(false)
+const isScrolled = ref(false)
+
+// Carousel State
+const activeFeatureIndex = ref(0)
+const testimonialIndex = ref(0)
+
+const toggleMobileMenu = () => {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value
+}
+
+const handleScroll = () => {
+  isScrolled.value = window.scrollY > 50
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+})
+
+const goLink = (path: string) => {
+  router.go(path)
+  isMobileMenuOpen.value = false
+}
+
+// Mock Data
+const features = [
+  {
+    title: '智能相册',
+    icon: '📸',
+    desc: '精准人物识别、场景智能分类、照片OCR识别，轻松找到每一张旅行照片。瀑布流展示设计，浏览体验更流畅。',
+    tags: ['人物识别', '智能分类', 'OCR识别']
+  },
+  {
+    title: '行程记录',
+    icon: '🎫',
+    desc: '专属火车票、景区门票、演唱会门票管理功能，自动识别票据信息，生成完整行程 timeline，清晰回顾每一段出行轨迹。',
+    status: '开发中',
+    statusColor: 'bg-orange-100 text-orange-600'
+  },
+  {
+    title: 'AI赋能',
+    icon: '🤖',
+    desc: '一句话生成旅行日记，自动剪辑15s旅行Vlog，智能修图筛选高质量照片，轻松打造专属旅行分享内容。',
+    status: '待开发',
+    statusColor: 'bg-blue-100 text-blue-600'
+  }
+]
+
+const overviewFeatures = [
+  { title: '智能相册', icon: '📸', items: ['精准人脸识别归类', '场景/物体智能标签', '自定义条件（智能）相册'] },
+  { title: 'AI能力', icon: '🤖', items: ['一句话生成游记', 'Vlog智能剪辑', '照片智能精修'] },
+  { title: '行程票据', icon: '🎫', items: ['票据自动识别录入', '行程时间轴生成', '多票据统一管理'] },
+  { title: '数据可视化', icon: '📊', items: ['足迹地图点亮', '出行里程统计', '城市打卡记录'] },
+  { title: '年度报告', icon: '📅', items: ['年度出行总结', '专属回忆生成', '分享朋友圈'] }
+]
+
+const testimonials = [
+  {
+    text: '每次旅行拍的照片都乱七八糟，用了行影集后自动分类，还能识别车票生成行程，年底的年度报告更是惊喜，满满的回忆！',
+    user: '旅行爱好者小A',
+    role: '行影集内测用户'
+  },
+  {
+    text: '最喜欢它的AI功能，自动剪辑的Vlog非常有感觉，省去了我大量剪辑视频的时间，强烈推荐给喜欢记录生活的朋友。',
+    user: '摄影师大白',
+    role: '资深用户'
+  }
+]
+
+const socialLinks = [
+  {
+    name: 'WeChat',
+    icon: '/icons/wechat.svg',
+    qrCode: '/qrcodes/wechat_qr.jpg',
+    alt: '微信公众号'
+  },
+  {
+    name: 'RedBook',
+    icon: '/icons/xiaohongshu.svg',
+    qrCode: '/qrcodes/xiaohongshu_qr.jpg',
+    alt: '小红书'
+  },
+  {
+    name: 'Bilibili',
+    icon: '/icons/bilibili.svg',
+    qrCode: '/qrcodes/bilibili_qr.jpg',
+    alt: 'B站'
+  }
+]
+
+const nextTestimonial = () => {
+  testimonialIndex.value = (testimonialIndex.value + 1) % testimonials.length
+}
+
+const prevTestimonial = () => {
+  testimonialIndex.value = (testimonialIndex.value - 1 + testimonials.length) % testimonials.length
+}
+
+</script>
 <style scoped>
 @keyframes float {
   0% { transform: translateY(0px); }
