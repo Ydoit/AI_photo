@@ -10,6 +10,7 @@ class AlbumBase(BaseModel):
     description: Optional[str] = None
     type: str = "user"
     condition: Optional[Dict[str, Any]] = None
+    threshold: Optional[float] = 0.25
 
 class AlbumCreate(AlbumBase):
     pass
@@ -25,6 +26,7 @@ class Album(AlbumBase):
     type: str = "user"
     condition: Optional[Dict[str, Any]] = None
     num_photos: int = 0
+    threshold: Optional[float] = 0.25
 
     class Config:
         from_attributes = True

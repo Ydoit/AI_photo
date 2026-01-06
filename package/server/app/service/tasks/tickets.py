@@ -17,13 +17,13 @@ logger = logging.getLogger(__name__)
 async def handle_ticket_task(task_manager, task: Task, db: Session) -> Dict[str, Any]:
     try:
         force = task.payload.get('force', False)
-        
+
         if task.payload and 'photo_id' in task.payload:
             photo_id = task.payload['photo_id']
             photo = db.query(Photo).filter(Photo.id == photo_id).first()
             if not photo:
                 return {'status': 'skipped', 'reason': 'photo not found'}
-            
+
             if not force:
                 tasks_status = photo.processed_tasks or {}
                 if tasks_status.get('tickets'):
@@ -35,7 +35,7 @@ async def handle_ticket_task(task_manager, task: Task, db: Session) -> Dict[str,
         batch_size = 1000
         offset = 0
         generated_count = 0
-        
+
         while True:
             batch = db.query(Photo).offset(offset).limit(batch_size).all()
             if not batch:
@@ -45,7 +45,6 @@ async def handle_ticket_task(task_manager, task: Task, db: Session) -> Dict[str,
             for p in batch:
                 if p.file_type == FileType.video:
                     continue
-                
                 should_process = False
                 if force:
                     should_process = True
@@ -53,7 +52,6 @@ async def handle_ticket_task(task_manager, task: Task, db: Session) -> Dict[str,
                     tasks_status = p.processed_tasks or {}
                     if not tasks_status.get('tickets'):
                         should_process = True
-                
                 if should_process:
                     tasks_to_create.append({
                         'type': TaskType.RECOGNIZE_TICKET,
@@ -98,11 +96,9 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
             )
 
             api_url = f"{config_manager.config.ai.ai_api_url}/tickets/predict"
-            
             async with session.post(api_url, data=form_data) as response:
                 if response.status == 200:
                     result = await response.json()
-                    
                     # === Auto-add tickets to database ===
                     if result and 'tickets' in result:
                         tickets_data = result['tickets']
@@ -112,7 +108,6 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                                 # Validation
                                 if not t_info.get('train_code') or not t_info.get('datetime'):
                                     continue
-                                
                                 # Parse datetime
                                 dt_str = t_info.get('datetime')
                                 dt = None
@@ -129,7 +124,6 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                                         break
                                     except ValueError:
                                         continue
-                                
                                 if not dt:
                                     logger.warning(f"Skipping ticket due to invalid datetime: {dt_str}")
                                     continue
@@ -148,7 +142,6 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                                     TrainTicket.date_time == dt,
                                     TrainTicket.seat_num == (t_info.get('seat_num') or '无座')
                                 ).first()
-                                
                                 if existing:
                                     logger.info(f"Duplicate ticket found: {t_info['train_code']} {dt}")
                                     continue
@@ -175,10 +168,9 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                                 db.flush()
                                 t_info['saved_id'] = new_ticket.id
                                 added_count += 1
-                                
+
                             except Exception as ex:
                                 logger.error(f"Error saving ticket to DB: {ex}")
-                        
                         if added_count > 0:
                             logger.info(f"Successfully added {added_count} tickets from photo {photo.id}")
 
@@ -186,10 +178,8 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                     tasks_status = photo.processed_tasks or {}
                     tasks_status['tickets'] = True
                     photo.processed_tasks = tasks_status
-                    
                     db.add(photo)
                     db.commit()
-                    
                     return result
                 else:
                     text = await response.text()

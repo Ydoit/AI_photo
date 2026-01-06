@@ -156,6 +156,22 @@
           ></textarea>
         </div>
 
+        <!-- Smart Album Threshold -->
+        <div v-if="form.type === 'smart'">
+          <div class="flex justify-between items-center mb-1">
+             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">匹配阈值</label>
+             <span class="text-xs text-gray-500">{{ (form.threshold * 100).toFixed(0) }}%</span>
+          </div>
+          <el-slider
+            v-model="form.threshold"
+            :min="0.15"
+            :max="0.5"
+            :step="0.01"
+:format-tooltip="(val: number) => (val * 100).toFixed(0) + '%'"
+          />
+          <p class="text-xs text-gray-400 mt-1">阈值越高匹配越严格，建议值 0.25</p>
+        </div>
+
         <!-- Conditional Album Fields -->
         <div v-if="form.type === 'conditional'" class="space-y-4 border-t border-gray-100 dark:border-gray-800 pt-4">
             <h4 class="font-medium text-gray-900 dark:text-white">筛选条件</h4>
@@ -321,7 +337,8 @@ const form = reactive({
   type: 'user', // user, smart, conditional
   timeRange: [] as string[],
   locations: [] as LocationForm[],
-  people: [] as string[]
+  people: [] as string[],
+  threshold: 0.25
 })
 
 const fetchFaces = async () => {
@@ -343,6 +360,7 @@ const openCreateModal = async (type: string = 'user') => {
   form.timeRange = []
   form.locations = []
   form.people = []
+  form.threshold = 0.25
   
   if (type === 'conditional') {
       await fetchFaces()
@@ -357,7 +375,8 @@ const openEditModal = async (album: any) => {
   form.name = album.title || album.name
   form.description = album.description || ''
   form.type = album.type || 'user'
-
+  form.threshold = album.threshold !== undefined ? album.threshold : 0.25
+  
   // Reset fields
   form.timeRange = []
   form.locations = []
@@ -406,7 +425,8 @@ const submitForm = async () => {
     const payload: CreateAlbumDto = {
         name: form.name,
         description: form.description,
-        type: form.type
+        type: form.type,
+        threshold: form.type === 'smart' ? form.threshold : undefined
     }
 
     if (form.type === 'conditional') {
@@ -433,6 +453,10 @@ const submitForm = async () => {
     await store.fetchAlbums()
     closeModal()
     ElMessage.success(isEditing.value ? '相册更新成功' : '相册创建成功')
+    // 500ms 之后再次查询数据
+    setTimeout(() => {
+      store.fetchAlbums()
+    }, 500)
   } catch (error) {
     console.error("Operation failed", error)
     ElMessage.error("操作失败")

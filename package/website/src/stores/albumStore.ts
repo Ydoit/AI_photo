@@ -85,7 +85,8 @@ export const useAlbumStore = defineStore('album', () => {
         count: album.num_photos,
         description: album.description || `${album.num_photos}张照片`,
         createdAt: new Date(album.create_time).getTime(),
-        condition: album.condition
+        condition: album.condition,
+        threshold: album.threshold !== undefined ? album.threshold : 0.25
       }
     })
   })

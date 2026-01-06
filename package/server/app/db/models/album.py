@@ -8,7 +8,7 @@
 @File        : server-album.py 
 @Description : 
 """
-from sqlalchemy import Column, String, DateTime, Text, Integer, ForeignKey, JSON, UUID, UniqueConstraint
+from sqlalchemy import Column, String, DateTime, Text, Integer, ForeignKey, JSON, UUID, UniqueConstraint, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
@@ -37,6 +37,7 @@ class Album(Base):
     condition = Column(JSON, nullable=True)
     query_embedding = Column(Vector(512), nullable=True)
     num_photos = Column(Integer, default=0)
+    threshold = Column(Float, default=0.25, nullable=True)
 
     # M:N relationship with Photo
     photos = relationship("Photo", secondary="album_photos", back_populates="albums")

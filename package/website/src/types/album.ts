@@ -105,6 +105,7 @@ export interface ApiAlbum {
   num_photos: number;
   photos?: Photo[];
   condition?: AlbumCondition;
+  threshold?: number;
 }
 
 export interface Album {
@@ -113,6 +114,7 @@ export interface Album {
   name: string
   type: string
   condition?: AlbumCondition
+  threshold?: number
   cover: AlbumImage
   count: number
   description?: string
@@ -124,6 +126,7 @@ export interface CreateAlbumDto {
   description?: string;
   type?: string;
   condition?: AlbumCondition;
+  threshold?: number;
 }
 
 export interface CoverPhotoInfo {

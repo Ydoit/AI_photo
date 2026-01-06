@@ -23,12 +23,9 @@ from app.utils.exif import extract_metadata
 # Album CRUD
 def _build_album_query(db: Session, album: Album):
     query = db.query(Photo)
-
     if album.type == 'conditional' and album.condition:
         query = query.outerjoin(PhotoMetadata)
-        
         cond = album.condition
-        
         # Time Range
         if 'time_range' in cond:
             tr = cond['time_range']
@@ -44,7 +41,6 @@ def _build_album_query(db: Session, album: Album):
                     query = query.filter(Photo.photo_time <= e)
                 except:
                     pass
-        
         # Location
         if 'locations' in cond and isinstance(cond['locations'], list) and cond['locations']:
              loc_filters = []
@@ -73,13 +69,23 @@ def _build_album_query(db: Session, album: Album):
     elif album.type == 'smart' and album.query_embedding is not None:
         # Vector Search
         query = query.join(ImageVector)
-
+        
         # Cosine distance
         distance = ImageVector.embedding.cosine_distance(album.query_embedding)
-        # Threshold (hardcoded for now, could be in condition/config)
-        threshold = 0.7 # Approx 0.65 similarity
+        
+        # Threshold Logic
+        # user_threshold is similarity (0-1), where 1 is identical.
+        # cosine_distance is distance (0-2), where 0 is identical.
+        # distance = 1 - similarity (approx, for normalized vectors)
+        # So: similarity > threshold  =>  (1 - distance) > threshold  =>  distance < (1 - threshold)
+        
+        user_threshold = album.threshold if album.threshold is not None else 0.25
+        dist_threshold = 1.0 - user_threshold
 
-        query = query.filter(distance < threshold)
+        # Clamp distance threshold to avoid logical errors
+        dist_threshold = max(0.0, min(1.0, dist_threshold))
+
+        query = query.filter(distance < dist_threshold)
 
     else:
         # Standard User Album
@@ -111,7 +117,8 @@ def create_album(db: Session, album: album_schemas.AlbumCreate, query_embedding:
         description=album.description,
         type=album.type,
         condition=album.condition,
-        query_embedding=query_embedding
+        query_embedding=query_embedding,
+        threshold=album.threshold
     )
     db.add(db_album)
     db.commit()
@@ -134,6 +141,8 @@ def update_album(db: Session, album_id: UUID, album: album_schemas.AlbumCreate, 
             db_album.description = album.description
         if album.condition is not None:
             db_album.condition = album.condition
+        if album.threshold is not None:
+            db_album.threshold = album.threshold
         if query_embedding is not None:
             db_album.query_embedding = query_embedding
 
