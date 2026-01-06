@@ -1,7 +1,7 @@
 import axios from 'axios';
 import type { BaseResponse } from '@/types/railway';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -28,7 +28,7 @@ export const railwayService = {
    * 批量计算车票里程和时长
    */
   async getBatchStats(items: TicketItem[]) {
-    const { data } = await api.post<BaseResponse<TicketStats[]>>('/railway/stats/batch', { items });
+    const { data } = await api.post<BaseResponse<TicketStats[]>>('/api/railway/stats/batch', { items });
     return data;
   }
 };

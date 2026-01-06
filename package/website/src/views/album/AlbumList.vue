@@ -27,7 +27,7 @@
         <Sparkles class="w-5 h-5 text-yellow-500" />
         智能相册
       </h2>
-      <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-6">
+      <div class="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-10 lg:grid-cols-16 gap-6">
         <div 
           v-for="album in smartAlbums" 
           :key="album.id"
@@ -58,7 +58,7 @@
         自定义相册
       </h2>
       
-      <div v-if="store.allAlbums.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+      <div v-if="store.allAlbums.length > 0" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-6">
         <div
           v-for="album in store.allAlbums"
           :key="album.id"
@@ -106,8 +106,8 @@
           <div class="mt-2">
             <h3 class="font-bold text-gray-900 dark:text-white truncate">{{ album.title }}</h3>
             <div class="flex justify-between items-center mt-1">
-              <p class="text-sm text-gray-500 dark:text-gray-400">{{ album.count }} 个项目</p>
-              <p class="text-xs text-gray-400">{{ formatDate(album.createdAt) }}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">{{ album.count }} 个项目</p>
+              <!-- <p class="text-xs text-gray-400">{{ formatDate(album.createdAt) }}</p> -->
             </div>
           </div>
         </div>
@@ -143,8 +143,8 @@
           />
         </div>
 
-        <!-- Description (Smart Album or User Album) -->
-        <div v-if="form.type === 'smart' || form.type === 'user'">
+        <!-- Description (Smart Album or User Album or Conditional Album) -->
+        <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             {{ form.type === 'smart' ? '智能描述 (AI 自动匹配)' : '描述 (可选)' }}
           </label>
@@ -184,25 +184,26 @@
                     </button>
                 </div>
                 <div class="space-y-2">
-                    <div v-for="(loc, index) in form.locations" :key="index" class="flex gap-2 items-center">
-                        <input v-model="loc.province" placeholder="省" class="flex-1 px-2 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700" />
-                        <input v-model="loc.city" placeholder="市" class="flex-1 px-2 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700" />
-                        <input v-model="loc.district" placeholder="区" class="flex-1 px-2 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700" />
-                        <button @click="removeLocation(index)" class="text-gray-400 hover:text-red-500">
+                    <div v-for="(loc, index) in form.locations" :key="index" class="grid grid-cols-12 gap-2 items-center">
+                        <input v-model="loc.province" placeholder="省" class="col-span-3 px-2 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700 min-w-0" />
+                        <input v-model="loc.city" placeholder="市" class="col-span-4 px-2 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700 min-w-0" />
+                        <input v-model="loc.district" placeholder="区" class="col-span-4 px-2 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700 min-w-0" />
+                        <button @click="removeLocation(index)" class="col-span-1 flex p-1 justify-center text-gray-400 hover:text-red-500">
                             <X class="w-4 h-4" />
                         </button>
                     </div>
                     <div v-if="form.locations.length === 0" class="text-xs text-gray-400 italic">暂无地点条件</div>
+                    <span v-else class="text-xs text-gray-400 italic">输入地名全称，不需要的层级可留空</span>
                 </div>
             </div>
 
             <!-- People -->
             <div>
                 <label class="block text-xs font-medium text-gray-500 mb-1">人物</label>
-                <el-select 
-                    v-model="form.people" 
-                    multiple 
-                    placeholder="选择人物" 
+                <el-select
+                    v-model="form.people"
+                    multiple
+                    placeholder="选择人物"
                     class="w-full"
                     filterable
                 >
@@ -326,7 +327,8 @@ const form = reactive({
 const fetchFaces = async () => {
     try {
         const data = await faceApi.listIdentities(1, 1000); // Fetch all/many faces
-        faces.value = data;
+        // Filter out faces with no identity_name
+        faces.value = data.filter((face: FaceIdentity) => face.identity_name !== '未命名');
     } catch (e) {
         console.error("Failed to fetch faces", e);
     }
@@ -355,13 +357,13 @@ const openEditModal = async (album: any) => {
   form.name = album.title || album.name
   form.description = album.description || ''
   form.type = album.type || 'user'
-  
+
   // Reset fields
   form.timeRange = []
   form.locations = []
   form.people = []
-
   if (form.type === 'conditional' && album.condition) {
+
       await fetchFaces()
       // Populate condition fields
       if (album.condition.time_range) {
