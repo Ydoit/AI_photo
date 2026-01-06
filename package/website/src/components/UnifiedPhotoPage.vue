@@ -145,6 +145,7 @@
         @load-range="(offset) => $emit('load-range', offset)"
         @batch-delete="handleBatchDelete"
         @remove-from-album="handleBatchRemoveFromAlbum"
+        @add-to-album="handleBatchAddToAlbum"
         @set-album-cover="(ids) => $emit('set-cover', ids)"
         @retry="$emit('retry')"
       >
@@ -170,7 +171,7 @@
       @update="(e) => $emit('photo-update', e)"
       @prev="handlePrev"
       @next="handleNext"
-      @add-to-album="(id) => $emit('add-to-album', id)"
+      @add-to-album="handleAddToAlbumFromLightbox"
     />
 
     <!-- Delete Confirmation -->
@@ -190,7 +191,43 @@
       :active="showParticle"
       @complete="showParticle = false"
     />
-    
+    <!-- Album Select Modal -->
+    <div v-if="showAlbumSelectModal" class="z-[1000] fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeAlbumSelectModal">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white">选择相册</h3>
+          <button @click="closeAlbumSelectModal" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors bg-transparent">
+            <X class="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+        <div class="p-4 max-h-[60vh] overflow-y-auto">
+          <div v-if="albums.length === 0" class="text-center py-8 text-gray-500">
+            暂无相册
+          </div>
+          <div v-else class="space-y-2">
+            <button
+              v-for="album in albums.filter(a => a.type === 'user')"
+              :key="album.id"
+              @click="confirmAddToAlbum(album.id)"
+              class="w-full flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/80 backdrop-blur-md rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group relative overflow-hidden"
+              :class="{ 'shake-animation border border-red-500': errorAlbumId === album.id }"
+            >
+              <div class="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-500 group-hover:scale-110 transition-transform">
+                <Loader2 v-if="loadingAlbumId === album.id" class="w-5 h-5 animate-spin" />
+                <Check v-else-if="successAlbumId === album.id" class="w-5 h-5 animate-in zoom-in duration-300" />
+                <Folder v-else class="w-5 h-5" />
+              </div>
+              <div>
+                <h4 class="font-medium text-gray-900 dark:text-white">{{ album.title }}</h4>
+                <p class="text-xs text-gray-500">{{ album.count }} 张照片</p>
+              </div>
+              <!-- Success Fade Overlay -->
+              <div v-if="successAlbumId === album.id" class="absolute inset-0 bg-green-500/10 animate-in fade-in duration-300 pointer-events-none"></div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
     <!-- Extra Modals Slot -->
     <slot name="extra-modals"></slot>
 
@@ -204,12 +241,17 @@ import {
   ArrowLeft, Grid3x3, Grid2x2, Maximize, LayoutDashboard, LayoutGrid,
   UploadCloud, CheckSquare, Settings2
 } from 'lucide-vue-next'
+import { ElMessage } from 'element-plus'
+
 import PhotoGallery from '@/components/PhotoGallery.vue'
 import AlbumTimeline from '@/components/AlbumTimeline.vue'
 import PhotoLightbox from '@/components/PhotoLightbox.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ParticleExplosion from '@/components/ParticleExplosion.vue'
 import type { AlbumImage } from '@/types/album'
+
+import { useAlbumStore } from '@/stores/albumStore'
+import { usePhotoStore } from '@/stores/photoStore'
 
 const props = withDefaults(defineProps<{
   title?: string
@@ -264,11 +306,24 @@ const showViewOptions = ref(false)
 const viewOptionsRef = ref<HTMLElement | null>(null)
 const galleryRef = ref<InstanceType<typeof PhotoGallery> | null>(null)
 
+
+const albumStore = useAlbumStore()
+const albums = computed(() => albumStore.allAlbums)
+
 // Delete/Remove State
 const showDeleteConfirm = ref(false)
+const showAlbumSelectModal = ref(false)
 const idsToDelete = ref<string[]>([])
 const showParticle = ref(false)
 const pendingRemoveIds = ref(new Set<string>())
+// UI State
+const showUploadModal = ref(false)
+const tempSelectedIds = ref<string[]>([])
+
+// Album Add Animation
+const loadingAlbumId = ref<string | null>(null)
+const successAlbumId = ref<string | null>(null)
+const errorAlbumId = ref<string | null>(null)
 
 onClickOutside(viewOptionsRef, () => {
   showViewOptions.value = false
@@ -349,6 +404,53 @@ const confirmDelete = () => {
             galleryRef.value?.exitSelectionMode()
         }
     })
+}
+
+const closeAlbumSelectModal = () => {
+  showAlbumSelectModal.value = false
+  tempSelectedIds.value = []
+}
+
+const handleAddToAlbumFromLightbox = (img: AlbumImage) => {
+    tempSelectedIds.value = [img.id]
+    showAlbumSelectModal.value = true
+}
+
+const handleBatchAddToAlbum = (ids: string[]) => {
+  if (ids.length === 0) return
+  tempSelectedIds.value = ids
+  showAlbumSelectModal.value = true
+  console.log('handleBatchAddToAlbum', ids)
+}
+
+const confirmAddToAlbum = async (targetAlbumId: string) => {
+  if (loadingAlbumId.value) return
+
+  loadingAlbumId.value = targetAlbumId
+  errorAlbumId.value = null
+  console.log('confirmAddToAlbum', tempSelectedIds.value, targetAlbumId)
+  try {
+    await albumStore.addPhotosToAlbum(tempSelectedIds.value, 'add_to_album', targetAlbumId)
+
+    loadingAlbumId.value = null
+    successAlbumId.value = targetAlbumId
+
+    // Play success animation (300ms)
+    setTimeout(() => {
+        closeAlbumSelectModal()
+        ElMessage.success(`成功添加到相册`)
+        successAlbumId.value = null
+    }, 300)
+  } catch (error) {
+    console.error('Batch add failed:', error)
+    loadingAlbumId.value = null
+    errorAlbumId.value = targetAlbumId
+    
+    // Reset error state after shake animation
+    setTimeout(() => {
+        errorAlbumId.value = null
+    }, 500)
+  }
 }
 
 // Expose pendingRemoveIds to parent if needed, or methods to manipulate it

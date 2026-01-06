@@ -22,7 +22,7 @@
           class="bg-transparent flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors font-medium"
           title="设为封面"
       >
-          <FolderIcon class="w-5 h-5" />
+          <ImageIcon class="w-5 h-5" />
       </button>
     </template>
   </UnifiedPhotoPage>
@@ -35,7 +35,7 @@ import { faceApi } from '@/api/face'
 import { type FaceIdentity, CoverPhotoInfo } from '@/types/album'
 
 import UnifiedPhotoPage from '@/components/UnifiedPhotoPage.vue'
-import { Folder as FolderIcon } from 'lucide-vue-next'
+import { Folder as FolderIcon, ImageIcon } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import { usePhotoStore } from '@/stores/photoStore'
 import type { AlbumImage } from '@/types/album'

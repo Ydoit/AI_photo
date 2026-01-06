@@ -16,7 +16,6 @@
     @retry="photoStore.loadAlbumPhotos(albumId, true)"
     @confirm-delete="handleConfirmDelete"
     @remove-from-album="handleBatchRemoveFromAlbum"
-    @add-to-album="handleAddToAlbumFromLightbox"
     @photo-update="handlePhotoUpdate"
     @set-cover="setCover"
   >
@@ -35,44 +34,6 @@
           </div>
         </div>
       </Transition>
-
-      <!-- Album Select Modal -->
-      <div v-if="showAlbumSelectModal" class="z-[1000] fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeAlbumSelectModal">
-        <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-          <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white">选择相册</h3>
-            <button @click="closeAlbumSelectModal" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors bg-transparent">
-              <X class="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
-          <div class="p-4 max-h-[60vh] overflow-y-auto">
-            <div v-if="albums.length === 0" class="text-center py-8 text-gray-500">
-              暂无相册
-            </div>
-            <div v-else class="space-y-2">
-              <button
-                v-for="album in albums"
-                :key="album.id"
-                @click="confirmAddToAlbum(album.id)"
-                class="w-full flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/80 backdrop-blur-md rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left group relative overflow-hidden"
-                :class="{ 'shake-animation border border-red-500': errorAlbumId === album.id }"
-              >
-                <div class="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-500 group-hover:scale-110 transition-transform">
-                  <Loader2 v-if="loadingAlbumId === album.id" class="w-5 h-5 animate-spin" />
-                  <Check v-else-if="successAlbumId === album.id" class="w-5 h-5 animate-in zoom-in duration-300" />
-                  <Folder v-else class="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 class="font-medium text-gray-900 dark:text-white">{{ album.title }}</h4>
-                  <p class="text-xs text-gray-500">{{ album.count }} 张照片</p>
-                </div>
-                <!-- Success Fade Overlay -->
-                <div v-if="successAlbumId === album.id" class="absolute inset-0 bg-green-500/10 animate-in fade-in duration-300 pointer-events-none"></div>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
     </template>
   </UnifiedPhotoPage>
 </template>
@@ -98,18 +59,10 @@ const albumId = route.params.id as string
 // State
 const album = computed(() => albumStore.getAlbumDetails(albumId))
 const images = computed(() => photoStore.images)
-const albums = computed(() => albumStore.allAlbums)
 
 // UI State
 const showUploadModal = ref(false)
-const showAlbumSelectModal = ref(false)
-const tempSelectedIds = ref<string[]>([])
 const pendingRemoveIds = ref(new Set<string>())
-
-// Album Add Animation
-const loadingAlbumId = ref<string | null>(null)
-const successAlbumId = ref<string | null>(null)
-const errorAlbumId = ref<string | null>(null)
 
 // Used by UnifiedPhotoPage for sidebar
 const timelineItems = computed(() => photoStore.timelineStats?.timeline || [])
@@ -126,11 +79,6 @@ const handleUploadComplete = () => {
 
 const loadMorePhotos = () => {
     photoStore.loadAlbumPhotos(albumId)
-}
-
-const handleAddToAlbumFromLightbox = (id: string) => {
-    tempSelectedIds.value = [id]
-    showAlbumSelectModal.value = true
 }
 
 const handlePhotoUpdate = (event: { id: string, location?: string, tags?: string[] }) => {
@@ -166,7 +114,10 @@ const handleConfirmDelete = async (ids: string[], callback: (success: boolean) =
 
 const handleBatchRemoveFromAlbum = async (ids: string[]) => {
     if (ids.length === 0) return
-    
+    if (album.value?.type !== 'user') {
+        ElMessage.warning('仅用户相册支持批量移出')
+        return
+    }
     // Optimistic UI: Mark as pending remove (shrink animation)
     ids.forEach(id => pendingRemoveIds.value.add(id))
 
@@ -180,10 +131,10 @@ const handleBatchRemoveFromAlbum = async (ids: string[]) => {
             albumStore.removePhotosFromAlbum(albumId, ids),
             timeout
         ])
-        
+
         photoStore.loadAlbumPhotos(albumId, true)
         ElMessage.success('已移出相册')
-        
+
         // Clear pending IDs after successful removal and reload
         // We delay slightly to ensure the list update has processed
         setTimeout(() => {
@@ -199,41 +150,6 @@ const handleBatchRemoveFromAlbum = async (ids: string[]) => {
             ids.forEach(id => pendingRemoveIds.value.delete(id))
         }
     }
-}
-
-const closeAlbumSelectModal = () => {
-  showAlbumSelectModal.value = false
-  tempSelectedIds.value = []
-}
-
-const confirmAddToAlbum = async (targetAlbumId: string) => {
-  if (loadingAlbumId.value) return
-  
-  loadingAlbumId.value = targetAlbumId
-  errorAlbumId.value = null
-
-  try {
-    await albumStore.addPhotosToAlbum(tempSelectedIds.value, 'add_to_album', targetAlbumId)
-    
-    loadingAlbumId.value = null
-    successAlbumId.value = targetAlbumId
-    
-    // Play success animation (300ms)
-    setTimeout(() => {
-        closeAlbumSelectModal()
-        ElMessage.success(`成功添加到相册`)
-        successAlbumId.value = null
-    }, 300)
-  } catch (error) {
-    console.error('Batch add failed:', error)
-    loadingAlbumId.value = null
-    errorAlbumId.value = targetAlbumId
-    
-    // Reset error state after shake animation
-    setTimeout(() => {
-        errorAlbumId.value = null
-    }, 500)
-  }
 }
 
 onMounted(() => {
