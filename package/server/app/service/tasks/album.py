@@ -64,16 +64,19 @@ def scan_album_task(album_id: UUID):
         # Refresh album to ensure we have latest state
         db.refresh(album)
         album.num_photos = len(matching_photo_ids)
-        
+
         # 7. Update cover if needed (if no cover set, use the earliest photo)
-        if not album.cover_id and matching_photos:
+        if matching_photos and  (not album.cover_id or album.cover_id not in matching_photo_ids):
             # Find earliest
             earliest = min(matching_photos, key=lambda p: p.photo_time or p.upload_time)
             album.cover_id = earliest.id
-        
+
+        if not matching_photos:
+            album.cover_id = None
+
         db.add(album)
         db.commit()
-        
+
         logger.info(f"Finished scan for album {album_id}")
 
     except Exception as e:
