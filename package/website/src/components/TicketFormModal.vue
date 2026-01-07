@@ -127,6 +127,7 @@
                 <option>软卧</option>
                 <option>硬座</option>
                 <option>软座</option>
+                <option>无座</option>
               </select>
             </div>
             <div class="space-y-1">
@@ -145,7 +146,7 @@
             </div>
             <div class="space-y-1">
               <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">座位号 <span class="text-red-500">*</span></label>
-              <input v-model="form.seatNumber" type="text" required class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none" placeholder="如：12A / 05下" />
+              <input v-model="form.seatNumber" type="text" :required="form.seatType !== '无座'" :disabled="form.seatType === '无座'" class="w-full p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none" placeholder="如：12A / 05下" />
             </div>
 
             <!-- 价格和里程（自动计算后可编辑） -->
@@ -300,6 +301,18 @@ const handleFileChange = async (event) => {
     
     const data = response.data;
     
+    // 重置被识别字段，避免历史残留
+    form.value.train_code = '';
+    form.value.from = '';
+    form.value.to = '';
+    form.value.dateTime = new Date().toISOString().slice(0, 16);
+    form.value.carriage = '';
+    form.value.seatNumber = '';
+    form.value.berthType = '无';
+    form.value.price = 0;
+    form.value.seatType = '二等座';
+    form.value.name = '';
+    
     // 填充表单
     if (data.train_code) form.value.train_code = data.train_code;
     if (data.departure_station) form.value.from = data.departure_station;
@@ -310,6 +323,12 @@ const handleFileChange = async (event) => {
     if (data.price) form.value.price = data.price;
     if (data.seat_type) form.value.seatType = data.seat_type;
     if (data.name) form.value.name = data.name;
+    if (data.berth_type) form.value.berthType = data.berth_type;
+    if (data.discount_type) form.value.discountType = data.discount_type;
+    // 互斥规则：无座 → seatNumber 清空
+    if (data.seat_type === '无座') {
+      form.value.seatNumber = '';
+    }
     
     ElMessage.success('车票识别成功，已自动填充');
     
