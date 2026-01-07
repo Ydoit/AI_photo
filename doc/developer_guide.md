@@ -71,8 +71,6 @@ TrailSnap/
 cd package/server
 # 使用 uv
 uv sync
-# 或者使用 pip
-pip install -r requirements.txt
 ```
 
 ### 4.3 配置文件
@@ -86,7 +84,7 @@ AI_URL=http://localhost:8001
 ### 4.4 运行服务
 ```bash
 # 开发模式启动
-uvicorn app.main:app --reload --port 8000
+uvicorn main:app --reload --port 8000
 ```
 API 文档地址：`http://localhost:8000/docs`
 
@@ -118,13 +116,12 @@ AI 服务位于 `package/ai`，为后端提供 OCR 和人脸识别能力。
 ### 6.1 安装依赖
 ```bash
 cd package/ai
-# 根据是否使用 GPU 选择 requirements
-pip install -r requirements.txt
+uv sync --extra cpu
 ```
 
 ### 6.2 运行服务
 ```bash
-uvicorn app.main:app --reload --port 8001
+uvicorn main:app --reload --port 8001
 ```
 
 ## 7. 数据库迁移

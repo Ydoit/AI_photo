@@ -112,7 +112,7 @@ docker-compose up -d
 
 ### 源码部署
 
-[源码部署](doc/developer_guide.md)
+[源码部署](http://localhost:5173/docs/dev/guide.html)
 
 ## 🛠️ 技术栈
 

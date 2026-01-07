@@ -6,6 +6,13 @@ TrailSnap 支持多种部署方式，推荐使用 Docker Compose 进行快速部
 
 使用 Docker Compose 可以一键启动所有服务，包括前端、后端、数据库和 AI 服务。
 
+如果你是在 NAS（如绿联、极空间、飞牛OS）上部署，建议同时阅读：
+
+- [Docker 部署（通用）](/docs/guide/docker/)
+- [绿联 NAS 部署](/docs/guide/docker/ugreen)
+- [极空间部署](/docs/guide/docker/zspace)
+- [飞牛OS 部署](/docs/guide/docker/fnos)
+
 ### 前置要求
 
 - 安装 [Docker](https://docs.docker.com/get-docker/) 和 [Docker Compose](https://docs.docker.com/compose/install/)。

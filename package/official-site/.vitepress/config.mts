@@ -12,6 +12,7 @@ export default withMermaid(defineConfig({
       { text: '首页', link: '/' },
       { text: '用户指南', link: '/docs/guide/install' },
       { text: '开发者文档', link: '/docs/dev/guide' },
+      { text: '博客', link: '/docs/blog/' },
       { text: '问题反馈', link: '/docs/guide/feedback' }
     ],
 
@@ -21,6 +22,15 @@ export default withMermaid(defineConfig({
           text: '用户指南',
           items: [
             { text: '安装指南', link: '/docs/guide/install' },
+            {
+              text: 'Docker 部署',
+              items: [
+                { text: '通用部署', link: '/docs/guide/docker/' },
+                { text: '绿联 NAS', link: '/docs/guide/docker/ugreen' },
+                { text: '极空间', link: '/docs/guide/docker/zspace' },
+                { text: '飞牛OS', link: '/docs/guide/docker/fnos' }
+              ]
+            },
             { text: '使用简介', link: '/docs/guide/user' },
             { text: '问题反馈', link: '/docs/guide/feedback' }
           ]
@@ -35,6 +45,15 @@ export default withMermaid(defineConfig({
             { text: '前端分析', link: '/docs/dev/frontend' },
             { text: '后端分析', link: '/docs/dev/backend' },
             { text: '任务管理设计', link: '/docs/dev/task_manager' }
+          ]
+        }
+      ],
+      '/docs/blog/': [
+        {
+          text: '博客',
+          items: [
+            { text: '文章列表', link: '/docs/blog/' },
+            { text: '功能全景速览', link: '/docs/blog/feature-scan' },
           ]
         }
       ]
