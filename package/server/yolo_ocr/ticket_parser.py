@@ -1,5 +1,6 @@
 import re
 import json
+import logging
 
 
 def extract_text(json_path):
@@ -31,7 +32,12 @@ def _fix_ocr_text(s):
     return s.replace('I', '1').replace('l', '1').replace('O', '0').replace('o', '0')
 
 
-_STATION_INTERFERENCE = {"上铺", "中铺", "下铺", "限乘", "当日", "当次", "车", "号", "开", "元", "报销", "使用"}
+_STATION_INTERFERENCE = {
+    "上铺", "中铺", "下铺",
+    "限乘", "当日", "当次",
+    "车", "号", "开", "元", "报销", "使用",
+    "经停", "经停站"
+}
 
 
 def _normalize_station_name(name: str) -> str:
@@ -200,8 +206,9 @@ def _post_fix_arrival_station(ticket_info: dict, ocr_texts: list):
                 stations.append(nm)
                 seen.add(nm)
 
-        # 2) 纯站名块模式（末尾东/西/南/北）
+        # 2) 纯站名块模式（末尾东/西/南/北），并去除结尾非中文标记（如 '西安北>'）
         stripped = _normalize_station_name(t)
+        stripped = re.sub(r'[^\u4e00-\u9fa5]+$', '', stripped)
         if _is_valid_station_name(stripped) and stripped.endswith(("东", "西", "南", "北")) and stripped not in seen:
             stations.append(stripped)
             seen.add(stripped)
@@ -374,7 +381,8 @@ def parse_ticket_info(ocr_texts, polys):
         "detection_id": 0
     }
 
-    print(f"OCR独立文本块列表: {ocr_texts}\n")
+    # print(f"OCR独立文本块列表: {ocr_texts}\n")
+    logging.debug(f"OCR独立文本块列表: {ocr_texts}")
 
     # 为每个文本块计算中心点
     centers = []
@@ -398,7 +406,7 @@ def parse_ticket_info(ocr_texts, polys):
 
     # 从visual_texts中提取车站
     station_candidates = []  # (name, visual_idx, cx)
-    interference = {"上铺", "中铺", "下铺", "限乘", "当日", "当次", "车", "号", "开", "元", "报销", "使用"}
+    interference = _STATION_INTERFERENCE
 
     for idx, txt in enumerate(visual_texts):
         orig_idx = visual_order_indices[idx]  # 原始索引，用于取 polys
@@ -519,8 +527,7 @@ def parse_ticket_info(ocr_texts, polys):
             stations_in_txt = []
             for match in re.finditer(r'([\u4e00-\u9fa5]{2,6})站', txt):
                 name = match.group(1)
-                interference = {"上铺", "中铺", "下铺", "限乘", "当日", "当次", "车", "号", "开", "元", "报销", "使用"}
-                if not any(w in name for w in interference):
+                if not any(w in name for w in _STATION_INTERFERENCE):
                     stations_in_txt.append((name, match.start(), match.end()))
 
             # 2. 查找车次及其位置

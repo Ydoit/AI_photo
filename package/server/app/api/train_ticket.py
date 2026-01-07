@@ -17,6 +17,7 @@ from datetime import datetime
 import csv
 import json
 import io
+import logging
 
 from app.crud.train_ticket import (
     create_train_ticket, 
@@ -44,6 +45,7 @@ async def recognize_ticket(
     上传车票图片并调用AI服务进行识别
     返回识别到的结构化数据
     """
+    logging.info(f"Starting ticket recognition for file: {file.filename}")
     try:
         # 1. 读取文件内容
         file_content = await file.read()
@@ -69,8 +71,23 @@ async def recognize_ticket(
                 if not result or 'tickets' not in result or not result['tickets']:
                     raise HTTPException(status_code=400, detail="未能识别出车票信息")
                 
-                # 获取第一张识别出的车票
-                ticket_info = result['tickets'][0]
+                # 在多检测结果中选择“最完整/最可信”的一张
+                def score(info: Dict[str, Any]) -> int:
+                    # 关键字段加权
+                    s = 0
+                    if info.get('train_code'): s += 4
+                    if info.get('departure_station'): s += 3
+                    if info.get('arrival_station'): s += 3
+                    if info.get('datetime'): s += 2
+                    if info.get('seat_type'): s += 1
+                    if info.get('price'): s += 1
+                    # 惩罚“仅姓名/提示词”类
+                    if info.get('name') and not (info.get('train_code') or info.get('departure_station') or info.get('arrival_station')):
+                        s -= 2
+                    return s
+                
+                tickets = result['tickets']
+                ticket_info = max(tickets, key=score)
                 
                 # 3. 数据格式化
                 processed_data = {}
@@ -82,6 +99,7 @@ async def recognize_ticket(
                     'arrival_station': 'arrival_station',
                     'seat_num': 'seat_num',
                     'seat_type': 'seat_type',
+                    'berth_type': 'berth_type',
                     'name': 'name',
                     'carriage': 'carriage'
                 }
@@ -108,6 +126,21 @@ async def recognize_ticket(
                             break
                         except ValueError:
                             continue
+                    # 兜底：无年份格式 "MM月DD日 HH:MM"
+                    if not dt:
+                        import re
+                        m = re.search(r'(\d{1,2})月(\d{1,2})日\s*(\d{1,2}):(\d{2})', dt_str)
+                        if m:
+                            y = datetime.now().year
+                            mm = int(m.group(1))
+                            dd = int(m.group(2))
+                            hh = int(m.group(3))
+                            mi = int(m.group(4))
+                            try:
+                                dt = datetime(year=y, month=mm, day=dd, hour=hh, minute=mi)
+                                processed_data['datetime'] = dt.strftime("%Y-%m-%dT%H:%M")
+                            except Exception:
+                                pass
                 
                 # 处理价格
                 if ticket_info.get('price'):
@@ -116,7 +149,18 @@ async def recognize_ticket(
                         processed_data['price'] = float(price_str)
                     except:
                         processed_data['price'] = 0
-                        
+                
+                # berth_type 缺失时提供默认值，避免前端报错
+                if 'berth_type' not in processed_data:
+                    logging.warning("train_ticket.recognize: berth_type missing in AI result, set default '无'")
+                    processed_data['berth_type'] = '无'
+                
+                # 优惠类型映射
+                if ticket_info.get('discount_type'):
+                    processed_data['discount_type'] = ticket_info['discount_type']
+                else:
+                    processed_data['discount_type'] = '全价票'
+                         
                 return processed_data
 
     except Exception as e:

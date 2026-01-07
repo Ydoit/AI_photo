@@ -1,5 +1,6 @@
 import re
 import json
+import logging
 
 
 def extract_text(json_path):
@@ -31,7 +32,16 @@ def _fix_ocr_text(s):
     return s.replace('I', '1').replace('l', '1').replace('O', '0').replace('o', '0')
 
 
-_STATION_INTERFERENCE = {"上铺", "中铺", "下铺", "限乘", "当日", "当次", "车", "号", "开", "元", "报销", "使用"}
+_STATION_INTERFERENCE = {
+    "上铺", "中铺", "下铺",
+    "限乘", "当日", "当次",
+    "车", "号", "开", "元", "报销", "使用",
+    "改签", "退票", "变更", "变更到", "变更到站",
+    "复制", "订单", "订单号", "已支付",
+    "学生票", "非现金", "线上购买",
+    "餐饮", "特产", "订酒店", "租车", "约车",
+    "经停", "经停站"
+}
 
 
 def _normalize_station_name(name: str) -> str:
@@ -126,7 +136,7 @@ def _pick_dep_arr_from_station_candidates(station_with_y):
 
     cleaned.sort(key=lambda x: (x[2], x[1]))  # y,x
 
-    y_threshold = 45  # 比你原先 top_row 的 30 稍放宽
+    y_threshold = 45
     rows = []
     for item in cleaned:
         if not rows:
@@ -145,7 +155,7 @@ def _pick_dep_arr_from_station_candidates(station_with_y):
         for n, cx, cy in row_sorted:
             if n not in seen:
                 uniq.append((n, cx, cy))
-            seen.add(n)
+                seen.add(n)
         if len(uniq) >= 2:
             return uniq[0][0], uniq[1][0]
 
@@ -178,49 +188,59 @@ def _pick_dep_arr_from_station_candidates(station_with_y):
     return "", ""
 
 
+def _split_carriage_seat_if_glued(ticket_info: dict):
+    if ticket_info.get("carriage") or not ticket_info.get("seat_num"):
+        return
+    s = ticket_info["seat_num"].strip()
+    m = re.fullmatch(r'(\d{2})(\d{2}[A-F])', s)
+    if m:
+        ticket_info["carriage"] = m.group(1)
+        ticket_info["seat_num"] = m.group(2)
+
 
 def _post_fix_arrival_station(ticket_info: dict, ocr_texts: list):
-    """
-    仅做 arrival_station 的缺失回填，不触碰 berth_type 等字段。
-    兼容两类站名来源：
-    1) 'XX站' 文本块
-    2) 纯站名块（如“兰考南”“郑州东”），仅接受以 东/西/南/北 结尾以降低误判
-    """
-    if ticket_info.get("arrival_station"):
+    if ticket_info.get("arrival_station") and ticket_info.get("departure_station"):
         return ticket_info
 
     stations = []
     seen = set()
 
     for t in ocr_texts:
-        # 1) 'XX站' 模式
+        # 1) 'XX站' 模式（保留）
         for m in re.finditer(r'([\u4e00-\u9fa5]{2,8})站', t):
             nm = _normalize_station_name(m.group(1))
             if _is_valid_station_name(nm) and nm not in seen:
-                stations.append(nm)
-                seen.add(nm)
+                stations.append(nm); seen.add(nm)
 
-        # 2) 纯站名块模式（末尾东/西/南/北）
+        # 2) 纯站名块模式：先不限制方向后缀，全部收集
         stripped = _normalize_station_name(t)
-        if _is_valid_station_name(stripped) and stripped.endswith(("东", "西", "南", "北")) and stripped not in seen:
-            stations.append(stripped)
-            seen.add(stripped)
+        # 去除结尾非中文标记（如 '西安北>'）
+        stripped = re.sub(r'[^\u4e00-\u9fa5]+$', '', stripped)
+        if _is_valid_station_name(stripped) and stripped not in seen:
+            stations.append(stripped); seen.add(stripped)
 
+    # 方向站优先（不改变旧行为，只是排序优先级）
+    def _rank(s: str) -> int:
+        return 0 if s.endswith(("东", "西", "南", "北")) else 1
+    stations.sort(key=_rank)
+
+    # 填充 dep/arr
     dep = ticket_info.get("departure_station", "")
-    if dep:
+    arr = ticket_info.get("arrival_station", "")
+
+    if dep and not arr:
         for s in stations:
             if s != dep:
                 ticket_info["arrival_station"] = s
                 break
-    else:
+    elif not dep and not arr:
         if len(stations) >= 2:
             ticket_info["departure_station"] = stations[0]
             ticket_info["arrival_station"] = stations[1]
 
-    # 基础一致性保护
-    if ticket_info.get("departure_station") and ticket_info.get("arrival_station"):
-        if ticket_info["departure_station"] == ticket_info["arrival_station"]:
-            ticket_info["arrival_station"] = ""
+    # 一致性保护
+    if ticket_info.get("departure_station") == ticket_info.get("arrival_station"):
+        ticket_info["arrival_station"] = ""
 
     return ticket_info
 
@@ -229,9 +249,9 @@ def _post_fix_arrival_station(ticket_info: dict, ocr_texts: list):
 _NAME_BLOCKLIST_SUBSTR = {
     "事由", "动车组", "中国铁路", "祝您旅途愉快",
     "仅供报销", "报销", "凭证", "遗失", "不补", "退票", "改签",
-    "检票", "限乘", "当日", "当次", "中途下车失效",
-    "买票请到", "请到", "12306", "95306",
-    "车站", "售", "出发", "到达"
+    "检票", "限乘", "当日", "当次", "中途下车失效","和谐号","复兴号",
+    "买票请到", "请到", "12306", "95306","经停信息","成人票",
+    "车站", "售", "出发", "到达","复制", "已支付", "学生票", "非现金支付", "线上购买"
 }
 
 
@@ -296,7 +316,7 @@ def _is_low_confidence_name(name: str, station_name_set: set) -> bool:
 
 def _extract_tail_name_from_masked_id_block(txt: str) -> str:
     """
-    从类似 '****8035周帅康' / '4114****8035周帅康' 这种块中提取尾部中文姓名。
+    从类似 '****8035' / '4114****8035xxx' 这种块中提取尾部中文姓名。
     只提取 2~6 个中文字符，并排除包含'站'的情况。
     """
     if not txt:
@@ -312,6 +332,69 @@ def _extract_tail_name_from_masked_id_block(txt: str) -> str:
     if "站" in name:  # 防止误把“XX站”之类提成姓名
         return ""
     return name
+
+
+_SEAT_TYPE_KEYWORDS = [
+        "无座", "站票",'新空调硬座', '新空调硬卧', '新空调软座', '新空调软卧',
+    "商务座", "特等座", "一等座", "二等座", "硬座", "软座", "硬卧", "软卧",
+]
+
+
+def _extract_seat_type_keyword(txt: str) -> str:
+    if not txt:
+        return ""
+    for st in _SEAT_TYPE_KEYWORDS:
+        if st in txt:
+            return st
+    return ""
+
+
+def _is_discount_block(s: str) -> bool:
+    """像 6.6折、7折、8.5折 这种块，绝不能参与票价解析/拼接"""
+    if not s:
+        return False
+    s = s.strip()
+    return ("折" in s) or bool(re.search(r'\d+(?:\.\d+)?\s*折', s))
+
+
+def _is_price_fragment(s: str) -> bool:
+    """
+    允许参与拼接的“价格碎片”块：
+    - ￥
+    - ￥70 / 70元 / 443. / .5 / 5元 等
+    但不允许包含“折”
+    """
+    if not s:
+        return False
+    s = s.strip()
+    if _is_discount_block(s):
+        return False
+    # 只允许这些字符：数字、￥¥、点、元、空格
+    return bool(re.fullmatch(r'[￥¥\d\.\s元]+', s))
+
+
+# ============== 新增：提取 月日 / 时间 ==============
+def _extract_month_day(txt: str):
+    """从 '1月9日（周五）' / '01月09日' 等提取 (mm, dd)"""
+    if not txt:
+        return None
+    s = _fix_ocr_text(txt).strip()
+    m = re.search(r'(\d{1,2})\s*月\s*(\d{1,2})\s*日', s)
+    if not m:
+        return None
+    mm = m.group(1).zfill(2)
+    dd = m.group(2).zfill(2)
+    return (mm, dd)
+
+def _extract_hhmm(txt: str) -> str:
+    """从 '17:12' / '18：18' 提取 HH:MM"""
+    if not txt:
+        return ""
+    s = _fix_ocr_text(txt).strip()
+    m = re.search(r'(?<!\d)(\d{1,2})[:：](\d{2})(?!\d)', s)
+    if not m:
+        return ""
+    return f"{m.group(1).zfill(2)}:{m.group(2)}"
 
 
 def _select_name_by_proximity(ocr_texts: list, station_name_set: set, ticket_info: dict) -> str:
@@ -333,7 +416,7 @@ def _select_name_by_proximity(ocr_texts: list, station_name_set: set, ticket_inf
             candidates.append((i, t.strip()))
             continue
 
-        # 2) 粘连块候选（如 '****8035周帅康'）
+        # 2) 粘连块候选（如 '****8035xxx'）
         glued = _extract_tail_name_from_masked_id_block(t)
         if glued:
             candidates.append((i, glued))
@@ -351,14 +434,92 @@ def _select_name_by_proximity(ocr_texts: list, station_name_set: set, ticket_inf
             best_name = name
 
     # 距离阈值：过远就不强行认定（避免误判）
-    # 你这张票：4114222002 / ****8035 / 周帅康 距离很近，能通过
     return best_name if best_dist <= 4 else ""
+
+
+def _build_departure_datetime(ocr_texts: list, polys: list, anchor_y=None) -> str:
+    """
+    只输出出发时间：例如 '01月09日 17:12' 或 '2025年01月09日 17:12'
+    规则：
+    - 日期：优先选离 anchor_y 最近的 'X月Y日'
+    - 时间：在 anchor_y 附近的时间块里，选“出发侧”的那个：
+        * 若整体横向分布更明显：取最靠左的时间
+        * 若整体纵向分布更明显（比如旋转90°）：取最靠上的时间
+    """
+    if not ocr_texts or not polys:
+        return ""
+
+    # 年份（可选，有就拼，没有就不猜）
+    year = ""
+    for t in ocr_texts:
+        tt = _fix_ocr_text(t).strip()
+        ym = re.search(r'(\d{4})年', tt)
+        if ym:
+            year = ym.group(1)
+            break
+
+    # 收集 月日、时间候选（带坐标）
+    md_cands = []    # (dist, mm, dd)
+    time_cands = []  # (cx, cy, hhmm)
+
+    for t, poly in zip(ocr_texts, polys):
+        cx, cy = _poly_center(poly)
+
+        # 只在车次所在行附近找（放宽一点，避免OCR偏移）
+        if anchor_y is not None and abs(cy - anchor_y) > 140:
+            continue
+
+        md = _extract_month_day(t)
+        if md:
+            mm, dd = md
+            dist = abs(cy - anchor_y) if anchor_y is not None else 0
+            md_cands.append((dist, mm, dd))
+
+        hhmm = _extract_hhmm(t)
+        if hhmm:
+            time_cands.append((cx, cy, hhmm))
+
+    # 选日期
+    mm = dd = ""
+    if md_cands:
+        md_cands.sort(key=lambda x: x[0])
+        _, mm, dd = md_cands[0]
+
+    # 选“出发时间”
+    dep_t = ""
+    if time_cands:
+        xs = [x for x, _, _ in time_cands]
+        ys = [y for _, y, _ in time_cands]
+        range_x = max(xs) - min(xs) if len(xs) > 1 else 0
+        range_y = max(ys) - min(ys) if len(ys) > 1 else 0
+
+        if range_x >= range_y:
+            # 横向为主：最靠左的时间就是出发
+            dep_t = min(time_cands, key=lambda t: t[0])[2]
+        else:
+            # 纵向为主：最靠上的时间就是出发
+            dep_t = min(time_cands, key=lambda t: t[1])[2]
+
+    # 拼接输出（你要的就是 01月09日 17:12 这种）
+    date_part = ""
+    if mm and dd:
+        date_part = f"{mm}月{dd}日"
+        if year:
+            date_part = f"{year}年{date_part}"
+
+    if date_part and dep_t:
+        return f"{date_part} {dep_t}"
+    if date_part:
+        return date_part
+    return dep_t
 
 
 def parse_ticket_info(ocr_texts, polys):
     """
     解析OCR识别的文本
     """
+    logging.debug("ticket_parser.parse_ticket_info: start")
+    logging.debug("ticket_parser.parse_ticket_info: raw_texts=%s", ocr_texts)
     ticket_info = {
         "train_code": "",
         "departure_station": "",
@@ -374,7 +535,7 @@ def parse_ticket_info(ocr_texts, polys):
         "detection_id": 0
     }
 
-    # print(f"OCR独立文本块列表: {ocr_texts}\n")
+    print(f"OCR独立文本块列表: {ocr_texts}\n")
 
     # 为每个文本块计算中心点
     centers = []
@@ -398,7 +559,7 @@ def parse_ticket_info(ocr_texts, polys):
 
     # 从visual_texts中提取车站
     station_candidates = []  # (name, visual_idx, cx)
-    interference = {"上铺", "中铺", "下铺", "限乘", "当日", "当次", "车", "号", "开", "元", "报销", "使用"}
+    interference = _STATION_INTERFERENCE
 
     for idx, txt in enumerate(visual_texts):
         orig_idx = visual_order_indices[idx]  # 原始索引，用于取 polys
@@ -435,6 +596,22 @@ def parse_ticket_info(ocr_texts, polys):
                 train_code = code
                 train_index_in_visual = idx
                 break
+    # 数字纯车次兜底（如“7006”）：仅当未识别到字母前缀时启用
+    if not train_code:
+        for idx, txt in enumerate(visual_texts):
+            s = _fix_ocr_text(txt).strip()
+            # 排除明显价格/时间/日期块
+            if any(x in s for x in ["￥", "元", ":", "：", "月", "日"]):
+                continue
+            # 排除长数字（订单号/票号）
+            if re.search(r'\d{6,}', s):
+                continue
+            m_num = re.search(r'(?<![A-Za-z0-9])(\d{3,5})(?![A-Za-z0-9])', s)
+            if m_num:
+                train_code = m_num.group(1)
+                train_index_in_visual = idx
+                logging.debug("ticket_parser.train_code: numeric fallback detected %s in txt=%s", train_code, txt)
+                break
     ticket_info["train_code"] = train_code
 
     # === 新增：车次的y坐标锚点，用于修正倾斜导致的站名行分裂 ===
@@ -442,6 +619,10 @@ def parse_ticket_info(ocr_texts, polys):
     if train_index_in_visual >= 0:
         train_orig_idx = visual_order_indices[train_index_in_visual]
         _, train_anchor_y = _poly_center(polys[train_orig_idx])
+
+    # === 只拼“出发日期 + 出发时间”到 datetime ===
+    if not ticket_info["datetime"]:
+        ticket_info["datetime"] = _build_departure_datetime(ocr_texts, polys, train_anchor_y)
 
     if station_candidates:
         # 获取每个候选车站的真实 y 坐标（通过 orig_idx 找到原始 poly）
@@ -513,14 +694,13 @@ def parse_ticket_info(ocr_texts, polys):
     has_id_like = any(_is_id_like_text(t) for t in ocr_texts)
 
     # 遍历每个独立文本块，逐个匹配对应字段
-    for txt in ocr_texts:
+    for idx, txt in enumerate(ocr_texts):
         if not ticket_info["train_code"] or not (ticket_info["departure_station"] and ticket_info["arrival_station"]):
             # 1. 查找所有“XX站”车站及其位置
             stations_in_txt = []
             for match in re.finditer(r'([\u4e00-\u9fa5]{2,6})站', txt):
                 name = match.group(1)
-                interference = {"上铺", "中铺", "下铺", "限乘", "当日", "当次", "车", "号", "开", "元", "报销", "使用"}
-                if not any(w in name for w in interference):
+                if not any(w in name for w in _STATION_INTERFERENCE):
                     stations_in_txt.append((name, match.start(), match.end()))
 
             # 2. 查找车次及其位置
@@ -747,19 +927,71 @@ def parse_ticket_info(ocr_texts, polys):
             if ticket_info["datetime"]:
                 continue
 
+        # ====== 无座/站票优先处理：seat_type = 无座(或站票)，seat_num 必须为空 ======
+        if not ticket_info["seat_num"]:
+            ns = None
+            if "无座" in txt:
+                ns = "无座"
+            elif "站票" in txt:
+                ns = "站票"
+
+            if ns:
+                ticket_info["seat_type"] = ns
+                ticket_info["seat_num"] = ""  # 强制为空（按你的口径）
+                logging.debug("ticket_parser.seat_type: detected no-seat, seat_type=%s, cleared seat_num", ns)
+
+                # 无座票常写：车厢04车 / (硬座车厢04车) 等，尽量补 carriage
+                if not ticket_info["carriage"]:
+                    m_car = re.search(r'车厢\s*(\d{1,2})\s*车', txt) or re.search(r'(\d{1,2})\s*车', txt)
+                    if m_car:
+                        ticket_info["carriage"] = m_car.group(1).zfill(2)
+                else:
+                    ticket_info["carriage"] = str(ticket_info["carriage"]).zfill(2)
+
+                # 这个块已经处理完，避免后面 seat_type 又被“硬座”覆盖
+                continue
+
         # 4. 车厢号+座位号+铺位类型匹配（重点优化：同一文本块拆分多个字段）
         if not (ticket_info["carriage"] and ticket_info["seat_num"] and ticket_info["berth_type"]):
             # 匹配格式：数字车+数字+字母号+铺位类型（如09车14F号上铺、3车02号中铺）
-            combo_match = re.search(r'(\d+)车(\d+[A-F]?)号(上铺|中铺|下铺)?', txt)
+            # combo_match = re.search(r'(\d+)车(\d+[A-F]?)号(上铺|中铺|下铺)?', txt)
+            # 车厢+座位+铺位类型（匹配空白变体：上\s*铺 等）
+            combo_match = re.search(r'(\d{1,2})\s*车\s*(\d{1,2}\s*[A-Fa-f]?)\s*号\s*((?:上\s*铺)|(?:中\s*铺)|(?:下\s*铺))?', txt)
             if combo_match:
                 # 拆分车厢号、座位号、铺位类型
+                if not ticket_info["seat_type"]:
+                    st = _extract_seat_type_keyword(txt)
+                    if st:
+                        ticket_info["seat_type"] = st
                 if not ticket_info["carriage"]:
                     ticket_info["carriage"] = combo_match.group(1)
                 if not ticket_info["seat_num"]:
                     ticket_info["seat_num"] = combo_match.group(2)
                 if not ticket_info["berth_type"] and combo_match.group(3):
-                    ticket_info["berth_type"] = combo_match.group(3)
+                    # 归一化去掉中间空白：上\s*铺 -> 上铺
+                    ticket_info["berth_type"] = re.sub(r'\s+', '', combo_match.group(3))
+                    logging.debug("ticket_parser.parse_ticket_info: combo berth_type=%s from txt=%s", ticket_info["berth_type"], txt)
+                if not ticket_info["carriage"] and ticket_info["seat_num"]:
+                    m = re.fullmatch(r'(\d{2})(\d{2}[A-F])', ticket_info["seat_num"])
+                    if m:
+                        ticket_info["carriage"] = m.group(1)
+                        ticket_info["seat_num"] = m.group(2)
                 continue
+            # 追加：0206F号 这种粘连（常见于 "二等座0206F号"）
+            if not (ticket_info["carriage"] and ticket_info["seat_num"]):
+                if ("订单" not in txt) and ("订单号" not in txt):
+                    glued_match = re.search(r'(\d{2})(\d{2}[A-Fa-f])号', txt)
+                    if glued_match:
+                        if not ticket_info["seat_type"]:
+                            st = _extract_seat_type_keyword(txt)
+                            if st:
+                                ticket_info["seat_type"] = st
+
+                        if not ticket_info["carriage"]:
+                            ticket_info["carriage"] = glued_match.group(1)
+                        if not ticket_info["seat_num"]:
+                            ticket_info["seat_num"] = glued_match.group(2).upper()
+                        continue
 
         # 处理 03403A → 03车03A号
         if not (ticket_info["carriage"] and ticket_info["seat_num"]):
@@ -835,56 +1067,64 @@ def parse_ticket_info(ocr_texts, polys):
 
         # 7. 单独匹配铺位类型（兼容只有铺位类型的文本块）
         if not ticket_info["berth_type"]:
-            berth_types = ["上铺", "中铺", "下铺"]
-            for berth in berth_types:
-                if berth in txt:
-                    ticket_info["berth_type"] = berth
-                    break
-            if ticket_info["berth_type"]:
+            # 支持空白变体匹配：上\s*铺 / 中\s*铺 / 下\s*铺
+            m_berth = re.search(r'(上\s*铺|中\s*铺|下\s*铺)', txt)
+            if m_berth:
+                ticket_info["berth_type"] = re.sub(r'\s+', '', m_berth.group(1))
+                logging.debug("ticket_parser.parse_ticket_info: single berth_type=%s from txt=%s", ticket_info["berth_type"], txt)
                 continue
 
-        # 8. 票价匹配（处理价格被分割的情况，如['￥443.', '5元']）
+        # 8. 票价匹配（处理价格被分割的情况，如 ['￥443.', '5元']）
         if not ticket_info["price"]:
-            # 检查是否包含价格相关关键词
-            price_related = any(keyword in txt for keyword in ['￥', '元'])
-            if price_related:
-                # 如果当前文本块包含价格相关关键词，尝试与前后文本块组合
-                idx = ocr_texts.index(txt)
-                # 尝试组合当前文本块和后续文本块
-                combined_price = txt
-                for i in range(idx + 1, min(idx + 3, len(ocr_texts))):
-                    combined_price += ocr_texts[i]
-                    # 检查组合后的文本是否符合价格格式
-                    price_match = re.search(r'￥?(\d+\.?\d*)元?', combined_price)
-                    if price_match:
-                        ticket_info["price"] = price_match.group(1)
-                        break
+            s = txt.strip()
 
-                if ticket_info["price"]:
-                    continue
+            # (0) 折扣块直接跳过，避免把 6.6 折当成票价
+            if _is_discount_block(s):
+                pass
+            else:
+                # (1) 先尝试当前块单独取价（最优先）
+                #     注意：只要命中了 ￥xx 或 xx元 就直接用，不做拼接
+                single = s.replace("¥", "￥").replace(" ", "")
+                m_single = re.search(r'￥(\d+(?:\.\d+)?)', single) or re.search(r'(\d+(?:\.\d+)?)元', single)
+                if m_single:
+                    ticket_info["price"] = m_single.group(1)
+                else:
+                    # (2) 再尝试跨块拼接：只允许拼接“价格碎片”，遇到折扣/非碎片立刻停止
+                    price_related = ("￥" in s) or ("¥" in s) or ("元" in s)
+                    if price_related and _is_price_fragment(s):
+                        combined = single
+                        # 最多向后拼 2 个块（你原来是 idx+3，这里保持同等强度）
+                        for j in range(idx + 1, min(idx + 3, len(ocr_texts))):
+                            nxt = ocr_texts[j].strip()
+                            if not _is_price_fragment(nxt):
+                                break
+                            combined += nxt.replace("¥", "￥").replace(" ", "")
 
-                # 单独匹配当前文本块
-                price_match = re.search(r'￥?(\d+\.?\d*)元?', txt)
-                if price_match:
-                    # 只有当匹配到的数字是完整价格时才使用
-                    if '.' in price_match.group(1) or len(price_match.group(1)) > 2:
-                        ticket_info["price"] = price_match.group(1)
-                    continue
+                            # 拼接后必须是“纯价格结构”才认
+                            # 允许：￥443.5 / ￥443.5元 / 443.5元
+                            m = re.fullmatch(r'￥?(\d+(?:\.\d+)?)元?', combined)
+                            if m:
+                                ticket_info["price"] = m.group(1)
+                                break
 
-            # 符合小数标准的字段
-            decimal_match = re.search(r'(\d+\.\d+)', txt)
-            if decimal_match:
-                val_str = decimal_match.group(1)
-                try:
-                    num = float(val_str)
-                    if 5 <= num <= 3000:
-                        ticket_info["price"] = val_str
-                except ValueError:
-                    pass
+                    # (3) 最后兜底：纯小数块可能是票价碎片，但要非常保守
+                    #     仅当块本身像价格碎片（且不含折）才接受
+                    if not ticket_info["price"]:
+                        if _is_price_fragment(s) and ("元" in s or "￥" in s or "¥" in s):
+                            m_num = re.search(r'(\d+(?:\.\d+)?)', s)
+                            if m_num:
+                                val = m_num.group(1)
+                                try:
+                                    num = float(val)
+                                    if 5 <= num <= 3000:
+                                        ticket_info["price"] = val
+                                except ValueError:
+                                    pass
 
         # 9. 座位类型匹配（如新车空调硬卧）
         if not ticket_info["seat_type"]:
-            seat_types = ['新空调硬座', '新空调硬卧', '新空调软座', '新空调软卧',"一等座", "二等座", "商务座", "特等座", "硬座", "软座", "硬卧", "软卧"]
+            seat_types = ['新空调硬座', '新空调硬卧', '新空调软座', '新空调软卧',"一等座", "二等座", "商务座", "特等座", "硬座", "软座", "硬卧",
+                          "软卧", "二等卧", "二等硬", "一等硬", "一等卧"]
             for seat_type in seat_types:
                 if seat_type in txt:
                     ticket_info["seat_type"] = seat_type
@@ -921,7 +1161,7 @@ def parse_ticket_info(ocr_texts, polys):
                 ticket_info["name"] = backup_match2.group(1).strip()
                 continue
 
-            # 新增规则：掩码证件号与姓名粘连（如 '****8035周帅康'）
+            # 新增规则：掩码证件号与姓名粘连（如 '****8035xxx'）
             glued = _extract_tail_name_from_masked_id_block(txt)
             if glued:
                 ticket_info["name"] = glued
@@ -945,4 +1185,18 @@ def parse_ticket_info(ocr_texts, polys):
                 ticket_info["name"] = ""
 
     ticket_info = _post_fix_arrival_station(ticket_info, ocr_texts)
+    _split_carriage_seat_if_glued(ticket_info)
+    # 再构建 station_name_set（保证包含最终的 dep/arr）
+    station_name_set = set()
+    for k in ("departure_station", "arrival_station"):
+        v = (ticket_info.get(k) or "").strip()
+        if v:
+            station_name_set.add(v)
+            station_name_set.add(v + "站")
+
+    # 若姓名等于站名，直接清空（电子票里没有证件号时，宁可空也别错）
+    if ticket_info.get("name") in station_name_set:
+        ticket_info["name"] = ""
+
+    logging.debug("ticket_parser.parse_ticket_info: parsed ticket_info=%s", ticket_info)
     return ticket_info
