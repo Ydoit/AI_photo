@@ -3,7 +3,14 @@ import os
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
+class LLMSettings(BaseModel):
+    base_url: str = Field(default="", description="LLM API base URL")
+    model_name: str = Field(default="", description="LLM model name")
+    api_key: str = Field(default="", description="LLM API key")
+
 class AISettings(BaseModel):
+    llm_settings: LLMSettings = Field(default_factory=LLMSettings)
+    llm_vl_settings: LLMSettings = Field(default_factory=LLMSettings)
     ai_api_url: str = Field(default=os.getenv("AI_API_URL", "http://localhost:8001"), description="AI Service API URL")
     face_recognition_threshold: float = Field(default=0.6, description="Face recognition confidence threshold")
     face_recognition_min_photos: int = Field(default=5, description="Minimum photos required for a valid face cluster")
@@ -25,7 +32,7 @@ class ImageSettings(BaseModel):
     # Add other image settings here
 
 class AppSettings(BaseModel):
-    version: str = "2.0"
+    version: str = "0.1"
     ai: AISettings = Field(default_factory=AISettings)
     storage: StorageSettings = Field(default_factory=StorageSettings)
     image: ImageSettings = Field(default_factory=ImageSettings)

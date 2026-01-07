@@ -10,3 +10,4 @@ from .index_log import IndexLog
 from .image_vector import ImageVector
 from .ocr import OCR
 from .trip import TrainTicket
+from .image_description import ImageDescription

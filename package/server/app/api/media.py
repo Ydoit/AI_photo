@@ -127,6 +127,10 @@ def add_tasks(db: Session, photo_id: UUID, file_path: str):
             'type': TaskType.CLASSIFY_IMAGE,
             'payload': {'photo_id': str(photo_id), 'file_path': file_path}
         },
+        {
+            'type': TaskType.VISUAL_DESCRIPTION,
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+        },
     ])
 
 @router.post("", response_model=schemas.Photo)
@@ -222,7 +226,7 @@ def finish_upload_generic(
 
     # Clean up chunks
     shutil.rmtree(chunk_dir)
-    
+
     # Create and Save
     photo = save_and_create_photo(db, final_path, file_name, album_id, photo_id)
 

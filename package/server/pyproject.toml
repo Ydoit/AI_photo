@@ -11,6 +11,7 @@ dependencies = [
     "alembic>=1.17.2",
     "apscheduler>=3.11.1",
     "fastapi>=0.122.0",
+    "openai>=2.14.0",
     "opencv-python-headless>=4.12.0.88",
     "pgvector>=0.4.2",
     "pillow>=12.0.0",

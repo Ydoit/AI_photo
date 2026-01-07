@@ -96,6 +96,19 @@
         <el-form-item label="AI API 地址">
           <el-input v-model="aiForm.ai_api_url" placeholder="http://localhost:8001" />
         </el-form-item>
+        
+        <div class="my-4 pt-2 border-t border-gray-100">
+            <h3 class="text-sm font-medium text-gray-600 mb-3">视觉大模型配置 (OpenAI Compatible)</h3>
+            <el-form-item label="Base URL">
+                <el-input v-model="aiForm.llm_vl_settings.base_url" placeholder="https://api.openai.com/v1" />
+            </el-form-item>
+            <el-form-item label="API Key">
+                <el-input v-model="aiForm.llm_vl_settings.api_key" type="password" show-password placeholder="sk-..." />
+            </el-form-item>
+            <el-form-item label="Model Name">
+                <el-input v-model="aiForm.llm_vl_settings.model_name" placeholder="gpt-4-vision-preview" />
+            </el-form-item>
+        </div>
         <div class="my-4 pt-2 border-t border-gray-100">
             <h3 class="text-sm font-medium text-gray-600 mb-3">人脸识别配置</h3>
             <el-form-item label="识别阈值">
@@ -211,7 +224,12 @@ const storageForm = ref({
 const aiForm = ref({
   ai_api_url: 'http://localhost:8001',
   face_recognition_threshold: 0.6,
-  face_recognition_min_photos: 5
+  face_recognition_min_photos: 5,
+  llm_vl_settings: {
+    base_url: '',
+    model_name: '',
+    api_key: ''
+  }
 })
 
 const imageForm = ref({
@@ -245,7 +263,10 @@ const loadData = async () => {
           storageForm.value = { ...settings.storage }
       }
       if (settings.ai) {
-          aiForm.value = { ...settings.ai }
+          aiForm.value = { 
+            ...settings.ai,
+            llm_vl_settings: settings.ai.llm_vl_settings || { base_url: '', model_name: '', api_key: '' }
+          }
       }
       if (settings.image) {
           imageForm.value = { ...settings.image }

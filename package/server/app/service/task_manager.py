@@ -19,6 +19,7 @@ DEFAULT_PRIORITIES = {
     TaskType.RECOGNIZE_FACE: 2,
     TaskType.RECOGNIZE_TICKET: 2,
     TaskType.CLASSIFY_IMAGE: 3,
+    TaskType.VISUAL_DESCRIPTION: 3,
     TaskType.OCR: 1,
 }
 
@@ -48,6 +49,7 @@ CATEGORY_MAP = {
     TaskType.RECOGNIZE_FACE: 'face',
     TaskType.RECOGNIZE_TICKET: 'tickets',
     TaskType.CLASSIFY_IMAGE: 'classification',
+    TaskType.VISUAL_DESCRIPTION: 'ai',
     TaskType.OCR: 'ocr',
 }
 
@@ -119,7 +121,7 @@ class TaskManager:
 
         stats = []
         # Define categories to show
-        categories = ['scanning', 'metadata', 'face', 'classification', 'ocr', 'tickets']
+        categories = ['scanning', 'metadata', 'face', 'classification', 'ocr', 'tickets', 'ai']
 
         # Priority map for categories (higher is better)
         cat_priority = {
@@ -128,7 +130,8 @@ class TaskManager:
             'face': DEFAULT_PRIORITIES.get(TaskType.RECOGNIZE_FACE, 0),
             'classification': DEFAULT_PRIORITIES.get(TaskType.CLASSIFY_IMAGE, 0),
             'ocr': DEFAULT_PRIORITIES.get(TaskType.OCR, 0),
-            'tickets': DEFAULT_PRIORITIES.get(TaskType.RECOGNIZE_TICKET, 0)
+            'tickets': DEFAULT_PRIORITIES.get(TaskType.RECOGNIZE_TICKET, 0),
+            'ai': DEFAULT_PRIORITIES.get(TaskType.VISUAL_DESCRIPTION, 0)
         }
 
         for cat in categories:
@@ -138,10 +141,10 @@ class TaskManager:
                 Task.status.in_([TaskStatus.PENDING, TaskStatus.PROCESSING]),
                 Task.type.in_(types)
             ).count()
-            
+
             # Completed is always 0 as we delete them
             completed = 0
-            
+
             failed = db.query(Task).filter(
                 Task.status == TaskStatus.FAILED,
                 Task.type.in_(types)

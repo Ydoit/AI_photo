@@ -40,6 +40,7 @@ class Photo(Base):
     albums = relationship("Album", secondary="album_photos", back_populates="photos")
     metadata_info = relationship("PhotoMetadata", uselist=False, back_populates="photo", cascade="all, delete-orphan")
     faces = relationship("Face", back_populates="photo", cascade="all, delete-orphan")
+    image_description = relationship("ImageDescription", uselist=False, back_populates="photo", cascade="all, delete-orphan")
     tags = relationship("PhotoTag", secondary="photo_tag_relations", backref="photos")
 
     @property

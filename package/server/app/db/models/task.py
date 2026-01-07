@@ -24,6 +24,7 @@ class TaskType(str, enum.Enum):
     REBUILD_THUMBNAILS = "REBUILD_THUMBNAILS"
     REBUILD_METADATA = "REBUILD_METADATA"
     OCR = "OCR"
+    VISUAL_DESCRIPTION = "VISUAL_DESCRIPTION"
 
 class Task(Base):
     __tablename__ = "tasks"

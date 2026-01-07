@@ -149,6 +149,7 @@ const categoryMap: Record<string, string[]> = {
     'classification': ['CLASSIFY_IMAGE'],
     'ocr': ['OCR'],
     'tickets': ['RECOGNIZE_TICKET'],
+    'ai': ['VISUAL_DESCRIPTION'],
 }
 
 const handleCategoryCommand = async (category: string, command: string) => {
@@ -259,15 +260,16 @@ const resumeCategory = async (category: string) => {
 }
 
 const formatCategory = (cat: string) => {
-    const map: Record<string, string> = {
-        'scanning': '扫描文件夹',
-        'metadata': '处理元数据',
-        'face': '识别人物',
-        'ocr': 'OCR识别',
-        'classification': '图片分类',
-        'tickets': '车票检测',
+    const names: Record<string, string> = {
+        'scanning': '扫描与基础处理',
+        'metadata': '元数据提取',
+        'face': '人脸识别',
+        'classification': '场景识别',
+        'ai': '视觉大模型',
+        'ocr': '文字识别',
+        'tickets': '车票识别'
     }
-    return map[cat] || cat
+    return names[cat] || cat
 }
 
 onMounted(() => {
