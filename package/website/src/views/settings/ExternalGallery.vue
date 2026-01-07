@@ -6,9 +6,9 @@
         <br>外部文件夹中的图片不会被移动或修改，生成的缩略图将存储在主目录中。
       </p>
       
-      <div class="mb-4 flex gap-2">
-        <el-input v-model="newDir" placeholder="输入外部文件夹绝对路径" style="max-width: 400px" />
-        <el-button type="primary" @click="addDir">添加目录</el-button>
+      <div class="mb-4 flex flex-col sm:flex-row gap-2">
+        <el-input v-model="newDir" placeholder="输入外部文件夹绝对路径" class="w-full sm:max-w-[400px]" />
+        <el-button type="primary" @click="addDir" class="w-full sm:w-auto">添加目录</el-button>
       </div>
 
       <el-table :data="directories" style="width: 100%" border>

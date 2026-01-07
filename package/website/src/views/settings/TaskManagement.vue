@@ -2,9 +2,9 @@
   <div>
     <!-- Stats Cards -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-      <div class="flex justify-between items-center mb-6">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 sm:gap-0">
         <h2 class="text-lg font-semibold text-gray-800 dark:text-white">任务管理</h2>
-        <div class="flex gap-4 items-center">
+        <div class="flex gap-4 items-center w-full sm:w-auto justify-between sm:justify-end">
              <div class="flex items-center gap-2">
                 <span class="text-sm text-gray-600 dark:text-gray-300">快速模式</span>
                 <el-switch v-model="fastMode" @change="handleFastModeChange" />
@@ -20,10 +20,10 @@
       <!-- Category Cards -->
       <div class="grid grid-cols-1 gap-4">
         <div v-for="cat in groupedTasks" :key="cat.category" class="border rounded-lg p-4 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-          <div class="flex justify-between items-center mb-4">
-            <div class="flex items-center gap-3">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 sm:gap-0">
+            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
               <h3 class="text-lg font-medium dark:text-white">{{ formatCategory(cat.category) }}</h3>
-              <el-tag effect="plain" size="small" class="ml-2">
+              <el-tag effect="plain" size="small" class="ml-0 sm:ml-2">
                  优先级: {{ cat.priority }}
               </el-tag>
 
@@ -33,9 +33,9 @@
               <el-tag v-else-if="cat.completed === 0 && cat.pending === 0" type="info" size="small">等待中</el-tag>
               <el-tag v-else type="primary" size="small">进行中</el-tag>
             </div>
-            <div>
-                <el-dropdown trigger="click" @command="(cmd: string) => handleCategoryCommand(cat.category, cmd)">
-                    <el-button type="primary" size="small" plain>
+            <div class="w-full sm:w-auto mt-2 sm:mt-0">
+                <el-dropdown trigger="click" @command="(cmd: string) => handleCategoryCommand(cat.category, cmd)" class="w-full sm:w-auto">
+                    <el-button type="primary" size="small" plain class="w-full sm:w-auto">
                         操作<i class="el-icon-arrow-down el-icon--right"></i>
                     </el-button>
                     <template #dropdown>
@@ -69,7 +69,7 @@
     </div>
 
     <!-- Failed Tasks Dialog -->
-    <el-dialog v-model="failedTasksVisible" title="失败任务列表" width="900px">
+    <el-dialog v-model="failedTasksVisible" title="失败任务列表" width="900px" class="max-w-[90%] w-full sm:w-[900px]">
         <el-table :data="failedTasksList" style="width: 100%" v-loading="failedTasksLoading" height="500">
             <el-table-column prop="type" label="类型" width="180" />
             <el-table-column prop="error" label="错误信息" show-overflow-tooltip />

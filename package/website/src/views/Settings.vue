@@ -1,26 +1,26 @@
 <template>
-  <div class="flex h-full bg-gray-50 dark:bg-gray-900 min-h-screen">
+  <div class="flex flex-col md:flex-row h-full bg-gray-50 dark:bg-gray-900 min-h-screen">
     <!-- Sidebar -->
-    <div class="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
-      <div class="p-6">
+    <div class="w-full md:w-64 bg-white dark:bg-gray-800 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
+      <div class="p-4 md:p-6">
         <h1 class="text-xl font-bold text-gray-800 dark:text-white">设置中心</h1>
       </div>
-      <nav class="mt-2">
+      <nav class="flex md:block overflow-x-auto md:overflow-visible pb-2 md:pb-0 mt-0 md:mt-2 px-4 md:px-0 scrollbar-hide">
         <a 
           v-for="item in menuItems" 
           :key="item.key"
           @click="activeTab = item.key"
-          class="flex items-center px-6 py-3 text-gray-600 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
-          :class="{ 'bg-blue-50 text-primary-500 border-r-2 border-primary-500 dark:bg-gray-700 dark:text-primary-400': activeTab === item.key }"
+          class="flex items-center px-4 md:px-6 py-2 md:py-3 text-sm md:text-base text-gray-600 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors whitespace-nowrap md:whitespace-normal mr-2 md:mr-0 rounded-full md:rounded-none"
+          :class="{ 'bg-blue-50 text-primary-500 md:border-r-2 border-primary-500 dark:bg-gray-700 dark:text-primary-400': activeTab === item.key }"
         >
-          <component :is="item.icon" class="w-5 h-5 mr-3" />
+          <component :is="item.icon" class="w-5 h-5 mr-2 md:mr-3" />
           {{ item.label }}
         </a>
       </nav>
     </div>
 
     <!-- Content Area -->
-    <div class="flex-1 overflow-auto p-8">
+    <div class="flex-1 overflow-auto p-4 md:p-8">
       <UserManagement v-if="activeTab === 'user'" />
       <TaskManagement v-if="activeTab === 'tasks'" />
       <BasicSettings v-if="activeTab === 'settings'" />

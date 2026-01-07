@@ -67,11 +67,11 @@
     <!-- Storage Settings -->
     <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
       <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">存储配置</h2>
-      <el-form :model="storageForm" label-width="140px" class="max-w-3xl">
+      <el-form :model="storageForm" label-position="top" class="max-w-3xl">
         <el-form-item label="图片存储根目录">
-          <div class="flex gap-2 w-full">
+          <div class="flex flex-col sm:flex-row gap-2 w-full">
             <el-input v-model="storageForm.photo_storage_path" placeholder="例如 C:/TrailSnap/uploads" />
-            <el-button type="primary" @click="validatePath" class="bg-primary-600 text-white">验证并保存</el-button>
+            <el-button type="primary" @click="validatePath" class="bg-primary-600 text-white w-full sm:w-auto mt-2 sm:mt-0">验证并保存</el-button>
           </div>
           <p class="text-sm mt-2 text-gray-500">主目录用于存储上传的照片和所有缩略图。</p>
           <p class="text-sm mt-1" :class="pathStatusClass">{{ pathStatusText }}</p>
@@ -92,13 +92,39 @@
     <!-- AI Settings -->
     <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
       <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">AI 相关配置</h2>
-      <el-form label-width="140px" class="max-w-3xl">
+      <el-form label-position="top" class="max-w-3xl">
         <el-form-item label="AI API 地址">
           <el-input v-model="aiForm.ai_api_url" placeholder="http://localhost:8001" />
         </el-form-item>
+
+        <div class="my-4 pt-2 border-t border-gray-100">
+            <h3 class="text-sm font-medium text-gray-600 mb-3 flex items-center">
+              语言大模型配置 (Language LLM)
+              <el-tooltip content="用于自然语言处理、搜索增强等任务" placement="top">
+                <Info class="w-4 h-4 ml-1 text-gray-400 cursor-help" />
+              </el-tooltip>
+            </h3>
+            <div class="bg-blue-50 dark:bg-gray-700 p-3 rounded mb-3 text-xs text-blue-600 dark:text-blue-300">
+              配置用于文本理解和生成的语言模型。与视觉模型分开配置，以便使用不同的提供商或模型。
+            </div>
+            <el-form-item label="Base URL">
+                <el-input v-model="aiForm.llm_settings.base_url" placeholder="https://api.openai.com/v1" />
+            </el-form-item>
+            <el-form-item label="API Key">
+                <el-input v-model="aiForm.llm_settings.api_key" type="password" show-password placeholder="sk-..." />
+            </el-form-item>
+            <el-form-item label="Model Name">
+                <el-input v-model="aiForm.llm_settings.model_name" placeholder="gpt-3.5-turbo" />
+            </el-form-item>
+        </div>
         
         <div class="my-4 pt-2 border-t border-gray-100">
-            <h3 class="text-sm font-medium text-gray-600 mb-3">视觉大模型配置 (OpenAI Compatible)</h3>
+            <h3 class="text-sm font-medium text-gray-600 mb-3 flex items-center">
+              视觉大模型配置 (Visual LLM)
+              <el-tooltip content="用于图片内容理解、标签生成等视觉任务" placement="top">
+                <Info class="w-4 h-4 ml-1 text-gray-400 cursor-help" />
+              </el-tooltip>
+            </h3>
             <el-form-item label="Base URL">
                 <el-input v-model="aiForm.llm_vl_settings.base_url" placeholder="https://api.openai.com/v1" />
             </el-form-item>
@@ -112,8 +138,8 @@
         <div class="my-4 pt-2 border-t border-gray-100">
             <h3 class="text-sm font-medium text-gray-600 mb-3">人脸识别配置</h3>
             <el-form-item label="识别阈值">
-              <div class="flex items-center gap-4 w-full">
-                <el-slider v-model="aiForm.face_recognition_threshold" :min="0" :max="1" :step="0.05" class="w-64" show-input />
+              <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full">
+                <el-slider v-model="aiForm.face_recognition_threshold" :min="0" :max="1" :step="0.05" class="w-full sm:w-64" show-input />
                 <span class="text-sm text-gray-500">判定为人脸的最低置信度 (默认 0.6)</span>
               </div>
             </el-form-item>
@@ -132,33 +158,33 @@
     <!-- Image Settings -->
     <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
       <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">图片配置</h2>
-      <el-form label-width="140px" class="max-w-3xl">
+      <el-form label-position="top" class="max-w-3xl">
         <el-form-item label="缩略图大小">
-          <el-select v-model="imageForm.thumbnail_size" placeholder="选择缩略图大小">
+          <el-select v-model="imageForm.thumbnail_size" placeholder="选择缩略图大小" class="w-full sm:w-auto">
              <el-option label="250px" :value="250" />
              <el-option label="480px" :value="480" />
              <el-option label="720px" :value="720" />
              <el-option label="1080px" :value="1080" />
           </el-select>
-          <span class="text-sm text-gray-500 ml-2">默认 250px</span>
+          <span class="text-sm text-gray-500 ml-0 sm:ml-2 block sm:inline mt-1 sm:mt-0">默认 250px</span>
         </el-form-item>
         
         <el-form-item label="缩略图质量">
-           <el-slider v-model="imageForm.thumbnail_quality" :min="1" :max="100" show-input class="w-64" />
+           <el-slider v-model="imageForm.thumbnail_quality" :min="1" :max="100" show-input class="w-full sm:w-64" />
         </el-form-item>
         
         <el-form-item label="预览图大小">
-          <el-select v-model="imageForm.preview_size" placeholder="选择预览图大小">
+          <el-select v-model="imageForm.preview_size" placeholder="选择预览图大小" class="w-full sm:w-auto">
              <el-option label="720px" :value="720" />
              <el-option label="1080px" :value="1080" />
              <el-option label="1440px" :value="1440" />
              <el-option label="2160px" :value="2160" />
           </el-select>
-          <span class="text-sm text-gray-500 ml-2">默认 1440px</span>
+          <span class="text-sm text-gray-500 ml-0 sm:ml-2 block sm:inline mt-1 sm:mt-0">默认 1440px</span>
         </el-form-item>
 
         <el-form-item label="预览图质量">
-           <el-slider v-model="imageForm.preview_quality" :min="1" :max="100" show-input class="w-64" />
+           <el-slider v-model="imageForm.preview_quality" :min="1" :max="100" show-input class="w-full sm:w-64" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="saveImageSettings">保存图片配置</el-button>
@@ -169,7 +195,7 @@
     <!-- Index Maintenance -->
     <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
       <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">索引维护</h2>
-      <el-form label-width="140px" class="max-w-3xl">
+      <el-form label-position="top" class="max-w-3xl">
         <el-form-item label="重建索引">
           <el-button type="danger" @click="rebuildIndex" :disabled="indexStatus.running">立即重建索引</el-button>
           <div class="mt-4 w-full" v-if="indexStatus.running || indexStatus.progress > 0">
@@ -206,7 +232,7 @@ import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { settingsApi } from '@/api/settings'
 import { ElMessage } from 'element-plus'
 import { injectTheme } from '@/composables/useTheme.js'
-import { Sun, Moon, Palette, Check } from 'lucide-vue-next'
+import { Sun, Moon, Palette, Check, Info } from 'lucide-vue-next'
 
 const {
   currentMode,
@@ -226,6 +252,11 @@ const aiForm = ref({
   face_recognition_threshold: 0.6,
   face_recognition_min_photos: 5,
   llm_vl_settings: {
+    base_url: '',
+    model_name: '',
+    api_key: ''
+  },
+  llm_settings: {
     base_url: '',
     model_name: '',
     api_key: ''
@@ -265,7 +296,8 @@ const loadData = async () => {
       if (settings.ai) {
           aiForm.value = { 
             ...settings.ai,
-            llm_vl_settings: settings.ai.llm_vl_settings || { base_url: '', model_name: '', api_key: '' }
+            llm_vl_settings: settings.ai.llm_vl_settings || { base_url: '', model_name: '', api_key: '' },
+            llm_settings: settings.ai.llm_settings || { base_url: '', model_name: '', api_key: '' }
           }
       }
       if (settings.image) {
