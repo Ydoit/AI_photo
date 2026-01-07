@@ -98,7 +98,7 @@
               </div>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item command="rename">重命名</el-dropdown-item>
+                  <el-dropdown-item command="rename">编辑人物信息</el-dropdown-item>
                   <el-dropdown-item command="delete" divided class="text-red-500">删除人物</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -111,17 +111,11 @@
       </div>
     </div>
 
-    <el-dialog v-model="renameDialogVisible" title="重命名" width="340px" border-radius="12px">
-      <div class="py-2">
-        <el-input v-model="newName" placeholder="输入姓名..." @keyup.enter="submitRename" />
-      </div>
-      <template #footer>
-        <div class="flex gap-2 justify-end">
-          <el-button @click="renameDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitRename">确定</el-button>
-        </div>
-      </template>
-    </el-dialog>
+    <IdentityEditDialog
+      v-model:visible="editDialogVisible"
+      :identity="currentEditingIdentity"
+      @saved="handleEditSaved"
+    />
   </div>
 </template>
 
@@ -139,6 +133,7 @@ import {
   Merge as MergeIcon,
   ArrowLeft
 } from 'lucide-vue-next'
+import IdentityEditDialog from '@/components/IdentityEditDialog.vue'
 
 const router = useRouter()
 const loading = ref(true)
@@ -146,9 +141,8 @@ const identities = ref<FaceIdentity[]>([])
 const isMergeMode = ref(false)
 const selectedIds = ref<string[]>([])
 
-const renameDialogVisible = ref(false)
-const newName = ref('')
-const currentEditingId = ref<string | null>(null)
+const editDialogVisible = ref(false)
+const currentEditingIdentity = ref<FaceIdentity | null>(null)
 
 const fetchIdentities = async () => {
   loading.value = true
@@ -224,9 +218,8 @@ const handleCardClick = (person: FaceIdentity) => {
 
 const handleCommand = (cmd: string, person: FaceIdentity) => {
   if (cmd === 'rename') {
-    currentEditingId.value = person.id
-    newName.value = person.identity_name
-    renameDialogVisible.value = true
+    currentEditingIdentity.value = person
+    editDialogVisible.value = true
   } else if (cmd === 'delete') {
     ElMessageBox.confirm('确定要删除这个人物吗？', '提示', { type: 'warning' }).then(async () => {
       try {
@@ -240,12 +233,11 @@ const handleCommand = (cmd: string, person: FaceIdentity) => {
   }
 }
 
-const submitRename = async () => {
-  if (!newName.value.trim() || !currentEditingId.value) return
+const handleEditSaved = async () => {
+  if (!currentEditingIdentity.value?.identity_name?.trim()) return
   try {
-    await faceApi.renameIdentity(currentEditingId.value, newName.value)
     ElMessage.success('重命名成功')
-    renameDialogVisible.value = false
+    editDialogVisible.value = false
     fetchIdentities()
   } catch (e) {
     ElMessage.error('重命名失败')

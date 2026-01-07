@@ -26,6 +26,12 @@
       </button>
     </template>
   </UnifiedPhotoPage>
+
+  <IdentityEditDialog
+    v-model:visible="editDialogVisible"
+    :identity="identity"
+    @saved="(updated: FaceIdentity) => identity = updated"
+  />
 </template>
 
 <script setup lang="ts">
@@ -50,6 +56,7 @@ const identityId = route.params.id as string
 const identity = ref<FaceIdentity | null>(null)
 const images = ref<AlbumImage[]>([])
 const loading = ref(true)
+const editDialogVisible = ref(false)
 const timeline = ref<any[]>([])
 const pendingRemoveIds = ref(new Set<string>())
 

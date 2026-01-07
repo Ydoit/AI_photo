@@ -26,9 +26,9 @@ export const faceApi = {
     return data
   },
 
-  async renameIdentity(id: string, name: string) {
-    const { data } = await api.put(`/api/faces/identities/${id}/name`, { name })
-    return data
+  async updateIdentity(id: string, data: { identity_name?: string; description?: string; tags?: string[] }) {
+    const { data: res } = await api.put<FaceIdentity>(`/api/faces/identities/${id}`, data)
+    return res
   },
 
   async mergeIdentities(targetId: string, sourceIds: string[]) {

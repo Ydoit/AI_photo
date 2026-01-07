@@ -139,6 +139,8 @@ export interface CoverPhotoInfo {
 export interface FaceIdentity {
   id: string
   identity_name: string
+  description?: string
+  tags?: string[]
   default_face_id: number | null
   face_count: number
   cover_photo: CoverPhotoInfo | null

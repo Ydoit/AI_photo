@@ -13,8 +13,20 @@ from app.schemas.face import FaceIdentitySchema, RemovePhotosRequest, SetCoverRe
 
 router = APIRouter()
 
-class FaceIdentityUpdate(BaseModel):
-    name: str = Field(..., description="新的名称")
+@router.put("/identities/{id}", summary="更新人物信息", description="修改人物的显示名称、描述和标签")
+def update_identity(
+    id: UUID = Path(..., description="人物ID"),
+    payload: schemas.FaceIdentityUpdate = Body(..., description="人物更新信息"),
+    db: Session = Depends(get_db)
+):
+    """
+    更新人物信息（名称、描述、标签）。
+    """
+    if not crud_face.get_identity(db, id):
+        raise HTTPException(status_code=404, detail="Identity not found")
+        
+    updated_identity = crud_face.update_identity(db, id, payload)
+    return updated_identity
 
 @router.get("/identities", response_model=List[FaceIdentitySchema], summary="获取人物列表", description="获取所有已识别的人物列表，支持分页，返回包含封面信息和照片数量的人物对象")
 def list_identities(
@@ -96,23 +108,6 @@ def set_identity_cover(
         
     return {"status": "success"}
 
-@router.put("/identities/{id}/name", summary="重命名人物", description="修改人物的显示名称")
-def rename_identity(
-    id: UUID = Path(..., description="人物ID"),
-    payload: FaceIdentityUpdate = Body(..., description="重命名请求"),
-    db: Session = Depends(get_db)
-):
-    """
-    修改人物名称。
-    """
-    update_data = schemas.FaceIdentityUpdate(identity_name=payload.name)
-    identity = crud_face.update_identity(db, id, update_data)
-    
-    if not identity:
-        raise HTTPException(status_code=404, detail="Identity not found")
-    
-    return {"status": "success", "name": identity.identity_name}
-
 @router.post("/identities/merge", summary="合并人物", description="将多个源人物合并到一个目标人物中")
 def merge_identities(
     payload: MergeRequest = Body(..., description="合并请求"),
@@ -120,10 +115,8 @@ def merge_identities(
 ):
     """
     合并人物。
-    将源人物的所有人脸数据移动到目标人物下，并软删除源人物。
     """
     if not crud_face.merge_identities(db, payload.target_id, payload.source_ids):
-         raise HTTPException(status_code=404, detail="Target identity not found")
-         
+         raise HTTPException(status_code=400, detail="Merge failed")
+    
     return {"status": "success"}
-

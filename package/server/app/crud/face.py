@@ -113,11 +113,11 @@ def update_identity(db: Session, identity_id: UUID, obj_in: schemas.FaceIdentity
     db_obj = get_identity(db, identity_id)
     if not db_obj:
         return None
-    
+
     update_data = obj_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_obj, field, value)
-    
+    print(update_data)
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
@@ -209,6 +209,8 @@ def get_identities_with_details(
             id=identity.id,
             identity_name=identity.identity_name,
             default_face_id=identity.default_face_id,
+            description=identity.description,
+            tags=identity.tags,
             face_count=count,
             cover_photo=cover,
             cover=photo,

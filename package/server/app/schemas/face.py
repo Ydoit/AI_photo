@@ -23,6 +23,8 @@ class FaceUpdate(FaceBase):
 # FaceIdentity Schemas
 class FaceIdentityBase(BaseModel):
     identity_name: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
 
 class FaceIdentityCreate(FaceIdentityBase):
     pass
@@ -39,6 +41,8 @@ class CoverPhotoInfo(BaseModel):
 class FaceIdentitySchema(BaseModel):
     id: UUID = Field(..., description="人物ID")
     identity_name: Optional[str] = Field(None, description="人物名称")
+    description: Optional[str] = Field(None, description="人物描述")
+    tags: Optional[List[str]] = Field(None, description="人物标签")
     default_face_id: Optional[int] = Field(None, description="默认封面人脸ID")
     face_count: Optional[int] = Field(0, description="照片数量")
     cover_photo: Optional[CoverPhotoInfo] = Field(None, description="封面照片信息")

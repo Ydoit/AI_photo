@@ -14,7 +14,9 @@ class FaceIdentity(Base):
     __tablename__ = "face_identities"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    identity_name = Column(String(50))
+    identity_name = Column(String(500))
+    description = Column(String(500), nullable=True)
+    tags = Column(JSON, nullable=True)
     # use_alter=True to handle circular dependency during creation
     default_face_id = Column(Integer, ForeignKey("faces.id", use_alter=True, ondelete="SET NULL"), nullable=True)
     create_time = Column(DateTime, default=datetime.now)
