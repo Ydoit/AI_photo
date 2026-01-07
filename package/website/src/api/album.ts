@@ -80,7 +80,7 @@ export const albumService = {
     if (albumId) {
         formData.append('album_id', albumId);
     }
-    const { data } = await api.post<Photo>('/api/photos', formData, {
+    const { data } = await api.post<Photo>('/api/medias', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
     return data;

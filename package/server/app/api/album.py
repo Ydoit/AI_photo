@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status,
 from sqlalchemy.orm import Session
 import aiohttp
 
-from app.api.photo import upload_photo_generic
 from app.dependencies import get_db
 from app.crud import album as crud
 from app.schemas import album as schemas

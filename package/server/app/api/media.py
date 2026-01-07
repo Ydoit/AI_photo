@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse, StreamingResponse, Response
 from sqlalchemy.orm import Session
 
 from app.crud.album import save_and_create_photo
+from app.db.models.task import TaskType
 from app.dependencies import get_db
 from app.db.models.photo import Photo
 from app.service import storage
@@ -17,6 +18,7 @@ from app.crud import album as crud_album
 from app.crud import face as crud_face
 
 from app.schemas import photo as schemas
+from app.service.task_manager import TaskManager
 
 router = APIRouter()
 
@@ -103,6 +105,56 @@ def get_media_file(
     # Full content
     return FileResponse(file_path, media_type=media_type, headers={"Accept-Ranges": "bytes", "Cache-Control": "public, max-age=31536000"})
 
+def add_tasks(db: Session, photo_id: UUID, file_path: str):
+    TaskManager.get_instance().add_tasks(db, [
+        {
+            'type': TaskType.EXTRACT_METADATA,
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+        },
+        {
+            'type': TaskType.RECOGNIZE_FACE,
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+        },
+        {
+            'type': TaskType.OCR,
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+        },
+        {
+            'type': TaskType.RECOGNIZE_TICKET,
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+        },
+        {
+            'type': TaskType.CLASSIFY_IMAGE,
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+        },
+    ])
+
+@router.post("", response_model=schemas.Photo)
+async def upload_photo_generic(
+        album_id: Optional[UUID] = Form(None),
+        file: UploadFile = File(...),
+        db: Session = Depends(get_db)
+):
+    if album_id:
+        # Verify album exists
+        db_album = crud_album.get_album(db, album_id=album_id)
+        if not db_album:
+            raise HTTPException(status_code=404, detail="Album not found")
+
+    # Generate ID
+    photo_id = uuid.uuid4()
+
+    # Save file
+    file_path = storage.save_upload_file(file, photo_id, db)
+
+    # Create and Save
+    photo = save_and_create_photo(db, file_path, file.filename, album_id, photo_id)
+
+    # Add tasks
+    add_tasks(db, photo_id, file_path)
+
+    return photo
+
 # Chunked Upload Endpoints
 
 @router.post("/upload/init")
@@ -170,8 +222,14 @@ def finish_upload_generic(
 
     # Clean up chunks
     shutil.rmtree(chunk_dir)
+    
+    # Create and Save
+    photo = save_and_create_photo(db, final_path, file_name, album_id, photo_id)
 
-    return save_and_create_photo(db, final_path, file_name, album_id, photo_id)
+    # Add tasks
+    add_tasks(db, photo_id, final_path)
+
+    return photo
 
 @router.get('/geojson')
 def get_geojson(level: str = Query("city")):
