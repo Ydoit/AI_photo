@@ -116,6 +116,7 @@ async def handle_extract_metadata(task_manager, task: Task, db: Session):
 
         # Update fields
         if meta.get("exif_info"):
+            exif_dict = meta["exif_info"]
             # Serialize for storage
             # Convert non-serializable objects to string
             def default_serializer(obj):
@@ -123,7 +124,28 @@ async def handle_extract_metadata(task_manager, task: Task, db: Session):
                     return str(obj)
                 return str(obj)
 
-            db_meta.exif_info = json.dumps(meta["exif_info"], default=default_serializer, ensure_ascii=False)
+            db_meta.exif_info = json.dumps(exif_dict, default=default_serializer, ensure_ascii=False)
+
+            # Extract Camera Info
+            if exif_dict.get('Make'):
+                db_meta.make = str(exif_dict.get('Make')).strip().replace('\x00', '')
+            if exif_dict.get('Model'):
+                db_meta.model = str(exif_dict.get('Model')).strip().replace('\x00', '')
+            
+            sp = {}
+            # FNumber often comes as a ratio, we store string representation
+            if exif_dict.get('FNumber'):
+                sp['f_number'] = str(exif_dict.get('FNumber'))
+            if exif_dict.get('ExposureTime'):
+                sp['exposure_time'] = str(exif_dict.get('ExposureTime'))
+            if exif_dict.get('ISOSpeedRatings'):
+                sp['iso'] = str(exif_dict.get('ISOSpeedRatings'))
+            if exif_dict.get('FocalLength'):
+                sp['focal_length'] = str(exif_dict.get('FocalLength'))
+            if exif_dict.get('FocalLengthIn35mmFilm'):
+                sp['focal_length_35mm'] = str(exif_dict.get('FocalLengthIn35mmFilm'))
+            if sp:
+                db_meta.shooting_params = sp
 
         loc_details = meta.get("location_details", {})
         if loc_details:

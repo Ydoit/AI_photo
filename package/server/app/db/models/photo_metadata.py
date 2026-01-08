@@ -26,6 +26,11 @@ class PhotoMetadata(Base):
     province = Column(String(100))
     country = Column(String(100))
     address = Column(Text)
+    
+    # Camera info
+    make = Column(String(100))
+    model = Column(String(100))
+    shooting_params = Column(JSON)
 
     location_api = Column(String(255)) # API info for location
 

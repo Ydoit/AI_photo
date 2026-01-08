@@ -23,6 +23,11 @@ class PhotoMetadataBase(BaseModel):
     exif_info: Optional[str] = None
     location_api: Optional[str] = None
 
+    # Camera info
+    make: Optional[str] = None
+    model: Optional[str] = None
+    shooting_params: Optional[Dict[str, Any]] = None
+
     # Enhanced location fields
     longitude: Optional[float] = None
     latitude: Optional[float] = None

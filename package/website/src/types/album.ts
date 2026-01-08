@@ -27,6 +27,14 @@ export interface PhotoMetadata {
   latitude?: number;
   longitude?: number;
   tags?: Tag[];
+  make?: string;
+  model?: string;
+  shooting_params?: {
+    f_number?: string;
+    exposure_time?: string;
+    iso?: string;
+    [key: string]: any;
+  };
 }
 
 export interface Photo {

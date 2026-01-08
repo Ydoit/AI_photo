@@ -46,7 +46,19 @@
                 {{ formatTime(image?.timestamp) }}
             </p>
         </div>
-
+        <!-- Camera Info -->
+        <div class="space-y-1" v-if="metadata.make || metadata.model">
+            <div class="flex items-center gap-2 text-gray-500 text-xs font-medium uppercase tracking-wider">
+                <Camera class="w-3.5 h-3.5" />
+                <span>{{ metadata.make}}</span>
+            </div>
+            <p class="text-sm text-gray-900 dark:text-gray-200 font-mono">
+                {{ metadata.model || '无型号' }}
+            </p>
+            <p v-if="metadata.shooting_params" class="text-sm text-gray-900 dark:text-gray-200 font-mono">
+                {{ formatShootingParams(metadata.shooting_params) }}
+            </p>
+        </div>
         <!-- Location -->
         <div class="space-y-2">
             <div class="flex items-center justify-between text-gray-500 text-xs font-medium uppercase tracking-wider">
@@ -219,8 +231,7 @@
 import { ref, reactive, computed } from 'vue'
 import {
     X, CalendarDays, MapPin, Tags, PanelRightClose, PanelRightOpen,
-    Loader2, Trash2, Info, User,
-    User as UserIcon
+    Loader2, Trash2, Info, User, Camera
 } from 'lucide-vue-next'
 import { format } from 'date-fns'
 import { albumService } from '@/api/album'
@@ -282,6 +293,17 @@ const formatTime = (ts?: number) => {
     return format(new Date(ts), 'yyyy-MM-dd HH:mm:ss')
 }
 
+const formatShootingParams = (params: any) => {
+    if (!params) return ''
+    const parts = []
+    if (params.f_number) parts.push(`f/${params.f_number}`)
+    // 小于 1 的曝光时间改成 1/xxx, 保留整数部分
+    if (params.exposure_time) parts.push(params.exposure_time.startsWith('0.') ? `1/${Math.round(1 / parseFloat(params.exposure_time))}s` : `${params.exposure_time}s`)
+    if (params.iso) parts.push(`ISO ${params.iso}`)
+    if (params.focal_length) parts.push(`${params.focal_length}mm (35mm equivalent: ${params.focal_length_35mm}mm)`)
+    return parts.join('  ')
+}
+
 const formatSize = (bytes?: number) => {
     if (bytes === undefined) return '--'
     if (bytes === 0) return '0 B'
@@ -292,8 +314,7 @@ const formatSize = (bytes?: number) => {
 }
 
 const getPhotoUrl = (photoId: string) => {
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-  return `${API_BASE_URL}/api/medias/${photoId}/thumbnail`
+  return `/api/medias/${photoId}/thumbnail`
 }
 
 /**
