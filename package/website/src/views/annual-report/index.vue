@@ -53,11 +53,50 @@ onMounted(async () => {
   }
 });
 
+let isScrolling = false
+let scrollAnimationFrame: number | null = null // 手动滚动的动画帧
+/**
+ * 手动实现平滑滚动（替代原生smooth，稳定无冲突）
+ * @param {HTMLElement} el 滚动容器
+ * @param {number} targetTop 目标位置
+ * @param {number} duration 动画时长（ms）
+ */
+const smoothScrollTo = (el: HTMLElement, targetTop: number, duration = 400) => {
+  // 取消上一次未完成的动画
+  if (scrollAnimationFrame) cancelAnimationFrame(scrollAnimationFrame)
+  
+  const startTop = el.scrollTop
+  const distance = targetTop - startTop
+  const startTime = performance.now()
+
+  // 缓动函数：ease-out（先快后慢，贴近原生滑动手感）
+  const easeOut = (t: number, b: number, c: number, d: number) => {
+    t /= d
+    t--
+    return c * (t * t * t + 1) + b
+  }
+
+  const animate = (currentTime: number) => {
+    const elapsed = currentTime - startTime
+    if (elapsed < duration) {
+      el.scrollTop = easeOut(elapsed, startTop, distance, duration)
+      scrollAnimationFrame = requestAnimationFrame(animate)
+    } else {
+      el.scrollTop = targetTop // 动画结束精准定位
+      scrollAnimationFrame = null
+      isScrolling = false
+    }
+  }
+
+  scrollAnimationFrame = requestAnimationFrame(animate)
+}
+
 const handleReplay = () => {
   if (containerRef.value && containerRef.value.$el) {
     const scrollWrapper = containerRef.value.$el.querySelector('.scroll-wrapper');
     if (scrollWrapper) {
-        scrollWrapper.scrollTo({ top: 0, behavior: 'smooth' });
+        smoothScrollTo(scrollWrapper, 0, 1200);
+        // scrollWrapper.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }
 };
