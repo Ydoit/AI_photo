@@ -9,7 +9,7 @@
 
 <style scoped>
 .scroll-wrapper {
-  scroll-behavior: smooth;
+  /* scroll-behavior: smooth; */
   scrollbar-width: none;
 }
 .scroll-wrapper::-webkit-scrollbar { display: none; }

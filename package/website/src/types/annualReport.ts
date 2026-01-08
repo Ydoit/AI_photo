@@ -16,12 +16,16 @@ export interface TimeMetrics {
 
 export interface MemoryMetrics {
   categoryDistribution: { name: string; value: number }[];
+  topPersonName: string;
   topPersonCount: number;
   topLocation: string;
   maxPhotoDay: string; // Date string
   maxPhotoDayCount: number;
   topFeature: string;
   topFeatureCount: number;
+  topMake: string;
+  topModel: string;
+  topMakeModelCount: number;
 }
 
 export interface CarouselGroup {

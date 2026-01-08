@@ -23,12 +23,16 @@ class CategoryDistributionItem(BaseModel):
 
 class MemoryMetrics(BaseModel):
     categoryDistribution: List[CategoryDistributionItem]
+    topPersonName: str
     topPersonCount: int
     topLocation: str
     maxPhotoDay: str
     maxPhotoDayCount: int
     topFeature: str
     topFeatureCount: int
+    topMake: str
+    topModel: str
+    topMakeModelCount: int
 
 class CarouselGroup(BaseModel):
     id: str

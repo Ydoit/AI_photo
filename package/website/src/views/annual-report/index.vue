@@ -73,7 +73,7 @@ const handleReplay = () => {
 
     <!-- Report Content -->
     <AnnualContainer v-else-if="reportData" ref="containerRef">
-        <!-- 1. Cover -->
+        <!-- 0. Cover -->
         <SectionCover :user="reportData.user" :year="reportData.year" />
 
         <!-- 1. Photo Wall -->
@@ -82,20 +82,14 @@ const handleReplay = () => {
         <!-- 2. Time -->
         <SectionTime :data="reportData.time" />
 
-        <!-- 3. Account -->
+        <!-- 3. Highlight -->
+        <SectionHighlight :memory="reportData.memory" />
+
+        <!-- 4. Account -->
         <SectionAccount :time="reportData.time" :emotion="reportData.emotion" />
 
-        <!-- 3.5 Expense -->
-        <SectionExpense v-if="reportData.expense" :data="reportData.expense" :startTime="startTime" :endTime="endTime" />
-
-        <!-- 3.6 Transport Analysis (Merged Behavior & Comprehensive) -->
-        <SectionTransportAnalysis v-if="reportData.transportAnalysis" :data="reportData.transportAnalysis" />
-
-        <!-- 4. Category -->
+        <!-- 5. Category -->
         <SectionCategory :data="reportData.memory" />
-
-        <!-- 5. Highlight -->
-        <SectionHighlight :memory="reportData.memory" />
 
         <!-- 6. Emotion -->
         <SectionEmotion :data="reportData.emotion" />
@@ -109,13 +103,19 @@ const handleReplay = () => {
         <!-- 9. Season -->
         <SectionSeason :data="reportData.season" />
 
-        <!-- 10. Easter Egg -->
-        <SectionEasterEgg :data="reportData.easterEgg" />
+        <!-- 11 Expense -->
+        <SectionExpense v-if="reportData.expense" :data="reportData.expense" :startTime="startTime" :endTime="endTime" />
 
-        <!-- 11. Message -->
+        <!-- 12 Transport Analysis (Merged Behavior & Comprehensive) -->
+        <SectionTransportAnalysis v-if="reportData.transportAnalysis" :data="reportData.transportAnalysis" />
+
+        <!-- 13. Message -->
         <SectionMessage />
 
-        <!-- 12. End -->
+        <!-- 10. Easter Egg -->
+        <SectionEasterEgg v-if="reportData.easterEgg" :data="reportData.easterEgg" />
+
+        <!-- 14. End -->
         <SectionEnd @replay="handleReplay" />
     </AnnualContainer>
 

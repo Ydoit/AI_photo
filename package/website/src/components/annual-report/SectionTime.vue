@@ -12,7 +12,7 @@
       </div>
 
       <!-- Annotation -->
-      <div class="mt-6 space-y-2 max-w-md mx-auto animate-fade-in-up shrink-0">
+      <div class="mt-6 space-y-2 max-w-md mx-auto shrink-0 opacity-0" :class="{ 'animate-fade-in-up': isActive }">
         <p class="text-lg text-light-text2 dark:text-gray-200 leading-relaxed">
             这一年，你用镜头收藏了
             <span class="text-primary-amber font-bold">{{ data.totalPhotos }}</span> 个珍贵瞬间
@@ -20,8 +20,14 @@
       </div>
 
       <!-- Calendar Grid -->
-      <div class="mt-8 grid grid-cols-3 gap-x-2 gap-y-4 w-full max-w-lg mx-auto animate-fade-in-up" style="animation-delay: 0.5s;">
-        <div v-for="month in calendarData" :key="month.name" class="flex flex-col">
+      <div class="mt-8 grid grid-cols-3 gap-x-2 gap-y-4 w-full max-w-lg mx-auto">
+        <div 
+          v-for="(month, index) in calendarData" 
+          :key="month.name" 
+          class="flex flex-col opacity-0"
+          :class="{ 'animate-fade-in-up': isActive }"
+          :style="{ animationDelay: `${0.5 + index * 0.1}s` }"
+        >
           <h3 class="text-xs font-bold text-primary-amber mb-1 pl-1 text-left">{{ month.name }}</h3>
           <div class="grid grid-cols-7 gap-1">
             <div 

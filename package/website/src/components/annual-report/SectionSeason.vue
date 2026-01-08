@@ -1,8 +1,8 @@
 <template>
   <ReportPage class="section-season">
-    <div class="h-full flex flex-col p-3 w-full max-w-lg mx-auto">
+    <div ref="sectionRef" class="h-full flex flex-col p-3 w-full max-w-lg mx-auto">
       <!-- 1. 标题区 (20%) -->
-      <div class="h-[20%] flex flex-col justify-center text-center animate-fade-in-down">
+      <div class="h-[20%] flex flex-col justify-center text-center opacity-0" :class="{ 'animate-fade-in-down': isActive }">
         <h2 class="text-2xl font-bold text-orange-500 mb-2 tracking-wide">
           四时之景 · 藏在季节里的岁岁欢喜
         </h2>
@@ -18,15 +18,15 @@
            <div
              v-for="(season, index) in seasonList"
              :key="season.seasonName"
-             class="relative group cursor-pointer transition-all duration-300 ease-out hover:scale-105"
+             class="relative group cursor-pointer transition-all duration-300 ease-out hover:scale-105 opacity-0"
              :class="[
                seasonStyles[season.seasonName].bg,
                seasonStyles[season.seasonName].border,
+               isActive ? 'animate-fade-in-up' : '',
                'rounded-xl border p-3 flex flex-col aspect-[3/4] md:aspect-[1/1.4] overflow-hidden shadow-sm hover:shadow-md'
              ]"
              :style="{
-               animation: `fadeInUp 0.8s ease-out forwards ${0.2 + index * 0.2}s`,
-               opacity: 1
+               animationDelay: `${0.2 + index * 0.2}s`
              }"
              @click="openModal(season)"
            >
@@ -120,17 +120,38 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed,watch } from 'vue';
 import ReportPage from './ReportPage.vue';
 import type { SeasonMetrics, SeasonData } from '@/types/annualReport';
 import { Sprout, Sun, Leaf, Snowflake } from 'lucide-vue-next';
-
+import { useIntersectionObserver } from '@vueuse/core';
 const props = defineProps<{
   data: SeasonMetrics;
 }>();
 
 const seasonList = computed(() => props.data.seasonList);
 const selectedSeason = ref<SeasonData | null>(null);
+
+// CountUp Logic
+const displayValue = ref(0);
+const isActive = ref(false);
+const sectionRef = ref<HTMLElement | null>(null);
+
+useIntersectionObserver(
+  sectionRef,
+  ([{ isIntersecting }]) => {
+    if (isIntersecting && !isActive.value) {
+      isActive.value = true;
+    }
+  },
+  { threshold: 0.5 }
+);
+
+// 监听 isActive 触发动画
+watch(isActive, (newVal) => {
+  if (newVal) {
+  }
+});
 
 // 季节样式映射
 const seasonStyles: Record<string, any> = {
@@ -189,6 +210,10 @@ const closeModal = () => {
   animation: fadeInDown 1s ease-out forwards;
 }
 
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
 .animate-fade-in-delay {
   animation: fadeIn 1s ease-out forwards;
   animation-delay: 1.5s;
@@ -196,6 +221,21 @@ const closeModal = () => {
 
 .animate-breathe {
   animation: breathe 3s ease-in-out infinite;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes fadeInDown {

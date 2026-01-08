@@ -288,6 +288,7 @@ def get_report_memory(
         .group_by(FaceIdentity.identity_name)\
         .order_by(desc('count')).first()
 
+    top_person_name = top_person[0] if top_person else ""
     top_person_count = top_person[1] if top_person else 0
 
     # Top Location
@@ -311,14 +312,29 @@ def get_report_memory(
     max_photo_day = str(max_photo_day_row[0]) if max_photo_day_row else start_time.strftime('%Y-%m-%d')
     max_photo_day_count = max_photo_day_row[1] if max_photo_day_row else 0
 
+    # Top Feature (Camera Make and Model)
+    top_feature_row = db.query(PhotoMetadata.make, PhotoMetadata.model, func.count(Photo.id).label('count'))\
+        .join(Photo, Photo.id == PhotoMetadata.photo_id)\
+        .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
+        .filter(PhotoMetadata.make.isnot(None), PhotoMetadata.model.isnot(None))\
+        .group_by(PhotoMetadata.make, PhotoMetadata.model)\
+        .order_by(desc('count')).first()
+
+    top_feature = f"{top_feature_row[0]} {top_feature_row[1]}" if top_feature_row else "未知"
+    top_feature_count = top_feature_row[2] if top_feature_row else 0
+
     return MemoryMetrics(
         categoryDistribution=category_distribution,
+        topPersonName=top_person_name,
         topPersonCount=top_person_count,
         topLocation=top_location,
         maxPhotoDay=max_photo_day,
         maxPhotoDayCount=max_photo_day_count,
-        topFeature="实况模式", 
-        topFeatureCount=int(total_photos * 0.3) 
+        topFeature=top_feature,
+        topFeatureCount=top_feature_count,
+        topMake=top_feature_row[0] if top_feature_row else "",
+        topModel=top_feature_row[1] if top_feature_row else "",
+        topMakeModelCount=top_feature_count
     )
 
 
