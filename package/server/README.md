@@ -53,10 +53,22 @@ AI_SERVICE_URL=http://localhost:8001
 
 ### 3. 运行服务
 
+建议使用 `start.py` 脚本启动服务，它会自动执行以下操作：
+1. 检查数据库连接
+2. 自动创建数据库（如果不存在）
+3. 启用 pgvector 扩展
+4. 执行 Alembic 数据库迁移
+5. 初始化 Railway 模块数据库
+6. 启动 Uvicorn 服务
+
 ```bash
-# 第一次启动时需要初始化数据库
+# 启动服务（包含自动初始化和迁移）
 python start.py
-# 后续可以直接运行服务
+```
+
+如果你是在开发环境中需要热重载，可以手动运行：
+```bash
+# 确保先运行一次 start.py 完成数据库初始化
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 

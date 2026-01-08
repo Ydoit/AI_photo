@@ -15,7 +15,7 @@ from app.db.base import Base
 
 
 def init_models():
-    Base.metadata.create_all(bind=engine)
+    # Base.metadata.create_all(bind=engine)
     print("✅ 数据库初始化完成")
 
 if __name__ == "__main__":

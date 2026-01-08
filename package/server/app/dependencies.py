@@ -13,7 +13,7 @@ import app.db.models
 from app.db.session import SessionLocal, engine
 from sqlalchemy.orm import Session
 
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 
 
 def get_db():
