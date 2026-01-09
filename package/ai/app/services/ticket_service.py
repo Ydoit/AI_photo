@@ -4,7 +4,6 @@ import numpy as np
 import cv2
 import logging
 import os
-import torch
 from app.config import settings
 from app.services.model_manager import model_manager
 from app.services.model_downloader import model_downloader
@@ -38,6 +37,8 @@ def load_yolo_model():
     """
     try:
         from ultralytics import YOLO
+
+        import torch
         logging.info("Initializing YOLO model for Ticket Recognition...")
         
         # Ensure model is downloaded and get path
