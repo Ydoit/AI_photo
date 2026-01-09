@@ -74,45 +74,6 @@ def process_basic_cpu_job(file_path: str, file_id: UUID, storage_root: str):
             "error": str(e)
         }
 
-def process_image_cpu_job(file_path: str, file_id: UUID, storage_root: str):
-    """
-    Legacy/Full processing.
-    """
-    try:
-        storage.update_storage_root_cache(storage_root)
-        image_obj = None
-        ext = os.path.splitext(file_path)[1].lower()
-        if ext in ('.png', '.jpg', '.jpeg', '.webp'):
-             try:
-                 image_obj = Image.open(file_path)
-             except Exception:
-                 pass
-
-        thumb_path = storage.generate_thumbnail(file_path, file_id, db=None, image_obj=image_obj)
-        file_name = os.path.basename(file_path)
-        meta = exif.extract_metadata(file_path, file_name, image_obj=image_obj, extract_location_details=True)
-        size = storage.get_file_size(file_path)
-        width, height, duration = storage.get_image_dimensions(file_path, image_obj=image_obj)
-
-        if image_obj:
-            image_obj.close()
-
-        return {
-            "success": True,
-            "thumb_path": thumb_path,
-            "meta": meta,
-            "size": size,
-            "width": width,
-            "height": height,
-            "duration": duration,
-            "file_name": file_name
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
 def scan_directory_recursive(path: str, exts: Set[str]) -> Set[str]:
     found = set()
     try:
@@ -250,64 +211,6 @@ async def handle_process_basic(task_manager, task: Task, db: Session):
         # Basic task doesn't have location details yet
     )
 
-    return {
-        'photo_create_data': {
-            'photo': photo_create,
-            'metadata': metadata_create,
-            'photo_id': photo_id,
-            'file_path': file_path
-        }
-    }
-
-async def handle_process_image(task_manager, task: Task, db: Session):
-    """Legacy handler, keeping for compatibility if needed"""
-    file_path = task.payload.get('file_path')
-    if not file_path or not os.path.exists(file_path):
-        return {'status': 'skipped', 'reason': 'file not found'}
-
-    photo_id = uuid4()
-    storage_root = storage._get_storage_root(db)
-
-    loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(
-        task_manager.process_pool,
-        process_image_cpu_job,
-        file_path,
-        photo_id,
-        storage_root
-    )
-    # result = process_image_cpu_job(file_path, photo_id, storage_root)
-    if not result['success']:
-        raise Exception(result.get('error', 'Unknown error'))
-    meta = result['meta']
-    ext = os.path.splitext(result['file_name'])[1]
-    file_type = FileType.image
-    if ext.lower() in ['.mp4', '.mov', '.avi', '.mkv', '.webm']:
-        file_type = FileType.video
-
-    photo_create = photo_schemas.PhotoCreate(
-        file_type=file_type,
-        size=result['size'],
-        width=result['width'],
-        height=result['height'],
-        duration=result['duration'],
-        filename=result['file_name'],
-        photo_time=meta["photo_time"]
-    )
-
-    metadata_create = PhotoMetadataCreate(
-        exif_info=meta["exif_info"],
-    )
-
-    loc_details = meta.get("location_details", {})
-    if loc_details:
-        metadata_create.longitude = loc_details.get("longitude")
-        metadata_create.latitude = loc_details.get("latitude")
-        metadata_create.city = loc_details.get("city")
-        metadata_create.province = loc_details.get("province")
-        metadata_create.country = loc_details.get("country")
-        metadata_create.address = loc_details.get("address")
-        
     return {
         'photo_create_data': {
             'photo': photo_create,

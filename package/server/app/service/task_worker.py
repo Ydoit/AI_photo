@@ -21,13 +21,13 @@ from app.service.task_manager import DEFAULT_SCAN_STATUS, CATEGORY_MAP, DEFAULT_
 from app.service.tasks import thumbnail, metadata, scan, face, ocr, classification, tickets, visual_description
 
 CPU_TASKS = {
-    TaskType.PROCESS_BASIC,
-    TaskType.PROCESS_IMAGE,
     TaskType.GENERATE_THUMBNAIL,
     TaskType.REBUILD_THUMBNAILS,
 }
 
 IO_TASKS = {
+    TaskType.PROCESS_BASIC,
+    TaskType.PROCESS_IMAGE,
     TaskType.EXTRACT_METADATA,
     TaskType.REBUILD_METADATA,
     TaskType.SCAN_FOLDER,
@@ -360,8 +360,6 @@ class TaskWorker:
     async def process_task(self, task: Task, db: Session):
         if task.type == TaskType.SCAN_FOLDER:
             return await scan.handle_scan_folder(self, task, db)
-        elif task.type == TaskType.PROCESS_IMAGE:
-            return await scan.handle_process_image(self, task, db)
         elif task.type == TaskType.PROCESS_BASIC:
             return await scan.handle_process_basic(self, task, db)
         elif task.type == TaskType.GENERATE_THUMBNAIL:
