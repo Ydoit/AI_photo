@@ -3,8 +3,8 @@ module.exports = {
   darkMode: 'class',
   content: [
     "./.vitepress/**/*.{js,ts,vue}",
-    "./**/*.md",
-    "./components/**/*.{js,ts,vue}"
+    "./docs/**/*.md",
+    "./index.md"
   ],
   theme: {
     extend: {

@@ -10,17 +10,22 @@ export default withMermaid(defineConfig({
   themeConfig: {
     nav: [
       { text: '首页', link: '/' },
+      { text: '功能演示', link: '/docs/guide/demo' },
       { text: '用户指南', link: '/docs/guide/install' },
       { text: '开发者文档', link: '/docs/dev/guide' },
       { text: '博客', link: '/docs/blog/' },
       { text: '问题反馈', link: '/docs/guide/feedback' }
     ],
+    search: {
+      provider: 'local'
+    },
 
     sidebar: {
       '/docs/guide/': [
         {
           text: '用户指南',
           items: [
+            { text: '概览', link: '/docs/guide/overview' },
             { text: '安装指南', link: '/docs/guide/install' },
             {
               text: 'Docker 部署',
