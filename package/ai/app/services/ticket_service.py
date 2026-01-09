@@ -7,35 +7,16 @@ import os
 from app.config import settings
 from app.services.model_manager import model_manager
 from app.services.ticket_parser import parse_ticket_info, extract_text
+from modelscope import snapshot_download
+from ultralytics import YOLO
 
 def load_yolo_model():
-    try:
-        from ultralytics import YOLO
-        # 优先查找配置的AI模型目录
-        model_path = os.path.join(settings.MODEL_PATH, "tickets", "best.pt")
-        
-        # 如果不存在，尝试使用开发环境中的原始路径
-        if not os.path.exists(model_path):
-            # 硬编码回退路径，指向 server/yolo_ocr/best.pt
-            # 假设当前工作目录是 e:\TrailSnap\TrailSnap
-            dev_path = os.path.abspath(r"package\server\yolo_ocr\best.pt")
-            if os.path.exists(dev_path):
-                model_path = dev_path
-            else:
-                # 尝试另一种相对路径
-                dev_path_2 = os.path.abspath(r"..\server\yolo_ocr\best.pt")
-                if os.path.exists(dev_path_2):
-                     model_path = dev_path_2
+    model_dir = snapshot_download('rpxaaa/ticket_recognition')
+    model_path = os.path.join(model_dir, "best.pt")
+    # 初始化 YOLO 模型
+    yolo_model = YOLO(model=model_path)
+    return yolo_model
 
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"YOLO model not found. Checked {model_path}")
-
-        logging.info(f"Loading YOLO model from {model_path}")
-        model = YOLO(model_path)
-        return model
-    except Exception as e:
-        logging.error(f"Failed to load YOLO model: {e}")
-        raise e
 
 def release_yolo_model(model):
     del model
