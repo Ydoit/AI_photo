@@ -16,9 +16,9 @@
 
           <!-- Desktop Menu -->
           <div class="hidden md:flex items-center space-x-8">
-            <a href="#" class="text-primary font-medium border-b-2 border-primary">首页</a>
-            <a href="/docs/guide/user" class="text-neutral-dark dark:text-gray-300 hover:text-primary transition-colors">功能介绍</a>
-            <a href="/docs/guide/install" class="text-neutral-dark dark:text-gray-300 hover:text-primary transition-colors">快速开始</a>
+            <button type="button" class="transition-colors" :class="navClass('home')" @click="scrollTo('home')">首页</button>
+            <button type="button" class="transition-colors" :class="navClass('core-features')" @click="scrollTo('core-features')">功能介绍</button>
+            <button type="button" class="transition-colors text-neutral-dark dark:text-gray-300 hover:text-primary" @click="goLink('/docs/guide/install')">快速开始</button>
           </div>
 
           <!-- Desktop Buttons -->
@@ -35,12 +35,11 @@
         </div>
       </div>
 
-      <!-- Mobile Menu -->
-      <div v-if="isMobileMenuOpen" class="md:hidden absolute top-full left-0 w-full bg-white dark:bg-slate-800 shadow-lg py-4 px-4 flex flex-col space-y-4">
-        <a href="#" class="text-primary font-medium border-b-2 border-primary w-fit">首页</a>
-        <a href="/docs/guide/user" class="text-neutral-dark dark:text-gray-300">功能介绍</a>
-        <a href="#" class="text-neutral-dark dark:text-gray-300">产品优势</a>
-        <a href="#" class="text-neutral-dark dark:text-gray-300">关于我们</a>
+          <!-- Mobile Menu -->
+          <div v-if="isMobileMenuOpen" class="md:hidden absolute top-full left-0 w-full bg-white dark:bg-slate-800 shadow-lg py-4 px-4 flex flex-col space-y-4">
+        <button type="button" class="text-left w-fit transition-colors" :class="navClass('home')" @click="scrollTo('home')">首页</button>
+        <button type="button" class="text-left w-fit transition-colors" :class="navClass('core-features')" @click="scrollTo('core-features')">功能介绍</button>
+        <button type="button" class="text-left w-fit transition-colors text-neutral-dark dark:text-gray-300 hover:text-primary" @click="goLink('/docs/guide/install')">快速开始</button>
         <div class="flex space-x-4 pt-4 border-t border-gray-100 dark:border-gray-700">
           <button class="flex-1 py-2 rounded-lg bg-primary text-white" @click="goLink('/docs/guide/install')">立即下载</button>
         </div>
@@ -48,7 +47,7 @@
     </nav>
 
     <!-- 2. Hero Section -->
-    <section class="relative pt-32 pb-20 lg:pt-40 lg:pb-32 bg-neutral-light dark:bg-slate-800/50 overflow-hidden">
+    <section id="home" class="relative pt-32 pb-20 lg:pt-40 lg:pb-32 bg-neutral-light dark:bg-slate-800/50 overflow-hidden">
       <!-- Background Gradients -->
       <div class="absolute top-0 left-0 w-1/3 h-full bg-gradient-to-r from-blue-50 dark:from-blue-900/20 to-transparent opacity-50"></div>
       <div class="absolute bottom-0 right-0 w-1/3 h-full bg-gradient-to-l from-blue-50 dark:from-blue-900/20 to-transparent opacity-50"></div>
@@ -121,7 +120,7 @@
     </section>
 
     <!-- 3. Core Features -->
-    <section class="py-20 bg-white dark:bg-slate-900">
+    <section id="core-features" class="py-20 bg-white dark:bg-slate-900">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <h2 class="text-3xl font-bold text-neutral-dark dark:text-white mb-4">核心特色 · 重新定义相册记忆</h2>
@@ -195,43 +194,6 @@
                      :class="i === activeFeatureIndex ? 'bg-primary' : 'bg-gray-300 dark:bg-slate-600'"></div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 5. Data Visualization -->
-    <section class="py-20 bg-white dark:bg-slate-900">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-16">
-          <h2 class="text-[28px] font-bold text-neutral-dark dark:text-white mb-4">数据可视化 · 让出行记忆更直观</h2>
-          <div class="w-16 h-1 bg-primary mx-auto rounded-full"></div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          <!-- Card 1 -->
-          <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-soft hover:shadow-hover hover:-translate-y-2 transition-all duration-300 text-center border border-gray-50 dark:border-slate-700">
-            <div class="text-4xl text-primary mb-4 mx-auto">📊</div>
-            <h3 class="text-xl font-medium text-neutral-dark dark:text-white mb-3">出行统计图表</h3>
-            <p class="text-sm text-neutral-gray dark:text-gray-400 leading-relaxed">直观展示年度出行次数、城市分布、里程统计，清晰了解你的出行轨迹。</p>
-          </div>
-          <!-- Card 2 -->
-          <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-soft hover:shadow-hover hover:-translate-y-2 transition-all duration-300 text-center border border-gray-50 dark:border-slate-700">
-            <div class="text-4xl text-primary mb-4 mx-auto">⏳</div>
-            <h3 class="text-xl font-medium text-neutral-dark dark:text-white mb-3">行程时间轴</h3>
-            <p class="text-sm text-neutral-gray dark:text-gray-400 leading-relaxed">按时间顺序串联所有出行行程，搭配照片与票据，一键回顾完整旅行过程。</p>
-          </div>
-          <!-- Card 3 -->
-          <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-soft hover:shadow-hover hover:-translate-y-2 transition-all duration-300 text-center border border-gray-50 dark:border-slate-700">
-            <div class="text-4xl text-primary mb-4 mx-auto">🛣️</div>
-            <h3 class="text-xl font-medium text-neutral-dark dark:text-white mb-3">线路里程</h3>
-            <p class="text-sm text-neutral-gray dark:text-gray-400 leading-relaxed">自动计算各次出行的线路里程，生成总里程统计，见证你的每一段旅程。</p>
-          </div>
-          <!-- Card 4 -->
-          <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-soft hover:shadow-hover hover:-translate-y-2 transition-all duration-300 text-center border border-gray-50 dark:border-slate-700">
-            <div class="text-4xl text-primary mb-4 mx-auto">📅</div>
-            <h3 class="text-xl font-medium text-neutral-dark dark:text-white mb-3">年度出行报告</h3>
-            <p class="text-sm text-neutral-gray dark:text-gray-400 leading-relaxed">自动生成年度出行统计报告，包含照片墙、出行城市、景点、时间轴等核心内容。</p>
           </div>
         </div>
       </div>
@@ -372,6 +334,7 @@ import { useRouter } from 'vitepress'
 const router = useRouter()
 const isMobileMenuOpen = ref(false)
 const isScrolled = ref(false)
+const activeSection = ref<'home' | 'core-features'>('home')
 
 // Carousel State
 const activeFeatureIndex = ref(0)
@@ -387,6 +350,29 @@ const handleScroll = () => {
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll)
+  const ids = ['home', 'core-features']
+  const els = ids
+    .map(id => document.getElementById(id))
+    .filter((el): el is HTMLElement => Boolean(el))
+
+  const io = new IntersectionObserver(
+    entries => {
+      const visible = entries
+        .filter(e => e.isIntersecting)
+        .sort((a, b) => (b.intersectionRatio ?? 0) - (a.intersectionRatio ?? 0))[0]
+      if (!visible?.target?.id) return
+      if (visible.target.id === 'home' || visible.target.id === 'core-features') {
+        activeSection.value = visible.target.id
+      }
+    },
+    { root: null, threshold: [0.15, 0.25, 0.4], rootMargin: '-20% 0px -60% 0px' }
+  )
+
+  els.forEach(el => io.observe(el))
+
+  onUnmounted(() => {
+    io.disconnect()
+  })
 })
 
 onUnmounted(() => {
@@ -396,6 +382,19 @@ onUnmounted(() => {
 const goLink = (path: string) => {
   router.go(path)
   isMobileMenuOpen.value = false
+}
+
+const scrollTo = (id: 'home' | 'core-features') => {
+  const el = document.getElementById(id)
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  isMobileMenuOpen.value = false
+}
+
+const navClass = (id: 'home' | 'core-features') => {
+  const base = 'text-neutral-dark dark:text-gray-300 hover:text-primary'
+  if (activeSection.value !== id) return base
+  return 'text-primary font-medium border-b-2 border-primary'
 }
 
 // Mock Data
@@ -475,9 +474,9 @@ const prevTestimonial = () => {
 </script>
 <style scoped>
 @keyframes float {
-  0% { transform: translateY(0px); }
+  0% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+  100% { transform: translateY(0); }
 }
 
 .animate-float {

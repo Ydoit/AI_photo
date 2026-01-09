@@ -1,8 +1,11 @@
+/// <reference types="vitepress/client" />
 import DefaultTheme from 'vitepress/theme'
 import { h } from 'vue'
 import { useData } from 'vitepress'
 import Comments from './components/Comments.vue'
 import Home from './components/Home.vue'
+import TicketRecognitionDemo from './components/TicketRecognitionDemo.vue'
+import TicketRecognitionTryIt from './components/TicketRecognitionTryIt.vue'
 import './style.css'
 
 export default {
@@ -16,5 +19,7 @@ export default {
   },
   enhanceApp({ app }: { app: any }) {
     app.component('Home', Home)
+    app.component('TicketRecognitionDemo', TicketRecognitionDemo)
+    app.component('TicketRecognitionTryIt', TicketRecognitionTryIt)
   }
 }
