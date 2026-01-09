@@ -4,18 +4,59 @@ import numpy as np
 import cv2
 import logging
 import os
+import torch
 from app.config import settings
 from app.services.model_manager import model_manager
+from app.services.model_downloader import model_downloader
+from app.services.ai_config_manager import ai_config_manager
 from app.services.ticket_parser import parse_ticket_info, extract_text
-from modelscope import snapshot_download
-from ultralytics import YOLO
+
+def load_modelscope_model():
+    """
+    Downloads the Ticket Recognition model from ModelScope.
+    Returns the local directory path of the downloaded model.
+    """
+    try:
+        from modelscope import snapshot_download
+        model_name = ai_config_manager.get_model_selection("ticket_recognition")
+        if not model_name:
+            model_name = "rpxaaa/ticket_recognition"
+            
+        logging.info(f"Downloading/Verifying Ticket Recognition model ({model_name})...")
+        model_dir = os.path.join(settings.MODEL_PATH, 'ticket_recognition')
+        
+        # Download model using snapshot_download
+        path = snapshot_download(model_name, local_dir=model_dir)
+        return path
+    except Exception as e:
+        logging.error(f"Failed to download Ticket Recognition model: {e}")
+        raise e
 
 def load_yolo_model():
-    model_dir = snapshot_download('rpxaaa/ticket_recognition')
-    model_path = os.path.join(model_dir, "best.pt")
-    # 初始化 YOLO 模型
-    yolo_model = YOLO(model=model_path)
-    return yolo_model
+    """
+    Initializes and returns the YOLO model for ticket recognition.
+    """
+    try:
+        from ultralytics import YOLO
+        logging.info("Initializing YOLO model for Ticket Recognition...")
+        
+        # Ensure model is downloaded and get path
+        model_dir = load_modelscope_model()
+        model_path = os.path.join(model_dir, "best.pt")
+        
+        # Initialize YOLO model
+        yolo_model = YOLO(model=model_path)
+        
+        # Handle device selection similar to InsightFace example logic
+        # Check for CUDA availability
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        yolo_model.to(device)
+        
+        logging.info(f"YOLO model initialized successfully on {device}.")
+        return yolo_model
+    except Exception as e:
+        logging.error(f"Failed to initialize YOLO model: {e}")
+        raise e
 
 
 def release_yolo_model(model):
@@ -26,10 +67,34 @@ def release_yolo_model(model):
 model_manager.register_model("tickets_yolo", load_yolo_model, release_yolo_model)
 
 class TicketService:
+    def __init__(self):
+        self._register_downloads()
+
+    def _register_downloads(self):
+        def check_model():
+            model_path = os.path.join(settings.MODEL_PATH, 'ticket_recognition', 'best.pt')
+            return os.path.exists(model_path)
+
+        def download_model():
+            return load_modelscope_model()
+
+        model_downloader.register_model("tickets_yolo", check_model, download_model)
+
     def detect(self, image_bytes: bytes):
         """
         执行车票检测与识别
         """
+        # Check if model is ready
+        # Note: Since load_yolo_model now handles download internally/synchronously if needed,
+        # we might not strictly need this check if we relied solely on load_yolo_model.
+        # However, keeping it consistent with the model_downloader pattern is good practice.
+        if not model_downloader.is_ready("tickets_yolo"):
+             # If model_downloader is used, we respect its status.
+             # If strictly following the user's synchronous load pattern, this might be redundant but safe.
+             # For now, we'll keep it as a fast check.
+             if not os.path.exists(os.path.join(settings.MODEL_PATH, 'ticket_recognition', 'best.pt')):
+                 raise Exception("Ticket recognition model is not ready yet. Please try again later.")
+
         # 获取模型实例
         yolo = model_manager.get_model("tickets_yolo")
         ocr = model_manager.get_model("ocr")
