@@ -21,7 +21,7 @@ package/official-site/
 ### 1. 安装依赖
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 2. 本地开发
@@ -29,7 +29,7 @@ npm install
 启动本地开发服务器，实时预览修改效果：
 
 ```bash
-npm run docs:dev
+pnpm run docs:dev
 ```
 
 访问地址通常为：`http://localhost:5173`
@@ -39,7 +39,7 @@ npm run docs:dev
 生成静态文件（默认输出到 `.vitepress/dist`）：
 
 ```bash
-npm run docs:build
+pnpm run docs:build
 ```
 
 ### 4. 本地预览构建产物
@@ -47,7 +47,7 @@ npm run docs:build
 在构建完成后，可以预览生成的静态网站：
 
 ```bash
-npm run docs:preview
+pnpm run docs:preview
 ```
 
 ## 部署

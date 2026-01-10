@@ -37,13 +37,12 @@ jobs:
       - name: Install Dependencies
         working-directory: ./package/official-site
         run: |
-          rm -rf node_modules
-          npm cache clean --force
-          npm ci
+          npm install -g pnpm
+          pnpm install
 
       - name: Build VitePress Site
         working-directory: ./package/official-site
-        run: npm run docs:build
+        run: pnpm run docs:build
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
