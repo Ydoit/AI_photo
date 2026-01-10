@@ -1,15 +1,15 @@
 <template>
-  <div class="location-list p-6 min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col h-screen">
+  <div :class="['location-list min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col h-screen relative', (viewMode === 'map') ? 'p-0' : 'p-6']">
     <!-- Header -->
-    <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0">
-      <div class="flex items-center gap-3 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
+    <div :class="['flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0 z-50 transition-all duration-300', (viewMode === 'map') ? 'absolute top-0 left-0 right-0 p-4 pointer-events-none' : 'mb-6']">
+      <div class="pointer-events-auto flex items-center gap-3 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
         <button @click="router.back()" class="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors bg-white dark:bg-gray-900">
           <ArrowLeft class="w-5 h-5 text-gray-600 dark:text-gray-300" />
         </button>
         <h1 class="text-2xl font-bold text-gray-800 dark:text-white">位置相册</h1>
       </div>
 
-      <div class="flex items-center gap-3">
+      <div class="pointer-events-auto flex items-center gap-3">
         <!-- View Toggle -->
         <div class="bg-gray-200 dark:bg-gray-800 p-1 rounded-lg flex">
           <button
@@ -48,12 +48,24 @@
           >
             省份
           </button>
+
+          <div v-show="viewMode !== 'grid'" class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1 my-auto"></div>
+
+          <button
+            v-show="viewMode !== 'grid'"
+            @click="level = 'photo-map'"
+            :class="['px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5', level === 'photo-map' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
+            title="地图照片"
+          >
+            <Images class="w-4 h-4" />
+            <span class="hidden sm:inline">照片</span>
+          </button>
         </div>
       </div>
     </div>
 
     <!-- Map View -->
-    <div v-show="viewMode === 'map'" class="flex-1 relative rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+    <div v-show="viewMode === 'map' && level !== 'photo-map'" class="flex-1 relative overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
        <div ref="mapContainer" class="w-full h-full"></div>
        
        <!-- Map Controls Overlay -->
@@ -61,6 +73,9 @@
           <!-- Add any custom map controls here if needed -->
        </div>
     </div>
+
+    <!-- Photo Map View -->
+    <LocationMap v-if="viewMode === 'map' && level === 'photo-map'" class="flex-1 overflow-hidden bg-white dark:bg-gray-900 shadow-sm" />
 
     <!-- Grid View -->
     <div v-show="viewMode === 'grid'" class="flex-1 overflow-y-auto">
@@ -126,9 +141,10 @@ import { useLocationStore } from '@/stores/locationStore'
 import { locationService } from '@/api/location'
 import { mapPhotoToImage } from '@/stores/photoStore'
 import type { Location } from '@/types/location'
-import { ArrowLeft, MapPin, LayoutGrid, Map } from 'lucide-vue-next'
+import { ArrowLeft, MapPin, LayoutGrid, Map, Images } from 'lucide-vue-next'
 import * as echarts from 'echarts'
 import { useDark } from '@vueuse/core'
+import LocationMap from './LocationMap.vue'
 
 const router = useRouter()
 const isDark = useDark()
@@ -144,6 +160,7 @@ let zoomTimer: any = null
 const fetchLocations = async () => {
   loading.value = true
   try {
+    if (level.value === 'photo-map') return
     locations.value = await locationService.getLocations(level.value)
   } catch (e) {
     console.error(e)
@@ -153,11 +170,14 @@ const fetchLocations = async () => {
 }
 
 const changeLevel = (newLevel: 'city' | 'province' | 'district', viewState?: { zoom: number, center: number[] }) => {
+  console.log(newLevel, viewState, level.value)
   if (level.value === newLevel) return
   level.value = newLevel
   fetchLocations()
   if (viewMode.value === 'map') {
-    initMap(viewState)
+    nextTick(() => {
+      initMap(viewState)
+    })
   }
 }
 
@@ -183,6 +203,7 @@ const initMap = async (viewState?: { zoom: number, center: number[] }) => {
   myMap.showLoading()
 
   try {
+    if (level.value === 'photo-map') return
     // 1. Fetch GeoJSON
     const geoResponse = await fetch(`/api/medias/geojson?level=${level.value}`)
     if (!geoResponse.ok) throw new Error('Failed to load GeoJSON')
@@ -386,7 +407,7 @@ const handleResize = () => {
 
 onMounted(() => {
   fetchLocations()
-  if (viewMode.value === 'map') {
+  if (viewMode.value === 'map' && level.value !== 'photo-map') {
     nextTick(() => {
       initMap()
     })

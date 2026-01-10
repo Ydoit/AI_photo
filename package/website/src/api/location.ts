@@ -29,5 +29,10 @@ export const locationService = {
       params: { level, skip, limit }
     });
     return data;
+  },
+
+  async getMapMarkers() {
+    const { data } = await api.get<{id: string, lat: number, lng: number}[]>('/api/locations/markers');
+    return data;
   }
 };

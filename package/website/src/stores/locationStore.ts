@@ -1,13 +1,23 @@
 import { defineStore } from 'pinia';
 import { useStorage } from '@vueuse/core';
+import { ref } from 'vue';
 
 export const useLocationStore = defineStore('location', () => {
   // Persistent State
   const viewMode = useStorage<'grid' | 'map'>('trailsnap-location-view-mode', 'grid');
-  const level = useStorage<'city' | 'province' | 'district'>('trailsnap-location-level', 'city');
+  const level = useStorage<'city' | 'province' | 'district' | 'photo-map'>('trailsnap-location-level', 'city');
+
+  // State for Map Selection
+  const mapSelectedIds = ref<string[]>([]);
+
+  const setMapSelection = (ids: string[]) => {
+    mapSelectedIds.value = ids;
+  };
 
   return {
     viewMode,
-    level
+    level,
+    mapSelectedIds,
+    setMapSelection
   };
 });

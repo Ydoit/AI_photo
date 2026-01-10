@@ -50,6 +50,30 @@ export const albumService = {
     return data;
   },
 
+  async getPhotosByIds(ids: string[]) {
+    // Chunk requests to avoid URL length limits
+    const chunks = [];
+    const chunkSize = 40; // Conservative chunk size
+    for (let i = 0; i < ids.length; i += chunkSize) {
+        chunks.push(ids.slice(i, i + chunkSize));
+    }
+    
+    const results = await Promise.all(chunks.map(async chunk => {
+        const { data } = await api.get<Photo[]>('/api/photos', {
+          params: { ids: chunk },
+          paramsSerializer: params => {
+            const p = new URLSearchParams();
+            if (params.ids && Array.isArray(params.ids)) {
+                params.ids.forEach((id: string) => p.append('ids', id));
+            }
+            return p.toString();
+          }
+        });
+        return data;
+    }));
+    return results.flat();
+  },
+
   async getPhotos(albumId: string, skip: number = 0, limit: number = 100, filters?: { start_time?: string, end_time?: string }) {
     const { data } = await api.get<Photo[]>(`/api/albums/${albumId}/photos`, {
       params: { skip, limit, ...filters }

@@ -21,6 +21,7 @@
     "lucide-vue-next": "^0.555.0",
     "mingcute_icon": "^2.9.6",
     "pinia": "^3.0.3",
+    "supercluster": "^8.0.1",
     "video.js": "^8.23.4",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"

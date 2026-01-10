@@ -98,7 +98,6 @@ class TicketService:
 
         # 获取模型实例
         yolo = model_manager.get_model("tickets_yolo")
-        ocr = model_manager.get_model("ocr")
 
         # 解码图像
         nparr = np.frombuffer(image_bytes, np.uint8)
@@ -109,46 +108,52 @@ class TicketService:
         # YOLO 推理
         # save=False, verbose=False 以提高性能
         results = yolo.predict(source=img, save=False, verbose=False)
-        
+
         tickets = []
-        
+
         # 确保输出目录存在 (用于调试或模拟中间文件)
         output_dir = "output"
         os.makedirs(output_dir, exist_ok=True)
+        if not results:
+            return {"tickets": tickets, "count": 0}
+
+        ocr = None
 
         for result in results:
             boxes = getattr(result, "boxes", None)
             orig_img = getattr(result, "orig_img", img)
-            
+
             if boxes is None:
                 continue
-                
+
             for i, box in enumerate(boxes):
                 # 获取坐标
                 xyxy = box.xyxy[0].cpu().numpy()
                 x1, y1, x2, y2 = map(int, xyxy)
-                
+
                 # 边界保护
                 h, w = orig_img.shape[:2]
                 x1 = max(0, x1)
                 y1 = max(0, y1)
                 x2 = min(w, x2)
                 y2 = min(h, y2)
-                
+
                 # 裁剪车票区域
                 crop = orig_img[y1:y2, x1:x2]
                 if crop.size == 0:
                     continue
-                
+
                 # 模拟 yolo_ocr.py 的流程：
                 # 1. 保存裁剪图像到临时文件
                 temp_filename = f"temp_crop_{uuid.uuid4().hex[:8]}.png"
                 temp_path = os.path.join(output_dir, temp_filename)
                 cv2.imwrite(temp_path, crop)
-                
+
                 try:
                     # 2. 对裁剪区域执行 OCR (传入文件路径)
                     # RapidOCR 支持路径输入
+                    if not ocr:
+                        ocr = model_manager.get_model("ocr")
                     out = ocr(temp_path)
                 except Exception as e:
                     logging.warning(f"OCR inference failed for {temp_path}: {e}")
@@ -208,14 +213,14 @@ class TicketService:
                     if info:
                         info['detection_id'] = i
                         tickets.append(info)
-                    
+
                 except Exception as e:
                     logging.error(f"Error processing JSON flow for ticket {i}: {e}")
                 finally:
                     # 清理临时 JSON 文件
                     if os.path.exists(json_path):
                         os.remove(json_path)
-                
+
         return {"tickets": tickets, "count": len(tickets)}
 
 ticket_service = TicketService()

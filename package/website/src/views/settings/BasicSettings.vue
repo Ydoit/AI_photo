@@ -89,6 +89,32 @@
       </el-form>
     </div>
 
+    <!-- Map Settings -->
+    <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
+      <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">地图配置</h2>
+      <el-form label-position="top" class="max-w-3xl">
+        <el-form-item label="地图提供商">
+          <el-select v-model="mapForm.provider" placeholder="选择地图提供商" class="w-full sm:w-auto">
+             <el-option label="天地图 (Tianditu)" value="tianditu" />
+             <el-option label="高德地图 (Amap)" value="amap" disabled />
+             <el-option label="百度地图 (Baidu)" value="baidu" disabled />
+          </el-select>
+          <span class="text-sm text-gray-500 ml-2">目前仅支持天地图，其他地图开发中</span>
+        </el-form-item>
+        
+        <el-form-item label="API Key">
+           <el-input v-model="mapForm.api_key" type="password" show-password placeholder="请输入 API Key" />
+           <p class="text-xs text-gray-500 mt-1">
+             <span v-if="mapForm.provider === 'tianditu'">申请地址: <a href="http://lbs.tianditu.gov.cn/server/kz.html" target="_blank" class="text-blue-500 hover:underline">天地图控制台</a> (请申请浏览器端 Key)</span>
+           </p>
+        </el-form-item>
+        
+        <el-form-item>
+          <el-button type="primary" @click="saveMapSettings">保存地图配置</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
+
     <!-- AI Settings -->
     <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
       <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">AI 相关配置</h2>
@@ -247,6 +273,11 @@ const storageForm = ref({
   external_directories: [] as string[]
 })
 
+const mapForm = ref({
+  provider: 'tianditu',
+  api_key: ''
+})
+
 const aiForm = ref({
   ai_api_url: 'http://localhost:8001',
   face_recognition_threshold: 0.6,
@@ -293,6 +324,9 @@ const loadData = async () => {
       if (settings.storage) {
           storageForm.value = { ...settings.storage }
       }
+      if (settings.map) {
+          mapForm.value = { ...settings.map }
+      }
       if (settings.ai) {
           aiForm.value = { 
             ...settings.ai,
@@ -320,6 +354,15 @@ const saveAISettings = async () => {
   try {
     await settingsApi.updateSettings({ ai: aiForm.value })
     ElMessage.success('AI 配置已保存')
+  } catch (e) {
+    ElMessage.error('保存失败')
+  }
+}
+
+const saveMapSettings = async () => {
+  try {
+    await settingsApi.updateSettings({ map: mapForm.value })
+    ElMessage.success('地图配置已保存')
   } catch (e) {
     ElMessage.error('保存失败')
   }
