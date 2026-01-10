@@ -56,7 +56,16 @@ export default withMermaid(defineConfig({
             { text: '架构设计', link: '/docs/dev/architecture' },
             { text: '前端分析', link: '/docs/dev/frontend' },
             { text: '后端分析', link: '/docs/dev/backend' },
-            { text: '任务管理设计', link: '/docs/dev/task_manager' }
+            { text: '任务管理设计', link: '/docs/dev/task_manager' },
+            {
+              text: 'AI提示词',
+              link: '/docs/dev/prompt',
+              items: [
+                { text: '2025-12-25', link: '/docs/dev/prompt/2025-12-25' },
+                { text: '2026-01-07', link: '/docs/dev/prompt/2026-01-07' },
+                { text: '官网设计文档', link: '/docs/dev/prompt/official_website_design' }
+              ]
+            }
           ]
         }
       ],
