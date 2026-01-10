@@ -11,3 +11,4 @@ from .image_vector import ImageVector
 from .ocr import OCR
 from .trip import TrainTicket
 from .image_description import ImageDescription
+from .scene import Scene

@@ -31,12 +31,17 @@ class ImageSettings(BaseModel):
     preview_size: int = Field(default=1440, description="Preview long edge size")
     # Add other image settings here
 
+class MapSettings(BaseModel):
+    provider: str = Field(default="tianditu", description="Map provider (tianditu, amap, baidu)")
+    api_key: str = Field(default="", description="Map API Key")
+
 class AppSettings(BaseModel):
     version: str = "0.1"
     ai: AISettings = Field(default_factory=AISettings)
     storage: StorageSettings = Field(default_factory=StorageSettings)
     image: ImageSettings = Field(default_factory=ImageSettings)
     task: TaskSettings = Field(default_factory=TaskSettings)
+    map: MapSettings = Field(default_factory=MapSettings)
 
     class Config:
         arbitrary_types_allowed = True

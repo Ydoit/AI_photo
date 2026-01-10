@@ -247,10 +247,15 @@ def get_all_photos(
     lng_max: Optional[float] = None,
     radius: Optional[float] = None,
     center_lat: Optional[float] = None,
-    center_lng: Optional[float] = None
+    center_lng: Optional[float] = None,
+    ids: Optional[List[UUID]] = None
 ):
     # 先筛选 Photo，减少后续连表的数据量
     photo_query = db.query(Photo.id)
+
+    # Filter by IDs if provided
+    if ids:
+        photo_query = photo_query.filter(Photo.id.in_(ids))
 
     # 时间范围过滤（Photo 表）
     if start_time or end_time:

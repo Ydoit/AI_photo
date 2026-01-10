@@ -12,3 +12,8 @@ class Location(LocationBase):
 
     class Config:
         from_attributes = True
+
+class MapMarker(BaseModel):
+    id: str
+    lat: float
+    lng: float

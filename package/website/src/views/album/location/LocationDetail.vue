@@ -16,12 +16,15 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { locationService } from '@/api/location'
+import { albumService } from '@/api/album'
 import UnifiedPhotoPage from '@/components/UnifiedPhotoPage.vue'
 import { mapPhotoToImage } from '@/stores/photoStore'
-import type { AlbumImage } from '@/types/album'
+import { useLocationStore } from '@/stores/locationStore'
+import type { AlbumImage, Photo } from '@/types/album'
 
 const route = useRoute()
 const router = useRouter()
+const locationStore = useLocationStore()
 const name = route.params.name as string
 const level = (route.query.level as 'city' | 'province') || 'city'
 
@@ -33,7 +36,10 @@ const limit = 100
 const hasMore = ref(true)
 const totalCount = ref(0) // Optional: if API returned total count, but currently it doesn't.
 
-const title = computed(() => name)
+const title = computed(() => {
+  if (name === 'map_selection') return route.query.title as string || '地图精选'
+  return name
+})
 const calculateTimelineStats = (photos: AlbumImage[]) => {
   const stats = new Map<string, { year: number, month: number, day: number, count: number }>()
 
@@ -61,23 +67,33 @@ const fetchAllPhotos = async () => {
   if (loading.value || !hasMore.value) return
   loading.value = true
   try {
-    let page = 1
-    const limit = 1000
-    let hasNext = true
-    while (hasNext) {
-      // Encode name to ensure special characters (like / or ?) don't break the path
-      const safeName = encodeURIComponent(name)
-      const rawPhotos = await locationService.getLocationPhotos(safeName, level, skip.value, limit)
+    if (name === 'map_selection') {
+       const ids = locationStore.mapSelectedIds
+       if (ids.length > 0) {
+           const rawPhotos = await albumService.getPhotosByIds(ids)
+           const newPhotos = rawPhotos.map(mapPhotoToImage)
+           photos.value.push(...newPhotos)
+       }
+       hasMore.value = false
+    } else {
+      let page = 1
+      const limit = 1000
+      let hasNext = true
+      while (hasNext) {
+        // Encode name to ensure special characters (like / or ?) don't break the path
+        const safeName = encodeURIComponent(name)
+        const rawPhotos = await locationService.getLocationPhotos(safeName, level, skip.value, limit)
 
-      const newPhotos = rawPhotos.map(mapPhotoToImage)
+        const newPhotos = rawPhotos.map(mapPhotoToImage)
 
-      if (newPhotos.length < limit) {
-        hasMore.value = false
-        hasNext = false
+        if (newPhotos.length < limit) {
+          hasMore.value = false
+          hasNext = false
+        }
+        photos.value.push(...newPhotos)
+        skip.value += limit
+        page++
       }
-      photos.value.push(...newPhotos)
-      skip.value += limit
-      page++
     }
 
         // Calculate timeline

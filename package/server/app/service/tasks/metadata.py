@@ -1,3 +1,4 @@
+import math
 import asyncio
 import logging
 import os
@@ -7,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.db.models.task import Task, TaskStatus, TaskType
 from app.db.models.photo import Photo, ImageType
 from app.db.models.photo_metadata import PhotoMetadata
+from app.db.models.scene import Scene
 from app.utils import exif
 
 def determine_image_type(filename: str, width: int, height: int, exif_data: dict) -> ImageType:
@@ -56,6 +58,67 @@ def determine_image_type(filename: str, width: int, height: int, exif_data: dict
             return ImageType.CAMERA
     # 3. Default
     return ImageType.OTHER
+
+def haversine_distance(lat1, lon1, lat2, lon2):
+    R = 6371000  # radius of Earth in meters
+    phi1, phi2 = math.radians(lat1), math.radians(lat2) 
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    
+    a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
+    c = 2*math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
+
+def is_point_in_polygon(lat, lng, polygon):
+    """
+    Ray casting algorithm. 
+    Polygon is list of [lat, lng].
+    """
+    if not polygon or len(polygon) < 3:
+        return False
+        
+    n = len(polygon)
+    inside = False
+    p1_lat, p1_lng = polygon[0]
+    
+    for i in range(n + 1):
+        p2_lat, p2_lng = polygon[i % n]
+        if lng > min(p1_lng, p2_lng):
+            if lng <= max(p1_lng, p2_lng):
+                if lat <= max(p1_lat, p2_lat):
+                    if p1_lng != p2_lng:
+                        xinters = (lng - p1_lng) * (p2_lat - p1_lat) / (p2_lng - p1_lng) + p1_lat
+                    if p1_lat == p2_lat or lat <= xinters:
+                        inside = not inside
+        p1_lat, p1_lng = p2_lat, p2_lng
+    return inside
+
+def identify_scene(db: Session, lat: float, lng: float):
+    # Optimisation: Filter by rough bounding box first?
+    # For now, fetch all scenes. If thousands, it's okay-ish for a background task.
+    # To optimize, we can select only scenes where lat/lng is within a certain range (e.g. +/- 0.5 deg)
+    # But some scenes might be huge.
+    
+    # Let's try to fetch all scenes with basic info.
+    scenes = db.query(Scene).all()
+    
+    for scene in scenes:
+        # Check polygon first
+        if scene.polygon:
+            try:
+                poly = json.loads(scene.polygon) if isinstance(scene.polygon, str) else scene.polygon
+                if is_point_in_polygon(lat, lng, poly):
+                    return scene.id
+            except Exception as e:
+                logging.error(f"Error parsing polygon for scene {scene.id}: {e}")
+                
+        # Check radius if polygon is empty (or as fallback? User said "If polygon empty, check radius")
+        elif scene.radius and scene.latitude is not None and scene.longitude is not None:
+            dist = haversine_distance(lat, lng, float(scene.latitude), float(scene.longitude))
+            if dist <= scene.radius:
+                return scene.id
+                
+    return None
 
 def rebuild_metadata_cpu_job(file_path: str, file_id: UUID):
     try:
@@ -156,6 +219,15 @@ async def handle_extract_metadata(task_manager, task: Task, db: Session):
             if loc_details.get("province"): db_meta.province = loc_details.get("province")
             if loc_details.get("country"): db_meta.country = loc_details.get("country")
             if loc_details.get("address"): db_meta.address = loc_details.get("address")
+
+            # Identify Scene
+            if db_meta.latitude is not None and db_meta.longitude is not None:
+                try:
+                    scene_id = identify_scene(db, float(db_meta.latitude), float(db_meta.longitude))
+                    if scene_id:
+                        db_meta.scene_id = scene_id
+                except Exception as e:
+                    logging.error(f"Error identifying scene: {e}")
 
         if meta.get("photo_time"):
             photo.photo_time = meta["photo_time"]

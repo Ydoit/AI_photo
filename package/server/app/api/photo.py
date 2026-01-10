@@ -13,7 +13,7 @@ import time
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from sqlalchemy.orm import Session
 
 from app.core.config_manager import config_manager
@@ -57,6 +57,7 @@ def read_all_photos(
         radius: Optional[float] = None,
         center_lat: Optional[float] = None,
         center_lng: Optional[float] = None,
+        ids: Optional[List[UUID]] = Query(None),
         db: Session = Depends(get_db)
 ):
     st_time = time.time()
@@ -65,7 +66,8 @@ def read_all_photos(
         city=city, province=province, country=country, tag=tag, album_id=album_id,
         face_id=face_id, tag_id=tag_id,
         lat_min=lat_min, lat_max=lat_max, lng_min=lng_min, lng_max=lng_max,
-        radius=radius, center_lat=center_lat, center_lng=center_lng
+        radius=radius, center_lat=center_lat, center_lng=center_lng,
+        ids=ids
     )
     logging.info(f"read_all_photos time: {time.time() - st_time}")
     return photos
