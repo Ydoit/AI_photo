@@ -15,55 +15,6 @@
         <el-button @click="handleExport">导出配置</el-button>
       </div>
     </div>
-
-    <!-- Appearance Settings -->
-    <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
-      <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">外观设置</h2>
-      <div class="space-y-6 max-w-3xl">
-        
-        <div>
-          <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">显示模式</h3>
-          <div class="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg w-full sm:w-96">
-            <button 
-              @click="setMode('light')" 
-              :class="['flex-1 flex items-center justify-center py-2 rounded-md text-sm font-medium transition-all', currentMode === 'light' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 dark:text-gray-400']"
-            >
-              <Sun class="w-4 h-4 mr-2" /> 浅色
-            </button>
-            <button 
-              @click="setMode('auto')" 
-              :class="['flex-1 flex items-center justify-center py-2 rounded-md text-sm font-medium transition-all', currentMode === 'auto' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 dark:text-gray-400']"
-            >
-              <Palette class="w-4 h-4 mr-2" /> 自动
-            </button>
-            <button 
-              @click="setMode('dark')"
-              :class="['flex-1 flex items-center justify-center py-2 rounded-md text-sm font-medium transition-all', currentMode === 'dark' ? 'bg-gray-600 shadow-sm text-white' : 'text-gray-500 dark:text-gray-400']"
-            >
-              <Moon class="w-4 h-4 mr-2" /> 深色
-            </button>
-          </div>
-        </div>
-        
-        <div>
-          <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">主题颜色</h3>
-          <div class="flex flex-wrap gap-4">
-            <button
-              v-for="color in themeColors"
-              :key="color.name"
-              @click="setTheme(color)"
-              class="w-10 h-10 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center relative"
-              :style="{ backgroundColor: color.primary, borderColor: currentTheme.name === color.name ? 'var(--text-color)' : 'transparent' }"
-              :title="color.label"
-            >
-              <Check v-if="currentTheme.name === color.name" class="w-5 h-5 text-white drop-shadow-md" />
-            </button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
     <!-- Storage Settings -->
     <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
       <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">存储配置</h2>
@@ -105,7 +56,7 @@
         <el-form-item label="API Key">
            <el-input v-model="mapForm.api_key" type="password" show-password placeholder="请输入 API Key" />
            <p class="text-xs text-gray-500 mt-1">
-             <span v-if="mapForm.provider === 'tianditu'">申请地址: <a href="http://lbs.tianditu.gov.cn/server/kz.html" target="_blank" class="text-blue-500 hover:underline">天地图控制台</a> (请申请浏览器端 Key)</span>
+             <span v-if="mapForm.provider === 'tianditu'"><a href="http://trailsnap.cn/docs/guide/settings/mapsetting.html" target="_blank" class="text-blue-500 hover:underline">获取API Key</a> </span>
            </p>
         </el-form-item>
         
@@ -249,6 +200,54 @@
            </div>
         </el-form-item>
       </el-form>
+    </div>
+
+    <!-- Appearance Settings -->
+    <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
+      <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">外观设置</h2>
+      <div class="space-y-6 max-w-3xl">
+
+        <div>
+          <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">显示模式</h3>
+          <div class="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg w-full sm:w-96">
+            <button
+              @click="setMode('light')"
+              :class="['flex-1 flex items-center justify-center py-2 rounded-md text-sm font-medium transition-all', currentMode === 'light' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 dark:text-gray-400']"
+            >
+              <Sun class="w-4 h-4 mr-2" /> 浅色
+            </button>
+            <button
+              @click="setMode('auto')"
+              :class="['flex-1 flex items-center justify-center py-2 rounded-md text-sm font-medium transition-all', currentMode === 'auto' ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 dark:text-gray-400']"
+            >
+              <Palette class="w-4 h-4 mr-2" /> 自动
+            </button>
+            <button
+              @click="setMode('dark')"
+              :class="['flex-1 flex items-center justify-center py-2 rounded-md text-sm font-medium transition-all', currentMode === 'dark' ? 'bg-gray-600 shadow-sm text-white' : 'text-gray-500 dark:text-gray-400']"
+            >
+              <Moon class="w-4 h-4 mr-2" /> 深色
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">主题颜色</h3>
+          <div class="flex flex-wrap gap-4">
+            <button
+              v-for="color in themeColors"
+              :key="color.name"
+              @click="setTheme(color)"
+              class="w-10 h-10 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center relative"
+              :style="{ backgroundColor: color.primary, borderColor: currentTheme.name === color.name ? 'var(--text-color)' : 'transparent' }"
+              :title="color.label"
+            >
+              <Check v-if="currentTheme.name === color.name" class="w-5 h-5 text-white drop-shadow-md" />
+            </button>
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
 </template>

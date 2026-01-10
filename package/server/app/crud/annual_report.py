@@ -25,6 +25,16 @@ from app.schemas.annual_report import (
     TransportAnalysisMetrics
 )
 
+class ReportSummary(BaseModel):
+    user: UserInfo
+    time: TimeMetrics
+
+def get_date_range_filter(query, start_time: datetime, end_time: datetime):
+    return query.filter(
+        Photo.photo_time >= start_time,
+        Photo.photo_time <= end_time
+    )
+
 def get_annual_report_photos(
     start_time: datetime,
     end_time: datetime,

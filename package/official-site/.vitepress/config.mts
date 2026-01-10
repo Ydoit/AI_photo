@@ -37,6 +37,13 @@ export default withMermaid(defineConfig({
               ]
             },
             { text: '使用简介', link: '/docs/guide/user' },
+            {
+              text: '设置指南',
+              link: '/docs/guide/settings/',
+              items: [
+                { text: '地图设置', link: '/docs/guide/settings/mapsetting' }
+              ]
+            },
             { text: '问题反馈', link: '/docs/guide/feedback' }
           ]
         }

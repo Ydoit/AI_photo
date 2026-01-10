@@ -354,7 +354,7 @@ def get_report_season(
     end_time: datetime = Query(..., description="End Time"),
     db: Session = Depends(get_db)
 ):
-    return get_report_season(start_time, end_time, db)
+    return crud_annual_report.get_report_season(start_time, end_time, db)
 
 
 @router.get("/emotion", response_model=EmotionMetrics)
@@ -363,7 +363,7 @@ def get_report_emotion(
     end_time: datetime = Query(..., description="End Time"),
     db: Session = Depends(get_db)
 ):
-    return get_report_emotion(start_time, end_time, db)
+    return crud_annual_report.get_report_emotion(start_time, end_time, db)
 
 @router.get("/easter-egg", response_model=EasterEgg)
 def get_report_easter_egg(
