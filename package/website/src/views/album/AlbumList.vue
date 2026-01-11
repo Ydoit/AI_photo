@@ -167,7 +167,7 @@
             :min="0.15"
             :max="0.5"
             :step="0.01"
-:format-tooltip="(val: number) => (val * 100).toFixed(0) + '%'"
+            :format-tooltip="(val: number) => (val * 100).toFixed(0) + '%'"
           />
           <p class="text-xs text-gray-400 mt-1">阈值越高匹配越严格，建议值 0.25</p>
         </div>

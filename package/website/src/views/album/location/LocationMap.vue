@@ -10,13 +10,14 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 // @ts-ignore  缺少 supercluster 类型声明，暂时忽略
 import Supercluster from 'supercluster'
 import { locationService } from '@/api/location'
 import { useRouter } from 'vue-router'
 import { useLocationStore } from '@/stores/locationStore'
 import { loadMapScript } from '@/utils/mapLoader'
+import { storeToRefs } from 'pinia'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
 // Declare T globally
@@ -30,12 +31,13 @@ const index = new Supercluster({
 })
 const router = useRouter()
 const locationStore = useLocationStore()
+const { level } = storeToRefs(locationStore)
 
 onMounted(async () => {
   try {
     await loadMapScript()
     initMap()
-    await loadData()
+    await loadContent()
   } catch (e: any) {
     if (e.code === 'MAP_KEY_MISSING') {
       ElMessageBox.confirm(
@@ -57,16 +59,121 @@ onMounted(async () => {
   }
 })
 
+watch(level, async (newVal) => {
+  if (!map.value) return
+  map.value.clearOverLays()
+  await loadContent()
+})
+
 const initMap = () => {
   if (map.value) return
   
   map.value = new T.Map('tianditu-map')
   map.value.centerAndZoom(new T.LngLat(104.195, 35.861), 4) // Center of China
   map.value.enableScrollWheelZoom()
-  
-  // Listen to move/zoom events
-  map.value.addEventListener('moveend', updateClusters)
-  map.value.addEventListener('zoomend', updateClusters)
+}
+
+const loadContent = async () => {
+  // Remove listeners first to avoid conflicts
+  if (map.value) {
+      map.value.removeEventListener('moveend', updateClusters)
+      map.value.removeEventListener('zoomend', updateClusters)
+  }
+
+  if (level.value === 'scene') {
+    await loadScenes()
+  } else {
+    // Add listeners for clusters
+    if (map.value) {
+        map.value.addEventListener('moveend', updateClusters)
+        map.value.addEventListener('zoomend', updateClusters)
+    }
+    await loadData()
+  }
+}
+
+const loadScenes = async () => {
+  loading.value = true
+  try {
+    const scenes = await locationService.getScenesList()
+    
+    if (scenes.length === 0) {
+      ElMessage.info('暂无景区数据')
+      return
+    }
+
+    scenes.forEach((scene: any) => {
+      // Draw Polygon if exists
+      if (scene.polygon && scene.polygon.length > 0) {
+        const points = scene.polygon.map((p: any) => new T.LngLat(p[1], p[0]))
+        const polygon = new T.Polygon(points, {
+          color: "#3b82f6", 
+          weight: 3, 
+          opacity: 0.8, 
+          fillColor: "#3b82f6", 
+          fillOpacity: 0.2
+        })
+        map.value.addOverLay(polygon)
+        
+        // Label for polygon
+        const center = points[0] // Simplified center
+        const label = new T.Label({
+          text: `<div class="px-2 py-1 bg-white/90 rounded shadow text-sm font-medium text-blue-600">${scene.name}</div>`,
+          position: center,
+          offset: new T.Point(0, 0)
+        })
+        label.setBackgroundColor("transparent")
+        label.setBorderLine(0)
+        map.value.addOverLay(label)
+
+        const handleClick = () => goToScene(scene.name)
+        polygon.addEventListener('click', handleClick)
+        label.addEventListener('click', handleClick)
+
+      } else if (scene.latitude && scene.longitude) {
+        // Draw Marker
+        const pt = new T.LngLat(scene.longitude, scene.latitude)
+        const marker = new T.Marker(pt)
+        map.value.addOverLay(marker)
+        
+        const label = new T.Label({
+          text: `<div class="px-2 py-1 bg-white/90 rounded shadow text-sm font-medium text-gray-800">${scene.name}</div>`,
+          position: pt,
+          offset: new T.Point(0, -25)
+        })
+        label.setBackgroundColor("transparent")
+        label.setBorderLine(0)
+        map.value.addOverLay(label)
+
+        const handleClick = () => goToScene(scene.name)
+        marker.addEventListener('click', handleClick)
+        label.addEventListener('click', handleClick)
+      }
+    })
+    
+    // Fit view to scenes if any
+    // T.Map doesn't have setViewport for multiple points easily accessible without iterating bounds, 
+    // skipping for now or just center on first one
+    if (scenes.length > 0) {
+       const first = scenes[0]
+       if (first.latitude && first.longitude) {
+           map.value.panTo(new T.LngLat(first.longitude, first.latitude))
+       }
+    }
+
+  } catch (e) {
+    console.error('Failed to load scenes:', e)
+  } finally {
+    loading.value = false
+  }
+}
+
+const goToScene = (name: string) => {
+  router.push({
+    name: 'LocationDetail',
+    params: { name: name },
+    query: { level: 'scene' }
+  })
 }
 
 const loadData = async () => {

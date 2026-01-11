@@ -26,7 +26,7 @@ const route = useRoute()
 const router = useRouter()
 const locationStore = useLocationStore()
 const name = route.params.name as string
-const level = (route.query.level as 'city' | 'province') || 'city'
+const level = (route.query.level as 'city' | 'province' | 'district' | 'scene') || 'city'
 
 const loading = ref(false)
 const photos = ref<AlbumImage[]>([])

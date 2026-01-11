@@ -48,8 +48,24 @@
           >
             省份
           </button>
+          <button
+            @click="changeLevel('scene')"
+            :class="['px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-white dark:bg-gray-700', level === 'scene' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
+          >
+            景区
+          </button>
 
           <div v-show="viewMode !== 'grid'" class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1 my-auto"></div>
+
+          <button
+            v-if="level === 'scene'"
+            @click="showAddScene = true"
+            class="px-3 py-1.5 rounded-md bg-primary-500 text-white hover:bg-primary-600 transition-colors flex items-center gap-1.5 ml-1"
+            title="新增景区"
+          >
+            <Plus class="w-4 h-4" />
+            <span class="hidden sm:inline">新增</span>
+          </button>
 
           <button
             v-show="viewMode !== 'grid'"
@@ -65,7 +81,7 @@
     </div>
 
     <!-- Map View -->
-    <div v-show="viewMode === 'map' && level !== 'photo-map'" class="flex-1 relative overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+    <div v-show="viewMode === 'map' && level !== 'photo-map' && level !== 'scene'" class="flex-1 relative overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
        <div ref="mapContainer" class="w-full h-full"></div>
        
        <!-- Map Controls Overlay -->
@@ -75,7 +91,7 @@
     </div>
 
     <!-- Photo Map View -->
-    <LocationMap v-if="viewMode === 'map' && level === 'photo-map'" class="flex-1 overflow-hidden bg-white dark:bg-gray-900 shadow-sm" />
+    <LocationMap v-if="viewMode === 'map' && (level === 'photo-map' || level === 'scene')" class="flex-1 overflow-hidden bg-white dark:bg-gray-900 shadow-sm" />
 
     <!-- Grid View -->
     <div v-show="viewMode === 'grid'" class="flex-1 overflow-y-auto">
@@ -130,6 +146,8 @@
         </div>
       </div>
     </div>
+    
+    <AddSceneDialog v-model="showAddScene" @success="fetchLocations" />
   </div>
 </template>
 
@@ -141,10 +159,11 @@ import { useLocationStore } from '@/stores/locationStore'
 import { locationService } from '@/api/location'
 import { mapPhotoToImage } from '@/stores/photoStore'
 import type { Location } from '@/types/location'
-import { ArrowLeft, MapPin, LayoutGrid, Map, Images } from 'lucide-vue-next'
+import { ArrowLeft, MapPin, LayoutGrid, Map, Images, Plus } from 'lucide-vue-next'
 import * as echarts from 'echarts'
 import { useDark } from '@vueuse/core'
 import LocationMap from './LocationMap.vue'
+import AddSceneDialog from './AddSceneDialog.vue'
 
 const router = useRouter()
 const isDark = useDark()
@@ -152,6 +171,7 @@ const locationStore = useLocationStore()
 const { level, viewMode } = storeToRefs(locationStore)
 const locations = ref<Location[]>([])
 const loading = ref(true)
+const showAddScene = ref(false)
 const mapContainer = ref<HTMLElement | null>(null)
 let myMap: echarts.ECharts | null = null
 let zoomTimer: any = null
@@ -172,7 +192,7 @@ const fetchLocations = async () => {
   }
 }
 
-const changeLevel = (newLevel: 'city' | 'province' | 'district', viewState?: { zoom: number, center: number[] }) => {
+const changeLevel = (newLevel: 'city' | 'province' | 'district' | 'scene', viewState?: { zoom: number, center: number[] }) => {
   console.log(newLevel, viewState, level.value)
   if (level.value === newLevel) return
   level.value = newLevel
