@@ -84,11 +84,6 @@
         "en": "Card & Certificate",
         "prompts": ["a photo of ID card", "a photo of bank card", "a photo of driver license", "a photo of passport", "a photo of certificate", "a photo of membership card", "a photo of credit card"]
     },
-    "qrcode": {
-        "zh": "二维码",
-        "en": "QR Code",
-        "prompts": ["a photo of QR code", "a photo of 2D barcode", "QR code on paper", "QR code on screen", "scanable QR code", "square QR code pattern"]
-    },
     "home_living": {
         "zh": "居家日常",
         "en": "Home Daily",

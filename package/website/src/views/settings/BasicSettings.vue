@@ -53,10 +53,10 @@
           <span class="text-sm text-gray-500 ml-2">目前仅支持天地图，其他地图开发中</span>
         </el-form-item>
         
-        <el-form-item label="API Key">
-           <el-input v-model="mapForm.api_key" type="password" show-password placeholder="请输入 API Key" />
+        <el-form-item label="API Keys">
+           <el-input v-model="mapApiKeysText" type="textarea" :rows="3" placeholder="请输入 API Key (每行一个)" />
            <p class="text-xs text-gray-500 mt-1">
-             <span v-if="mapForm.provider === 'tianditu'"><a href="http://trailsnap.cn/docs/guide/settings/mapsetting.html" target="_blank" class="text-blue-500 hover:underline">获取API Key</a> </span>
+             <span v-if="mapForm.provider === 'tianditu'"><a href="http://trailsnap.cn/docs/guide/settings/mapsetting.html" target="_blank" class="text-blue-500 hover:underline">获取API Key</a> (支持设置多个Key，每行一个，系统将随机选择使用)</span>
            </p>
         </el-form-item>
         
@@ -274,7 +274,14 @@ const storageForm = ref({
 
 const mapForm = ref({
   provider: 'tianditu',
-  api_key: ''
+  api_keys: [] as string[]
+})
+
+const mapApiKeysText = computed({
+  get: () => mapForm.value.api_keys.join('\n'),
+  set: (val) => {
+    mapForm.value.api_keys = val.split('\n').map(k => k.trim()).filter(k => k)
+  }
 })
 
 const aiForm = ref({
@@ -324,7 +331,17 @@ const loadData = async () => {
           storageForm.value = { ...settings.storage }
       }
       if (settings.map) {
-          mapForm.value = { ...settings.map }
+          const mapData = settings.map
+          if (mapData.api_keys) {
+             mapForm.value = { ...mapData }
+          } else if (mapData.api_key) {
+             mapForm.value = { 
+                 provider: mapData.provider, 
+                 api_keys: [mapData.api_key] 
+             }
+          } else {
+             mapForm.value = { ...mapData, api_keys: [] }
+          }
       }
       if (settings.ai) {
           aiForm.value = { 

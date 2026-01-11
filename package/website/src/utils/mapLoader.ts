@@ -24,15 +24,24 @@ export const loadMapScript = async () => {
 
     const mapSettings = settings.map
     
-    if (!mapSettings || !mapSettings.api_key) {
+    let apiKey = ''
+    if (mapSettings && mapSettings.api_keys && mapSettings.api_keys.length > 0) {
+      // Randomly select one key
+      const keys = mapSettings.api_keys
+      apiKey = keys[Math.floor(Math.random() * keys.length)]
+    } else if (mapSettings && mapSettings.api_key) {
+      apiKey = mapSettings.api_key
+    }
+
+    if (!apiKey) {
       throw new MapLoadError('Map API Key is missing', 'MAP_KEY_MISSING')
     }
 
-    const { provider, api_key } = mapSettings
+    const { provider } = mapSettings
 
     // 2. Load Provider Script
     if (provider === 'tianditu') {
-      return loadTianditu(api_key)
+      return loadTianditu(apiKey)
     } else {
         // Placeholder for other providers
         throw new MapLoadError(`Provider ${provider} is not supported yet`, 'UNSUPPORTED_PROVIDER')

@@ -2,7 +2,7 @@
   <el-dialog
     :model-value="visible"
     title="编辑人物信息"
-    width="400px"
+    :width="dialogWidth"
     class="rounded-xl"
     @update:model-value="$emit('update:visible', $event)"
   >
@@ -37,10 +37,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import type { FaceIdentity } from '@/types/album'
 import { faceApi } from '@/api/face'
 import { ElMessage } from 'element-plus'
+import { useWindowSize } from '@vueuse/core'
+import { useModalBack } from '@/composables/useModalBack'
 
 const props = defineProps<{
   visible: boolean
@@ -51,6 +53,15 @@ const emit = defineEmits<{
   (e: 'update:visible', v: boolean): void
   (e: 'saved', identity: FaceIdentity): void
 }>()
+
+const { width } = useWindowSize()
+const dialogWidth = computed(() => width.value < 640 ? '90%' : '400px')
+
+const visibleRef = computed({
+  get: () => props.visible,
+  set: (val) => emit('update:visible', val)
+})
+useModalBack(visibleRef)
 
 const form = ref({
   identity_name: '',

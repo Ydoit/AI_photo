@@ -23,25 +23,43 @@
     <div class="flex-1 overflow-auto p-4 md:p-8 h-screen">
       <UserManagement v-if="activeTab === 'user'" />
       <TaskManagement v-if="activeTab === 'tasks'" />
-      <BasicSettings v-if="activeTab === 'settings'" />
+      <BasicSettings v-if="activeTab === 'basic'" />
       <ExternalGallery v-if="activeTab === 'external'" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { User, List, Settings, FolderOpen } from 'lucide-vue-next'
 import UserManagement from './settings/UserManagement.vue'
 import TaskManagement from './settings/TaskManagement.vue'
 import BasicSettings from './settings/BasicSettings.vue'
 import ExternalGallery from './settings/ExternalGallery.vue'
 
+const router = useRouter()
+const route = useRoute()
+
 const activeTab = ref('user')
 const menuItems = [
   { key: 'user', label: '用户管理', icon: User },
   { key: 'tasks', label: '任务管理', icon: List },
-  { key: 'settings', label: '基础设置', icon: Settings },
+  { key: 'basic', label: '基础设置', icon: Settings },
   { key: 'external', label: '外部图库', icon: FolderOpen },
 ]
+
+// Handle URL hash navigation
+watch(() => route.hash, (newHash) => {
+  if (newHash) {
+    const key = newHash.replace('#', '')
+    if (menuItems.some(item => item.key === key)) {
+      activeTab.value = key
+    }
+  }
+}, { immediate: true })
+
+watch(activeTab, (newTab) => {
+  router.replace({ hash: `#${newTab}` })
+})
 </script>

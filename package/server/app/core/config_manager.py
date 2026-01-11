@@ -33,7 +33,7 @@ class ImageSettings(BaseModel):
 
 class MapSettings(BaseModel):
     provider: str = Field(default="tianditu", description="Map provider (tianditu, amap, baidu)")
-    api_key: str = Field(default="", description="Map API Key")
+    api_keys: List[str] = Field(default=[], description="Map API Key")
 
 class AppSettings(BaseModel):
     version: str = "0.1"
@@ -95,6 +95,17 @@ class ConfigManager:
                     # Deep merge or direct load
                     # Since we have nested models, simple **data might fail if structure changed drastically
                     # But Pydantic handles nested dicts well if structure matches
+                    
+                    # Migration for map api_key -> api_keys
+                    if "map" in data and isinstance(data["map"], dict):
+                        map_data = data["map"]
+                        if "api_key" in map_data:
+                            if map_data["api_key"] and "api_keys" not in map_data:
+                                map_data["api_keys"] = [map_data["api_key"]]
+                            # Remove old key to avoid validation error if extra fields are forbidden
+                            # or just cleanup
+                            del map_data["api_key"]
+
                     self.config = AppSettings(**data)
                     
             except Exception as e:

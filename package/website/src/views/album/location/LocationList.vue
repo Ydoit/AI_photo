@@ -1,5 +1,5 @@
 <template>
-  <div :class="['location-list min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col h-screen relative', (viewMode === 'map') ? 'p-0' : 'p-6']">
+  <div :class="['container mx-auto location-list min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col h-screen relative', (viewMode === 'map') ? 'p-0' : 'p-6']">
     <!-- Header -->
     <div :class="['flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0 z-50 transition-all duration-300', (viewMode === 'map') ? 'absolute top-0 left-0 right-0 p-4 pointer-events-none' : 'mb-6']">
       <div class="pointer-events-auto flex items-center gap-3 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
@@ -160,7 +160,10 @@ let zoomTimer: any = null
 const fetchLocations = async () => {
   loading.value = true
   try {
-    if (level.value === 'photo-map') return
+    if (level.value === 'photo-map') {
+      locations.value = await locationService.getLocations('city')
+      return
+    }
     locations.value = await locationService.getLocations(level.value)
   } catch (e) {
     console.error(e)
@@ -388,6 +391,8 @@ watch(viewMode, (newMode) => {
     nextTick(() => {
       initMap()
     })
+  } else if (level.value === 'photo-map') {
+    level.value = 'city'
   }
 })
 

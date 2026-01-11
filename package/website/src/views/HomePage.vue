@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-white dark:bg-black pb-12">
+  <div class="container mx-auto min-h-screen bg-white dark:bg-black pb-12">
     <!-- Navbar -->
     <div class="sticky top-0 z-20 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 h-14 flex items-center justify-between px-4 transition-opacity duration-300">
       <h1 class="text-lg font-bold text-[#333] dark:text-white">相册概览</h1>

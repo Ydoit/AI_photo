@@ -73,6 +73,7 @@ const fetchAllPhotos = async () => {
            const rawPhotos = await albumService.getPhotosByIds(ids)
            const newPhotos = rawPhotos.map(mapPhotoToImage)
            photos.value.push(...newPhotos)
+          calculateTimelineStats(photos.value)
        }
        hasMore.value = false
     } else {
@@ -93,11 +94,10 @@ const fetchAllPhotos = async () => {
         photos.value.push(...newPhotos)
         skip.value += limit
         page++
+        // Calculate timeline
+        calculateTimelineStats(photos.value)
       }
     }
-
-        // Calculate timeline
-    calculateTimelineStats(photos.value)
   } catch (e) {
     console.error('Failed to load location photos:', e)
     // Optional: show error toast
@@ -126,7 +126,7 @@ const loadMore = async () => {
     photos.value.push(...newPhotos)
     skip.value += limit
     page++
-        // Calculate timeline
+    // Calculate timeline
     calculateTimelineStats(photos.value)
   } catch (e) {
     console.error('Failed to load location photos:', e)

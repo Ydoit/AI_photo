@@ -47,7 +47,7 @@ onMounted(async () => {
           type: 'warning',
         }
       ).then(() => {
-        router.push('/settings')
+        router.push('/settings#basic')
       }).catch(() => {
         // User cancelled
       })

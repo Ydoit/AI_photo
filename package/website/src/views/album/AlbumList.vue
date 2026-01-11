@@ -127,7 +127,7 @@
     <el-dialog
       v-model="showModal"
       :title="isEditing ? '编辑相册' : '新建相册'"
-      width="500px"
+      :width="dialogWidth"
       class="rounded-xl"
       destroy-on-close
     >
@@ -257,7 +257,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAlbumStore } from '@/stores/albumStore'
 import type { Album, FaceIdentity, CreateAlbumDto } from '@/types/album'
@@ -266,9 +266,14 @@ import { albumService } from '@/api/album'
 import { faceApi } from '@/api/face'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { format } from 'date-fns'
+import { useModalBack } from '@/composables/useModalBack'
+import { useWindowSize } from '@vueuse/core'
 
 const router = useRouter()
 const store = useAlbumStore()
+
+const { width } = useWindowSize()
+const dialogWidth = computed(() => width.value < 640 ? '90%' : '500px')
 
 const formatDate = (timestamp: number) => {
   return format(new Date(timestamp), 'yyyy-MM-dd')
@@ -320,6 +325,7 @@ const navigateToAlbum = (id: string) => {
 
 // Modal Logic
 const showModal = ref(false)
+useModalBack(showModal)
 const isEditing = ref(false)
 const loading = ref(false)
 const currentAlbumId = ref<string | null>(null)

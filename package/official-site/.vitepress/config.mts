@@ -29,6 +29,8 @@ export default withMermaid(defineConfig({
             { text: '安装指南', link: '/docs/guide/install' },
             {
               text: 'Docker 部署',
+              collapsible: true,
+              collapsed: true,
               items: [
                 { text: '通用部署', link: '/docs/guide/docker/' },
                 { text: '绿联 NAS', link: '/docs/guide/docker/ugreen' },
@@ -40,6 +42,8 @@ export default withMermaid(defineConfig({
             {
               text: '设置指南',
               link: '/docs/guide/settings/',
+              collapsible: true,
+              collapsed: true,
               items: [
                 { text: '地图设置', link: '/docs/guide/settings/mapsetting' }
               ]
@@ -60,6 +64,8 @@ export default withMermaid(defineConfig({
             {
               text: 'AI提示词',
               link: '/docs/dev/prompt',
+              collapsible: true,
+              collapsed: false,
               items: [
                 { text: '2025-12-25', link: '/docs/dev/prompt/2025-12-25' },
                 { text: '2026-01-07', link: '/docs/dev/prompt/2026-01-07' },
@@ -87,13 +93,13 @@ export default withMermaid(defineConfig({
     outline: {
       label: '页面导航'
     },
-    
+
     sidebarMenuLabel: '菜单',
     returnToTopLabel: '回到顶部',
     darkModeSwitchLabel: '主题',
     lightModeSwitchTitle: '切换到浅色模式',
     darkModeSwitchTitle: '切换到深色模式',
-    
+
     docFooter: {
       prev: '上一页',
       next: '下一页'
