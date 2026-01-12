@@ -6,7 +6,7 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center">
           <!-- Logo -->
-          <div class="flex items-center cursor-pointer" @click="goLink('/')">
+          <div class="flex items-center cursor-pointer" @click="goLink(lang === 'zh-CN' ? '/' : '/en/')">
             <img src="/logo.svg" alt="行影集 Logo" class="w-8 h-8 mr-2">
             <div class="flex flex-col">
               <span class="text-xl font-bold text-neutral-dark dark:text-white leading-none">行影集</span>
@@ -16,14 +16,14 @@
 
           <!-- Desktop Menu -->
           <div class="hidden md:flex items-center space-x-8">
-            <button type="button" class="transition-colors" :class="navClass('home')" @click="scrollTo('home')">首页</button>
-            <button type="button" class="transition-colors" :class="navClass('core-features')" @click="scrollTo('core-features')">功能介绍</button>
-            <button type="button" class="transition-colors text-neutral-dark dark:text-gray-300 hover:text-primary" @click="goLink('/docs/guide/install')">快速开始</button>
+            <button type="button" class="transition-colors" :class="navClass('home')" @click="scrollTo('home')">{{ t.nav.home }}</button>
+            <button type="button" class="transition-colors" :class="navClass('core-features')" @click="scrollTo('core-features')">{{ t.nav.features }}</button>
+            <button type="button" class="transition-colors text-neutral-dark dark:text-gray-300 hover:text-primary" @click="goLink(lang === 'zh-CN' ? '/docs/guide/install' : '/en/docs/guide/install')">{{ t.nav.quickStart }}</button>
           </div>
 
           <!-- Desktop Buttons -->
           <div class="hidden md:flex items-center space-x-4">
-            <button class="px-6 py-2 rounded-lg bg-primary text-white hover:bg-primary-dark transform hover:scale-105 transition-all shadow-md hover:shadow-lg" @click="goLink('/docs/guide/install')">立即下载</button>
+            <button class="px-6 py-2 rounded-lg bg-primary text-white hover:bg-primary-dark transform hover:scale-105 transition-all shadow-md hover:shadow-lg" @click="goLink(lang === 'zh-CN' ? '/docs/guide/install' : '/en/docs/guide/install')">{{ t.nav.download }}</button>
           </div>
 
           <!-- Mobile Hamburger -->
@@ -37,11 +37,11 @@
 
           <!-- Mobile Menu -->
           <div v-if="isMobileMenuOpen" class="md:hidden absolute top-full left-0 w-full bg-white dark:bg-slate-800 shadow-lg py-4 px-4 flex flex-col space-y-4">
-        <button type="button" class="text-left w-fit transition-colors" :class="navClass('home')" @click="scrollTo('home')">首页</button>
-        <button type="button" class="text-left w-fit transition-colors" :class="navClass('core-features')" @click="scrollTo('core-features')">功能介绍</button>
-        <button type="button" class="text-left w-fit transition-colors text-neutral-dark dark:text-gray-300 hover:text-primary" @click="goLink('/docs/guide/install')">快速开始</button>
+        <button type="button" class="text-left w-fit transition-colors" :class="navClass('home')" @click="scrollTo('home')">{{ t.nav.home }}</button>
+        <button type="button" class="text-left w-fit transition-colors" :class="navClass('core-features')" @click="scrollTo('core-features')">{{ t.nav.features }}</button>
+        <button type="button" class="text-left w-fit transition-colors text-neutral-dark dark:text-gray-300 hover:text-primary" @click="goLink(lang === 'zh-CN' ? '/docs/guide/install' : '/en/docs/guide/install')">{{ t.nav.quickStart }}</button>
         <div class="flex space-x-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-          <button class="flex-1 py-2 rounded-lg bg-primary text-white" @click="goLink('/docs/guide/install')">立即下载</button>
+          <button class="flex-1 py-2 rounded-lg bg-primary text-white" @click="goLink(lang === 'zh-CN' ? '/docs/guide/install' : '/en/docs/guide/install')">{{ t.nav.download }}</button>
         </div>
       </div>
     </nav>
@@ -57,24 +57,21 @@
           <!-- Text Content -->
           <div class="lg:w-[55%] text-center lg:text-left mb-12 lg:mb-0">
             <h1 class="text-3xl md:text-4xl lg:text-[42px] font-bold text-neutral-dark dark:text-white leading-tight mb-6">
-              AI赋能出行记忆<br>
-              <span class="block mt-2">你的专属行影集</span>
+              {{ t.hero.title1 }}<br>
+              <span class="block mt-2">{{ t.hero.title2 }}</span>
             </h1>
-            <p class="text-base md:text-lg text-neutral-gray dark:text-gray-400 mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0">
-              智能记录行程、整理旅行照片、生成专属记忆报告，<br class="hidden md:inline">让每一段出行都值得珍藏
+            <p class="text-base md:text-lg text-neutral-gray dark:text-gray-400 mb-8 leading-relaxed max-w-2xl mx-auto lg:mx-0" v-html="t.hero.desc">
             </p>
             
             <!-- Tags -->
             <div class="flex flex-wrap justify-center lg:justify-start gap-3 mb-10">
-              <span class="px-4 py-2 bg-secondary dark:bg-secondary/20 rounded-full text-sm text-neutral-dark dark:text-gray-200 hover:-translate-y-1 transition-transform cursor-default">智能相册</span>
-              <span class="px-4 py-2 bg-secondary dark:bg-secondary/20 rounded-full text-sm text-neutral-dark dark:text-gray-200 hover:-translate-y-1 transition-transform cursor-default">AI识别车票</span>
-              <span class="px-4 py-2 bg-secondary dark:bg-secondary/20 rounded-full text-sm text-neutral-dark dark:text-gray-200 hover:-translate-y-1 transition-transform cursor-default">数据可视化</span>
+              <span v-for="tag in t.hero.tags" :key="tag" class="px-4 py-2 bg-secondary dark:bg-secondary/20 rounded-full text-sm text-neutral-dark dark:text-gray-200 hover:-translate-y-1 transition-transform cursor-default">{{ tag }}</span>
             </div>
 
             <!-- Actions -->
             <div class="flex justify-center lg:justify-start gap-5">
-              <button class="px-8 py-3 rounded-lg bg-primary text-white font-bold hover:bg-primary-dark hover:scale-105 transition-all shadow-lg hover:shadow-xl" @click="goLink('/docs/guide/install')">立即下载</button>
-              <button class="px-8 py-3 rounded-lg border border-gray-300 dark:border-gray-600 text-neutral-dark dark:text-gray-200 hover:bg-white dark:hover:bg-slate-700 hover:border-gray-400 transition-all" @click="goLink('/docs/guide/user')">查看功能详情</button>
+              <button class="px-8 py-3 rounded-lg bg-primary text-white font-bold hover:bg-primary-dark hover:scale-105 transition-all shadow-lg hover:shadow-xl" @click="goLink(lang === 'zh-CN' ? '/docs/guide/install' : '/en/docs/guide/install')">{{ t.hero.download }}</button>
+              <button class="px-8 py-3 rounded-lg border border-gray-300 dark:border-gray-600 text-neutral-dark dark:text-gray-200 hover:bg-white dark:hover:bg-slate-700 hover:border-gray-400 transition-all" @click="goLink(lang === 'zh-CN' ? '/docs/guide/user' : '/en/docs/guide/user')">{{ t.hero.details }}</button>
             </div>
           </div>
 
@@ -97,8 +94,8 @@
                 <div class="flex items-center gap-3">
                   <div class="w-5 h-5 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-500">🎫</div>
                   <div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">识别成功</div>
-                    <div class="text-sm font-bold dark:text-white">G1234 北京 -> 上海</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ t.hero.card1.title }}</div>
+                    <div class="text-sm font-bold dark:text-white">{{ t.hero.card1.desc }}</div>
                   </div>
                 </div>
               </div>
@@ -108,8 +105,8 @@
                 <div class="flex items-center gap-3">
                   <div class="w-5 h-5 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center text-green-500">📝</div>
                   <div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">AI 日记生成</div>
-                    <div class="text-sm font-bold dark:text-white">今天去滑雪（摔了一跤）...</div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ t.hero.card2.title }}</div>
+                    <div class="text-sm font-bold dark:text-white">{{ t.hero.card2.desc }}</div>
                   </div>
                 </div>
               </div>
@@ -123,7 +120,7 @@
     <section id="core-features" class="py-20 bg-white dark:bg-slate-900">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
-          <h2 class="text-3xl font-bold text-neutral-dark dark:text-white mb-4">核心特色 · 重新定义相册记忆</h2>
+          <h2 class="text-3xl font-bold text-neutral-dark dark:text-white mb-4">{{ t.core.title }}</h2>
           <div class="w-16 h-1 bg-primary mx-auto rounded-full"></div>
         </div>
 
@@ -151,7 +148,7 @@
           <!-- Left List -->
           <div class="lg:w-[40%]">
             <h2 class="text-2xl md:text-[28px] font-bold text-neutral-dark dark:text-white mb-8 text-center lg:text-left">
-              功能概览 · 全方位覆盖出行记忆需求
+              {{ t.overview.title }}
             </h2>
             <div class="space-y-4">
               <div v-for="(item, index) in overviewFeatures" :key="index" 
@@ -179,8 +176,8 @@
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-float p-4 w-full max-w-xl aspect-[4/3] flex items-center justify-center border border-gray-100 dark:border-slate-700 relative overflow-hidden group">
               <div class="text-center">
                 <div class="text-6xl mb-4">{{ overviewFeatures[activeFeatureIndex].icon }}</div>
-                <h3 class="text-2xl font-bold text-neutral-dark dark:text-white">{{ overviewFeatures[activeFeatureIndex].title }} 演示</h3>
-                <p class="text-gray-400 mt-2">（此处展示功能演示动图/视频）</p>
+                <h3 class="text-2xl font-bold text-neutral-dark dark:text-white">{{ overviewFeatures[activeFeatureIndex].title }}{{ t.overview.demoSuffix }}</h3>
+                <p class="text-gray-400 mt-2">{{ t.overview.demoPlaceholder }}</p>
               </div>
               
               <!-- Hover Arrows (Mock) -->
@@ -202,7 +199,7 @@
     <!-- 6. Testimonials -->
     <section class="py-20 bg-secondary/30 dark:bg-slate-800/30">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 class="text-[28px] font-bold text-neutral-dark dark:text-white text-center mb-12">用户心声 · 用行影集珍藏每一段旅程</h2>
+        <h2 class="text-[28px] font-bold text-neutral-dark dark:text-white text-center mb-12">{{ t.testimonials.title }}</h2>
         
         <div class="max-w-3xl mx-auto bg-white dark:bg-slate-800 rounded-xl p-10 shadow-soft relative">
           <!-- Arrows -->
@@ -233,19 +230,11 @@
 
         <!-- Trust Badges -->
         <div class="text-center mt-16">
-          <h3 class="text-base font-bold text-neutral-dark dark:text-white mb-6">安全保障 · 数据真正属于你</h3>
+          <h3 class="text-base font-bold text-neutral-dark dark:text-white mb-6">{{ t.trust.title }}</h3>
           <div class="flex justify-center gap-10 md:gap-20">
-            <div class="flex flex-col items-center gap-2 group cursor-pointer">
-              <div class="text-3xl text-primary group-hover:scale-110 transition-transform">🔒</div>
-              <span class="text-sm text-neutral-gray dark:text-gray-400">全链路数据掌控</span>
-            </div>
-            <div class="flex flex-col items-center gap-2 group cursor-pointer">
-              <div class="text-3xl text-primary group-hover:scale-110 transition-transform">💾</div>
-              <span class="text-sm text-neutral-gray dark:text-gray-400">本地存储</span>
-            </div>
-            <div class="flex flex-col items-center gap-2 group cursor-pointer">
-              <div class="text-3xl text-primary group-hover:scale-110 transition-transform">🛡️</div>
-              <span class="text-sm text-neutral-gray dark:text-gray-400">隐私保护</span>
+            <div class="flex flex-col items-center gap-2 group cursor-pointer" v-for="(item, index) in t.trust.items" :key="index">
+              <div class="text-3xl text-primary group-hover:scale-110 transition-transform">{{ index === 0 ? '🔒' : (index === 1 ? '💾' : '🛡️') }}</div>
+              <span class="text-sm text-neutral-gray dark:text-gray-400">{{ item }}</span>
             </div>
           </div>
         </div>
@@ -258,32 +247,32 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12 text-center md:text-left">
           <!-- Col 1 -->
           <div>
-            <h4 class="text-lg font-bold mb-6">关于行影集</h4>
+            <h4 class="text-lg font-bold mb-6">{{ t.footer.about.title }}</h4>
             <p class="text-sm opacity-80 leading-relaxed">
-              TrailSnap行影集是一款AI赋能的出行记忆珍藏工具，致力于让每一段出行都值得回味，让用户的数据真正属于自己。
+              {{ t.footer.about.text }}
             </p>
           </div>
           <!-- Col 2 -->
           <div>
-            <h4 class="text-lg font-bold mb-6">快速链接</h4>
+            <h4 class="text-lg font-bold mb-6">{{ t.footer.links.title }}</h4>
             <ul class="space-y-3 text-sm opacity-80">
-              <li><a href="#" class="hover:text-primary transition-colors">首页</a></li>
-              <li><a href="/docs/guide/user" class="hover:text-primary transition-colors">功能介绍</a></li>
-              <li><a href="#" class="hover:text-primary transition-colors">产品优势</a></li>
-              <li><a href="#" class="hover:text-primary transition-colors">关于我们</a></li>
-              <li><a href="#" class="hover:text-primary transition-colors">帮助中心</a></li>
+              <li><a href="#" class="hover:text-primary transition-colors" @click.prevent="goLink(lang === 'zh-CN' ? '/' : '/en/')">{{ t.footer.links.items[0] }}</a></li>
+              <li><a href="#" class="hover:text-primary transition-colors" @click.prevent="scrollTo('core-features')">{{ t.footer.links.items[1] }}</a></li>
+              <li><a href="#" class="hover:text-primary transition-colors">{{ t.footer.links.items[2] }}</a></li>
+              <li><a href="#" class="hover:text-primary transition-colors">{{ t.footer.links.items[3] }}</a></li>
+              <li><a href="#" class="hover:text-primary transition-colors">{{ t.footer.links.items[4] }}</a></li>
             </ul>
           </div>
           <!-- Col 3 -->
           <div>
-            <h4 class="text-lg font-bold mb-6">联系我们</h4>
+            <h4 class="text-lg font-bold mb-6">{{ t.footer.contact.title }}</h4>
             <ul class="space-y-3 text-sm text-white/80">
-              <li>邮箱：<a href="mailto:sixyuan044@gmail.com" class="hover:text-primary transition-colors">sixyuan044@gmail.com</a></li>
-              <li>微信公众号：忆墨痕</li>
+              <li>{{ t.footer.contact.email }}：<a href="mailto:sixyuan044@gmail.com" class="hover:text-primary transition-colors">sixyuan044@gmail.com</a></li>
+              <li>{{ t.footer.contact.wechat }}：忆墨痕</li>
               <li class="relative group">
-                QQ群：
+                {{ t.footer.contact.qq }}：
                 <span class="cursor-pointer border-b border-dashed border-white/40 hover:text-primary hover:border-primary transition-colors">
-                  扫码加入
+                  {{ t.footer.contact.scan }}
                 </span>
                 <!-- QQ Group QR Code Popup -->
                 <div class="absolute bottom-full left-0 mb-2 w-64 bg-white p-2 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 text-neutral-dark">
@@ -298,7 +287,7 @@
           </div>
           <!-- Col 4 -->
           <div>
-            <h4 class="text-lg font-bold mb-6">关注我们</h4>
+            <h4 class="text-lg font-bold mb-6">{{ t.footer.follow.title }}</h4>
             <div class="flex justify-center md:justify-start gap-4">
               <div v-for="link in socialLinks" :key="link.name" class="relative group cursor-pointer">
                 <!-- Icon -->
@@ -320,7 +309,7 @@
 
         <div class="border-t border-white/10 pt-8 text-center">
           <p class="text-xs opacity-60">
-            © 2025 TrailSnap行影集 版权所有 <span class="mx-2">|</span> 隐私政策 <span class="mx-2">|</span> 用户协议
+            {{ t.footer.copyright }} <span class="mx-2">|</span> {{ t.footer.privacy }} <span class="mx-2">|</span> {{ t.footer.agreement }}
           </p>
         </div>
       </div>
@@ -328,10 +317,201 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vitepress'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useRouter, useData } from 'vitepress'
 
 const router = useRouter()
+const { lang } = useData()
+
+// Translations
+const i18n = {
+  'zh-CN': {
+    nav: {
+      home: '首页',
+      features: '功能介绍',
+      quickStart: '快速开始',
+      download: '立即下载'
+    },
+    hero: {
+      title1: 'AI赋能出行记忆',
+      title2: '你的专属行影集',
+      desc: '智能记录行程、整理旅行照片、生成专属记忆报告，<br class="hidden md:inline">让每一段出行都值得珍藏',
+      tags: ['智能相册', '足迹相册', '生活相册'],
+      download: '立即下载',
+      details: '查看功能详情',
+      card1: { title: '识别成功', desc: 'G1234 北京 -> 上海' },
+      card2: { title: 'AI 日记生成', desc: '今天去滑雪（摔了一跤）...' }
+    },
+    core: {
+      title: '核心特色 · 重新定义相册记忆'
+    },
+    overview: {
+      title: '功能概览 · 全方位覆盖出行记忆需求',
+      demoSuffix: ' 演示',
+      demoPlaceholder: '（此处展示功能演示动图/视频）'
+    },
+    testimonials: {
+      title: '用户心声 · 用行影集珍藏每一段旅程'
+    },
+    trust: {
+      title: '安全保障 · 数据真正属于你',
+      items: ['全链路数据掌控', '本地存储', '隐私保护']
+    },
+    footer: {
+      about: { title: '关于行影集', text: 'TrailSnap行影集是一款AI赋能的出行记忆珍藏工具，致力于让每一段出行都值得回味，让用户的数据真正属于自己。' },
+      links: { title: '快速链接', items: ['首页', '功能介绍', '产品优势', '关于我们', '帮助中心'] },
+      contact: { title: '联系我们', email: '邮箱', wechat: '微信公众号', qq: 'QQ群', scan: '扫码加入' },
+      follow: { title: '关注我们' },
+      copyright: '© 2025 TrailSnap行影集 版权所有',
+      privacy: '隐私政策',
+      agreement: '用户协议'
+    }
+  },
+  'en-US': {
+    nav: {
+      home: 'Home',
+      features: 'Features',
+      quickStart: 'Quick Start',
+      download: 'Download'
+    },
+    hero: {
+      title1: 'AI-Empowered Travel Memories',
+      title2: 'Your Exclusive TrailSnap',
+      desc: 'Smartly record itineraries, organize travel photos, generate exclusive memory reports, <br class="hidden md:inline">making every trip worth cherishing.',
+      tags: ['Smart Album', 'Footprint Album', 'Life Album'],
+      download: 'Download',
+      details: 'View Features',
+      card1: { title: 'Success', desc: 'G1234 BJ -> SH' },
+      card2: { title: 'AI Diary', desc: 'Skiing today (fell)...' }
+    },
+    core: {
+      title: 'Core Features · Redefining Memories'
+    },
+    overview: {
+      title: 'Feature Overview · Comprehensive Coverage',
+      demoSuffix: ' Demo',
+      demoPlaceholder: '(Feature demo GIF/Video here)'
+    },
+    testimonials: {
+      title: 'User Voice · Cherish Every Journey'
+    },
+    trust: {
+      title: 'Security · Your Data Truly Belongs to You',
+      items: ['Full Data Control', 'Local Storage', 'Privacy Protection']
+    },
+    footer: {
+      about: { title: 'About TrailSnap', text: 'TrailSnap is an AI-powered travel memory tool, dedicated to making every trip memorable and ensuring your data belongs to you.' },
+      links: { title: 'Quick Links', items: ['Home', 'Features', 'Advantages', 'About Us', 'Help Center'] },
+      contact: { title: 'Contact Us', email: 'Email', wechat: 'WeChat', qq: 'QQ Group', scan: 'Scan to Join' },
+      follow: { title: 'Follow Us' },
+      copyright: '© 2025 TrailSnap All Rights Reserved',
+      privacy: 'Privacy Policy',
+      agreement: 'User Agreement'
+    }
+  }
+}
+
+const t = computed(() => i18n[lang.value as keyof typeof i18n] || i18n['zh-CN'])
+
+const featuresList = {
+  'zh-CN': [
+      {
+    title: '智能相册',
+    icon: '📸',
+    desc: '人物识别、场景智能分类、智能搜索、足迹相册、照片OCR识别，轻松找到每一张旅行照片。',
+    tags: ['人物识别', '智能分类', 'OCR识别']
+  },
+  {
+    title: '行程记录',
+    icon: '🎫',
+    desc: '专属火车票、景区门票、演唱会门票管理功能，自动识别票据信息，识别国内5A级景区，清晰回顾每一段出行轨迹。',
+    status: '开发中',
+    tags: ['智能识别', '行程管理', '旅行足迹'],
+    statusColor: 'bg-orange-100 text-orange-600'
+  },
+  {
+    title: 'AI赋能',
+    icon: '🤖',
+    desc: '一句话生成旅行日记，自动剪辑15s旅行Vlog，智能修图筛选高质量照片，轻松打造专属旅行分享内容。',
+    status: '待开发',
+    statusColor: 'bg-blue-100 text-blue-600'
+  }
+  ],
+  'en-US': [
+    {
+    title: 'Smart Album',
+    icon: '📸',
+    desc: 'Face recognition, smart scene classification, smart search, footprint album, photo OCR, easily find every travel photo.',
+    tags: ['Face Recognition', 'Smart Classification', 'OCR']
+  },
+  {
+    title: 'Itinerary Record',
+    icon: '🎫',
+    desc: 'Exclusive management for train tickets, scenic spot tickets, concert tickets, automatic ticket info recognition, 5A scenic spot recognition.',
+    status: 'In Dev',
+    tags: ['Smart Recognition', 'Itinerary Mgmt', 'Travel Footprint'],
+    statusColor: 'bg-orange-100 text-orange-600'
+  },
+  {
+    title: 'AI Empowerment',
+    icon: '🤖',
+    desc: 'One-sentence travel diary generation, auto-edit 15s travel Vlog, smart photo retouching and selection.',
+    status: 'Planned',
+    statusColor: 'bg-blue-100 text-blue-600'
+  }
+  ]
+}
+
+const features = computed(() => featuresList[lang.value as keyof typeof featuresList] || featuresList['zh-CN'])
+
+const overviewFeaturesList = {
+  'zh-CN': [
+    { title: '智能相册', icon: '📸', items: ['精准人脸识别归类', '场景/物体智能标签', '自定义条件（智能）相册'] },
+    { title: 'AI能力', icon: '🤖', items: ['一句话生成游记', 'Vlog智能剪辑', '照片智能精修'] },
+    { title: '行程票据', icon: '🎫', items: ['票据自动识别录入', '国内5A景区位置识别', '多票据统一管理'] },
+    { title: '数据可视化', icon: '📊', items: ['足迹地图点亮', '出行里程统计', '城市打卡记录'] },
+    { title: '年度报告', icon: '📅', items: ['年度出行总结', '专属回忆生成', '分享朋友圈'] }
+  ],
+  'en-US': [
+    { title: 'Smart Album', icon: '📸', items: ['Precise Face Clustering', 'Scene/Object Smart Tags', 'Custom Smart Albums'] },
+    { title: 'AI Capabilities', icon: '🤖', items: ['One-sentence Diary', 'Smart Vlog Editing', 'Smart Photo Retouching'] },
+    { title: 'Itinerary & Tickets', icon: '🎫', items: ['Auto Ticket Recognition', '5A Scenic Spot Location', 'Unified Ticket Mgmt'] },
+    { title: 'Data Visualization', icon: '📊', items: ['Footprint Map Lighting', 'Travel Mileage Stats', 'City Check-in Records'] },
+    { title: 'Annual Report', icon: '📅', items: ['Annual Travel Summary', 'Exclusive Memory Gen', 'Share to Moments'] }
+  ]
+}
+
+const overviewFeatures = computed(() => overviewFeaturesList[lang.value as keyof typeof overviewFeaturesList] || overviewFeaturesList['zh-CN'])
+
+const testimonialsList = {
+  'zh-CN': [
+    {
+    text: '每次旅行拍的照片都乱七八糟，用了行影集后自动分类，还能识别车票生成行程，年底的年度报告更是惊喜，满满的回忆！',
+    user: '旅行爱好者小A',
+    role: '行影集内测用户'
+  },
+  {
+    text: '最喜欢它的AI功能，自动剪辑的Vlog非常有感觉，省去了我大量剪辑视频的时间，强烈推荐给喜欢记录生活的朋友。',
+    user: '摄影师大白',
+    role: '资深用户'
+  }
+  ],
+  'en-US': [
+    {
+    text: 'My travel photos used to be a mess. TrailSnap sorted them automatically and even generated itineraries from tickets. The annual report was a huge surprise!',
+    user: 'Travel Enthusiast A',
+    role: 'Beta User'
+  },
+  {
+    text: 'I love the AI features the most. The auto-edited Vlog has great vibes and saved me tons of time. Highly recommended for life recorders.',
+    user: 'Photographer Baymax',
+    role: 'Power User'
+  }
+  ]
+}
+
+const testimonials = computed(() => testimonialsList[lang.value as keyof typeof testimonialsList] || testimonialsList['zh-CN'])
+
 const isMobileMenuOpen = ref(false)
 const isScrolled = ref(false)
 const activeSection = ref<'home' | 'core-features'>('home')
@@ -397,51 +577,6 @@ const navClass = (id: 'home' | 'core-features') => {
   return 'text-primary font-medium border-b-2 border-primary'
 }
 
-// Mock Data
-const features = [
-  {
-    title: '智能相册',
-    icon: '📸',
-    desc: '精准人物识别、场景智能分类、照片OCR识别，轻松找到每一张旅行照片。瀑布流展示设计，浏览体验更流畅。',
-    tags: ['人物识别', '智能分类', 'OCR识别']
-  },
-  {
-    title: '行程记录',
-    icon: '🎫',
-    desc: '专属火车票、景区门票、演唱会门票管理功能，自动识别票据信息，生成完整行程 timeline，清晰回顾每一段出行轨迹。',
-    status: '开发中',
-    statusColor: 'bg-orange-100 text-orange-600'
-  },
-  {
-    title: 'AI赋能',
-    icon: '🤖',
-    desc: '一句话生成旅行日记，自动剪辑15s旅行Vlog，智能修图筛选高质量照片，轻松打造专属旅行分享内容。',
-    status: '待开发',
-    statusColor: 'bg-blue-100 text-blue-600'
-  }
-]
-
-const overviewFeatures = [
-  { title: '智能相册', icon: '📸', items: ['精准人脸识别归类', '场景/物体智能标签', '自定义条件（智能）相册'] },
-  { title: 'AI能力', icon: '🤖', items: ['一句话生成游记', 'Vlog智能剪辑', '照片智能精修'] },
-  { title: '行程票据', icon: '🎫', items: ['票据自动识别录入', '行程时间轴生成', '多票据统一管理'] },
-  { title: '数据可视化', icon: '📊', items: ['足迹地图点亮', '出行里程统计', '城市打卡记录'] },
-  { title: '年度报告', icon: '📅', items: ['年度出行总结', '专属回忆生成', '分享朋友圈'] }
-]
-
-const testimonials = [
-  {
-    text: '每次旅行拍的照片都乱七八糟，用了行影集后自动分类，还能识别车票生成行程，年底的年度报告更是惊喜，满满的回忆！',
-    user: '旅行爱好者小A',
-    role: '行影集内测用户'
-  },
-  {
-    text: '最喜欢它的AI功能，自动剪辑的Vlog非常有感觉，省去了我大量剪辑视频的时间，强烈推荐给喜欢记录生活的朋友。',
-    user: '摄影师大白',
-    role: '资深用户'
-  }
-]
-
 const socialLinks = [
   {
     name: 'WeChat',
@@ -464,11 +599,11 @@ const socialLinks = [
 ]
 
 const nextTestimonial = () => {
-  testimonialIndex.value = (testimonialIndex.value + 1) % testimonials.length
+  testimonialIndex.value = (testimonialIndex.value + 1) % testimonials.value.length
 }
 
 const prevTestimonial = () => {
-  testimonialIndex.value = (testimonialIndex.value - 1 + testimonials.length) % testimonials.length
+  testimonialIndex.value = (testimonialIndex.value - 1 + testimonials.value.length) % testimonials.value.length
 }
 
 </script>

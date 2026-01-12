@@ -1,0 +1,129 @@
+# Installation Guide
+
+TrailSnap supports multiple deployment methods. It is recommended to use Docker Compose for quick deployment.
+
+## Docker Deployment (Recommended)
+
+Using Docker Compose allows you to start all services with one click, including the frontend, backend, database, and AI services.
+
+If you are deploying on a NAS (such as Ugreen, Zspace, Fnos), it is recommended to read the following as well:
+
+- [Docker Deployment (Generic)](/en/docs/guide/docker/)
+- [Ugreen NAS Deployment](/en/docs/guide/docker/ugreen)
+- [Zspace Deployment](/en/docs/guide/docker/zspace)
+- [Fnos Deployment](/en/docs/guide/docker/fnos)
+
+### Prerequisites
+
+- Install [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/).
+- Ensure that local ports 5532, 8800, 8801, and 8082 are not in use.
+
+### Deployment Steps
+
+1. **Get `docker-compose.yml`**
+
+   Create a `docker-compose.yml` file in the project root directory with the following content:
+
+   ```yaml
+   version: '3.8'
+
+   services:
+     postgres:
+       image: pgvector/pgvector:pg18-trixie
+       container_name: postgres_container
+       restart: always
+       environment:
+         POSTGRES_DB: trailsnap
+         POSTGRES_USER: trailsnap
+         POSTGRES_PASSWORD: trailsnap
+         POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+         PGDATA: /var/lib/postgresql/data/pgdata
+       networks: [ app-network ]
+       ports:
+         - "5532:5432"
+       volumes:
+         - ./pg_data:/var/lib/postgresql/data
+       healthcheck:
+         test: ["CMD-SHELL", "pg_isready -U trailsnap -d trailsnap -p 5432"]
+         interval: 5s
+         timeout: 5s
+         retries: 5
+         start_period: 10s
+
+     server:
+       image: siyuan044/trailsnap-server:master
+       restart: always
+       expose: [ "8000" ]
+       ports: [ "8800:8000" ]
+       networks: [ app-network ]
+       volumes:
+         - ./data:/app/data
+         - /path/to/your/photos:/app/Photos/  # Please modify to your photo directory path
+       environment:
+         - DB_URL=postgresql://trailsnap:trailsnap@postgres:5432/trailsnap
+         - RAILWAY_DB_URL=postgresql://trailsnap:trailsnap@postgres:5432/railway
+         - AI_API_URL=http://ai:8001
+       depends_on:
+         postgres:
+           condition: service_healthy
+           restart: true
+
+     ai:
+       image: siyuan044/trailsnap-ai:master
+       restart: always
+       expose: [ "8001" ]
+       ports: [ "8801:8001" ]
+       networks: [ app-network ]
+       volumes:
+         - ./data:/app/data
+       
+     frontend:
+       image: siyuan044/trailsnap-frontend:master
+       restart: always
+       ports: [ "8082:80" ]
+       depends_on: [ server ]
+       networks: [ app-network ]
+
+   networks:
+     app-network:
+       driver: bridge
+   ```
+
+2. **Configure Photo Directory**
+
+   Modify the `volumes` configuration under the `server` service, replacing `/path/to/your/photos` with the actual local directory path where your photos are stored.
+   
+   Windows User Example:
+   ```yaml
+   - F:\Photos:/app/Photos/
+   ```
+   
+   Linux/macOS User Example:
+   ```yaml
+   - /home/user/photos:/app/Photos/
+   ```
+
+3. **Start Services**
+
+   Execute the following command in the directory where `docker-compose.yml` is located:
+
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Access the Application**
+   After the services start, access via browser: `http://localhost:8082`
+
+5. **Access Backend API**
+   - Backend API: `http://localhost:8800/docs`
+   - AI Service Docs: `http://localhost:8801/docs`
+
+### Notes
+
+- **Data Persistence**: Database data will be saved in the `pg_data` folder in the current directory, and application data in the `data` folder. Please do not delete these directories arbitrarily to avoid data loss.
+- **Port Conflicts**: If the default ports are occupied, please modify the `ports` mapping in `docker-compose.yml` (e.g., `8083:80`).
+- **Photo Permissions**: Ensure that the Docker container has permission to read the mounted photo directory.
+
+## Source Code Deployment
+
+If you wish to participate in development or perform secondary development, you can choose source code deployment. Please refer to the [Developer Guide - Quick Start](/en/docs/dev/guide) for detailed steps.

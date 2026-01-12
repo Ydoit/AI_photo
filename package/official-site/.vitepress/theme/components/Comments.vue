@@ -2,7 +2,7 @@
 import Giscus from '@giscus/vue';
 import { useData } from 'vitepress';
 
-const { isDark } = useData();
+const { isDark, lang } = useData();
 </script>
 
 <template>
@@ -19,7 +19,7 @@ const { isDark } = useData();
       emitMetadata="0"
       inputPosition="top"
       :theme="isDark ? 'dark' : 'light'"
-      lang="zh-CN"
+      :lang="lang"
       loading="lazy"
     />
   </div>

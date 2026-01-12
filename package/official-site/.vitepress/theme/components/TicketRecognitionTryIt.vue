@@ -4,10 +4,10 @@
       <div class="p-6 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
         <h3 class="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2 m-0">
           <ScanLine class="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-          12306 电子车票的识别效果展示
+          {{ t.title }}
         </h3>
         <p class="text-slate-500 dark:text-slate-400 mt-2 text-sm">
-          左侧为 12306 App「本人车票」原图，右侧为识别效果图。
+          {{ t.desc }}
         </p>
       </div>
 
@@ -15,15 +15,15 @@
         <div class="flex flex-col gap-3">
           <div class="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-medium">
             <ImageIcon class="w-5 h-5 text-indigo-500" />
-            车票原图
+            {{ t.original }}
           </div>
           <div
             class="relative group cursor-zoom-in rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm bg-slate-100 dark:bg-slate-900 aspect-[4/3]"
-            @click="openLightbox('/images/img_1.png', '车票原图')"
+            @click="openLightbox('/images/img_1.png', t.original)"
           >
             <img
               src="/images/img_1.png"
-              alt="车票原图"
+              :alt="t.original"
               class="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
               loading="lazy"
             />
@@ -36,15 +36,15 @@
         <div class="flex flex-col gap-3">
           <div class="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-medium">
             <CheckCircle2 class="w-5 h-5 text-green-500" />
-            识别效果图
+            {{ t.result }}
           </div>
           <div
             class="relative group cursor-zoom-in rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm bg-slate-100 dark:bg-slate-900 aspect-[4/3]"
-            @click="openLightbox('/images/img.png', '识别效果图')"
+            @click="openLightbox('/images/img.png', t.result)"
           >
             <img
               src="/images/img.png"
-              alt="识别效果图"
+              :alt="t.result"
               class="w-full h-full object-contain hover:scale-105 transition-transform duration-300"
               loading="lazy"
             />
@@ -83,8 +83,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useData } from 'vitepress'
 import { ScanLine, Image as ImageIcon, CheckCircle2, ZoomIn, X } from 'lucide-vue-next'
+
+const { lang } = useData()
+
+const i18n = {
+  'zh-CN': {
+    title: '12306 电子车票的识别效果展示',
+    desc: '左侧为 12306 App「本人车票」原图，右侧为识别效果图。',
+    original: '车票原图',
+    result: '识别效果图'
+  },
+  'en-US': {
+    title: '12306 E-ticket Recognition Demo',
+    desc: 'Left is the original image from 12306 App, right is the recognition result.',
+    original: 'Original Ticket',
+    result: 'Recognition Result'
+  }
+}
+
+const t = computed(() => i18n[lang.value as keyof typeof i18n] || i18n['zh-CN'])
 
 const lightbox = ref({
   isOpen: false,

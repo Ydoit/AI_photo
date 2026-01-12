@@ -133,5 +133,10 @@
         "zh": "游戏",
         "en": "Game",
         "prompts": ["a photo of game character", "a photo of game screenshot", "a photo of game play"]
+    },
+    "ticket": {
+        "zh": "票据",
+        "en": "Ticket",
+        "prompts": ["a photo of flight ticket", "a photo of train ticket", "a photo of bus ticket", "a photo of membership ticket", "a photo of movie ticket"]
     }
 }
