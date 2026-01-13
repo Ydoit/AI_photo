@@ -2,7 +2,7 @@
   <div class="photo-gallery min-h-screen relative" ref="galleryEl">
     <!-- Skeleton Loader (Initial Load) -->
     <div v-if="loading && photos.length === 0" class="absolute inset-0 z-10 bg-white dark:bg-gray-950 p-4">
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             <div v-for="i in 20" :key="i" class="aspect-[3/2] bg-gray-200 dark:bg-gray-800 rounded-lg animate-pulse"></div>
         </div>
     </div>
@@ -31,14 +31,14 @@
       leave-from-class="transform translate-y-0 opacity-100"
       leave-to-class="transform -translate-y-full opacity-0"
     >
-      <div v-if="isSelectionMode" class="fixed bottom-[20px] left-0 right-0 z-40 flex justify-center pointer-events-none px-4">
-        <div class="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200 dark:border-gray-700 shadow-lg rounded-full px-3 py-1 flex items-center gap-3 sm:gap-6 pointer-events-auto min-w-[320px] max-w-full overflow-x-auto scrollbar-hide">
-          <div class="flex items-center gap-3 flex-shrink-0">
+      <div v-if="isSelectionMode" class="fixed bottom-[20px] left-0 right-0 z-40 flex justify-center pointer-events-none px-2">
+        <div class="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200 dark:border-gray-700 shadow-lg rounded-full px-3 py-0 md:py-1 flex items-center gap-1 sm:gap-6 pointer-events-auto min-w-[320px] max-w-full overflow-x-auto scrollbar-hide">
+          <div class="flex items-center gap-0 md:gap-3 flex-shrink-0">
             <button @click="exitSelectionMode" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors dark:text-gray-300 bg-transparent" title="取消选择">
               <X class="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
             <span class="font-medium text-gray-900 dark:text-white whitespace-nowrap">
-              已选择 {{ localSelectedIds.size }} 张
+              已选 {{ localSelectedIds.size }} 项
             </span>
           </div>
 
@@ -185,7 +185,6 @@
                                     minWidth: '50px',maxWidth: '400px'
                                 } : {}"
                                 @click="handlePhotoClick(img)"
-                                @mouseenter="enterSelectionMode(img)"
                                 @vue:mounted="loadImage(img)"
                                 @vue:unmounted="cancelImageLoad(img.id)"
                             >
@@ -581,6 +580,7 @@ const formatTime = (ts: number) => format(new Date(ts), 'yyyy-MM-dd HH:mm')
 const enterSelectionMode = (photo?: AlbumImage) => {
   // if (photo) localSelectedIds.value.add(photo.id) // Hover doesn't select automatically usually
   // But legacy code did. Let's keep manual selection.
+  isSelectionMode.value = true
 }
 
 const exitSelectionMode = () => {

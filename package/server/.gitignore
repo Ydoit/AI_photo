@@ -246,3 +246,5 @@ test*
 *.db
 
 .trae
+
+data/*
