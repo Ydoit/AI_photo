@@ -118,9 +118,11 @@
                     :style="videoStyle"
                     autoplay
                     playsinline
-                    preload="auto"
+                    x5-playsinline
+                    webkit-playsinline
                     :loop="false"
                     @ended="onLiveEnded"
+                    @loadedmetadata="onVideoLoaded"
                 >
                     <source :src="image.live_photo_video_url" type="video/mp4" />
                 </video>
@@ -137,7 +139,7 @@
                  class="absolute top-16 left-4 md:top-24 md:left-8 z-[101] cursor-pointer"
                  @click.stop="toggleLivePlayback">
                 <div class="flex items-center gap-1 bg-gray-900/60 backdrop-blur-md rounded-full px-2 py-1 text-white/90 hover:bg-gray-800/80 transition-colors">
-                    <Aperture class="w-4 h-4" :class="{ 'animate-spin': isPlayingLive }" />
+                    <span class="icon-[tabler--live-photo] w-4 h-4 text-white drop-shadow-md opacity-90" :class="{ 'animate-spin': isPlayingLive }"></span>
                     <span class="text-xs font-medium">LIVE</span>
                 </div>
             </div>
@@ -238,46 +240,12 @@ const displayImageSrc = computed(() => {
 
 const onVideoLoaded = (e: Event) => {
     const video = e.target as HTMLVideoElement
-    const vw = video.videoWidth
-    const vh = video.videoHeight
-    
-    videoStyle.value = {}
-    
-    if (!props.image || !props.image.width || !props.image.height) return
-    
-    const iw = props.image.width
-    const ih = props.image.height
-    
-    // Detect orientation mismatch (Portrait Image vs Landscape Video)
-    if (ih > iw && vw > vh) {
-         // Need rotation
-         let scale = 1
-         
-         // Calculate scale to fit the rotated video into the visual bounds of the image
-         // logic: 
-         // Image Aspect Ratio (Ri) = iw / ih
-         // Container Aspect Ratio (Rc) approx window.innerWidth / window.innerHeight
-         // If Rc > Ri (Wide screen, image fitted by height): Scale = Ri
-         // If Rc < Ri (Tall screen, image fitted by width): Scale = 1 / Ri
-         
-         const container = video.parentElement
-         if (container) {
-             const cw = container.clientWidth
-             const ch = container.clientHeight
-             const rc = cw / ch
-             const ri = iw / ih
-             
-             if (rc > ri) {
-                 scale = ri
-             } else {
-                 scale = 1 / ri
-             }
-         }
-         
-         videoStyle.value = { 
-             transform: `rotate(90deg) scale(${scale})`,
-         }
-    }
+    // Explicitly try to play (handling potential autoplay rejections)
+    video.play().catch(err => {
+        console.warn("Autoplay failed, trying muted play", err)
+        video.muted = true
+        video.play().catch(e => console.error("Muted autoplay also failed", e))
+    })
 }
 
 const toggleLivePlayback = () => {
@@ -325,6 +293,7 @@ watch(() => props.image, (newImg) => {
     translateY.value = 0
     ocrRecords.value = []
     highlightedOCR.value = null
+    videoStyle.value = {}
     
     // Auto play if live photo
     if (newImg && newImg.file_type === 'live_photo') {
