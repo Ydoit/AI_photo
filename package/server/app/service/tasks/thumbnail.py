@@ -3,7 +3,7 @@ import logging
 import os
 from uuid import UUID
 from sqlalchemy.orm import Session
-from app.db.models.task import Task, TaskStatus
+from app.db.models.task import Task, TaskStatus, TaskType
 from app.db.models.photo import Photo
 from app.service import storage
 

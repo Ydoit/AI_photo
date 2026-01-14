@@ -3,7 +3,7 @@ import { withMermaid } from "vitepress-plugin-mermaid";
 
 export default withMermaid(defineConfig({
   base: '/',
-  
+
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }]
   ],
@@ -32,7 +32,6 @@ export default withMermaid(defineConfig({
                 { text: '安装指南', link: '/docs/guide/install' },
                 {
                   text: 'Docker 部署',
-                  collapsible: true,
                   collapsed: true,
                   items: [
                     { text: '通用部署', link: '/docs/guide/docker/' },
@@ -45,7 +44,6 @@ export default withMermaid(defineConfig({
                 {
                   text: '设置指南',
                   link: '/docs/guide/settings/',
-                  collapsible: true,
                   collapsed: true,
                   items: [
                     { text: '地图设置', link: '/docs/guide/settings/mapsetting' }
@@ -67,7 +65,6 @@ export default withMermaid(defineConfig({
                 {
                   text: 'AI提示词',
                   link: '/docs/dev/prompt',
-                  collapsible: true,
                   collapsed: false,
                   items: [
                     { text: '2025-12-25', link: '/docs/dev/prompt/2025-12-25' },
@@ -96,6 +93,9 @@ export default withMermaid(defineConfig({
         docFooter: {
           prev: '上一页',
           next: '下一页'
+        },
+        outline: {
+          label: '页面导航'
         },
         footer: {
           message: '基于 AGPL-3.0 许可发布',
@@ -127,7 +127,6 @@ export default withMermaid(defineConfig({
                 { text: 'Installation', link: '/en/docs/guide/install' },
                 {
                   text: 'Docker Deployment',
-                  collapsible: true,
                   collapsed: true,
                   items: [
                     { text: 'Generic', link: '/en/docs/guide/docker/' },
@@ -140,7 +139,6 @@ export default withMermaid(defineConfig({
                 {
                   text: 'Settings',
                   link: '/en/docs/guide/settings/',
-                  collapsible: true,
                   collapsed: true,
                   items: [
                     { text: 'Map Settings', link: '/en/docs/guide/settings/mapsetting' }
@@ -162,7 +160,6 @@ export default withMermaid(defineConfig({
                 {
                   text: 'AI Prompts',
                   link: '/en/docs/dev/prompt',
-                  collapsible: true,
                   collapsed: false,
                   items: [
                     { text: '2025-12-25', link: '/en/docs/dev/prompt/2025-12-25' },
@@ -204,9 +201,9 @@ export default withMermaid(defineConfig({
     socialLinks: [
       { icon: 'github', link: 'https://github.com/LC044/TrailSnap' }
     ],
-    
+
     outline: {
-      label: 'On this page' // This will be overridden by locale config if needed, but 'On this page' is good default for English. Chinese locale needs override? Actually locale config merges.
+      label: 'On this page'
     },
 
     search: {
@@ -214,7 +211,6 @@ export default withMermaid(defineConfig({
       options: {
         locales: {
           root: {
-            placeholder: '搜索文档',
             translations: {
               button: {
                 buttonText: '搜索',
@@ -232,7 +228,6 @@ export default withMermaid(defineConfig({
             }
           },
           en: {
-            placeholder: 'Search docs',
             translations: {
               button: {
                 buttonText: 'Search',

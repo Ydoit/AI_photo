@@ -32,6 +32,64 @@ def _get_thumbnail_path(photo_id: UUID, db: Session, size: str = 'small') -> str
         return os.path.join(base, f"{compact}-thumb.jpg")
     return os.path.join(base, f"{compact}.jpg")
 
+@router.get('/{photo_id}/video')
+def get_live_photo_video(
+    photo_id: UUID, 
+    request: Request, 
+    range: str = Header(None), 
+    db: Session = Depends(get_db)
+):
+    photo = db.query(Photo).filter(Photo.id == photo_id).first()
+    if not photo:
+        raise HTTPException(status_code=404, detail="Video file not found")
+
+    file_path = photo.file_path[:-3] + 'mp4'
+    file_size = os.path.getsize(file_path)
+
+    # Determine media type (usually mp4 or mov)
+    ext = os.path.splitext(file_path)[1].lower()
+    media_type = f"video/{ext.lstrip('.')}"
+    if ext == '.mov': media_type = "video/quicktime"
+
+    # Handle Range header
+    if range:
+        try:
+            start, end = range.replace("bytes=", "").split("-")
+            start = int(start)
+            end = int(end) if end else file_size - 1
+            
+            if start >= file_size:
+                 # Requesting past end of file
+                 headers = {"Content-Range": f"bytes */{file_size}"}
+                 return Response(status_code=416, headers=headers)
+
+            chunk_size = end - start + 1
+
+            def iterfile():
+                with open(file_path, "rb") as f:
+                    f.seek(start)
+                    bytes_read = 0
+                    while bytes_read < chunk_size:
+                        chunk = f.read(min(4096, chunk_size - bytes_read))
+                        if not chunk:
+                            break
+                        bytes_read += len(chunk)
+                        yield chunk
+            
+            headers = {
+                "Content-Range": f"bytes {start}-{end}/{file_size}",
+                "Accept-Ranges": "bytes",
+                "Content-Length": str(chunk_size),
+                "Content-Type": media_type,
+            }
+            
+            return StreamingResponse(iterfile(), status_code=206, headers=headers, media_type=media_type)
+        except ValueError:
+            pass # Fallback to full content if range parse fails
+
+    # Full content
+    return FileResponse(file_path, media_type=media_type, headers={"Accept-Ranges": "bytes", "Cache-Control": "public, max-age=31536000"})
+
 @router.get('/{photo_id}/thumbnail')
 def get_thumbnail(photo_id: UUID, size: str = 'small', db: Session = Depends(get_db)):
     path = _get_thumbnail_path(photo_id, db, size)

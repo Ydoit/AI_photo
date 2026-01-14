@@ -88,6 +88,8 @@ export interface AlbumImage {
   filename?: string
   file_type: 'image' | 'video' | 'live_photo'
   duration?: string
+  live_photo_video_url?: string
+  has_live_video?: boolean
 }
 
 export interface AlbumCondition {

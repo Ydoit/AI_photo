@@ -7,8 +7,6 @@ import { albumService } from '@/api/album'
 import searchService, { type TextSearchRequest } from '@/api/search'
 import type { Photo, TimelineStats, AlbumImage, TimelineItem } from '@/types/album'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-
 // --- 缓存工具 ---
 const CACHE_PREFIX = 'trailsnap:';
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24小时
@@ -71,9 +69,10 @@ const formatDuration = (duration: number | null) => {
 
 export const mapPhotoToImage = (photo: Photo): AlbumImage => {
     // 新 API 在 url 和 thumbnail_url 字段中返回相对地址
-    const url = `${API_BASE_URL}/api/medias/${photo.id}/file`;
-    const thumbnail = `${API_BASE_URL}/api/medias/${photo.id}/thumbnail`;
-    const preview = `${API_BASE_URL}/api/medias/${photo.id}/thumbnail?size=medium`;
+    const url = `/api/medias/${photo.id}/file`;
+    const thumbnail = `/api/medias/${photo.id}/thumbnail`;
+    // const thumbnail = `https://picsum.photos/seed/${photo.id}/400/600`
+    const preview = `/api/medias/${photo.id}/thumbnail?size=medium`;
 
     // 优先使用 photo_time，其次 upload_time，最后取当前时间
     let timestamp = Date.now();
@@ -86,6 +85,11 @@ export const mapPhotoToImage = (photo: Photo): AlbumImage => {
     // 尝试从 location 或 tags 中解析城市
     let city = 'Unknown';
 
+    // Construct live photo video URL if applicable
+    let live_photo_video_url = undefined;
+    if (photo.file_type === 'live_photo') {
+        live_photo_video_url = `/api/medias/${photo.id}/video`;
+    }
 
     return {
       id: photo.id,
@@ -100,7 +104,9 @@ export const mapPhotoToImage = (photo: Photo): AlbumImage => {
       size: photo.size || 0,
       filename: photo.filename || '',
       file_type: photo.file_type || 'image',
-      duration: formatDuration(photo.duration ?? null) || '00:00'
+      duration: formatDuration(photo.duration ?? null) || '00:00',
+      live_photo_video_url,
+      has_live_video: live_photo_video_url !== undefined
     }
   }
 
@@ -117,9 +123,10 @@ export const usePhotoStore = defineStore('photo', () => {
   // --- 辅助函数 ---
   const mapPhotoToImage = (photo: Photo): AlbumImage => {
     // 新 API 在 url 和 thumbnail_url 字段中返回相对地址
-    const url = `${API_BASE_URL}/api/medias/${photo.id}/file`;
-    const thumbnail = `${API_BASE_URL}/api/medias/${photo.id}/thumbnail`;
-    const preview = `${API_BASE_URL}/api/medias/${photo.id}/thumbnail?size=medium`;
+    const url = `/api/medias/${photo.id}/file`;
+    const thumbnail = `/api/medias/${photo.id}/thumbnail`;
+    // const thumbnail = `https://picsum.photos/seed/${photo.id}/400/600`
+    const preview = `/api/medias/${photo.id}/thumbnail?size=medium`;
 
     // 优先使用 photo_time，其次 upload_time，最后取当前时间
     let timestamp = Date.now();
@@ -132,6 +139,11 @@ export const usePhotoStore = defineStore('photo', () => {
     // 尝试从 location 或 tags 中解析城市
     let city = 'Unknown';
 
+    // Construct live photo video URL if applicable
+    let live_photo_video_url = undefined;
+    if (photo.file_type === 'live_photo') {
+        live_photo_video_url = `/api/medias/${photo.id}/video`;
+    }
 
     return {
       id: photo.id,
@@ -146,7 +158,9 @@ export const usePhotoStore = defineStore('photo', () => {
       size: photo.size || 0,
       filename: photo.filename || '',
       file_type: photo.file_type || 'image',
-      duration: formatDuration(photo.duration ?? null) || '00:00'
+      duration: formatDuration(photo.duration ?? null) || '00:00',
+      live_photo_video_url,
+      has_live_video: live_photo_video_url !== undefined
     }
   }
 

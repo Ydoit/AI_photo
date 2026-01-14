@@ -220,6 +220,11 @@
                                   </div>
                                   <PlayCircle class="w-4 h-4 text-white drop-shadow-md opacity-90" />
                                 </div>
+                                <div v-else-if="img.file_type === 'live_photo'" class="flex mb-1 absolute top-1 right-2 justify-center pointer-events-none z-10 items-center">
+                                  <div class="bg-gray-900/50 backdrop-blur-sm rounded-full p-1">
+                                    <Aperture class="w-3 h-3 text-white drop-shadow-md opacity-90" />
+                                  </div>
+                                </div>
                                 <!-- Info Overlay -->
                                 <div class="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex justify-between items-end">
                                     <p class="text-white text-xs font-medium truncate flex items-center gap-1">
@@ -268,7 +273,7 @@ import {
   ref, computed, watch, onMounted, onUnmounted, nextTick, toRef, reactive
 } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { CalendarDays, PlayCircle, Image as ImageIcon, MapPin, Check, X, Download, Trash2, FolderMinus, Loader2, PlaySquare, Play, PlayIcon, PlayCircleIcon, Plus, FolderPlus, PhoneOutgoingIcon, PictureInPicture, CloverIcon, ImageMinusIcon, ImagePlusIcon, RefreshCcw } from 'lucide-vue-next'
+import { CalendarDays, PlayCircle, Image as ImageIcon, MapPin, Check, X, Download, Trash2, FolderMinus, Loader2, PlaySquare, Play, PlayIcon, PlayCircleIcon, Plus, FolderPlus, PhoneOutgoingIcon, PictureInPicture, CloverIcon, ImageMinusIcon, ImagePlusIcon, RefreshCcw, Aperture } from 'lucide-vue-next'
 import { format } from 'date-fns'
 import { useAlbumStore } from '@/stores/albumStore'
 import { usePhotoStore } from '@/stores/photoStore'

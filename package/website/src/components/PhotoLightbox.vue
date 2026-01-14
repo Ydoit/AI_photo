@@ -108,7 +108,40 @@
                          />
                     </svg>
                 </div>
+                
+                <!-- Live Photo Video Overlay -->
+                <video
+                    v-if="isPlayingLive"
+                    ref="liveVideoRef"
+                    :key="image.id"
+                    class="absolute inset-0 w-full h-full object-contain z-10 pointer-events-none"
+                    :style="videoStyle"
+                    autoplay
+                    playsinline
+                    preload="auto"
+                    :loop="false"
+                    @ended="onLiveEnded"
+                >
+                    <source :src="image.live_photo_video_url" type="video/mp4" />
+                </video>
             </div>
+            
+            <!-- Live Photo Badge (Outside transform to keep position fixed relative to viewport or container?) 
+                 Actually, usually badges are fixed on screen, not zooming with image. 
+                 But here we are inside the zoomable container? No, the zoomable container is the div above.
+                 Wait, if I put the badge inside the zoomable div, it zooms.
+                 If I put it outside, it stays.
+                 Let's put it outside the zoomable div but inside the relative container.
+            -->
+            <div v-if="image && image.file_type === 'live_photo'" 
+                 class="absolute top-16 left-4 md:top-24 md:left-8 z-[101] cursor-pointer"
+                 @click.stop="toggleLivePlayback">
+                <div class="flex items-center gap-1 bg-gray-900/60 backdrop-blur-md rounded-full px-2 py-1 text-white/90 hover:bg-gray-800/80 transition-colors">
+                    <Aperture class="w-4 h-4" :class="{ 'animate-spin': isPlayingLive }" />
+                    <span class="text-xs font-medium">LIVE</span>
+                </div>
+            </div>
+
             <div
               v-else-if="image && image.file_type === 'video'"
               class="relative w-full h-full flex items-center justify-center"
@@ -165,7 +198,8 @@ import {
     ScanText,
     MoreHorizontal,
     Image as ImageIcon,
-    Trash2
+    Trash2,
+    Aperture
 } from 'lucide-vue-next'
 import videojs from 'video.js'
 import 'video.js/dist/video-js.css'
@@ -178,20 +212,23 @@ import PhotoOCRPanel from './PhotoOCRPanel.vue'
 
 
 interface Props {
-  visible: boolean
-  image: AlbumImage | null
-  hasPrev?: boolean
-  hasNext?: boolean
-  deleteTitle?: string
-  deleteMessage?: string
+    visible: boolean
+    image: AlbumImage | null
+    hasPrev?: boolean
+    hasNext?: boolean
+    deleteTitle?: string
+    deleteMessage?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  deleteTitle: '删除确认',
-  deleteMessage: '确定要删除这张照片吗？此操作不可恢复。'
+    deleteTitle: '删除确认',
+    deleteMessage: '确定要删除这张照片吗？此操作不可恢复。'
 })
 
 const showOriginal = ref(false)
+const isPlayingLive = ref(false)
+const liveVideoRef = ref<HTMLVideoElement | null>(null)
+const videoStyle = ref<Record<string, string>>({})
 
 const displayImageSrc = computed(() => {
     if (!props.image) return ''
@@ -199,9 +236,64 @@ const displayImageSrc = computed(() => {
     return props.image.preview || props.image.url
 })
 
-watch(() => props.image, () => {
-    showOriginal.value = false
-})
+const onVideoLoaded = (e: Event) => {
+    const video = e.target as HTMLVideoElement
+    const vw = video.videoWidth
+    const vh = video.videoHeight
+    
+    videoStyle.value = {}
+    
+    if (!props.image || !props.image.width || !props.image.height) return
+    
+    const iw = props.image.width
+    const ih = props.image.height
+    
+    // Detect orientation mismatch (Portrait Image vs Landscape Video)
+    if (ih > iw && vw > vh) {
+         // Need rotation
+         let scale = 1
+         
+         // Calculate scale to fit the rotated video into the visual bounds of the image
+         // logic: 
+         // Image Aspect Ratio (Ri) = iw / ih
+         // Container Aspect Ratio (Rc) approx window.innerWidth / window.innerHeight
+         // If Rc > Ri (Wide screen, image fitted by height): Scale = Ri
+         // If Rc < Ri (Tall screen, image fitted by width): Scale = 1 / Ri
+         
+         const container = video.parentElement
+         if (container) {
+             const cw = container.clientWidth
+             const ch = container.clientHeight
+             const rc = cw / ch
+             const ri = iw / ih
+             
+             if (rc > ri) {
+                 scale = ri
+             } else {
+                 scale = 1 / ri
+             }
+         }
+         
+         videoStyle.value = { 
+             transform: `rotate(90deg) scale(${scale})`,
+         }
+    }
+}
+
+const toggleLivePlayback = () => {
+    if (isPlayingLive.value) {
+        // Stop
+        isPlayingLive.value = false
+    } else {
+        // Play
+        isPlayingLive.value = true
+    }
+}
+
+const onLiveEnded = () => {
+    console.log('Live video ended')
+    isPlayingLive.value = false
+}
 
 const toggleOriginal = () => {
     showOriginal.value = !showOriginal.value
@@ -225,6 +317,23 @@ const imageRef = ref<HTMLImageElement | null>(null)
 const scale = ref(1)
 const translateX = ref(0)
 const translateY = ref(0)
+
+watch(() => props.image, (newImg) => {
+    showOriginal.value = false
+    scale.value = 1
+    translateX.value = 0
+    translateY.value = 0
+    ocrRecords.value = []
+    highlightedOCR.value = null
+    
+    // Auto play if live photo
+    if (newImg && newImg.file_type === 'live_photo') {
+        isPlayingLive.value = true
+    } else {
+        isPlayingLive.value = false
+    }
+})
+
 const isDragging = ref(false)
 const startX = ref(0)
 const startY = ref(0)
@@ -305,6 +414,10 @@ watch(() => props.visible, async (newVal) => {
         document.body.style.overflow = 'hidden'
         resetZoom()
         
+        if (props.image.file_type === 'live_photo') {
+             isPlayingLive.value = true
+        }
+
         if (props.image.file_type === 'video') {
             await nextTick()
             initPlayer()
@@ -316,6 +429,7 @@ watch(() => props.visible, async (newVal) => {
     } else {
         document.body.style.overflow = ''
         disposePlayer()
+        isPlayingLive.value = false
     }
 })
 
@@ -525,8 +639,12 @@ const downloadImage = async () => {
     }
 }
 
-const prev = () => emit('prev')
-const next = () => emit('next')
+const prev = () => {
+    emit('prev')
+}
+const next = () => {
+    emit('next')
+}
 
 const handleDelete = () => {
     if (!props.image) return
