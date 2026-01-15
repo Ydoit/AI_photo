@@ -58,8 +58,9 @@ const removeDir = async (path: string) => {
             cancelButtonText: '取消',
             type: 'warning'
         })
-        await settingsApi.removeDirectory(path)
         ElMessage.success('移除成功')
+        directories.value = directories.value.filter(d => d.path !== path)
+        await settingsApi.removeDirectory(path)
         await loadData()
     } catch (e) {
         if (e !== 'cancel') ElMessage.error('移除失败')

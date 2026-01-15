@@ -44,6 +44,8 @@ def get_live_photo_video(
         raise HTTPException(status_code=404, detail="Video file not found")
 
     file_path = photo.file_path[:-3] + 'mp4'
+    if not os.path.exists(file_path):
+        file_path = _get_thumbnail_path(photo_id, db, 'medium')[:-4] + '.mp4'
     file_size = os.path.getsize(file_path)
 
     # Determine media type (usually mp4 or mov)

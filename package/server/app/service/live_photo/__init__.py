@@ -2,6 +2,7 @@ from typing import List, Optional
 from .base import LivePhotoParser
 from .apple import AppleLivePhotoParser
 from .android import AndroidLivePhotoParser
+from .vivo import VivoLivePhotoParser
 
 
 
@@ -9,7 +10,8 @@ class LivePhotoService:
     def __init__(self):
         self.parsers: List[LivePhotoParser] = [
             AppleLivePhotoParser(),
-            AndroidLivePhotoParser()
+            AndroidLivePhotoParser(),
+            VivoLivePhotoParser()
         ]
 
     def get_content_identifier(self, file_path: str) -> Optional[str]:

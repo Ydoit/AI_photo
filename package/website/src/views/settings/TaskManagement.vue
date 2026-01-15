@@ -22,7 +22,7 @@
         <div v-for="cat in groupedTasks" :key="cat.category" class="border rounded-lg p-4 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 sm:gap-0">
             <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-              <h3 class="text-lg font-medium dark:text-white">{{ formatCategory(cat.category) }}</h3>
+              <h3 class="text-lg font-medium dark:text-white">{{cat.task_name}}</h3>
               <el-tag effect="plain" size="small" class="ml-0 sm:ml-2">
                  优先级: {{ cat.priority }}
               </el-tag>
@@ -99,6 +99,7 @@ import { tasksApi } from '@/api/tasks'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 interface GroupedTask {
+    task_name: string
     category: string
     pending: number
     completed: number
@@ -150,6 +151,7 @@ const categoryMap: Record<string, string[]> = {
     'ocr': ['OCR'],
     'tickets': ['RECOGNIZE_TICKET'],
     'ai': ['VISUAL_DESCRIPTION'],
+    'basic': ['PROCESS_BASIC', 'PROCESS_IMAGE'],
 }
 
 const handleCategoryCommand = async (category: string, command: string) => {

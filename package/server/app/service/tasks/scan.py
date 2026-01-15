@@ -1,79 +1,16 @@
 import asyncio
 import logging
 import os
-import json
 import concurrent.futures
 from typing import Set
-from uuid import UUID, uuid4
-from PIL import Image
 from sqlalchemy.orm import Session
 
 from app.db.models.task import Task, TaskType, TaskStatus
-from app.db.models.photo import ImageType, Photo, FileType
+from app.db.models.photo import Photo, FileType
 from app.db.models.index_log import IndexLog
-from app.schemas.metadata import PhotoMetadataCreate
 from app.service import storage
-from app.utils import exif
-from app.schemas import album as album_schemas
-from app.schemas import photo as photo_schemas
 from app.core.config_manager import config_manager
 from app.service.live_photo import live_photo_service
-
-def process_basic_cpu_job(file_path: str, file_id: UUID, storage_root: str):
-    """
-    CPU-intensive task running in a separate process.
-    Generates thumbnails and extracts BASIC metadata (no heavy geolocation).
-    """
-    try:
-        # Initialize storage root cache in this process
-        storage.update_storage_root_cache(storage_root)
-        
-        # Open image once if possible to reduce IO
-        image_obj = None
-        ext = os.path.splitext(file_path)[1].lower()
-        if ext in ('.png', '.jpg', '.jpeg', '.webp', '.heic'):
-             try:
-                 image_obj = Image.open(file_path)
-             except Exception:
-                 pass
-
-        # 1. Generate thumbnail
-        thumb_path = storage.generate_thumbnail(file_path, file_id, db=None, image_obj=image_obj)
-
-        # 2. Extract metadata (BASIC ONLY)
-        file_name = os.path.basename(file_path)
-        meta = exif.extract_metadata(file_path, file_name, image_obj=image_obj, extract_location_details=False)
-        if meta.get("exif_info"):
-            # Serialize for storage
-            # Convert non-serializable objects to string
-            def default_serializer(obj):
-                if isinstance(obj, (bytes, bytearray)):
-                    return str(obj)
-                return str(obj)
-            meta['exif_info'] = json.dumps(meta["exif_info"], default=default_serializer, ensure_ascii=False)
-        # 3. Get dimensions/size
-        size = storage.get_file_size(file_path)
-        width, height, duration = storage.get_image_dimensions(file_path, image_obj=image_obj)
-
-        if image_obj:
-            image_obj.close()
-
-        return {
-            "success": True,
-            "thumb_path": thumb_path,
-            "meta": meta,
-            "size": size,
-            "width": width,
-            "height": height,
-            "duration": duration,
-            "file_name": file_name,
-            "photo_create_data": None # Placeholder
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
 
 def scan_directory_recursive(path: str, exts: Set[str]) -> Set[str]:
     found = set()
@@ -93,10 +30,10 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
     task_manager.scan_status['message'] = "Scanning folders..."
     scan_roots = task.payload.get('scan_roots')
     if not scan_roots:
-        root = storage._get_storage_root(db)
-        primary_uploads = os.path.join(root, 'uploads')
-        external_dirs = config_manager.config.storage.external_directories
-        scan_roots = [primary_uploads] + external_dirs
+            root = storage._get_storage_root(db)
+            primary_uploads = os.path.join(root, 'uploads')
+            external_dirs = config_manager.config.storage.external_directories
+            scan_roots = [primary_uploads] + external_dirs
 
     EXTS = {'.png', '.jpg', '.jpeg', '.webp', '.tiff', '.gif', '.mp4', '.mov', '.avi', '.heic'}
     loop = asyncio.get_running_loop()
@@ -278,67 +215,6 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
             task_manager.scan_status['deleted'] += len(photos_to_delete)
 
     return {'new_files': len(new_files), 'deleted_files': len(deleted_files)}
-
-async def handle_process_basic(task_manager, task: Task, db: Session):
-    file_path = task.payload.get('file_path')
-    live_photo_video_path = task.payload.get('live_photo_video_path')
-    is_live_photo = task.payload.get('is_live_photo', False)
-    if not file_path or not os.path.exists(file_path):
-        return {'status': 'skipped', 'reason': 'file not found'}
-
-    photo_id = uuid4()
-    storage_root = storage._get_storage_root(db)
-
-    loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(
-        task_manager.thread_pool,
-        process_basic_cpu_job,
-        file_path,
-        photo_id,
-        storage_root
-    )
-    # result = process_basic_cpu_job(file_path, photo_id, storage_root)
-    if not result['success']:
-        raise Exception(result.get('error', 'Unknown error'))
-
-    # Construct PhotoCreate data for bulk insert in TaskManager
-    meta = result['meta']
-    ext = os.path.splitext(result['file_name'])[1]
-    file_type = FileType.image
-    if ext.lower() in ['.mp4', '.mov', '.avi', '.mkv', '.webm']:
-        file_type = FileType.video
-    
-    if is_live_photo:
-        file_type = FileType.live_photo
-    elif live_photo_video_path:
-        file_type = FileType.live_photo
-
-    # We need to return raw data, not schemas, because bulk_create_photos expects dicts or similar?
-    # Actually album_crud.batch_create_photos expects schemas.PhotoCreate
-    photo_create = photo_schemas.PhotoCreate(
-        file_type=file_type,
-        size=result['size'],
-        width=result['width'],
-        height=result['height'],
-        duration=result['duration'],
-        filename=result['file_name'],
-        photo_time=meta["photo_time"],
-        live_photo_video_path=live_photo_video_path if file_type == FileType.live_photo else None
-    )
-
-    metadata_create = PhotoMetadataCreate(
-        exif_info=meta["exif_info"],
-        # Basic task doesn't have location details yet
-    )
-
-    return {
-        'photo_create_data': {
-            'photo': photo_create,
-            'metadata': metadata_create,
-            'photo_id': photo_id,
-            'file_path': file_path
-        }
-    }
 
 def release_resources():
     pass

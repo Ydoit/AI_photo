@@ -38,7 +38,7 @@ DEFAULT_SCAN_STATUS = {
 
 CATEGORY_MAP = {
     TaskType.SCAN_FOLDER: 'scanning',
-    TaskType.PROCESS_BASIC: 'scanning',
+    TaskType.PROCESS_BASIC: 'basic',
     TaskType.PROCESS_IMAGE: 'scanning', # Legacy
     TaskType.GENERATE_THUMBNAIL: 'scanning',
     TaskType.REBUILD_THUMBNAILS: 'scanning',
@@ -51,6 +51,17 @@ CATEGORY_MAP = {
     TaskType.CLASSIFY_IMAGE: 'classification',
     TaskType.VISUAL_DESCRIPTION: 'ai',
     TaskType.OCR: 'ocr',
+}
+
+CATEGORY_NAME_MAP = {
+    'scanning': '扫描文件夹',
+    'basic': '基本处理',
+    'metadata': '元数据提取',
+    'face': '人脸识别',
+    'tickets': '车票识别',
+    'classification': '场景识别',
+    'ai': '视觉大模型',
+    'ocr': '文字识别',
 }
 
 class TaskManager:
@@ -121,11 +132,11 @@ class TaskManager:
 
         stats = []
         # Define categories to show
-        categories = ['scanning', 'metadata', 'face', 'classification', 'ocr', 'tickets', 'ai']
+        categories = ['basic', 'metadata', 'face', 'classification', 'ocr', 'tickets', 'ai']
 
         # Priority map for categories (higher is better)
         cat_priority = {
-            'scanning': DEFAULT_PRIORITIES.get(TaskType.SCAN_FOLDER, 0),
+            'basic': DEFAULT_PRIORITIES.get(TaskType.PROCESS_BASIC, 0),
             'metadata': DEFAULT_PRIORITIES.get(TaskType.EXTRACT_METADATA, 0),
             'face': DEFAULT_PRIORITIES.get(TaskType.RECOGNIZE_FACE, 0),
             'classification': DEFAULT_PRIORITIES.get(TaskType.CLASSIFY_IMAGE, 0),
@@ -151,6 +162,7 @@ class TaskManager:
             ).count()
 
             stats.append({
+                'task_name': CATEGORY_NAME_MAP.get(cat, cat),
                 'category': cat,
                 'pending': pending,
                 'completed': completed,

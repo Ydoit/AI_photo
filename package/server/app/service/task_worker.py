@@ -18,7 +18,7 @@ from app.core.config_manager import config_manager
 from app.service.task_manager import DEFAULT_SCAN_STATUS, CATEGORY_MAP, DEFAULT_PRIORITIES
 
 # Import handlers
-from app.service.tasks import thumbnail, metadata, scan, face, ocr, classification, tickets, visual_description
+from app.service.tasks import thumbnail, metadata, scan, face, ocr, classification, tickets, visual_description, basic
 
 CPU_TASKS = {
     TaskType.GENERATE_THUMBNAIL,
@@ -361,7 +361,7 @@ class TaskWorker:
         if task.type == TaskType.SCAN_FOLDER:
             return await scan.handle_scan_folder(self, task, db)
         elif task.type == TaskType.PROCESS_BASIC:
-            return await scan.handle_process_basic(self, task, db)
+            return await basic.handle_process_basic(self, task, db)
         elif task.type == TaskType.GENERATE_THUMBNAIL:
             return await thumbnail.handle_generate_thumbnail(self, task, db)
         elif task.type == TaskType.REBUILD_THUMBNAILS:
