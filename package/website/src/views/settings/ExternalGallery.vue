@@ -13,8 +13,9 @@
 
       <el-table :data="directories" style="width: 100%" border>
         <el-table-column prop="path" label="目录路径" />
-        <el-table-column label="操作" width="100">
+        <el-table-column label="操作" width="180">
           <template #default="{ row }">
+            <el-button type="primary" size="small" @click="scanDir(row.path)">扫描</el-button>
             <el-button type="danger" size="small" @click="removeDir(row.path)">移除</el-button>
           </template>
         </el-table-column>
@@ -25,6 +26,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { settingsApi } from '@/api/settings'
+import { tasksApi } from '@/api/tasks'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const directories = ref<{path: string}[]>([])
@@ -48,6 +50,15 @@ const addDir = async () => {
         await loadData()
     } catch {
         ElMessage.error('添加失败，请检查路径是否存在')
+    }
+}
+
+const scanDir = async (path: string) => {
+    try {
+        await tasksApi.createTask('SCAN_FOLDER', { scan_roots: [path] })
+        ElMessage.success(`已创建扫描任务: ${path}`)
+    } catch (e) {
+        ElMessage.error('创建扫描任务失败')
     }
 }
 

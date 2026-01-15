@@ -116,6 +116,46 @@
       </div>
     </section>
 
+    <!-- 2.5 Feature Screenshots -->
+    <section class="py-20 bg-white dark:bg-slate-900">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+          <h2 class="text-3xl font-bold text-neutral-dark dark:text-white mb-4">{{ t.screenshots.title }}</h2>
+          <div class="w-16 h-1 bg-primary mx-auto rounded-full"></div>
+        </div>
+
+        <div class="relative max-w-5xl mx-auto">
+          <!-- Main Image Display -->
+          <div class="relative aspect-video rounded-xl overflow-hidden shadow-2xl group bg-gray-100 dark:bg-slate-800">
+             <div v-for="(shot, index) in featureScreenshots" :key="index" 
+                 class="absolute inset-0 transition-opacity duration-500 ease-in-out"
+                 :class="index === activeScreenshotIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'">
+              <img v-if="shot.image" :src="shot.image" :alt="shot.title" class="w-full h-full object-cover">
+              <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-xl bg-gray-900">Image Placeholder: {{ shot.title }}</div>
+              
+              <!-- Caption Overlay -->
+              <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-8 text-white">
+                <h3 class="text-2xl font-bold mb-2">{{ shot.title }}</h3>
+                <p class="text-lg opacity-90">{{ shot.desc }}</p>
+              </div>
+            </div>
+
+            <!-- Arrows -->
+            <button @click="prevScreenshot" class="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white backdrop-blur-sm transition-all z-20 opacity-0 group-hover:opacity-100">←</button>
+            <button @click="nextScreenshot" class="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white backdrop-blur-sm transition-all z-20 opacity-0 group-hover:opacity-100">→</button>
+          </div>
+
+          <!-- Thumbnails/Indicators -->
+          <div class="flex justify-center gap-3 mt-8">
+            <button v-for="(shot, index) in featureScreenshots" :key="index"
+                    @click="activeScreenshotIndex = index"
+                    class="h-2 rounded-full transition-all duration-300"
+                    :class="index === activeScreenshotIndex ? 'w-8 bg-primary' : 'w-2 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400'"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- 3. Core Features -->
     <section id="core-features" class="py-20 bg-white dark:bg-slate-900">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -342,6 +382,9 @@ const i18n = {
       card1: { title: '识别成功', desc: 'G1234 北京 -> 上海' },
       card2: { title: 'AI 日记生成', desc: '今天去滑雪（摔了一跤）...' }
     },
+    screenshots: {
+      title: '功能展示'
+    },
     core: {
       title: '核心特色 · 重新定义相册记忆'
     },
@@ -384,6 +427,9 @@ const i18n = {
       card1: { title: 'Success', desc: 'G1234 BJ -> SH' },
       card2: { title: 'AI Diary', desc: 'Skiing today (fell)...' }
     },
+    screenshots: {
+      title: 'Feature Screenshots'
+    },
     core: {
       title: 'Core Features · Redefining Memories'
     },
@@ -412,6 +458,30 @@ const i18n = {
 }
 
 const t = computed(() => i18n[lang.value as keyof typeof i18n] || i18n['zh-CN'])
+
+const featureScreenshotsList = {
+  'zh-CN': [
+    { title: '时光轴展示', desc: '丝滑的时间轴滚动效果', image: '/images/timeline.png' },
+    { title: '地图模式', desc: '在地图上查看您的足迹，点亮每一个去过的城市', image: '/images/map.png' },
+    { title: '智能分类', desc: '自动识别照片中的人物、景物，智能归类', image: '/images/classification.jpeg'}
+  ],
+  'en-US': [
+    { title: 'Timeline View', desc: 'Smooth timeline scrolling effect', image: '' },
+    { title: 'Map Mode', desc: 'View your footprints on the map and light up every city you visited', image: '' },
+    { title: 'Smart Classification', desc: 'Automatically identify people and scenery in photos and classify them intelligently', image: '' }
+  ]
+}
+
+const featureScreenshots = computed(() => featureScreenshotsList[lang.value as keyof typeof featureScreenshotsList] || featureScreenshotsList['zh-CN'])
+const activeScreenshotIndex = ref(0)
+
+const nextScreenshot = () => {
+  activeScreenshotIndex.value = (activeScreenshotIndex.value + 1) % featureScreenshots.value.length
+}
+
+const prevScreenshot = () => {
+  activeScreenshotIndex.value = (activeScreenshotIndex.value - 1 + featureScreenshots.value.length) % featureScreenshots.value.length
+}
 
 const featuresList = {
   'zh-CN': [

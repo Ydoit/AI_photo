@@ -70,8 +70,8 @@ const formatDuration = (duration: number | null) => {
 export const mapPhotoToImage = (photo: Photo): AlbumImage => {
     // 新 API 在 url 和 thumbnail_url 字段中返回相对地址
     const url = `/api/medias/${photo.id}/file`;
-    const thumbnail = `/api/medias/${photo.id}/thumbnail`;
-    // const thumbnail = `https://picsum.photos/seed/${photo.id}/400/600`
+    // const thumbnail = `/api/medias/${photo.id}/thumbnail`;
+    const thumbnail = `https://picsum.photos/seed/${photo.id}/400/600`
     const preview = `/api/medias/${photo.id}/thumbnail?size=medium`;
 
     // 优先使用 photo_time，其次 upload_time，最后取当前时间
@@ -124,8 +124,8 @@ export const usePhotoStore = defineStore('photo', () => {
   const mapPhotoToImage = (photo: Photo): AlbumImage => {
     // 新 API 在 url 和 thumbnail_url 字段中返回相对地址
     const url = `/api/medias/${photo.id}/file`;
-    const thumbnail = `/api/medias/${photo.id}/thumbnail`;
-    // const thumbnail = `https://picsum.photos/seed/${photo.id}/400/600`
+    // const thumbnail = `/api/medias/${photo.id}/thumbnail`;
+    const thumbnail = `https://picsum.photos/seed/${photo.id}/400/600`
     const preview = `/api/medias/${photo.id}/thumbnail?size=medium`;
 
     // 优先使用 photo_time，其次 upload_time，最后取当前时间
