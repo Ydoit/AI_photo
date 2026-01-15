@@ -118,6 +118,7 @@ class TicketService:
             return {"tickets": tickets, "count": 0}
 
         ocr = None
+        filtered_count = 0
 
         for result in results:
             boxes = getattr(result, "boxes", None)
@@ -127,6 +128,14 @@ class TicketService:
                 continue
 
             for i, box in enumerate(boxes):
+                # 解析YOLO检测结果中的confidence字段
+                conf = box.conf[0].item()
+
+                # 实现阈值比较判断（confidence > 0.6）
+                if conf <= 0.6:
+                    filtered_count += 1
+                    continue
+
                 # 获取坐标
                 xyxy = box.xyxy[0].cpu().numpy()
                 x1, y1, x2, y2 = map(int, xyxy)
@@ -143,7 +152,6 @@ class TicketService:
                 if crop.size == 0:
                     continue
 
-                # 模拟 yolo_ocr.py 的流程：
                 # 1. 保存裁剪图像到临时文件
                 temp_filename = f"temp_crop_{uuid.uuid4().hex[:8]}.png"
                 temp_path = os.path.join(output_dir, temp_filename)
@@ -220,6 +228,9 @@ class TicketService:
                     # 清理临时 JSON 文件
                     if os.path.exists(json_path):
                         os.remove(json_path)
+
+        if filtered_count > 0:
+            logging.info(f"Filtered out {filtered_count} low confidence detections")
 
         return {"tickets": tickets, "count": len(tickets)}
 
