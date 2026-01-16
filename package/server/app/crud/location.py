@@ -152,3 +152,16 @@ def get_location_distribution(db: Session, level: str = 'city'):
     ).all()
     
     return [{"name": r[0], "count": r[1], "level": level} for r in results]
+
+def get_location_statistics(db: Session):
+    province_count = db.query(func.count(func.distinct(PhotoMetadata.province))).filter(PhotoMetadata.province != '', PhotoMetadata.province.is_not(None)).scalar()
+    city_count = db.query(func.count(func.distinct(PhotoMetadata.city))).filter(PhotoMetadata.city != '', PhotoMetadata.city.is_not(None)).scalar()
+    district_count = db.query(func.count(func.distinct(PhotoMetadata.district))).filter(PhotoMetadata.district != '', PhotoMetadata.district.is_not(None)).scalar()
+    country_count = db.query(func.count(func.distinct(PhotoMetadata.country))).filter(PhotoMetadata.country != '', PhotoMetadata.country.is_not(None)).scalar()
+    
+    return {
+        "province_count": province_count,
+        "city_count": city_count,
+        "district_count": district_count,
+        "country_count": country_count
+    }

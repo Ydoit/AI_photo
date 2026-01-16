@@ -7,6 +7,12 @@ class LocationBase(BaseModel):
     level: str
     count: int
 
+class LocationStatistics(BaseModel):
+    province_count: int
+    city_count: int
+    district_count: int
+    country_count: int
+
 class Location(LocationBase):
     cover: Optional[Photo] = None
 

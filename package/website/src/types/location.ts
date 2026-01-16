@@ -7,6 +7,13 @@ export interface Location {
   cover: Photo | null
 }
 
+export interface LocationStatistics {
+  province_count: number
+  city_count: number
+  district_count: number
+  country_count: number
+}
+
 export interface Scene {
   id: string
   name: string

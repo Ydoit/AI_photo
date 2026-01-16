@@ -1,15 +1,112 @@
 <template>
   <div :class="['container mx-auto location-list min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col h-screen relative', (viewMode === 'map') ? 'p-0' : 'p-6']">
     <!-- Header -->
-    <div :class="['flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0 z-50 transition-all duration-300', (viewMode === 'map') ? 'absolute top-0 left-0 right-0 p-4 pointer-events-none' : 'mb-6']">
-      <div class="pointer-events-auto flex items-center gap-3 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
-        <button @click="router.back()" class="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors bg-white dark:bg-gray-900">
-          <ArrowLeft class="w-5 h-5 text-gray-600 dark:text-gray-300" />
-        </button>
-        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">位置相册</h1>
+    <div :class="['flex sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0 z-50 transition-all duration-300', (viewMode === 'map') ? 'absolute top-0 left-0 right-0 p-4 pointer-events-none' : 'mb-6']">
+      <div class="flex flex-col gap-3 pointer-events-auto">
+        <div class="flex items-center gap-3 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-1 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
+          <button @click="router.back()" class="p-0 md:p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors bg-white dark:bg-gray-900">
+            <ArrowLeft class="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          </button>
+          <h1 class="text-2xl font-bold text-gray-800 dark:text-white">位置相册</h1>
+        </div>
+
+        <!-- Stats Block -->
+        <div v-if="viewMode === 'map' && statistics" class="self-start bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-4 py-2.5 rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 transition-all">
+           <div class="text-sm font-bold text-gray-800 dark:text-white">
+              累计点亮 <span class="text-primary-500 text-base">{{ statistics.province_count }}</span> 省 <span class="text-primary-500 text-base">{{ statistics.city_count }}</span> 市
+           </div>
+           <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              已解锁 {{ unlockPercentage }}%
+           </div>
+        </div>
       </div>
 
-      <div class="pointer-events-auto flex items-center gap-3">
+      <div class="pointer-events-auto flex items-center gap-1 md:gap-3">
+        <!-- Level Toggle -->
+        <div class="bg-gray-200 dark:bg-gray-800 p-0 md:p-1 rounded-lg flex relative" ref="levelMenuRef">
+          <!-- Mobile Dropdown Trigger -->
+          <button
+            @click="showLevelMenu = !showLevelMenu"
+            class="md:hidden px-3 py-1.5 rounded-md text-sm font-medium bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white flex items-center gap-1.5"
+          >
+            {{ currentLevelLabel }}
+            <ChevronDown class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': showLevelMenu }" />
+          </button>
+
+          <!-- Mobile Dropdown Menu -->
+          <div
+            v-show="showLevelMenu"
+            class="md:hidden absolute top-full left-0 mt-2 w-32 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-[60]"
+          >
+            <button
+              v-for="opt in levelOptions"
+              :key="opt.value"
+              @click="changeLevel(opt.value as any); showLevelMenu = false"
+              :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors', level === opt.value ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
+            >
+              {{ opt.label }}
+            </button>
+            <div class="h-px bg-gray-200 dark:bg-gray-700 my-1"></div>
+            <button
+               v-show="viewMode !== 'grid'"
+               @click="level = 'photo-map'; showLevelMenu = false"
+               :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2', level === 'photo-map' ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
+            >
+               <Images class="w-4 h-4" />
+               地图照片
+            </button>
+          </div>
+
+          <!-- Desktop Buttons -->
+          <div class="hidden md:flex">
+            <button
+              @click="changeLevel('district')"
+              :class="['px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-white dark:bg-gray-700', level === 'district' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
+            >
+              区县
+            </button>
+            <button
+              @click="changeLevel('city')"
+              :class="['px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-white dark:bg-gray-700', level === 'city' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
+            >
+              城市
+            </button>
+            <button
+              @click="changeLevel('province')"
+              :class="['px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-white dark:bg-gray-700', level === 'province' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
+            >
+              省份
+            </button>
+            <button
+              @click="changeLevel('scene')"
+              :class="['px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-white dark:bg-gray-700', level === 'scene' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
+            >
+              景区
+            </button>
+          </div>
+
+          <div v-show="viewMode !== 'grid'" class="hidden md:block w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1 my-auto"></div>
+
+          <button
+            v-if="level === 'scene'"
+            @click="showAddScene = true"
+            class="px-3 py-1.5 rounded-md bg-primary-500 text-white hover:bg-primary-600 transition-colors flex items-center gap-1.5 ml-1"
+            title="新增景区"
+          >
+            <Plus class="w-4 h-4" />
+            <span class="hidden sm:inline">新增</span>
+          </button>
+
+          <button
+            v-show="viewMode !== 'grid'"
+            @click="level = 'photo-map'"
+            :class="['hidden md:flex px-3 py-1.5 rounded-md text-sm font-medium transition-all items-center gap-1.5', level === 'photo-map' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
+            title="地图照片"
+          >
+            <Images class="w-4 h-4" />
+            <span class="hidden sm:inline">照片</span>
+          </button>
+        </div>
         <!-- View Toggle -->
         <div class="bg-gray-200 dark:bg-gray-800 p-1 rounded-lg flex">
           <button
@@ -25,56 +122,6 @@
             title="地图视图"
           >
             <Map class="w-4 h-4" />
-          </button>
-        </div>
-
-        <!-- Level Toggle -->
-        <div class="bg-gray-200 dark:bg-gray-800 p-1 rounded-lg flex">
-          <button
-            @click="changeLevel('district')"
-            :class="['px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-white dark:bg-gray-700', level === 'district' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
-          >
-            区县
-          </button>
-          <button
-            @click="changeLevel('city')"
-            :class="['px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-white dark:bg-gray-700', level === 'city' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
-          >
-            城市
-          </button>
-          <button
-            @click="changeLevel('province')"
-            :class="['px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-white dark:bg-gray-700', level === 'province' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
-          >
-            省份
-          </button>
-          <button
-            @click="changeLevel('scene')"
-            :class="['px-4 py-1.5 rounded-md text-sm font-medium transition-all bg-white dark:bg-gray-700', level === 'scene' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
-          >
-            景区
-          </button>
-
-          <div v-show="viewMode !== 'grid'" class="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1 my-auto"></div>
-
-          <button
-            v-if="level === 'scene'"
-            @click="showAddScene = true"
-            class="px-3 py-1.5 rounded-md bg-primary-500 text-white hover:bg-primary-600 transition-colors flex items-center gap-1.5 ml-1"
-            title="新增景区"
-          >
-            <Plus class="w-4 h-4" />
-            <span class="hidden sm:inline">新增</span>
-          </button>
-
-          <button
-            v-show="viewMode !== 'grid'"
-            @click="level = 'photo-map'"
-            :class="['px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-1.5', level === 'photo-map' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
-            title="地图照片"
-          >
-            <Images class="w-4 h-4" />
-            <span class="hidden sm:inline">照片</span>
           </button>
         </div>
       </div>
@@ -152,16 +199,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, onUnmounted, nextTick } from 'vue'
+import { ref, onMounted, watch, onUnmounted, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useLocationStore } from '@/stores/locationStore'
 import { locationService } from '@/api/location'
 import { mapPhotoToImage } from '@/stores/photoStore'
-import type { Location } from '@/types/location'
-import { ArrowLeft, MapPin, LayoutGrid, Map, Images, Plus } from 'lucide-vue-next'
+import type { Location, LocationStatistics } from '@/types/location'
+import { ArrowLeft, MapPin, LayoutGrid, Map, Images, Plus, ChevronDown } from 'lucide-vue-next'
 import * as echarts from 'echarts'
-import { useDark } from '@vueuse/core'
+import { useDark, onClickOutside } from '@vueuse/core'
 import LocationMap from './LocationMap.vue'
 import AddSceneDialog from './AddSceneDialog.vue'
 
@@ -170,16 +217,45 @@ const isDark = useDark()
 const locationStore = useLocationStore()
 const { level, viewMode } = storeToRefs(locationStore)
 const locations = ref<Location[]>([])
+const statistics = ref<LocationStatistics | null>(null)
 const loading = ref(true)
 const showAddScene = ref(false)
 const mapContainer = ref<HTMLElement | null>(null)
 let myMap: echarts.ECharts | null = null
 let zoomTimer: any = null
+const showLevelMenu = ref(false)
+const levelMenuRef = ref<HTMLElement | null>(null)
+
+onClickOutside(levelMenuRef, () => {
+  showLevelMenu.value = false
+})
+
+const levelOptions = [
+  { label: '区县', value: 'district' },
+  { label: '城市', value: 'city' },
+  { label: '省份', value: 'province' },
+  { label: '景区', value: 'scene' }
+]
+
+const currentLevelLabel = computed(() => {
+  if (level.value === 'photo-map') return '照片'
+  const option = levelOptions.find(opt => opt.value === level.value)
+  return option ? option.label : '区县'
+})
+
+const unlockPercentage = computed(() => {
+  if (!statistics.value) return 0
+  // 34 provincial administrative divisions in China
+  return Math.min(Math.round((statistics.value.province_count / 34) * 100), 100)
+})
 
 // Fetch data for Grid View
 const fetchLocations = async () => {
   loading.value = true
   try {
+    // Fetch stats
+    statistics.value = await locationService.getStatistics()
+
     if (level.value === 'photo-map') {
       locations.value = await locationService.getLocations('city')
       return

@@ -32,6 +32,13 @@ def get_location_distribution(
     """
     return crud.get_location_distribution(db, level)
 
+@router.get("/statistics", response_model=schemas.LocationStatistics, summary="获取位置统计数据")
+def get_location_statistics(db: Session = Depends(get_db)):
+    """
+    获取位置统计数据（省份、城市、区县数量等）。
+    """
+    return crud.get_location_statistics(db)
+
 @router.get("/markers", response_model=List[schemas.MapMarker], summary="获取地图标记点")
 def get_map_markers(db: Session = Depends(get_db)):
     """

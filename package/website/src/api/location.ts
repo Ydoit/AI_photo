@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Location, Scene, SceneCreate } from '@/types/location';
+import type { Location, Scene, SceneCreate, LocationStatistics } from '@/types/location';
 import type { Photo } from '@/types/album';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
@@ -14,6 +14,11 @@ export const locationService = {
     const { data } = await api.get<Location[]>('/api/locations', {
       params: { level, skip, limit }
     });
+    return data;
+  },
+
+  async getStatistics() {
+    const { data } = await api.get<LocationStatistics>('/api/locations/statistics');
     return data;
   },
 
