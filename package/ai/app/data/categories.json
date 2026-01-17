@@ -1,9 +1,4 @@
 {
-    "person_portrait": {
-        "zh": "人像",
-        "en": "Person Portrait",
-        "prompts": ["a photo of people", "human face", "portrait photography", "a person", "professional portrait"]
-    },
     "selfie": {
         "zh": "自拍",
         "en": "Selfie",

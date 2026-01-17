@@ -11,7 +11,6 @@ import SectionExpense from '@/components/annual-report/SectionExpense.vue';
 import SectionTransportAnalysis from '@/components/annual-report/SectionTransportAnalysis.vue';
 import SectionCategory from '@/components/annual-report/SectionCategory.vue';
 import SectionHighlight from '@/components/annual-report/SectionHighlight.vue';
-import SectionEmotion from '@/components/annual-report/SectionEmotion.vue';
 import SectionLocation from '@/components/annual-report/SectionLocation.vue';
 import SectionFarthestCity from '@/components/annual-report/SectionFarthestCity.vue';
 
@@ -129,9 +128,6 @@ const handleReplay = () => {
 
         <!-- 5. Category -->
         <SectionCategory :data="reportData.memory" />
-
-        <!-- 6. Emotion -->
-        <SectionEmotion :data="reportData.emotion" />
 
         <!-- 7. Location -->
         <SectionLocation :data="reportData.location" />

@@ -40,12 +40,10 @@ class CarouselGroup(BaseModel):
     photos: List[str]
 
 class EmotionMetrics(BaseModel):
-    starredPhotos: int
+    livePhotos: int
     backupPhotos: int
     totalVideoDuration: float
-    totalOpenTimes: int
-    starredPhotosList: List[str]
-    sharedPhotosList: List[str]
+    cameraPhotos: int
     emotionCarouselGroups: List[CarouselGroup]
 
 class TopCity(BaseModel):

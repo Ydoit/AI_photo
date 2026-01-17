@@ -371,11 +371,7 @@ def get_report_easter_egg(
     end_time: datetime = Query(..., description="End Time"),
     db: Session = Depends(get_db)
 ):
-    return EasterEgg(
-        bestPhotoUrl=f"https://picsum.photos/seed/best/400/600",
-        bestPhotoDate="2024-10-01",
-        tags=EasterEggTags(main="生活记录家", sub=['偏爱人像', '乐于收藏', '心怀温柔'])
-    )
+    return crud_annual_report.get_report_easter_egg(start_time, end_time, db)
 
 @router.get("/travel-behavior", response_model=TravelBehaviorMetrics)
 def get_report_travel_behavior(

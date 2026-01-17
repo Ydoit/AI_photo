@@ -58,9 +58,9 @@ const items = [
   },
   {
     icon: User,
-    value: props.emotion.starredPhotos,
-    label: '年度人物同框数',
-    desc: '藏起的，都是心头的偏爱',
+    value: props.emotion.livePhotos,
+    label: '实况照片数',
+    desc: '每一帧，都是生活的瞬间',
     color: 'text-yellow-500'
   },
   {
@@ -72,8 +72,8 @@ const items = [
   },
   {
     icon: Tag,
-    value: props.emotion.totalOpenTimes,
-    label: '年度高频标签数',
+    value: props.emotion.cameraPhotos,
+    label: '相机拍摄照片数',
     desc: '镜头的偏爱，藏着生活模样',
     color: 'text-purple-500'
   }

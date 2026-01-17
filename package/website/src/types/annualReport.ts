@@ -35,12 +35,10 @@ export interface CarouselGroup {
 }
 
 export interface EmotionMetrics {
-  starredPhotos: number;
+  livePhotos: number;
   backupPhotos: number;
-  totalOpenTimes: number;
+  cameraPhotos: number;
   totalVideoDuration: number; // 总视频播放时长（秒）
-  starredPhotosList: string[]; // URLs
-  sharedPhotosList: string[]; // URLs
   emotionCarouselGroups: CarouselGroup[]; // New field for carousel
 }
 

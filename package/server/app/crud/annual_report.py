@@ -4,7 +4,7 @@ import random
 import math
 import logging
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract, desc
 from pydantic import BaseModel
@@ -15,8 +15,11 @@ from app.db.models.photo_metadata import PhotoMetadata
 from app.db.models.face import Face, FaceIdentity
 from app.db.models.tag import PhotoTag, PhotoTagRelation
 from app.db.models.trip import TrainTicket
+from app.db.models.image_vector import ImageVector
+from app.crud.search_vector import SEASON_VECTORS, EASTER_EGG_VECTOR
+
 from app.schemas.annual_report import (
-    AnnualReportData, UserInfo, TimeMetrics, MemoryMetrics,
+    AnnualReportData, UserInfo, TimeMetrics, MemoryMetrics, 
     EmotionMetrics, LocationMetrics, SeasonMetrics, SeasonData,
     EasterEgg, EasterEggTags, CategoryDistributionItem, TopCity,
     LocationPoint, CarouselGroup, ExpenseMetrics, MonthlyExpense,
@@ -52,7 +55,7 @@ def get_annual_report_photos(
     .order_by(Photo.photo_time.desc()).all()
 
     # Group by month
-    monthly_groups: Dict[int, List[PhotoSchema]] = {}
+    monthly_groups: Dict[int, List[Photo]] = {}
 
     # We can iterate and filter.
     # Since we need max 10 per month, and we sorted by time desc,
@@ -205,6 +208,29 @@ def get_report_summary(
 
     return ReportSummary(user=user_info, time=time_metrics)
 
+def find_best_match_photo(
+    db: Session, 
+    start_time: datetime, 
+    end_time: datetime, 
+    embedding: List[float], 
+    months: Optional[List[int]] = None
+) -> Optional[Photo]:
+    """
+    Find the best matching photo based on vector similarity.
+    Filters by time range, file type (image only), excludes screenshots.
+    """
+    query = db.query(Photo).join(ImageVector, Photo.id == ImageVector.photo_id)\
+        .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
+        .filter(Photo.file_type == FileType.image)\
+        .filter(Photo.image_type != ImageType.SCREENSHOT)
+    
+    if months:
+         query = query.filter(extract('month', Photo.photo_time).in_(months))
+         
+    # Order by cosine distance (lower is better/more similar)
+    best_photo = query.order_by(ImageVector.embedding.cosine_distance(embedding)).first()
+    return best_photo
+
 
 def get_report_season(
     start_time: datetime,
@@ -227,7 +253,16 @@ def get_report_season(
             .filter(extract('month', Photo.photo_time).in_(months))
         count = season_query.count()
 
-        rep_photo = season_query.first()
+        # Vector search for representative photo
+        search_vector = SEASON_VECTORS.get(name)
+        rep_photo = None
+        if search_vector:
+            rep_photo = find_best_match_photo(db, start_time, end_time, search_vector, months)
+        
+        # Fallback if no match from vector search
+        if not rep_photo:
+            rep_photo = season_query.first()
+
         rep_photo_url = f"/api/medias/{rep_photo.id}/thumbnail" if rep_photo else f"https://picsum.photos/seed/{name}/400/600"
         # rep_photo_url = f"https://picsum.photos/seed/{name}/400/600"
         season_list.append(SeasonData(
@@ -253,13 +288,25 @@ def get_report_emotion(
         Photo.photo_time <= end_time
     ).scalar() or 0
 
+    total_live_photo = db.query(Photo).filter(
+        Photo.photo_time >= start_time,
+        Photo.photo_time <= end_time,
+        Photo.file_type == FileType.live_photo
+    ).count()
+
+    # 相机拍摄的照片数量
+    total_camera_photo = db.query(Photo).filter(
+        Photo.photo_time >= start_time,
+        Photo.photo_time <= end_time,
+        Photo.file_type == FileType.image,
+        Photo.image_type == ImageType.CAMERA
+    ).count()
+
     return EmotionMetrics(
-        starredPhotos=128,
+        livePhotos=total_live_photo,
         backupPhotos=total_photos,
         totalVideoDuration=total_video_duration,
-        totalOpenTimes=1024,
-        starredPhotosList=[f"https://picsum.photos/seed/{i}/400/600" for i in range(6)],
-        sharedPhotosList=[f"https://picsum.photos/seed/{i+10}/400/600" for i in range(3)],
+        cameraPhotos=total_camera_photo,
         emotionCarouselGroups=[
             CarouselGroup(
                 id='g1', 
@@ -267,4 +314,21 @@ def get_report_emotion(
                 photos=[f"https://picsum.photos/seed/{i+20}/400/600" for i in range(3)]
             )
         ]
+    )
+
+def get_report_easter_egg(
+    start_time: datetime,
+    end_time: datetime,
+    db: Session
+):
+    # Use vector search
+    best_photo = find_best_match_photo(db, start_time, end_time, EASTER_EGG_VECTOR)
+    
+    best_photo_url = f"/api/medias/{best_photo.id}/thumbnail" if best_photo else f"https://picsum.photos/seed/best/400/600"
+    best_photo_date = best_photo.photo_time.strftime('%Y-%m-%d') if best_photo else "2024-10-01"
+    
+    return EasterEgg(
+        bestPhotoUrl=best_photo_url,
+        bestPhotoDate=best_photo_date,
+        tags=EasterEggTags(main="生活记录家", sub=['偏爱人像', '乐于收藏', '心怀温柔'])
     )
