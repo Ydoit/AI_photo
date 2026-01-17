@@ -51,7 +51,7 @@ TrailSnap 支持多种部署方式，推荐使用 Docker Compose 进行快速部
          start_period: 10s
 
      server:
-       image: siyuan044/trailsnap-server:master
+       image: siyuan044/trailsnap-server:latest
        restart: always
        expose: [ "8000" ]
        ports: [ "8800:8000" ]
@@ -69,7 +69,7 @@ TrailSnap 支持多种部署方式，推荐使用 Docker Compose 进行快速部
            restart: true
 
      ai:
-       image: siyuan044/trailsnap-ai:master
+       image: siyuan044/trailsnap-ai:latest
        restart: always
        expose: [ "8001" ]
        ports: [ "8801:8001" ]
@@ -78,7 +78,7 @@ TrailSnap 支持多种部署方式，推荐使用 Docker Compose 进行快速部
          - ./data:/app/data
        
      frontend:
-       image: siyuan044/trailsnap-frontend:master
+       image: siyuan044/trailsnap-frontend:latest
        restart: always
        ports: [ "8082:80" ]
        depends_on: [ server ]
@@ -123,6 +123,10 @@ TrailSnap 支持多种部署方式，推荐使用 Docker Compose 进行快速部
 - **数据持久化**: 数据库数据会保存在当前目录下的 `pg_data` 文件夹中，应用数据保存在 `data` 文件夹中。请勿随意删除这些目录，以免丢失数据。
 - **端口冲突**: 如果默认端口被占用，请在 `docker-compose.yml` 中修改 `ports` 映射（例如 `8083:80`）。
 - **照片权限**: 确保 Docker 容器有权限读取挂载的照片目录。
+
+### 开始使用
+
+[如何使用?](./user.md)
 
 ## 源码部署
 

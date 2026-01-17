@@ -85,7 +85,7 @@ services:
       start_period: 10s
 
   server:
-    image: siyuan044/trailsnap-server:master
+    image: siyuan044/trailsnap-server:latest
     restart: always
     expose: [ "8000" ]
     ports: [ "8800:8000" ]
@@ -103,7 +103,7 @@ services:
         restart: true
 
   ai:
-    image: siyuan044/trailsnap-ai:master
+    image: siyuan044/trailsnap-ai:latest
     restart: always
     expose: [ "8001" ]
     ports: [ "8801:8001" ]
@@ -112,7 +112,7 @@ services:
       - ./data:/app/data        # 挂载数据目录
 
   frontend:
-    image: siyuan044/trailsnap-frontend:master
+    image: siyuan044/trailsnap-frontend:latest
     restart: always
     ports: [ "8082:80" ]
     depends_on: [ server ]
