@@ -3,6 +3,7 @@ import logging
 import os
 import concurrent.futures
 from typing import Set
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.db.models.task import Task, TaskType, TaskStatus
@@ -64,7 +65,18 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
     existing_files = set()
     live_photo_files = set()
     live_photo_to_add = set()
-    for p in db.query(Photo.file_path, Photo.file_type).all():
+
+    query = db.query(Photo.file_path, Photo.file_type)
+    if scan_roots:
+        conditions = []
+        for root in scan_roots:
+            # Ensure root ends with separator to avoid partial folder name matching
+            clean_root = root if root.endswith(os.sep) else root + os.sep
+            conditions.append(Photo.file_path.startswith(clean_root))
+        if conditions:
+            query = query.filter(or_(*conditions))
+
+    for p in query.all():
         if p[1] == FileType.live_photo:
             if p[0].endswith('.jpg'):
                 live_photo_files.add(p[0])
