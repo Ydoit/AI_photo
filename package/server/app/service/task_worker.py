@@ -23,10 +23,10 @@ from app.service.tasks import thumbnail, metadata, scan, face, ocr, classificati
 CPU_TASKS = {
     TaskType.GENERATE_THUMBNAIL,
     TaskType.REBUILD_THUMBNAILS,
+    TaskType.PROCESS_BASIC,
 }
 
 IO_TASKS = {
-    TaskType.PROCESS_BASIC,
     TaskType.PROCESS_IMAGE,
     TaskType.EXTRACT_METADATA,
     TaskType.REBUILD_METADATA,

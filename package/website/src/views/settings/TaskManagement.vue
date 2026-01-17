@@ -43,6 +43,7 @@
                             <el-dropdown-item v-if="cat.status === 'paused'" command="resume">继续任务</el-dropdown-item>
                             <el-dropdown-item v-else command="pause">暂停任务</el-dropdown-item>
                             <el-dropdown-item command="retry" :disabled="cat.failed === 0" divided>重试失败任务</el-dropdown-item>
+                            <el-dropdown-item command="delete_failed" :disabled="cat.failed === 0">删除失败任务</el-dropdown-item>
                             <el-dropdown-item command="rebuild">强制重做此项</el-dropdown-item>
                         </el-dropdown-menu>
                     </template>
@@ -163,6 +164,8 @@ const handleCategoryCommand = async (category: string, command: string) => {
         await retryCategoryFailed(category)
     } else if (command === 'rebuild') {
         confirmCategoryRebuild(category)
+    } else if (command === 'delete_failed') {
+        confirmDeleteFailed(category)
     }
 }
 
@@ -172,6 +175,32 @@ const retryCategoryFailed = async (category: string) => {
     try {
         const res = await tasksApi.retryAllFailedTasks(types)
         ElMessage.success(`已重试 ${res.count} 个失败任务`)
+        fetchTasks()
+    } catch (e) {
+        ElMessage.error('操作失败')
+    }
+}
+
+const confirmDeleteFailed = (category: string) => {
+    ElMessageBox.confirm(
+        `确定要删除 "${formatCategory(category)}" 类别下的所有失败任务吗？此操作不可恢复。`,
+        '警告',
+        {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning',
+        }
+    ).then(() => {
+        deleteCategoryFailed(category)
+    })
+}
+
+const deleteCategoryFailed = async (category: string) => {
+    const types = categoryMap[category]
+    if (!types) return
+    try {
+        const res = await tasksApi.deleteFailedTasks(types)
+        ElMessage.success(`已删除 ${res.count} 个失败任务`)
         fetchTasks()
     } catch (e) {
         ElMessage.error('操作失败')

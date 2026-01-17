@@ -56,6 +56,18 @@ export const tasksApi = {
     return data
   },
 
+  async deleteFailedTasks(types?: string[]) {
+    const params: any = {}
+    if (types && types.length > 0) {
+        params.types = types
+    }
+    const { data } = await api.delete<{ message: string, count: number }>('/api/tasks/failed', {
+        params,
+        paramsSerializer: { indexes: null }
+    })
+    return data
+  },
+
   async getTaskStats() {
     const { data } = await api.get<{ failed_process_tasks: number }>('/api/tasks/stats')
     return data

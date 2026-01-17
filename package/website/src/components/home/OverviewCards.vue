@@ -16,7 +16,7 @@
       <!-- Recently Updated Card -->
       <div 
         class="bg-gray-100 dark:bg-neutral-800 rounded-lg p-4 w-[140px] h-[80px] flex flex-col justify-between cursor-pointer hover:scale-95 transition-transform duration-200"
-        @click="$router.push('/albums/recent')"
+        @click="$router.push('/photos')"
       >
         <div class="flex items-center space-x-2">
           <span class="text-xl">🆕</span>

@@ -199,3 +199,22 @@ def retry_all_failed_tasks(
     
     db.commit()
     return {"message": f"Retried {result} failed tasks", "count": result}
+
+
+@router.delete("/failed", summary="删除失败任务")
+def delete_failed_tasks(
+    types: Optional[List[str]] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """
+    删除所有失败的任务。可选指定任务类型。
+    """
+    query = db.query(Task).filter(Task.status == TaskStatus.FAILED)
+    
+    if types:
+        query = query.filter(Task.type.in_(types))
+
+    count = query.delete(synchronize_session=False)
+    
+    db.commit()
+    return {"message": f"Deleted {count} failed tasks", "count": count}

@@ -67,16 +67,14 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
     live_photo_to_add = set()
 
     query = db.query(Photo.file_path, Photo.file_type)
-    if scan_roots:
-        conditions = []
-        for root in scan_roots:
-            # Ensure root ends with separator to avoid partial folder name matching
-            clean_root = root if root.endswith(os.sep) else root + os.sep
-            conditions.append(Photo.file_path.startswith(clean_root))
-        if conditions:
-            query = query.filter(or_(*conditions))
-
+    norm_paths = {os.path.normpath(path) for path in scan_roots}
     for p in query.all():
+        is_exist = False
+        for norm_path in norm_paths:
+            if os.path.normpath(p[0]).startswith(norm_path):
+                is_exist = True
+        if not is_exist:
+            continue
         if p[1] == FileType.live_photo:
             if p[0].endswith('.jpg'):
                 live_photo_files.add(p[0])
@@ -85,7 +83,7 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
         elif p[0].endswith('.mp4') and (p[0][:-4] + '.jpg' in existing_files):
             live_photo_to_add.add(p[0])
         existing_files.add(p[0])
-
+    print(existing_files)
     # Determine new and deleted
     new_files = files_on_disk - existing_files
     deleted_files = existing_files - files_on_disk

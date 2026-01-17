@@ -1,5 +1,6 @@
 import os
 import re
+import mmap
 
 def get_video_offset(file_path: str) -> int | None:
     """
@@ -16,7 +17,7 @@ def get_video_offset(file_path: str) -> int | None:
             # Pattern for XMP MicroVideoOffset
             # Looks like: GCamera:MicroVideoOffset="12345" or <GCamera:MicroVideoOffset>12345</GCamera:MicroVideoOffset>
             # We look for the attribute/tag and capture the digits
-
+            
             # Simple regex for MicroVideoOffset
             # We look for the keyword and then some digits
             # Note: XMP can be complex, but usually it's plain text in the header.
@@ -37,25 +38,33 @@ def get_video_offset(file_path: str) -> int | None:
         # We assume the video is appended to the file.
         # We look for the 'ftyp' atom which marks the start of the video.
         file_size = os.path.getsize(file_path)
-        with open(file_path, 'rb') as f:
-            content = f.read()
-            matches = [m.start() for m in re.finditer(b'ftyp', content)]
+        if file_size == 0:
+            return None
             
-            for pos in matches:
-                if pos < 4: continue
-                atom_start = pos - 4
-                
-                # Check if this looks like a valid atom size
-                if atom_start + 4 > len(content): continue
-                
-                size_bytes = content[atom_start:atom_start+4]
-                size = int.from_bytes(size_bytes, 'big')
-                
-                # Sanity check for ftyp atom size (usually small, e.g. 20-32 bytes)
-                if 8 <= size <= 128:
-                    if atom_start > 0:
-                        return file_size - atom_start
-
+        with open(file_path, 'rb') as f:
+            try:
+                with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+                    matches = [m.start() for m in re.finditer(b'ftyp', mm)]
+                    
+                    for pos in matches:
+                        if pos < 4: continue
+                        atom_start = pos - 4
+                        
+                        # Check if this looks like a valid atom size
+                        if atom_start + 4 > file_size: continue
+                        
+                        # We need to read the size bytes. mmap allows slicing.
+                        size_bytes = mm[atom_start:atom_start+4]
+                        size = int.from_bytes(size_bytes, 'big')
+                        
+                        # Sanity check for ftyp atom size (usually small, e.g. 20-32 bytes)
+                        if 8 <= size <= 128:
+                            if atom_start > 0:
+                                return file_size - atom_start
+            except ValueError:
+                # Can happen if file is empty (handled above) or other mmap issues
+                return None
+            
             return None
 
     except Exception:

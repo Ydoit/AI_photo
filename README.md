@@ -26,6 +26,7 @@ TrailSnap 是一个智能化的 AI 相册应用，致力于帮助用户轻松记
 | --- | --- | --- |
 | 上传并查看照片和视频 | √ | 支持上传本地照片和视频文件，查看和播放。 |
 | 添加外部文件夹 | √ | 可以添加外部文件夹作为数据源，TrailSnap 会自动扫描并索引其中的照片和视频。 |
+| live photo | √ | 支持vivo、oppo、小米等手机 |
 | **时间轴** | √ | 丝滑的时间轴滚动效果。 |
 | 在地图上查看照片 | √ | 可以在地图上查看所有上传的照片，点击照片可以查看详情，也可以按省、市、区单独查看（支持列表视图和地图视图）。 |
 | **点亮的城市** | √ | 查看所有上传的照片中出现的城市，点击城市可以查看该城市的所有照片。 |
@@ -132,20 +133,6 @@ docker-compose up -d
 
 [源码部署](http://localhost:5173/docs/dev/guide.html)
 
-## 🛠️ 技术栈
-
-### 前端 (Web)
-- **框架**: Vue 3, TypeScript, Vite
-- **UI**: Element Plus, TailwindCSS
-- **状态管理**: Pinia
-- **路由**: Vue Router
-- **可视化**: ECharts
-
-### 后端 (Server)
-- **核心**: Python 3.12+, FastAPI
-- **数据库**: PostgreSQL, SQLAlchemy (Async)
-- **AI/CV**: PaddleOCR（AI 微服务）, InsightFace（AI 微服务）, YOLO (Ultralytics 脚本), OpenCV
-- **任务调度**: Custom Task Manager
 
 ## 📂 目录结构
 
