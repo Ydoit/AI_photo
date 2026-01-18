@@ -1,7 +1,7 @@
 from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, desc
 import sqlalchemy as sa
 
 from app.db.models.face import Face, FaceIdentity
@@ -220,11 +220,10 @@ def get_identities_with_details(
     return results
 
 def get_identity_photos(db: Session, identity_id: UUID, skip: int = 0, limit: int = 50) -> List[Photo]:
-    return db.query(Photo).join(Face).filter(
+    return db.query(Photo).distinct(Photo.id).join(Face).filter(
         Face.face_identity_id == identity_id,
-        Photo.id == Face.photo_id,
-        Face.is_deleted == False
-    ).offset(skip).limit(limit).all()
+        Photo.id == Face.photo_id
+    ).order_by(desc(Photo.id)).offset(skip).limit(limit).all()
 
 def remove_photos_from_identity(db: Session, identity_id: UUID, photo_ids: List[UUID]) -> int:
     identity = get_identity(db, identity_id)

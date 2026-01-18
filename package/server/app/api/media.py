@@ -117,12 +117,14 @@ def get_media_file(
         raise HTTPException(status_code=404, detail="File not found")
         
     file_path = photo.file_path
-    file_size = os.path.getsize(file_path)
-    
     # Determine media type
     ext = os.path.splitext(file_path)[1].lower()
+    if ext == '.heic':
+        file_path = _get_thumbnail_path(photo_id, db, 'medium')
+    file_size = os.path.getsize(file_path)
+
     media_type = "application/octet-stream"
-    if ext in ('.png', '.jpg', '.jpeg', '.webp'):
+    if ext in ('.png', '.jpg', '.jpeg', '.webp', '.tiff', '.gif'):
         media_type = f"image/{ext.lstrip('.')}"
         if ext == '.jpg': media_type = "image/jpeg"
     elif ext in ('.mp4', '.mov', '.avi', '.mkv', '.webm'):
