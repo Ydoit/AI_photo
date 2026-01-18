@@ -15,15 +15,15 @@ from app.service.task_manager import TaskManager
 
 router = APIRouter()
 
-def get_storage_root(db: Session) -> str:
-    return _get_storage_root(db)
+def get_storage_root() -> str:
+    return _get_storage_root()
 
 def get_external_dirs() -> list[str]:
     return config_manager.config.storage.external_directories
 
 @router.get('/directories')
 def get_directories(db: Session = Depends(get_db)):
-    primary = get_storage_root(db)
+    primary = get_storage_root()
     external = get_external_dirs()
     return {'primary': primary, 'external': external}
 
@@ -36,12 +36,12 @@ def add_directory(payload: dict, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail='not a directory')
     current = get_external_dirs()
     if path in current:
-        return {'primary': get_storage_root(db), 'external': current}
+        return {'primary': get_storage_root(), 'external': current}
     current.append(path)
     config_manager.save()
     # Trigger scan to update index
     TaskManager.get_instance().add_task(db, TaskType.SCAN_FOLDER, {'scan_roots': current})
-    return {'primary': get_storage_root(db), 'external': current}
+    return {'primary': get_storage_root(), 'external': current}
 
 @router.delete('/directories')
 def remove_directory(payload: dict, db: Session = Depends(get_db)):
@@ -63,17 +63,17 @@ def remove_directory(payload: dict, db: Session = Depends(get_db)):
         norm_path = os.path.normpath(path)
         for p in photos:
             if os.path.normpath(p.file_path).startswith(norm_path):
-                delete_thumbnails(p.id, db)
+                delete_thumbnails(p.id)
                 db.delete(p)
         db.commit()
 
         # Trigger scan to update index
         # TaskManager.get_instance().add_task(db, TaskType.SCAN_FOLDER, {'scan_roots': current})
-    return {'primary': get_storage_root(db), 'external': current}
+    return {'primary': get_storage_root(), 'external': current}
 
 @router.get('/storage-root')
 def read_storage_root(db: Session = Depends(get_db)):
-    return {'storage_root': get_storage_root(db)}
+    return {'storage_root': get_storage_root()}
 
 @router.put('/storage-root')
 def update_storage_root(payload: dict, db: Session = Depends(get_db)):

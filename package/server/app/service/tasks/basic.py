@@ -4,6 +4,9 @@ import os
 import json
 from uuid import UUID, uuid4
 from PIL import Image
+from pillow_heif import register_heif_opener
+# Register HEIF opener to enable HEIC/HEIF support in Pillow
+register_heif_opener()
 from sqlalchemy.orm import Session
 
 from app.db.models.task import Task
@@ -33,7 +36,7 @@ def process_basic_cpu_job(file_path: str, file_id: UUID, storage_root: str):
                  pass
 
         # 1. Generate thumbnail
-        thumb_path = storage.generate_thumbnail(file_path, file_id, db=None, image_obj=image_obj)
+        thumb_path = storage.generate_thumbnail(file_path, file_id, image_obj=image_obj)
 
         # 2. Extract metadata (BASIC ONLY)
         file_name = os.path.basename(file_path)
@@ -86,7 +89,7 @@ async def handle_process_basic(task_manager, task: Task, db: Session):
         return {'status': 'skipped', 'reason': 'file not found'}
 
     photo_id = uuid4()
-    storage_root = storage._get_storage_root(db)
+    storage_root = storage._get_storage_root()
 
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(

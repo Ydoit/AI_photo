@@ -25,7 +25,7 @@ router = APIRouter()
 def _get_thumbnail_path(photo_id: UUID, db: Session, size: str = 'small') -> str:
     compact = str(photo_id).replace('-', '')
     p1, p2 = compact[:2], compact[2:4]
-    root = _get_storage_root(db)
+    root = _get_storage_root()
     base = os.path.join(root, 'thumbnails', p1, p2)
     
     if size == 'small':
@@ -43,9 +43,13 @@ def get_live_photo_video(
     if not photo:
         raise HTTPException(status_code=404, detail="Video file not found")
 
-    file_path = photo.file_path[:-3] + 'mp4'
-    if not os.path.exists(file_path):
-        file_path = _get_thumbnail_path(photo_id, db, 'medium')[:-4] + '.mp4'
+    ext = os.path.splitext(photo.file_path)[1].lower()
+    if ext in ('.jpg', 'jpeg'):
+        file_path = photo.file_path[:-3] + 'mp4'
+        if not os.path.exists(file_path):
+            file_path = _get_thumbnail_path(photo_id, db, 'medium')[:-4] + '.mp4'
+    else:
+        file_path = photo.file_path[:-4] + 'MOV'
     file_size = os.path.getsize(file_path)
 
     # Determine media type (usually mp4 or mov)

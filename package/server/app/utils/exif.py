@@ -16,6 +16,10 @@ from typing import Dict, Any, Optional
 
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
+from pillow_heif import register_heif_opener
+# Register HEIF opener to enable HEIC/HEIF support in Pillow
+register_heif_opener()
+
 import json
 import reverse_geocoder as rg
 

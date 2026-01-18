@@ -79,7 +79,7 @@ async def handle_recognize_face(task_manager, task: Task, db: Session) -> Dict[s
 async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[str, Any]:
     try:
         cluster_service = FaceClusterService(db)
-        target_path = storage.get_preview_path(photo.id, db)
+        target_path = storage.get_preview_path(photo.id)
         if not os.path.exists(target_path):
             target_path = photo.file_path
             if not target_path or not os.path.exists(target_path):

@@ -33,7 +33,7 @@ async def handle_generate_thumbnail(task_manager, task: Task, db: Session):
     if not os.path.exists(photo.file_path):
         return {'status': 'failed', 'reason': 'file not found'}
 
-    storage_root = storage._get_storage_root(db)
+    storage_root = storage._get_storage_root()
     loop = asyncio.get_running_loop()
     
     res = await loop.run_in_executor(

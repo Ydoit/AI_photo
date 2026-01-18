@@ -89,7 +89,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
     try:
         # 1. Resolve file path
         # Prefer original file for OCR to get best quality
-        target_path = storage.get_preview_path(photo.id, db)
+        target_path = storage.get_preview_path(photo.id)
         if not os.path.exists(target_path):
             # Fallback to preview if original not available (unlikely for local)
             target_path = photo.file_path

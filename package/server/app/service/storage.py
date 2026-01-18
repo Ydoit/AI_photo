@@ -4,6 +4,10 @@ from uuid import UUID
 from typing import Optional
 from fastapi import UploadFile
 from PIL import Image
+from pillow_heif import register_heif_opener
+# Register HEIF opener to enable HEIC/HEIF support in Pillow
+register_heif_opener()
+
 import logging
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -17,14 +21,14 @@ except ImportError:
 # Global cache for storage root
 _STORAGE_ROOT_CACHE = None
 
-def _get_storage_root(db: Session = None) -> str:
+def _get_storage_root() -> str:
     global _STORAGE_ROOT_CACHE
-    
+
     # Get current config
     root = config_manager.config.storage.photo_storage_path
     if not root:
         root = 'uploads'
-        
+
     # Return cached if unchanged
     if _STORAGE_ROOT_CACHE == root:
         return _STORAGE_ROOT_CACHE
@@ -60,12 +64,12 @@ def _ensure_unique_path(dir_path: str, filename: str) -> str:
         idx += 1
     return candidate
 
-def save_upload_file(upload_file: UploadFile, file_id: UUID, db: Session) -> str:
+def save_upload_file(upload_file: UploadFile, file_id: UUID) -> str:
     ext = os.path.splitext(upload_file.filename)[1]
     now = datetime.now()
     year = f"{now.year:04d}"
     month = f"{now.month:02d}"
-    root = _get_storage_root(db)
+    root = _get_storage_root()
     base_dir = os.path.join(root, 'uploads', year, month)
     os.makedirs(base_dir, exist_ok=True)
     target_path = _ensure_unique_path(base_dir, upload_file.filename)
@@ -73,7 +77,7 @@ def save_upload_file(upload_file: UploadFile, file_id: UUID, db: Session) -> str
         shutil.copyfileobj(upload_file.file, buffer)
     return target_path
 
-def generate_video_thumbnail(file_path: str, file_id: UUID, db: Session):
+def generate_video_thumbnail(file_path: str, file_id: UUID):
     if cv2 is None:
         logging.warning("opencv-python not installed, skipping video thumbnail generation")
         return None
@@ -87,17 +91,17 @@ def generate_video_thumbnail(file_path: str, file_id: UUID, db: Session):
             return None
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(rgb_frame)
-        return _save_thumbnails(img, file_id, db)
+        return _save_thumbnails(img, file_id)
     except Exception as e:
         logging.error(f"Error generating video thumbnail for {file_path}: {e}")
     return None
 
-def _save_thumbnails(img: Image.Image, file_id: UUID, db: Session) -> str:
+def _save_thumbnails(img: Image.Image, file_id: UUID) -> str:
     if img.mode not in ('RGB', 'L'):
         img = img.convert('RGB')
     compact = str(file_id).replace('-', '')
     p1, p2 = compact[:2], compact[2:4]
-    root = _get_storage_root(db)
+    root = _get_storage_root()
     base = os.path.join(root, 'thumbnails', p1, p2)
     os.makedirs(base, exist_ok=True)
     m_path = os.path.join(base, f"{compact}.jpg")
@@ -118,27 +122,27 @@ def _save_thumbnails(img: Image.Image, file_id: UUID, db: Session) -> str:
     s.save(s_path, "JPEG", quality=t_qual)
     return m_path
 
-def get_preview_path(file_id: UUID, db: Session = None) -> Optional[str]:
+def get_preview_path(file_id: UUID) -> Optional[str]:
     """Get the absolute path to the preview image if it exists."""
     compact = str(file_id).replace('-', '')
     p1, p2 = compact[:2], compact[2:4]
-    root = _get_storage_root(db)
+    root = _get_storage_root()
     m_path = os.path.join(root, 'thumbnails', p1, p2, f"{compact}.jpg")
     if os.path.exists(m_path):
         return m_path
     return None
 
-def generate_thumbnail(file_path: str, file_id: UUID, db: Session, image_obj: Optional[Image.Image] = None):
+def generate_thumbnail(file_path: str, file_id: UUID, image_obj: Optional[Image.Image] = None):
     try:
         ext = os.path.splitext(file_path)[1].lower()
         if ext in ('.mp4', '.mov', '.avi', '.mkv', '.webm'):
-            return generate_video_thumbnail(file_path, file_id, db)
-        if ext in ('.png', '.jpg', '.jpeg', '.webp'):
+            return generate_video_thumbnail(file_path, file_id)
+        if ext in ('.png', '.jpg', '.jpeg', '.webp', '.heic'):
             if image_obj:
-                return _save_thumbnails(image_obj, file_id, db)
+                return _save_thumbnails(image_obj, file_id)
             else:
                 with Image.open(file_path) as img:
-                    return _save_thumbnails(img, file_id, db)
+                    return _save_thumbnails(img, file_id)
     except Exception as e:
         logging.error(f"Error generating thumbnail for {file_path}: {e}")
     return None
@@ -149,7 +153,7 @@ def get_file_size(file_path: str) -> int:
 def get_image_dimensions(file_path: str, image_obj: Optional[Image.Image] = None):
     try:
         ext = os.path.splitext(file_path)[1].lower()
-        if ext in ('.png', '.jpg', '.jpeg', '.webp'):
+        if ext in ('.png', '.jpg', '.jpeg', '.webp', '.heic'):
             if image_obj:
                 return image_obj.width, image_obj.height, None
             else:
@@ -172,11 +176,11 @@ def get_image_dimensions(file_path: str, image_obj: Optional[Image.Image] = None
         pass
     return None, None, None
 
-def delete_thumbnails(file_id: UUID, db: Session):
+def delete_thumbnails(file_id: UUID):
     try:
         compact = str(file_id).replace('-', '')
         p1, p2 = compact[:2], compact[2:4]
-        root = _get_storage_root(db)
+        root = _get_storage_root()
         base = os.path.join(root, 'thumbnails', p1, p2)
         m = os.path.join(base, f"{compact}.jpg")
         s = os.path.join(base, f"{compact}-thumb.jpg")
@@ -187,10 +191,10 @@ def delete_thumbnails(file_id: UUID, db: Session):
     except Exception as e:
         logging.error(f"Error deleting thumbnails for {file_id}: {e}")
 
-def delete_file(file_path: str, file_id: UUID, db: Session):
+def delete_file(file_path: str, file_id: UUID):
     try:
         if os.path.exists(file_path):
             os.remove(file_path)
-        delete_thumbnails(file_id, db)
+        delete_thumbnails(file_id)
     except Exception as e:
         logging.error(f"Error deleting file {file_path}: {e}")

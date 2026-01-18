@@ -6,13 +6,13 @@ from .base import LivePhotoParser
 class AndroidLivePhotoParser(LivePhotoParser):
     def is_supported(self, file_path: str) -> bool:
         ext = os.path.splitext(file_path)[1].lower()
-        return ext in ['.jpg', '.jpeg', '.mov', '.mp4']
+        return ext in ['.jpg', '.jpeg', '.mp4']
 
     def parse(self, file_path: str) -> Optional[str]:
         ext = os.path.splitext(file_path)[1].lower()
         if ext in ['.jpg', '.jpeg']:
             return self._parse_image(file_path)
-        elif ext in ['.mov', '.mp4']:
+        elif ext in ['.mp4']:
             return self._parse_video(file_path)
         return None
 

@@ -10,7 +10,6 @@ class LivePhotoService:
     def __init__(self):
         self.parsers: List[LivePhotoParser] = [
             AppleLivePhotoParser(),
-            AndroidLivePhotoParser(),
             VivoLivePhotoParser()
         ]
 

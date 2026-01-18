@@ -10,8 +10,6 @@ from app.db.models.image_vector import ImageVector
 from typing import Dict, Any, List
 from app.core.config_manager import config_manager
 from app.crud import tag as crud_tag
-from app.crud import crud_vector
-from PIL import Image
 
 from app.service import storage
 
@@ -82,7 +80,7 @@ async def handle_classify_image(task_manager, task: Task, db: Session) -> Dict[s
 
 async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[str, Any]:
     try:
-        target_path = storage.get_preview_path(photo.id, db)
+        target_path = storage.get_preview_path(photo.id)
         if not os.path.exists(target_path):
             target_path = photo.file_path
             if not target_path or not os.path.exists(target_path):

@@ -31,7 +31,7 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
     task_manager.scan_status['message'] = "Scanning folders..."
     scan_roots = task.payload.get('scan_roots')
     if not scan_roots:
-            root = storage._get_storage_root(db)
+            root = storage._get_storage_root()
             primary_uploads = os.path.join(root, 'uploads')
             external_dirs = config_manager.config.storage.external_directories
             scan_roots = [primary_uploads] + external_dirs
@@ -75,43 +75,40 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
                 is_exist = True
         if not is_exist:
             continue
+        file_path = os.path.normpath(p[0]).lower()
         if p[1] == FileType.live_photo:
-            if p[0].endswith('.jpg'):
-                live_photo_files.add(p[0])
-        elif p[0].endswith('.jpg') and (p[0][:-3] + 'mp4' in existing_files):
+            if file_path.endswith('.jpg'):
+                existing_files.add(p[0][:-3] + 'mp4')
+            elif file_path.endswith('.heic'):
+                existing_files.add(p[0][:-4] + 'MOV')
+        elif file_path.endswith('.jpg') and (p[0][:-3] + 'mp4' in existing_files):
             live_photo_to_add.add(p[0])
-        elif p[0].endswith('.mp4') and (p[0][:-4] + '.jpg' in existing_files):
+        elif file_path.endswith('.heic') and (p[0][:-4] + 'MOV' in existing_files):
+            live_photo_to_add.add(p[0])
+        elif file_path.endswith('.mp4') and (p[0][:-3] + 'jpg' in existing_files):
+            live_photo_to_add.add(p[0])
+        elif file_path.endswith('.mov') and (p[0][:-3] + 'HEIC' in existing_files):
             live_photo_to_add.add(p[0])
         existing_files.add(p[0])
-    print(existing_files)
     # Determine new and deleted
     new_files = files_on_disk - existing_files
     deleted_files = existing_files - files_on_disk
 
-    for lp in live_photo_files:
-        video_path = lp[:-3] + 'mp4'
-        if (lp not in files_on_disk) and (video_path not in files_on_disk):
-            deleted_files.add(lp)
-        elif (lp in files_on_disk) and (video_path not in files_on_disk):
-            deleted_files.add(lp)
-            new_files.add(lp)
-        elif (lp not in files_on_disk) and (video_path in files_on_disk):
-            deleted_files.add(lp)
-            new_files.add(video_path)
-        elif (lp in files_on_disk) and (video_path in files_on_disk):
-            new_files.remove(video_path)
     for lp in live_photo_to_add:
         if lp.endswith('.jpg'):
             deleted_files.add(lp[:-3] + 'mp4')
             new_files.add(lp[:-3] + 'mp4')
-        else:
+        elif lp.endswith('.mp4'):
             deleted_files.add(lp[:-3] + 'jpg')
             new_files.add(lp[:-3] + 'jpg')
+        if lp.endswith('.HEIC'):
+            deleted_files.add(lp[:-4] + 'MOV')
+            new_files.add(lp[:-4] + 'MOV')
+        elif lp.endswith('.MOV'):
+            deleted_files.add(lp[:-3] + 'HEIC')
+            new_files.add(lp[:-3] + 'HEIC')
         new_files.add(lp)
         deleted_files.add(lp)
-    # 1. 数据库里有实况图但是图片和视频都被删了
-    # 2. 数据库里有实况图但是图片被删了
-    # 3. 数据库里有实况图但是视频被删了
 
     logging.info(f"Scan result: {len(new_files)} new, {len(deleted_files)} deleted")
     task_manager.scan_status['message'] = f"Found {len(new_files)} new, {len(deleted_files)} deleted"
@@ -130,7 +127,6 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
         grouped_files[key][ext.lower()] = fp
 
     processed_paths = set()
-
     for key, files in grouped_files.items():
         image_path = None
         video_path = None
@@ -152,20 +148,8 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
         final_video_path = None
 
         try:
-            # Logic 1: Apple Live Photo (HEIC based)
-            # If it's a HEIC file, we trust the metadata if present.
-            if image_path and image_path.lower().endswith('.heic'):
-                cid = await loop.run_in_executor(None, live_photo_service.get_content_identifier, image_path)
-                if cid:
-                    is_live = True
-                    # If we have a video file (e.g. .mov), we associate it, but it's not strictly required for detection
-                    # per user instruction "Apple is single .HEIC file"
-                    if video_path:
-                        final_video_path = video_path
-
-            # Logic 2: Android/Other Live Photo (Pair based)
             # Must have both Image and Video, and they must share the Content Identifier
-            elif image_path and video_path:
+            if image_path and video_path:
                  def check_live_pair(img, vid):
                      cid1 = live_photo_service.get_content_identifier(img)
                      cid2 = live_photo_service.get_content_identifier(vid)
@@ -218,7 +202,7 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
             chunk = deleted_list[i:i+chunk_size]
             photos_to_delete = db.query(Photo).filter(Photo.file_path.in_(chunk)).all()
             for ph in photos_to_delete:
-                storage.delete_thumbnails(ph.id, db)
+                storage.delete_thumbnails(ph.id)
                 db.delete(ph)
                 db.add(IndexLog(action='deleted', file_path=ph.file_path, photo_id=ph.id))
             db.commit()
