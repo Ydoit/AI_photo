@@ -48,3 +48,6 @@ class TrainTicket(Base):
     comments = Column(Text, nullable=True, comment="备注信息")
     created_at = Column(DateTime, default=datetime.now, comment="创建时间")
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    
+    # 新增字段：关联照片ID
+    photo_id = Column(String(36), nullable=True, comment="关联照片ID", index=True)

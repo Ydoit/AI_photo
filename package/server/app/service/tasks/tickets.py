@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 import aiohttp
 from aiohttp import FormData
 from sqlalchemy.orm import Session
@@ -13,6 +14,79 @@ from app.service import storage
 import re
 
 logger = logging.getLogger(__name__)
+
+async def get_schedule_info(train_code: str) -> Dict[str, Any]:
+    """获取火车站车信息
+    {
+        "code": 200,
+        "msg": "操作成功",
+        "data": {
+            "total": 0,
+            "page": 0,
+            "page_size": 0,
+            "total_page": 0,
+            "list": [
+            {
+                "schedule_id": 0,
+                "train_no": "string",
+                "train_code": "string",
+                "station_telecode": "string",
+                "station_name": "string",
+                "sequence": 0,
+                "arrive_day_diff": 0,
+                "arrival_time": "15:03:23.627Z",
+                "departure_time": "15:03:23.627Z",
+                "stop_duration": 0,
+                "accumulated_mileage": 0,
+                "running_time": 0,
+                "is_departure": 0,
+                "is_arrival": 0
+            }
+            ]
+        }
+    }
+    """
+    url = f"http://127.0.0.1:8000/railway/train-schedules"
+    params = {"train_code": train_code}
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, params=params) as resp:
+            if resp.status == 200:
+                return await resp.json()
+            logger.error(f"Failed to get schedule info for train {train_code}: {resp.status}")
+            return None
+
+# 计算车票里程和时间
+async def calculate_ticket_mileage_and_time(ticket: TrainTicket) -> Dict[str, Any]:
+    """计算车票里程和时间"""
+    total_mileage = 0
+    total_time = 0
+    stop_stations = []
+    departure_station = ticket.departure_station
+    arrival_station = ticket.arrival_station
+
+    schedule_json = await get_schedule_info(ticket.train_code)
+    print(schedule_json)
+    if schedule_json and schedule_json.get('code') == 200:
+        schedule = schedule_json.get('data', {}).get('list', [])
+        # 计算出发站和到达站之间的距离和时间
+        departure_index = next((i for i, s in enumerate(schedule) if s['station_name'] == departure_station), None)
+        arrival_index = next((i for i, s in enumerate(schedule) if s['station_name'] == arrival_station), None)
+        if departure_index is None or arrival_index is None:
+            logger.error(f"Departure or arrival station not found in schedule for train {ticket.train_code}")
+            return {'total_mileage': 0, 'total_time': 0, 'stop_stations': []}
+        for i in range(departure_index, arrival_index):
+            total_mileage += schedule[i + 1]['accumulated_mileage'] - schedule[i]['accumulated_mileage']
+            total_time += (datetime.strptime(schedule[i + 1]['departure_time'], '%H:%M:%S') -
+                           datetime.strptime(schedule[i]['arrival_time'], '%H:%M:%S')).seconds // 60
+            stop_stations.append({
+                'station_telecode': schedule[i]['station_telecode'],
+                'station_name': schedule[i]['station_name'],
+                'arrival_time': schedule[i]['arrival_time'],
+                'departure_time': schedule[i]['departure_time'],
+            })
+    return {'total_mileage': total_mileage, 'total_time': total_time, 'stop_stations': stop_stations}
+
+
 
 async def handle_ticket_task(task_manager, task: Task, db: Session) -> Dict[str, Any]:
     try:
@@ -82,6 +156,9 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
             target_path = photo.file_path
             if not target_path or not os.path.exists(target_path):
                 return {'status': 'failed', 'error': 'file not found'}
+        # 删除photo对应的车票
+        db.query(TrainTicket).filter(TrainTicket.photo_id == str(photo.id)).delete()
+        db.commit()
 
         async with aiohttp.ClientSession() as session:
             with open(target_path, 'rb') as f:
@@ -116,8 +193,11 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                                     "%Y年%m月%d日 %H:%M",
                                     "%Y年%m月%d日%H:%M",
                                     "%Y-%m-%d %H:%M",
-                                    "%Y/%m/%d %H:%M"
+                                    "%Y/%m/%d %H:%M",
+                                    "%m月%d日 %H:%M",
                                 ]
+                                # 如果dt_str没有年份""%m月%d日 %H:%M""，默认使用photo.photo_time的年份
+                                
                                 for fmt in formats:
                                     try:
                                         dt = datetime.strptime(dt_str, fmt)
@@ -145,7 +225,6 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                                 if existing:
                                     logger.info(f"Duplicate ticket found: {t_info['train_code']} {dt}")
                                     continue
-
                                 # Create Ticket
                                 new_ticket = TrainTicket(
                                     train_code=t_info['train_code'],
@@ -162,8 +241,15 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                                     total_mileage=0,
                                     total_running_time=0,
                                     stop_stations="[]",
-                                    comments=f"自动识别自图片: {photo.filename}"
+                                    comments=f"自动识别自图片: {photo.filename}",
+                                    photo_id=str(photo.id)
                                 )
+                                # Calculate mileage and time
+                                ticket_info = await calculate_ticket_mileage_and_time(new_ticket)
+                                print(ticket_info)
+                                new_ticket.total_mileage = ticket_info['total_mileage']
+                                new_ticket.total_running_time = ticket_info['total_time']
+                                new_ticket.stop_stations = json.dumps(ticket_info['stop_stations'], ensure_ascii=False)
                                 db.add(new_ticket)
                                 db.flush()
                                 t_info['saved_id'] = new_ticket.id
