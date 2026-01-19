@@ -43,6 +43,18 @@
       </ul>
     </section>
 
+    <!-- 版本信息 -->
+    <section class="space-y-4">
+      <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">版本信息</h2>
+      <div class="flex items-center gap-4 text-slate-600 dark:text-slate-300">
+        <span class="font-semibold">当前版本：</span>
+        <span>v{{ currentVersion }}</span>
+        <el-button type="primary" size="small" :loading="checking" @click="checkUpdate">
+          检查更新
+        </el-button>
+      </div>
+    </section>
+
     <!-- 联系方式 -->
     <section class="space-y-4">
       <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">联系方式</h2>
@@ -85,7 +97,68 @@
   </div>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { ElMessageBox, ElMessage } from 'element-plus'
+import { systemApi } from '@/api/system'
+
+const currentVersion = ref('0.0.0') // Default placeholder
+const checking = ref(false)
+
+onMounted(async () => {
+  try {
+    const res = await systemApi.getVersion()
+    currentVersion.value = res.version
+  } catch (e) {
+    console.error('Failed to fetch version', e)
+  }
+})
+
+const checkUpdate = async () => {
+  checking.value = true
+  try {
+    const data = await systemApi.checkUpdate()
+    
+    // Update current version in case it changed or was not loaded
+    if (data.current_version) {
+      currentVersion.value = data.current_version
+    }
+
+    if (data.has_update) {
+       ElMessageBox.confirm(
+        `
+        <div class="text-left">
+          <p class="font-bold mb-2">发现新版本: ${data.latest_version}</p>
+          <div class="mb-2 font-semibold">更新内容：</div>
+          <pre class="whitespace-pre-wrap text-sm bg-gray-50 dark:bg-gray-800 p-2 rounded text-slate-600 dark:text-slate-300 font-sans">${data.update_info || '无详细信息'}</pre>
+        </div>
+        `,
+        '检查更新',
+        {
+          dangerouslyUseHTMLString: true,
+          confirmButtonText: '前往下载',
+          cancelButtonText: '暂不更新',
+          type: 'info',
+          center: true
+        }
+       ).then(() => {
+          if (data.download_url) {
+            window.open(data.download_url, '_blank')
+          } else {
+            window.open('https://trailsnap.cn', '_blank')
+          }
+       }).catch(() => {})
+    } else {
+      ElMessage.success('当前已是最新版本')
+    }
+  } catch (error) {
+    ElMessage.error('检查更新失败，请稍后重试')
+    console.error(error)
+  } finally {
+    checking.value = false
+  }
+}
+</script>
 
 <style scoped>
 .about-page {

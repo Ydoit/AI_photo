@@ -169,3 +169,4 @@ class ConfigManager:
 
 # Global instance
 config_manager = ConfigManager()
+VERSION = "0.1.1"

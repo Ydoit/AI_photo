@@ -20,7 +20,6 @@ const ClassificationDetail = () => import('@/views/album/intelligent-classificat
 const SearchResult = () => import('@/views/SearchResult.vue');
 
 const NotFound = () => import('@/views/NotFound.vue');
-const AboutPage = () => import('@/views/AboutPage.vue');
 
 // 路由配置：TS 类型为 RouteRecordRaw 数组，强制类型校验
 const routes: RouteRecordRaw[] = [
@@ -45,7 +44,6 @@ const routes: RouteRecordRaw[] = [
       { path: '/statistics', name: 'Statistics', component: StatisticsPage, meta: { title: '统计' } },
       { path: '/more', name: 'More', component: More, meta: { title: '更多' } },
       { path: '/settings', name: 'Settings', component: Settings, meta: { title: '设置' } },
-      { path: '/about', name: 'About', component: AboutPage, meta: { title: '关于' } }, // 新增 About 路由
     ],
   },
 
