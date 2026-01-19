@@ -35,12 +35,13 @@ def _fix_ocr_text(s):
 _STATION_INTERFERENCE = {
     "上铺", "中铺", "下铺",
     "限乘", "当日", "当次",
-    "车", "号", "开", "元", "报销", "使用",
+    "报销", "使用",
     "改签", "退票", "变更", "变更到", "变更到站",
-    "复制", "订单", "订单号", "已支付",
-    "学生票", "非现金", "线上购买",
+    "复制", "订单", "订单号", "已支付", "取票号",
+    "学生票", "非现金", "线上购买", "交回", "须交回",
     "餐饮", "特产", "订酒店", "租车", "约车",
-    "经停", "经停站"
+     "经停", "经停站", "检票口", "检票", "前往",
+     "购票成功", "抢票成功", "成功", "以车"
 }
 
 
@@ -52,7 +53,7 @@ def _is_valid_station_name(name: str) -> bool:
     if not name:
         return False
     name = name.strip()
-    if not (2 <= len(name) <= 8):
+    if not (1 <= len(name) <= 8):
         return False
     if not re.fullmatch(r'[\u4e00-\u9fa5]+', name):
         return False
@@ -220,9 +221,9 @@ def _post_fix_arrival_station(ticket_info: dict, ocr_texts: list):
             stations.append(stripped); seen.add(stripped)
 
     # 方向站优先（不改变旧行为，只是排序优先级）
-    def _rank(s: str) -> int:
-        return 0 if s.endswith(("东", "西", "南", "北")) else 1
-    stations.sort(key=_rank)
+    # def _rank(s: str) -> int:
+    #     return 0 if s.endswith(("东", "西", "南", "北")) else 1
+    # stations.sort(key=_rank)
 
     # 填充 dep/arr
     dep = ticket_info.get("departure_station", "")
@@ -251,7 +252,9 @@ _NAME_BLOCKLIST_SUBSTR = {
     "仅供报销", "报销", "凭证", "遗失", "不补", "退票", "改签",
     "检票", "限乘", "当日", "当次", "中途下车失效","和谐号","复兴号",
     "买票请到", "请到", "12306", "95306","经停信息","成人票",
-    "车站", "售", "出发", "到达","复制", "已支付", "学生票", "非现金支付", "线上购买"
+    "车站", "售", "出发", "到达","复制", "已支付", "学生票", "非现金支付", "线上购买",
+    "靠窗", "过道", "购票成功", "抢票成功", "返程", "加速包", "公众号", "行程", "积分", "价值", "换座", "申报", "大屏",
+    "抢票", "专属", "关注", "分享", "祝您", "出行", "愉快", "返现"
 }
 
 
@@ -337,6 +340,7 @@ def _extract_tail_name_from_masked_id_block(txt: str) -> str:
 _SEAT_TYPE_KEYWORDS = [
         "无座", "站票",'新空调硬座', '新空调硬卧', '新空调软座', '新空调软卧',
     "商务座", "特等座", "一等座", "二等座", "硬座", "软座", "硬卧", "软卧",
+    "二等卧", "二等硬", "一等硬", "一等卧", "等座",
 ]
 
 
@@ -375,16 +379,34 @@ def _is_price_fragment(s: str) -> bool:
 
 # ============== 新增：提取 月日 / 时间 ==============
 def _extract_month_day(txt: str):
-    """从 '1月9日（周五）' / '01月09日' 等提取 (mm, dd)"""
+    """从 '1月9日（周五）' / '01月09日' / '01-28周二' 等提取 (mm, dd)"""
     if not txt:
         return None
     s = _fix_ocr_text(txt).strip()
+    
+    # 1. 标准格式：X月X日
     m = re.search(r'(\d{1,2})\s*月\s*(\d{1,2})\s*日', s)
-    if not m:
-        return None
-    mm = m.group(1).zfill(2)
-    dd = m.group(2).zfill(2)
-    return (mm, dd)
+    if m:
+        mm = m.group(1).zfill(2)
+        dd = m.group(2).zfill(2)
+        return (mm, dd)
+    
+    # 2. 短横线/斜杠格式：01-28 或 01/28
+    # 通常后面会跟 '周' (01-28周二) 或者只是单纯的日期
+    # 增加校验防止误匹配非日期数字
+    m2 = re.search(r'(?<!\d)(\d{1,2})\s*[-/]\s*(\d{1,2})(?!\d)', s)
+    if m2:
+        mm = m2.group(1).zfill(2)
+        dd = m2.group(2).zfill(2)
+        try:
+            imonth = int(mm)
+            iday = int(dd)
+            if 1 <= imonth <= 12 and 1 <= iday <= 31:
+                return (mm, dd)
+        except:
+            pass
+            
+    return None
 
 def _extract_hhmm(txt: str) -> str:
     """从 '17:12' / '18：18' 提取 HH:MM"""
@@ -400,19 +422,31 @@ def _extract_hhmm(txt: str) -> str:
 def _select_name_by_proximity(ocr_texts: list, station_name_set: set, ticket_info: dict) -> str:
     """
     额外建议功能：
-    若存在证件号碎片/星号掩码块，则从其附近挑选最像姓名的纯中文块。
+    若存在证件号碎片/星号掩码块/身份证标签，则从其附近挑选最像姓名的纯中文块。
     """
     if not ocr_texts:
         return ""
 
-    id_indices = [i for i, t in enumerate(ocr_texts) if _is_id_like_text(t)]
-    if not id_indices:
+    # 1. 寻找锚点：ID-like 文本 或 明确的ID标签
+    anchors = []
+    for i, t in enumerate(ocr_texts):
+        if _is_id_like_text(t):
+            anchors.append(i)
+        elif "身份证" in t or "证件" in t:
+             anchors.append(i)
+    
+    if not anchors:
         return ""
 
     candidates = []
     for i, t in enumerate(ocr_texts):
+        # 排除锚点本身作为姓名候选
+        if i in anchors:
+            continue
+            
         # 1) 纯中文块候选
-        if _is_name_candidate_text(t, ticket_info, station_name_set):
+        is_cand = _is_name_candidate_text(t, ticket_info, station_name_set)
+        if is_cand:
             candidates.append((i, t.strip()))
             continue
 
@@ -424,11 +458,11 @@ def _select_name_by_proximity(ocr_texts: list, station_name_set: set, ticket_inf
     if not candidates:
         return ""
 
-    # 选择距离任意 id-like 块最近的候选姓名
+    # 选择距离任意 anchor 最近的候选姓名
     best_name = ""
     best_dist = 10**9
     for ci, name in candidates:
-        dist = min(abs(ci - ii) for ii in id_indices)
+        dist = min(abs(ci - ai) for ai in anchors)
         if dist < best_dist:
             best_dist = dist
             best_name = name
@@ -440,11 +474,10 @@ def _select_name_by_proximity(ocr_texts: list, station_name_set: set, ticket_inf
 def _build_departure_datetime(ocr_texts: list, polys: list, anchor_y=None) -> str:
     """
     只输出出发时间：例如 '01月09日 17:12' 或 '2025年01月09日 17:12'
-    规则：
-    - 日期：优先选离 anchor_y 最近的 'X月Y日'
-    - 时间：在 anchor_y 附近的时间块里，选“出发侧”的那个：
-        * 若整体横向分布更明显：取最靠左的时间
-        * 若整体纵向分布更明显（比如旋转90°）：取最靠上的时间
+    策略优化：
+    1. 收集所有可能的 日期(md_cands) 和 时间(time_cands)。
+    2. 如果有 anchor_y (车次行)，优先选离 anchor_y 最近的组合。
+    3. 如果没有 anchor_y 或 距离太远，则选 彼此距离最近 的组合 (Date + Time)。
     """
     if not ocr_texts or not polys:
         return ""
@@ -459,59 +492,112 @@ def _build_departure_datetime(ocr_texts: list, polys: list, anchor_y=None) -> st
             break
 
     # 收集 月日、时间候选（带坐标）
-    md_cands = []    # (dist, mm, dd)
-    time_cands = []  # (cx, cy, hhmm)
+    md_cands = []    # (index, cx, cy, mm, dd)
+    time_cands = []  # (index, cx, cy, hhmm)
 
-    for t, poly in zip(ocr_texts, polys):
+    for i, (t, poly) in enumerate(zip(ocr_texts, polys)):
         cx, cy = _poly_center(poly)
-
-        # 只在车次所在行附近找（放宽一点，避免OCR偏移）
-        if anchor_y is not None and abs(cy - anchor_y) > 140:
-            continue
 
         md = _extract_month_day(t)
         if md:
             mm, dd = md
-            dist = abs(cy - anchor_y) if anchor_y is not None else 0
-            md_cands.append((dist, mm, dd))
+            md_cands.append((i, cx, cy, mm, dd))
 
         hhmm = _extract_hhmm(t)
         if hhmm:
-            time_cands.append((cx, cy, hhmm))
+            time_cands.append((i, cx, cy, hhmm))
 
-    # 选日期
-    mm = dd = ""
-    if md_cands:
-        md_cands.sort(key=lambda x: x[0])
-        _, mm, dd = md_cands[0]
+    if not md_cands and not time_cands:
+        return ""
 
-    # 选“出发时间”
-    dep_t = ""
-    if time_cands:
-        xs = [x for x, _, _ in time_cands]
-        ys = [y for _, y, _ in time_cands]
-        range_x = max(xs) - min(xs) if len(xs) > 1 else 0
-        range_y = max(ys) - min(ys) if len(ys) > 1 else 0
+    # 辅助：计算两个候选的距离 (曼哈顿距离 or 欧氏距离? 这里简单用 abs dy + abs dx 权重)
+    def _dist(c1, c2):
+        return abs(c1[2] - c2[2]) + abs(c1[1] - c2[1]) * 0.5
 
-        if range_x >= range_y:
-            # 横向为主：最靠左的时间就是出发
-            dep_t = min(time_cands, key=lambda t: t[0])[2]
-        else:
-            # 纵向为主：最靠上的时间就是出发
-            dep_t = min(time_cands, key=lambda t: t[1])[2]
+    best_mm, best_dd = "", ""
+    best_time = ""
 
-    # 拼接输出（你要的就是 01月09日 17:12 这种）
+    # 情况A：有 anchor_y，尝试找 anchor_y 附近的
+    # 但是要注意：有些票面 日期在最上面，车次在中间，相距很远。
+    # 所以 anchor_y 只是一个参考，不能作为硬过滤。
+    
+    # 策略：
+    # 1. 如果有 md_cands 和 time_cands，尝试配对，找“彼此最近”且“符合阅读顺序”的对。
+    # 2. 如果只有 md_cands，选离 anchor_y 最近的，或者最靠上的。
+    # 3. 如果只有 time_cands，选离 anchor_y 最近的（如果是出发时间，通常和车次较近，或者在最左/最上）。
+
+    if md_cands and time_cands:
+        # 寻找最佳配对
+        best_pair_score = 10**9
+        best_pair = None
+
+        for md in md_cands:
+            for tm in time_cands:
+                # 1. 紧密度 (Tightness): Date 和 Time 之间的距离
+                d_tight = _dist(md, tm)
+                
+                # 2. 位置分 (Position): 该组合在页面上的位置 (偏好 Top-Left)
+                # 优先选择页面左上方的“日期+时间”组合作为出发时间
+                avg_x = (md[1] + tm[1]) / 2
+                avg_y = (md[2] + tm[2]) / 2
+                
+                # 综合分 = 紧密度 + 位置惩罚
+                # 系数 0.1 保证位置影响足够打破 Tie，但不会让相距很远的组合仅仅因为靠左而被选中
+                score = d_tight + (avg_x + avg_y) * 0.1
+                
+                if score < best_pair_score:
+                    best_pair_score = score
+                    best_pair = (md, tm)
+        
+        if best_pair:
+            best_mm, best_dd = best_pair[0][3], best_pair[0][4]
+            best_time = best_pair[1][3]
+            
+    else:
+        # 只有其中一种
+        if md_cands:
+            # 优先选离 anchor_y 最近的
+            if anchor_y is not None:
+                md_cands.sort(key=lambda x: abs(x[2] - anchor_y))
+            else:
+                # 否则选最靠上的
+                md_cands.sort(key=lambda x: x[2])
+            best_mm, best_dd = md_cands[0][3], md_cands[0][4]
+
+        if time_cands:
+            # 时间：如果有多个时间（出发、到达），通常出发在左/上
+            # 简单策略：按 Geometry 排序
+            # 1. 过滤掉特别远的（如果 anchor_y 存在且很强相关）- 暂时不滤
+            
+            # 区分出发/到达：
+            # 如果是横排：左边是出发
+            # 如果是竖排：上面是出发
+            # 计算分布范围
+            xs = [x[1] for x in time_cands]
+            ys = [x[2] for x in time_cands]
+            range_x = max(xs) - min(xs) if len(xs) > 1 else 0
+            range_y = max(ys) - min(ys) if len(ys) > 1 else 0
+
+            if range_x >= range_y:
+                 # 横向：选最左
+                 best_cand = min(time_cands, key=lambda x: x[1])
+            else:
+                 # 纵向：选最上
+                 best_cand = min(time_cands, key=lambda x: x[2])
+            best_time = best_cand[3]
+
+    # 拼接输出
     date_part = ""
-    if mm and dd:
-        date_part = f"{mm}月{dd}日"
+    if best_mm and best_dd:
+        date_part = f"{best_mm}月{best_dd}日"
         if year:
             date_part = f"{year}年{date_part}"
 
-    if date_part and dep_t:
-        return f"{date_part} {dep_t}"
+    if date_part and best_time:
+        return f"{date_part} {best_time}"
     if date_part:
         return date_part
-    return dep_t
+    return best_time
 
 
 def parse_ticket_info(ocr_texts, polys):
@@ -564,7 +650,7 @@ def parse_ticket_info(ocr_texts, polys):
     for idx, txt in enumerate(visual_texts):
         orig_idx = visual_order_indices[idx]  # 原始索引，用于取 polys
         fixed_txt = _fix_ocr_text(txt)
-        for match in re.finditer(r'([\u4e00-\u9fa5]{2,6})站', txt):
+        for match in re.finditer(r'([\u4e00-\u9fa5]{1,6})站', txt):
             name = match.group(1)
             if not any(w in name for w in interference):
                 # 获取该文本块的原始 poly，计算 x 中心
@@ -691,14 +777,14 @@ def parse_ticket_info(ocr_texts, polys):
             station_name_set.add(nn)
             station_name_set.add(nn + "站")
 
-    has_id_like = any(_is_id_like_text(t) for t in ocr_texts)
+    has_id_like = any(_is_id_like_text(t) or "身份证" in t or "证件" in t for t in ocr_texts)
 
     # 遍历每个独立文本块，逐个匹配对应字段
     for idx, txt in enumerate(ocr_texts):
         if not ticket_info["train_code"] or not (ticket_info["departure_station"] and ticket_info["arrival_station"]):
             # 1. 查找所有“XX站”车站及其位置
             stations_in_txt = []
-            for match in re.finditer(r'([\u4e00-\u9fa5]{2,6})站', txt):
+            for match in re.finditer(r'([\u4e00-\u9fa5]{1,6})站', txt):
                 name = match.group(1)
                 if not any(w in name for w in _STATION_INTERFERENCE):
                     stations_in_txt.append((name, match.start(), match.end()))
@@ -953,10 +1039,10 @@ def parse_ticket_info(ocr_texts, polys):
 
         # 4. 车厢号+座位号+铺位类型匹配（重点优化：同一文本块拆分多个字段）
         if not (ticket_info["carriage"] and ticket_info["seat_num"] and ticket_info["berth_type"]):
-            # 匹配格式：数字车+数字+字母号+铺位类型（如09车14F号上铺、3车02号中铺）
+            # 匹配格式：数字车+数字+字母号+铺位类型（如09车14F号上铺、3车02号中铺、12车厢009座中铺）
             # combo_match = re.search(r'(\d+)车(\d+[A-F]?)号(上铺|中铺|下铺)?', txt)
-            # 车厢+座位+铺位类型（匹配空白变体：上\s*铺 等）
-            combo_match = re.search(r'(\d{1,2})\s*车\s*(\d{1,2}\s*[A-Fa-f]?)\s*号\s*((?:上\s*铺)|(?:中\s*铺)|(?:下\s*铺))?', txt)
+            # 车厢+座位+铺位类型（匹配空白变体：上\s*铺 等，支持 '车/车厢' 和 '号/座'）
+            combo_match = re.search(r'(\d{1,2})\s*(?:车|车厢)\s*(\d{1,3}\s*[A-Fa-f]?)\s*(?:号|座)?\s*((?:上\s*铺)|(?:中\s*铺)|(?:下\s*铺))?', txt)
             if combo_match:
                 # 拆分车厢号、座位号、铺位类型
                 if not ticket_info["seat_type"]:
@@ -1072,14 +1158,17 @@ def parse_ticket_info(ocr_texts, polys):
             if m_berth:
                 ticket_info["berth_type"] = re.sub(r'\s+', '', m_berth.group(1))
                 logging.debug("ticket_parser.parse_ticket_info: single berth_type=%s from txt=%s", ticket_info["berth_type"], txt)
-                continue
+                # continue  <-- 移除continue，以便后续还能匹配 seat_type (如 "K154 | 硬卧中铺")
 
         # 8. 票价匹配（处理价格被分割的情况，如 ['￥443.', '5元']）
         if not ticket_info["price"]:
             s = txt.strip()
-
-            # (0) 折扣块直接跳过，避免把 6.6 折当成票价
-            if _is_discount_block(s):
+            
+            # (0) 折扣块/价值积分块直接跳过
+            # 如果含有"价值"，说明是积分价值而非票价
+            if "价值" in s:
+                pass
+            elif _is_discount_block(s):
                 pass
             else:
                 # (1) 先尝试当前块单独取价（最优先）
@@ -1123,9 +1212,7 @@ def parse_ticket_info(ocr_texts, polys):
 
         # 9. 座位类型匹配（如新车空调硬卧）
         if not ticket_info["seat_type"]:
-            seat_types = ['新空调硬座', '新空调硬卧', '新空调软座', '新空调软卧',"一等座", "二等座", "商务座", "特等座", "硬座", "软座", "硬卧",
-                          "软卧", "二等卧", "二等硬", "一等硬", "一等卧"]
-            for seat_type in seat_types:
+            for seat_type in _SEAT_TYPE_KEYWORDS:
                 if seat_type in txt:
                     ticket_info["seat_type"] = seat_type
                     break
