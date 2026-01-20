@@ -196,14 +196,15 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                                     "%Y/%m/%d %H:%M",
                                     "%m月%d日 %H:%M",
                                 ]
-                                # 如果dt_str没有年份""%m月%d日 %H:%M""，默认使用photo.photo_time的年份
-                                
                                 for fmt in formats:
                                     try:
                                         dt = datetime.strptime(dt_str, fmt)
                                         break
                                     except ValueError:
                                         continue
+                                # 如果dt_str没有年份""%m月%d日 %H:%M""，默认使用photo.photo_time的年份
+                                if dt.year == 1900:
+                                    dt = dt.replace(year=photo.photo_time.year)
                                 if not dt:
                                     logger.warning(f"Skipping ticket due to invalid datetime: {dt_str}")
                                     continue
