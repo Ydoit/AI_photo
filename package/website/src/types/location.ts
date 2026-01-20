@@ -18,6 +18,7 @@ export interface LocationStatistics {
 
 export interface Scene {
   id: string
+  is_custom: boolean
   name: string
   description?: string
   level?: number
@@ -26,7 +27,7 @@ export interface Scene {
   longitude?: number
   radius?: number
   polygon?: number[][]
-  is_custom?: boolean
+  photo_count?: number
 }
 
 export interface SceneCreate {

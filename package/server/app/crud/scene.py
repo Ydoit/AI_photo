@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from app.db.models.scene import Scene
 from app.db.models.photo_metadata import PhotoMetadata
 from app.schemas.scene import SceneCreate, SceneUpdate
@@ -76,7 +77,20 @@ def create_scene(db: Session, scene: SceneCreate):
     return db_scene
 
 def get_scenes(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Scene).offset(skip).limit(limit).all()
+    results = db.query(
+        Scene,
+        func.count(PhotoMetadata.photo_id).label("photo_count")
+    ).outerjoin(
+        PhotoMetadata, Scene.id == PhotoMetadata.scene_id
+    ).group_by(
+        Scene.id
+    ).offset(skip).limit(limit).all()
+    
+    scenes = []
+    for scene, count in results:
+        scene.photo_count = count
+        scenes.append(scene)
+    return scenes
 
 def get_scene(db: Session, scene_id: UUID):
     return db.query(Scene).filter(Scene.id == scene_id).first()

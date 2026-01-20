@@ -73,14 +73,20 @@ const initMap = () => {
   map.value.enableScrollWheelZoom()
 }
 
+const scenesData = ref<any[]>([])
+
 const loadContent = async () => {
   // Remove listeners first to avoid conflicts
   if (map.value) {
       map.value.removeEventListener('moveend', updateClusters)
       map.value.removeEventListener('zoomend', updateClusters)
+      map.value.removeEventListener('zoomend', renderScenes)
   }
 
   if (level.value === 'scene') {
+    if (map.value) {
+        map.value.addEventListener('zoomend', renderScenes)
+    }
     await loadScenes()
   } else {
     // Add listeners for clusters
@@ -95,67 +101,18 @@ const loadContent = async () => {
 const loadScenes = async () => {
   loading.value = true
   try {
-    const scenes = await locationService.getScenesList()
+    scenesData.value = await locationService.getScenesList()
     
-    if (scenes.length === 0) {
+    if (scenesData.value.length === 0) {
       ElMessage.info('暂无景区数据')
       return
     }
 
-    scenes.forEach((scene: any) => {
-      // Draw Polygon if exists
-      if (scene.polygon && scene.polygon.length > 0) {
-        const points = scene.polygon.map((p: any) => new T.LngLat(p[1], p[0]))
-        const polygon = new T.Polygon(points, {
-          color: "#3b82f6", 
-          weight: 3, 
-          opacity: 0.8, 
-          fillColor: "#3b82f6", 
-          fillOpacity: 0.2
-        })
-        map.value.addOverLay(polygon)
-        
-        // Label for polygon
-        const center = points[0] // Simplified center
-        const label = new T.Label({
-          text: `<div class="px-2 py-1 bg-white/90 rounded shadow text-sm font-medium text-blue-600">${scene.name}</div>`,
-          position: center,
-          offset: new T.Point(0, 0)
-        })
-        label.setBackgroundColor("transparent")
-        label.setBorderLine(0)
-        map.value.addOverLay(label)
-
-        const handleClick = () => goToScene(scene.name)
-        polygon.addEventListener('click', handleClick)
-        label.addEventListener('click', handleClick)
-
-      } else if (scene.latitude && scene.longitude) {
-        // Draw Marker
-        const pt = new T.LngLat(scene.longitude, scene.latitude)
-        const marker = new T.Marker(pt)
-        map.value.addOverLay(marker)
-        
-        const label = new T.Label({
-          text: `<div class="px-2 py-1 bg-white/90 rounded shadow text-sm font-medium text-gray-800">${scene.name}</div>`,
-          position: pt,
-          offset: new T.Point(0, -25)
-        })
-        label.setBackgroundColor("transparent")
-        label.setBorderLine(0)
-        map.value.addOverLay(label)
-
-        const handleClick = () => goToScene(scene.name)
-        marker.addEventListener('click', handleClick)
-        label.addEventListener('click', handleClick)
-      }
-    })
+    renderScenes()
     
     // Fit view to scenes if any
-    // T.Map doesn't have setViewport for multiple points easily accessible without iterating bounds, 
-    // skipping for now or just center on first one
-    if (scenes.length > 0) {
-       const first = scenes[0]
+    if (scenesData.value.length > 0) {
+       const first = scenesData.value[0]
        if (first.latitude && first.longitude) {
            map.value.panTo(new T.LngLat(first.longitude, first.latitude))
        }
@@ -166,6 +123,86 @@ const loadScenes = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const renderScenes = () => {
+  if (!map.value || !scenesData.value) return
+  map.value.clearOverLays()
+
+  const zoom = map.value.getZoom()
+  const showPolygon = zoom >= 12
+
+  scenesData.value.forEach((scene: any) => {
+    const hasPhotos = scene.photo_count && scene.photo_count > 0
+    const hasPolygon = scene.polygon && scene.polygon.length > 0
+    
+    // Determine center point
+    let centerPt = null
+    if (scene.latitude && scene.longitude) {
+        centerPt = new T.LngLat(scene.longitude, scene.latitude)
+    } else if (hasPolygon) {
+        centerPt = new T.LngLat(scene.polygon[0][1], scene.polygon[0][0])
+    }
+    
+    if (!centerPt) return
+
+    const createLabel = (position: any, offset: any) => {
+      const label = new T.Label({
+        text: `<div class="px-2 py-1 bg-white/90 rounded shadow text-sm font-medium ${hasPhotos ? 'text-blue-600' : 'text-gray-600'}">${scene.name}</div>`,
+        position: position,
+        offset: offset
+      })
+      label.setBackgroundColor("transparent")
+      label.setBorderLine(0)
+      return label
+    }
+
+    const handleClick = () => goToScene(scene.name)
+
+    // Always draw Marker
+    const marker = new T.Marker(centerPt)
+    map.value.addOverLay(marker)
+    marker.addEventListener('click', handleClick)
+
+    // Create Label
+    const label = createLabel(centerPt, new T.Point(0, -25))
+    label.addEventListener('click', handleClick)
+
+    // Helper to manage label visibility
+    const showLabel = () => map.value.addOverLay(label)
+    const hideLabel = () => map.value.removeOverLay(label)
+
+    // Label Visibility Logic
+    if (hasPhotos) {
+      // Always show if has photos
+      showLabel()
+    } else {
+      // Show on hover if no photos
+      marker.addEventListener('mouseover', showLabel)
+      marker.addEventListener('mouseout', hideLabel)
+    }
+
+    // Draw Polygon if needed
+    if (hasPolygon && showPolygon) {
+        const points = scene.polygon.map((p: any) => new T.LngLat(p[1], p[0]))
+        const polygon = new T.Polygon(points, {
+          color: "#3b82f6", 
+          weight: 3, 
+          opacity: 0.8, 
+          fillColor: "#3b82f6", 
+          fillOpacity: 0.2
+        })
+        map.value.addOverLay(polygon)
+        
+        polygon.addEventListener('click', handleClick)
+
+        // Add hover logic to polygon only if label is not permanent
+        if (!hasPhotos) {
+          polygon.addEventListener('mouseover', showLabel)
+          polygon.addEventListener('mouseout', hideLabel)
+        }
+    }
+  })
 }
 
 const goToScene = (name: string) => {

@@ -22,6 +22,7 @@ class SceneUpdate(SceneBase):
 class Scene(SceneBase):
     id: UUID
     is_custom: bool
+    photo_count: Optional[int] = 0
     
     class Config:
         from_attributes = True

@@ -330,6 +330,19 @@ const onMapClick = (e: any) => {
         const marker = new T.Marker(e.lnglat)
         markers.push(marker)
         map.addOverLay(marker)
+
+        // Add index label
+        const index = drawPoints.length
+        const label = new T.Label({
+            text: `<div style="background-color: #409eff; color: white; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 20px; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); border: 1px solid white;">${index}</div>`,
+            position: e.lnglat,
+            offset: new T.Point(-10, -35)
+        })
+        label.setBackgroundColor("transparent")
+        label.setBorderLine(0)
+        map.addOverLay(label)
+        markers.push(label)
+
         updatePolygon()
         // Save points
         if (drawPoints.length >= 3) {
