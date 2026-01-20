@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     v-model="visible"
-    title="新增景区"
+    :title="dialogTitle"
     width="900px"
     destroy-on-close
     :close-on-click-modal="false"
@@ -90,22 +90,44 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, nextTick } from 'vue'
+import { ref, reactive, watch, nextTick, computed } from 'vue'
 import { loadMapScript } from '@/utils/mapLoader'
 import { locationService } from '@/api/location'
 import { ElMessage } from 'element-plus'
-import type { SceneCreate } from '@/types/location'
+import type { SceneCreate, Scene } from '@/types/location'
 
 declare const T: any
 
 const props = defineProps<{
-  modelValue: boolean
+  modelValue: boolean,
+  editData?: Scene | null
 }>()
 
 const emit = defineEmits(['update:modelValue', 'success'])
 
 const visible = ref(false)
-watch(() => props.modelValue, (val) => visible.value = val)
+const isEdit = computed(() => !!props.editData)
+const dialogTitle = computed(() => isEdit.value ? '编辑景区' : '新增景区')
+
+watch(() => props.modelValue, (val) => {
+  visible.value = val
+  if (val) {
+    if (props.editData) {
+      Object.assign(form, {
+        name: props.editData.name,
+        description: props.editData.description || '',
+        level: props.editData.level || 0,
+        address: props.editData.address || '',
+        latitude: props.editData.latitude || 0,
+        longitude: props.editData.longitude || 0,
+        radius: props.editData.radius || 0,
+        polygon: props.editData.polygon || []
+      })
+    } else {
+      resetForm()
+    }
+  }
+})
 watch(visible, (val) => emit('update:modelValue', val))
 
 const submitting = ref(false)
@@ -128,6 +150,26 @@ let markers: any[] = []
 let searchService: any = null
 let autocompleteCallback: any = null
 
+const resetForm = () => {
+  Object.assign(form, {
+    name: '',
+    description: '',
+    level: 0,
+    address: '',
+    latitude: 0,
+    longitude: 0,
+    radius: 0,
+    polygon: []
+  })
+  isDrawing.value = false
+  drawPoints = []
+  markers = []
+  currentPolygon = null
+  if (map) {
+      map.clearOverLays()
+  }
+}
+
 const initMap = async () => {
   await loadMapScript()
   nextTick(() => {
@@ -139,11 +181,34 @@ const initMap = async () => {
     }
     
     map = new T.Map('add-scene-map')
-    map.centerAndZoom(new T.LngLat(104.195, 35.861), 4)
+    // 如果有坐标，移动到该坐标
+    if (form.latitude && form.longitude) {
+      map.centerAndZoom(new T.LngLat(form.longitude, form.latitude), 14)
+      const marker = new T.Marker(new T.LngLat(form.longitude, form.latitude))
+      map.addOverLay(marker)
+    } else {
+      map.centerAndZoom(new T.LngLat(104.195, 35.861), 4)
+    }
+    
     map.enableScrollWheelZoom()
     
     map.addEventListener('click', onMapClick)
     map.addEventListener('dblclick', onMapDblClick)
+
+    // Draw existing polygon if any
+    if (form.polygon && form.polygon.length > 0) {
+       const points = form.polygon.map(p => new T.LngLat(p[1], p[0]))
+       currentPolygon = new T.Polygon(points, {
+          color: "blue", 
+          weight: 3, 
+          opacity: 0.5, 
+          fillColor: "#FFFFFF", 
+          fillOpacity: 0.5
+       })
+       map.addOverLay(currentPolygon)
+       // Set view to polygon
+       map.setViewport(points)
+    }
 
     // Initialize LocalSearch
     searchService = new T.LocalSearch(map, {
@@ -341,37 +406,30 @@ const clearDraw = () => {
     markers = []
 }
 
-const resetForm = () => {
-    form.name = ''
-    form.description = ''
-    form.level = 0
-    form.address = ''
-    form.latitude = 0
-    form.longitude = 0
-    form.radius = 0
-    form.polygon = []
-    clearDraw()
-    map = null 
-}
+
 
 const handleSubmit = async () => {
-    if(!form.name) return ElMessage.error('请输入名称')
-    
-    submitting.value = true
-    try {
-        const payload: SceneCreate = {
-            ...form,
-            level: form.level || undefined
-        }
-        await locationService.createScene(payload)
-        ElMessage.success('添加成功')
-        visible.value = false
-        emit('success')
-    } catch(e) {
-        console.error(e)
-        ElMessage.error('添加失败')
-    } finally {
-        submitting.value = false
+  if (!form.name) {
+    ElMessage.error('请输入景区名称')
+    return
+  }
+  
+  submitting.value = true
+  try {
+    if (isEdit.value && props.editData?.id) {
+       await locationService.updateScene(props.editData.id, form)
+       ElMessage.success('更新成功')
+    } else {
+       await locationService.createScene(form)
+       ElMessage.success('创建成功')
     }
+    visible.value = false
+    emit('success')
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('保存失败')
+  } finally {
+    submitting.value = false
+  }
 }
 </script>

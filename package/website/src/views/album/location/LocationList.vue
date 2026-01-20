@@ -89,7 +89,7 @@
 
           <button
             v-if="level === 'scene'"
-            @click="showAddScene = true"
+            @click="editingScene = null; showAddScene = true"
             class="px-3 py-1.5 rounded-md bg-primary-500 text-white hover:bg-primary-600 transition-colors flex items-center gap-1.5 ml-1"
             title="新增景区"
           >
@@ -168,6 +168,14 @@
           @click="goToLocation(loc.name)"
         >
           <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-sm group-hover:shadow-md transition-all duration-300">
+             <button
+                v-if="level === 'scene' && loc.id"
+                @click.stop="handleEdit(loc)"
+                class="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full shadow-sm hover:bg-white transition-all opacity-0 group-hover:opacity-100 z-10 text-gray-600 hover:text-primary-500"
+                title="编辑景区"
+             >
+                <Pencil class="w-4 h-4" />
+             </button>
              <img
                v-if="loc.cover"
                :src="mapPhotoToImage(loc.cover).thumbnail"
@@ -194,7 +202,7 @@
       </div>
     </div>
     
-    <AddSceneDialog v-model="showAddScene" @success="fetchLocations" />
+    <AddSceneDialog v-model="showAddScene" :edit-data="editingScene" @success="fetchLocations" />
   </div>
 </template>
 
@@ -205,8 +213,8 @@ import { storeToRefs } from 'pinia'
 import { useLocationStore } from '@/stores/locationStore'
 import { locationService } from '@/api/location'
 import { mapPhotoToImage } from '@/stores/photoStore'
-import type { Location, LocationStatistics } from '@/types/location'
-import { ArrowLeft, MapPin, LayoutGrid, Map, Images, Plus, ChevronDown } from 'lucide-vue-next'
+import type { Location, LocationStatistics, Scene } from '@/types/location'
+import { ArrowLeft, MapPin, LayoutGrid, Map, Images, Plus, ChevronDown, Pencil } from 'lucide-vue-next'
 import * as echarts from 'echarts'
 import { useDark, onClickOutside } from '@vueuse/core'
 import LocationMap from './LocationMap.vue'
@@ -220,6 +228,7 @@ const locations = ref<Location[]>([])
 const statistics = ref<LocationStatistics | null>(null)
 const loading = ref(true)
 const showAddScene = ref(false)
+const editingScene = ref<Scene | null>(null)
 const mapContainer = ref<HTMLElement | null>(null)
 let myMap: echarts.ECharts | null = null
 let zoomTimer: any = null
@@ -286,6 +295,17 @@ const goToLocation = (name: string) => {
     params: { name: name },
     query: { level: level.value }
   })
+}
+
+const handleEdit = async (loc: Location) => {
+  if (!loc.id) return
+  try {
+    const scene = await locationService.getScene(loc.id)
+    editingScene.value = scene
+    showAddScene.value = true
+  } catch (e) {
+    console.error(e)
+  }
 }
 
 // --- Map Logic ---

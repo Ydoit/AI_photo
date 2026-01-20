@@ -1,6 +1,8 @@
 import type { Photo } from './album'
 
 export interface Location {
+  id?: string
+  is_custom?: boolean
   name: string
   level: 'city' | 'province' | 'district' | 'scene'
   count: number
@@ -24,6 +26,7 @@ export interface Scene {
   longitude?: number
   radius?: number
   polygon?: number[][]
+  is_custom?: boolean
 }
 
 export interface SceneCreate {
@@ -36,3 +39,5 @@ export interface SceneCreate {
   radius?: number
   polygon?: number[][]
 }
+
+export interface SceneUpdate extends SceneCreate {}

@@ -14,6 +14,8 @@ class LocationStatistics(BaseModel):
     country_count: int
 
 class Location(LocationBase):
+    id: Optional[str] = None
+    is_custom: Optional[bool] = None
     cover: Optional[Photo] = None
 
     class Config:

@@ -21,6 +21,7 @@ class SceneUpdate(SceneBase):
 
 class Scene(SceneBase):
     id: UUID
+    is_custom: bool
     
     class Config:
         from_attributes = True

@@ -17,9 +17,6 @@ class PhotoTag(Base):
     update_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     is_deleted = Column(Boolean, default=False)
 
-    # Relationships
-    # photos = relationship("Photo", secondary="photo_tag_relations", back_populates="tags")
-
 class PhotoTagRelation(Base):
     __tablename__ = "photo_tag_relations"
 

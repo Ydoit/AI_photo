@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Location, Scene, SceneCreate, LocationStatistics } from '@/types/location';
+import type { Location, Scene, SceneCreate, SceneUpdate, LocationStatistics } from '@/types/location';
 import type { Photo } from '@/types/album';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
@@ -41,8 +41,18 @@ export const locationService = {
     return data;
   },
 
+  async getScene(id: string) {
+    const { data } = await api.get<Scene>(`/api/locations/scenes/${id}`);
+    return data;
+  },
+
   async createScene(scene: SceneCreate) {
     const { data } = await api.post<Scene>('/api/locations/scenes', scene);
+    return data;
+  },
+
+  async updateScene(id: string, scene: SceneUpdate) {
+    const { data } = await api.put<Scene>(`/api/locations/scenes/${id}`, scene);
     return data;
   },
 

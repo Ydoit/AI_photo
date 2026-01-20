@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, Query, Path
+from fastapi import APIRouter, Depends, Query, Path, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+from uuid import UUID
 from app.dependencies import get_db
 from app.schemas import location as schemas
 from app.crud import location as crud
@@ -66,6 +67,49 @@ def get_scenes_list(
     获取所有景区详细信息（包含多边形坐标）。
     """
     return scene_crud.get_scenes(db, skip, limit)
+
+@router.get("/scenes/{scene_id}", response_model=scene_schemas.Scene, summary="获取景区详情")
+def get_scene_details(
+    scene_id: UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    获取指定景区的详细信息。
+    """
+    scene = scene_crud.get_scene(db, scene_id)
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+    return scene
+
+@router.put("/scenes/{scene_id}", response_model=scene_schemas.Scene, summary="更新景区")
+def update_scene(
+    scene_id: UUID,
+    scene: scene_schemas.SceneUpdate,
+    db: Session = Depends(get_db)
+):
+    """
+    更新景区信息。
+    """
+    db_scene = scene_crud.update_scene(db, scene_id, scene)
+    if not db_scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+    return db_scene
+
+@router.delete("/scenes/{scene_id}", summary="删除景区")
+def delete_scene(
+    scene_id: UUID = Path(..., description="景区ID"),
+    db: Session = Depends(get_db)
+):
+    """
+    删除景区。系统默认景区不允许删除。
+    """
+    try:
+        scene = scene_crud.delete_scene(db, scene_id)
+        if not scene:
+            raise HTTPException(status_code=404, detail="Scene not found")
+        return {"status": "success", "message": "Scene deleted"}
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
 @router.get("/{name}/photos", response_model=List[photo_schemas.Photo], summary="获取位置照片列表")
 def get_location_photos(

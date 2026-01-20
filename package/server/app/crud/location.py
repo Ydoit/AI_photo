@@ -19,12 +19,22 @@ def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 
         return []
 
     # Group by location and count
-    query = db.query(
-        group_col,
-        func.count(Photo.id).label('count')
-    ).join(
-        PhotoMetadata, Photo.id == PhotoMetadata.photo_id
-    )
+    if is_scene:
+        query = db.query(
+            Scene.name,
+            Scene.id,
+            Scene.is_custom,
+            func.count(Photo.id).label('count')
+        ).join(
+            PhotoMetadata, Photo.id == PhotoMetadata.photo_id
+        )
+    else:
+        query = db.query(
+            group_col,
+            func.count(Photo.id).label('count')
+        ).join(
+            PhotoMetadata, Photo.id == PhotoMetadata.photo_id
+        )
 
     if is_scene:
         query = query.join(Scene, PhotoMetadata.scene_id == Scene.id)
@@ -32,9 +42,14 @@ def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 
     query = query.filter(
         group_col.is_not(None),
         group_col != ''
-    ).group_by(
-        group_col
-    ).order_by(
+    )
+
+    if is_scene:
+        query = query.group_by(Scene.name, Scene.id, Scene.is_custom)
+    else:
+        query = query.group_by(group_col)
+    
+    query = query.order_by(
         desc('count')
     ).offset(skip).limit(limit)
 
@@ -71,13 +86,24 @@ def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 
     cover_map = {loc_name: photo for photo, loc_name in covers}
 
     locations = []
-    for name, count in results:
-        locations.append({
-            "name": name,
-            "level": level,
-            "count": count,
-            "cover": cover_map.get(name)
-        })
+    if is_scene:
+        for name, sid, is_custom, count in results:
+            locations.append({
+                "name": name,
+                "id": str(sid),
+                "is_custom": is_custom,
+                "level": level,
+                "count": count,
+                "cover": cover_map.get(name)
+            })
+    else:
+        for name, count in results:
+            locations.append({
+                "name": name,
+                "level": level,
+                "count": count,
+                "cover": cover_map.get(name)
+            })
         
     return locations
 

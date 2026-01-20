@@ -84,6 +84,9 @@ def get_scene(db: Session, scene_id: UUID):
 def delete_scene(db: Session, scene_id: UUID):
     db_scene = db.query(Scene).filter(Scene.id == scene_id).first()
     if db_scene:
+        if not db_scene.is_custom:
+            raise ValueError("Cannot delete system default scene")
+            
         # Clear scene_id from photos?
         # ForeignKey has ondelete set? 
         # Check PhotoMetadata model: scene_id = Column(UUID(as_uuid=True), ForeignKey("scenes.id"), nullable=True)
@@ -98,4 +101,24 @@ def delete_scene(db: Session, scene_id: UUID):
             
         db.delete(db_scene)
         db.commit()
+    return db_scene
+
+def update_scene(db: Session, scene_id: UUID, scene: SceneUpdate):
+    db_scene = db.query(Scene).filter(Scene.id == scene_id).first()
+    if not db_scene:
+        return None
+    
+    update_data = scene.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_scene, key, value)
+        
+    db.add(db_scene)
+    db.commit()
+    db.refresh(db_scene)
+    
+    # If polygon or location changed, we might need to re-evaluate photos?
+    # For now, let's re-run update_scene_photos if polygon changed.
+    if 'polygon' in update_data:
+        update_scene_photos(db, db_scene)
+        
     return db_scene

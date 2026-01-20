@@ -34,7 +34,7 @@ class PhotoMetadata(Base):
 
     location_api = Column(String(255)) # API info for location
     
-    scene_id = Column(UUID(as_uuid=True), ForeignKey("scenes.id"), nullable=True)
+    scene_id = Column(UUID(as_uuid=True), ForeignKey("scenes.id", ondelete="SET NULL"), nullable=True)
     scene = relationship("Scene")
 
     photo = relationship("Photo", back_populates="metadata_info")
