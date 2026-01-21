@@ -29,6 +29,10 @@ const index = new Supercluster({
   radius: 60,
   maxZoom: 18
 })
+const sceneCluster = new Supercluster({
+  radius: 80,
+  maxZoom: 16
+})
 const router = useRouter()
 const locationStore = useLocationStore()
 const { level } = storeToRefs(locationStore)
@@ -47,6 +51,7 @@ onMounted(async () => {
           confirmButtonText: '去设置',
           cancelButtonText: '取消',
           type: 'warning',
+          center: true
         }
       ).then(() => {
         router.push('/settings#basic')
@@ -74,17 +79,20 @@ const initMap = () => {
 }
 
 const scenesData = ref<any[]>([])
+const scenesWithPhotos = ref<any[]>([])
 
 const loadContent = async () => {
   // Remove listeners first to avoid conflicts
   if (map.value) {
       map.value.removeEventListener('moveend', updateClusters)
       map.value.removeEventListener('zoomend', updateClusters)
+      map.value.removeEventListener('moveend', renderScenes)
       map.value.removeEventListener('zoomend', renderScenes)
   }
 
   if (level.value === 'scene') {
     if (map.value) {
+        map.value.addEventListener('moveend', renderScenes)
         map.value.addEventListener('zoomend', renderScenes)
     }
     await loadScenes()
@@ -108,6 +116,34 @@ const loadScenes = async () => {
       return
     }
 
+    // Split data
+    scenesWithPhotos.value = scenesData.value.filter(s => s.photo_count && s.photo_count > 0)
+    const scenesWithoutPhotos = scenesData.value.filter(s => !s.photo_count || s.photo_count === 0)
+
+    // Load non-photo scenes into Supercluster
+    const points = scenesWithoutPhotos.map(s => {
+        let lng = s.longitude
+        let lat = s.latitude
+        // Use polygon center if point not available (fallback)
+        if ((!lng || !lat) && s.polygon && s.polygon.length > 0) {
+            lng = s.polygon[0][1]
+            lat = s.polygon[0][0]
+        }
+        return {
+            type: 'Feature' as const,
+            properties: { 
+                cluster: false, 
+                sceneData: s
+            },
+            geometry: {
+                type: 'Point' as const,
+                coordinates: [lng, lat]
+            }
+        }
+    }).filter(p => p.geometry.coordinates[0] && p.geometry.coordinates[1])
+
+    sceneCluster.load(points)
+
     renderScenes()
     
     // Fit view to scenes if any
@@ -126,80 +162,153 @@ const loadScenes = async () => {
 }
 
 const renderScenes = () => {
-  if (!map.value || !scenesData.value) return
+  if (!map.value) return
   map.value.clearOverLays()
 
   const zoom = map.value.getZoom()
   const showPolygon = zoom >= 12
+  const bounds = map.value.getBounds()
+  const sw = bounds.getSouthWest()
+  const ne = bounds.getNorthEast()
+  const bbox = [sw.getLng(), sw.getLat(), ne.getLng(), ne.getLat()] as [number, number, number, number]
 
-  scenesData.value.forEach((scene: any) => {
-    const hasPhotos = scene.photo_count && scene.photo_count > 0
-    const hasPolygon = scene.polygon && scene.polygon.length > 0
-    
-    // Determine center point
-    let centerPt = null
-    if (scene.latitude && scene.longitude) {
-        centerPt = new T.LngLat(scene.longitude, scene.latitude)
-    } else if (hasPolygon) {
-        centerPt = new T.LngLat(scene.polygon[0][1], scene.polygon[0][0])
-    }
-    
-    if (!centerPt) return
+  // --- Helper Functions ---
 
-    const createLabel = (position: any, offset: any) => {
+  const createMarkerLabel = (position: any, type: 'blue' | 'gray' | 'cluster', text?: string, count?: number) => {
+      let html = ''
+      let offset = new T.Point(0, 0)
+      
+      if (type === 'blue') {
+          // Blue marker for scenes with photos
+          html = `<div class="w-5 h-5 bg-blue-500 rounded-full border-2 border-white shadow-lg cursor-pointer transform hover:scale-110 transition-transform"></div>`
+          offset = new T.Point(-10, -10)
+      } else if (type === 'gray') {
+          // Gray marker for scenes without photos
+          html = `<div class="w-3 h-3 bg-gray-400 rounded-full border border-white shadow cursor-pointer hover:bg-gray-500 transition-colors"></div>`
+          offset = new T.Point(-6, -6)
+      } else if (type === 'cluster') {
+          // Cluster marker
+          const size = count && count > 100 ? 40 : 30
+          html = `<div class="flex items-center justify-center bg-gray-400/90 text-white rounded-full border-2 border-white shadow-md cursor-pointer hover:bg-gray-500 transition-colors" style="width: ${size}px; height: ${size}px; font-size: 12px; font-weight: bold;">${count}</div>`
+          offset = new T.Point(-size/2, -size/2)
+      }
+
       const label = new T.Label({
-        text: `<div class="px-2 py-1 bg-white/90 rounded shadow text-sm font-medium ${hasPhotos ? 'text-blue-600' : 'text-gray-600'}">${scene.name}</div>`,
-        position: position,
-        offset: offset
+          text: html,
+          position: position,
+          offset: offset
       })
       label.setBackgroundColor("transparent")
       label.setBorderLine(0)
       return label
-    }
+  }
 
-    const handleClick = () => goToScene(scene.name)
+  const createTextLabel = (position: any, name: string, isBlue: boolean) => {
+      const label = new T.Label({
+        text: `<div class="px-2 py-1 bg-white/90 rounded shadow text-sm font-medium ${isBlue ? 'text-blue-600' : 'text-gray-600'} whitespace-nowrap">${name}</div>`,
+        position: position,
+        offset: new T.Point(0, isBlue ? -32 : -26)
+      })
+      label.setBackgroundColor("transparent")
+      label.setBorderLine(0)
+      return label
+  }
 
-    // Always draw Marker
-    const marker = new T.Marker(centerPt)
-    map.value.addOverLay(marker)
-    marker.addEventListener('click', handleClick)
-
-    // Create Label
-    const label = createLabel(centerPt, new T.Point(0, -25))
-    label.addEventListener('click', handleClick)
-
-    // Helper to manage label visibility
-    const showLabel = () => map.value.addOverLay(label)
-    const hideLabel = () => map.value.removeOverLay(label)
-
-    // Label Visibility Logic
-    if (hasPhotos) {
-      // Always show if has photos
-      showLabel()
-    } else {
-      // Show on hover if no photos
-      marker.addEventListener('mouseover', showLabel)
-      marker.addEventListener('mouseout', hideLabel)
-    }
-
-    // Draw Polygon if needed
-    if (hasPolygon && showPolygon) {
+  const drawPolygon = (scene: any, isBlue: boolean) => {
+      if (scene.polygon && scene.polygon.length > 0) {
         const points = scene.polygon.map((p: any) => new T.LngLat(p[1], p[0]))
         const polygon = new T.Polygon(points, {
-          color: "#3b82f6", 
+          color: isBlue ? "#3b82f6" : "#9ca3af", 
           weight: 3, 
           opacity: 0.8, 
-          fillColor: "#3b82f6", 
+          fillColor: isBlue ? "#3b82f6" : "#9ca3af", 
           fillOpacity: 0.2
         })
         map.value.addOverLay(polygon)
-        
-        polygon.addEventListener('click', handleClick)
+        return polygon
+      }
+      return null
+  }
 
-        // Add hover logic to polygon only if label is not permanent
-        if (!hasPhotos) {
-          polygon.addEventListener('mouseover', showLabel)
-          polygon.addEventListener('mouseout', hideLabel)
+  // --- 1. Render Scenes WITH Photos (Always Visible) ---
+  scenesWithPhotos.value.forEach((scene: any) => {
+    // Determine center
+    let centerPt = null
+    if (scene.latitude && scene.longitude) {
+        centerPt = new T.LngLat(scene.longitude, scene.latitude)
+    } else if (scene.polygon && scene.polygon.length > 0) {
+        centerPt = new T.LngLat(scene.polygon[0][1], scene.polygon[0][0])
+    }
+    if (!centerPt) return
+
+    const handleClick = () => goToScene(scene.name)
+
+    // Draw Marker
+    const marker = createMarkerLabel(centerPt, 'blue')
+    marker.addEventListener('click', handleClick)
+    map.value.addOverLay(marker)
+
+    // Draw Text Label (Always visible for photos)
+    const textLabel = createTextLabel(centerPt, scene.name, true)
+    textLabel.addEventListener('click', handleClick)
+    map.value.addOverLay(textLabel)
+
+    // Draw Polygon if zoomed in
+    if (showPolygon) {
+        const polygon = drawPolygon(scene, true)
+        if (polygon) {
+            polygon.addEventListener('click', handleClick)
+        }
+    }
+  })
+
+  // --- 2. Render Scenes WITHOUT Photos (Clustered) ---
+  const clusters = sceneCluster.getClusters(bbox, zoom)
+  
+  clusters.forEach((cluster: any) => {
+    const [lng, lat] = cluster.geometry.coordinates
+    const isCluster = cluster.properties.cluster
+    const point = new T.LngLat(lng, lat)
+
+    if (isCluster) {
+        const count = cluster.properties.point_count
+        const marker = createMarkerLabel(point, 'cluster', undefined, count)
+        
+        marker.addEventListener('click', () => {
+             const expansionZoom = sceneCluster.getClusterExpansionZoom(cluster.id)
+             map.value.setZoom(expansionZoom)
+             map.value.panTo(point)
+        })
+        map.value.addOverLay(marker)
+    } else {
+        // Single Scene (No Photos)
+        const scene = cluster.properties.sceneData
+        
+        const handleClick = () => goToScene(scene.name)
+
+        // Draw Marker
+        const marker = createMarkerLabel(point, 'gray')
+        marker.addEventListener('click', handleClick)
+        map.value.addOverLay(marker)
+
+        // Draw Text Label (Hover only)
+        const textLabel = createTextLabel(point, scene.name, false)
+        textLabel.addEventListener('click', handleClick)
+        
+        const showLabel = () => map.value.addOverLay(textLabel)
+        const hideLabel = () => map.value.removeOverLay(textLabel)
+
+        marker.addEventListener('mouseover', showLabel)
+        marker.addEventListener('mouseout', hideLabel)
+
+        // Draw Polygon if zoomed in
+        if (showPolygon) {
+            const polygon = drawPolygon(scene, false)
+            if (polygon) {
+                polygon.addEventListener('click', handleClick)
+                polygon.addEventListener('mouseover', showLabel)
+                polygon.addEventListener('mouseout', hideLabel)
+            }
         }
     }
   })

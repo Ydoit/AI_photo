@@ -267,7 +267,7 @@ const parseSearchResult = (result: any) => {
     }
     // Handle Statistics (Type 2) - Ambiguous search
     else if (type === 2) {
-         ElMessage.warning('搜索结果过于宽泛，请尝试更精确的名称')
+         ElMessage.warning('搜索结果过于宽泛，请尝试更精确的名称，或者放大地图到你想搜索的区域附近之后再搜索')
     }
     // Fallback
     else {
