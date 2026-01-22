@@ -174,7 +174,7 @@ const renderScenes = () => {
 
   // --- Helper Functions ---
 
-  const createMarkerLabel = (position: any, type: 'blue' | 'gray' | 'cluster', text?: string, count?: number) => {
+  const createMarkerLabel = (position: any, type: 'blue' | 'orange' | 'cluster', text?: string, count?: number) => {
       let html = ''
       let offset = new T.Point(0, 0)
       
@@ -182,14 +182,14 @@ const renderScenes = () => {
           // Blue marker for scenes with photos
           html = `<div class="w-5 h-5 bg-blue-500 rounded-full border-2 border-white shadow-lg cursor-pointer transform hover:scale-110 transition-transform"></div>`
           offset = new T.Point(-10, -10)
-      } else if (type === 'gray') {
-          // Gray marker for scenes without photos
-          html = `<div class="w-3 h-3 bg-gray-400 rounded-full border border-white shadow cursor-pointer hover:bg-gray-500 transition-colors"></div>`
+      } else if (type === 'orange') {
+          // Orange marker for scenes without photos
+          html = `<div class="w-3 h-3 bg-orange-500 rounded-full border border-white shadow cursor-pointer hover:bg-orange-600 transition-colors"></div>`
           offset = new T.Point(-6, -6)
       } else if (type === 'cluster') {
           // Cluster marker
           const size = count && count > 100 ? 40 : 30
-          html = `<div class="flex items-center justify-center bg-gray-400/90 text-white rounded-full border-2 border-white shadow-md cursor-pointer hover:bg-gray-500 transition-colors" style="width: ${size}px; height: ${size}px; font-size: 12px; font-weight: bold;">${count}</div>`
+          html = `<div class="flex items-center justify-center bg-orange-400/90 text-white rounded-full border-2 border-white shadow-md cursor-pointer hover:bg-orange-500 transition-colors" style="width: ${size}px; height: ${size}px; font-size: 12px; font-weight: bold;">${count}</div>`
           offset = new T.Point(-size/2, -size/2)
       }
 
@@ -205,7 +205,7 @@ const renderScenes = () => {
 
   const createTextLabel = (position: any, name: string, isBlue: boolean) => {
       const label = new T.Label({
-        text: `<div class="px-2 py-1 bg-white/90 rounded shadow text-sm font-medium ${isBlue ? 'text-blue-600' : 'text-gray-600'} whitespace-nowrap">${name}</div>`,
+        text: `<div class="px-2 py-1 bg-white/90 rounded shadow text-sm font-medium ${isBlue ? 'text-blue-600' : 'text-orange-600'} whitespace-nowrap">${name}</div>`,
         position: position,
         offset: new T.Point(0, isBlue ? -32 : -26)
       })
@@ -218,10 +218,10 @@ const renderScenes = () => {
       if (scene.polygon && scene.polygon.length > 0) {
         const points = scene.polygon.map((p: any) => new T.LngLat(p[1], p[0]))
         const polygon = new T.Polygon(points, {
-          color: isBlue ? "#3b82f6" : "#9ca3af", 
+          color: isBlue ? "#3b82f6" : "#f97316", 
           weight: 3, 
           opacity: 0.8, 
-          fillColor: isBlue ? "#3b82f6" : "#9ca3af", 
+          fillColor: isBlue ? "#3b82f6" : "#f97316", 
           fillOpacity: 0.2
         })
         map.value.addOverLay(polygon)
@@ -287,7 +287,7 @@ const renderScenes = () => {
         const handleClick = () => goToScene(scene.name)
 
         // Draw Marker
-        const marker = createMarkerLabel(point, 'gray')
+        const marker = createMarkerLabel(point, 'orange')
         marker.addEventListener('click', handleClick)
         map.value.addOverLay(marker)
 
