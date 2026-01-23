@@ -1,7 +1,7 @@
 <template>
   <div
-    class="fixed inset-y-0 right-0 w-80 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 h-full overflow-y-auto transition-transform duration-300 z-[103] shadow-2xl"
-    :class="{ 'translate-x-full': !visible, 'translate-x-0': visible }"
+    v-if="visible"
+    class="w-80 flex-shrink-0 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 h-full overflow-y-auto z-[103] shadow-2xl"
     @click.stop
   >
     <!-- Header -->
