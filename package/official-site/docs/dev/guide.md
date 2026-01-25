@@ -85,10 +85,10 @@ AI_URL=http://localhost:8001
 
 ### 4.4 运行服务
 ```bash
-# 第一次运行是需要初始化数据库
+# 第一次运行、或数据库结构发生变化时需要初始化数据库
 python start.py
 
-# 开发模式启动
+# 数据库结构初始化完成后，启动服务
 uvicorn main:app --reload --port 8000
 ```
 API 文档地址：`http://localhost:8000/docs`

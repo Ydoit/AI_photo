@@ -30,31 +30,31 @@
 
 ```mermaid
 graph TD
-    Request[Client Request] --> Middleware[Middleware (Logging/CORS)]
+    Request[Client Request] --> Middleware[Middleware Logging/CORS]
     Middleware --> Router[API Routers]
-    
-    subgraph Modules [功能模块]
+
+    subgraph Modules [module layer]
         Router --> UserMod[User Module]
         Router --> AlbumMod[Album Module]
         Router --> PhotoMod[Photo Module]
         Router --> TaskMod[Task Module]
         Router --> RailwayMod[Railway Module]
     end
-    
-    subgraph Services [业务服务层]
+
+    subgraph Services [service layer]
         PhotoMod --> StorageSvc[Storage Service]
         PhotoMod --> IndexerSvc[Indexer Service]
         TaskMod --> TaskMgr[Task Manager]
         TaskMgr --> Workers[Worker Threads/Processes]
     end
-    
-    subgraph External [外部依赖]
+
+    subgraph External [external dependencies]
         Workers --> AI_Svc[AI Service :8001]
         Workers --> FileSys[File System]
         StorageSvc --> FileSys
     end
-    
-    subgraph Data [数据层]
+
+    subgraph Data [data layer]
         UserMod --> CRUD[CRUD Operations]
         AlbumMod --> CRUD
         PhotoMod --> CRUD
