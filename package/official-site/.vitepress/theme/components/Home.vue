@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-white dark:bg-slate-900 text-neutral-dark dark:text-gray-100 font-sans overflow-x-hidden">
     
     <!-- 1. Navbar -->
-    <nav :class="['fixed top-0 left-0 right-0 z-50 transition-all duration-300', isScrolled ? 'bg-white dark:bg-slate-900 shadow-md py-2' : 'bg-neutral-light py-4']">
+    <nav :class="['fixed top-0 left-0 right-0 z-50 transition-all duration-300', isScrolled ? 'bg-white dark:bg-slate-900 shadow-md py-2' : 'bg-neutral-light dark:bg-slate-900 py-4']">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center">
           <!-- Logo -->

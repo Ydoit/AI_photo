@@ -110,20 +110,54 @@ docker-compose up -d
 - 后端 API：`http://<NAS_IP>:8800/docs`
 - AI 服务：`http://<NAS_IP>:8801/docs`
 
-## 4. NAS 场景常见问题
+## 4. GPU 加速支持 (可选)
 
-### 4.1 路径怎么写才正确？
+如果您拥有 NVIDIA 显卡，可以启用 GPU 加速来提升 AI 处理速度。
+
+### 前置条件
+
+1. 宿主机已安装 NVIDIA 显卡驱动。
+2. 已安装 [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)。
+
+### 修改 docker-compose.yml
+
+请对 `ai` 服务进行如下修改：
+
+1. 将镜像标签修改为 `-gpu` 后缀（例如 `latest-gpu`）。
+2. 添加 `deploy` 节点以请求 GPU 资源。
+
+```yaml
+  ai:
+    image: siyuan044/trailsnap-ai:latest-gpu
+    restart: always
+    expose: [ "8001" ]
+    ports: [ "8801:8001" ]
+    networks: [ app-network ]
+    volumes:
+      - ./data:/app/data
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+```
+
+## 5. NAS 场景常见问题
+
+### 5.1 路径怎么写才正确？
 
 在 NAS 上请以“共享文件夹的真实路径”为准。不同系统的路径显示方式不同，但原则只有一个：确保容器内的 `/app/Photos/` 能看到你的照片文件。
 
-### 4.2 权限不足导致扫描不到照片
+### 5.2 权限不足导致扫描不到照片
 
 如果照片目录是只读共享或权限隔离，容器可能无法读取。建议：
 
 - 给容器运行账号授予该共享文件夹的读取权限
 - 或把照片目录挂载为只读并确保宿主机侧权限允许读取
 
-### 4.3 端口冲突
+### 5.3 端口冲突
 
 NAS 上常见 80/443/8080 等端口容易被占用。TrailSnap 默认使用 8082/8800/8801/5532，如冲突可自行改映射，例如：
 
@@ -131,7 +165,7 @@ NAS 上常见 80/443/8080 等端口容易被占用。TrailSnap 默认使用 8082
 ports: [ "18082:80" ]
 ```
 
-## 5. NAS 具体教程
+## 6. NAS 具体教程
 
 - [绿联 NAS 部署](/docs/guide/docker/ugreen)
 - [极空间部署](/docs/guide/docker/zspace)

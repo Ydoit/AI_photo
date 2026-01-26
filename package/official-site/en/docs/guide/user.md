@@ -4,14 +4,6 @@ Welcome to TrailSnap! TrailSnap is an intelligent AI photo album application tha
 
 This document will detail TrailSnap's main features, usage methods, and operation flows.
 
-## Table of Contents
-
-1. [Quick Start](#1-quick-start)
-2. [Album Management](#2-album-management)
-3. [Smart Features](#3-smart-features)
-4. [Itinerary & Tickets](#4-itinerary-tickets)
-5. [System Settings](#5-system-settings)
-
 ## 1. Quick Start
 
 ### Login/Register
