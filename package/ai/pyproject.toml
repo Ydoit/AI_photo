@@ -25,7 +25,7 @@ cpu = [
   "transformers>=4.37.0",
   "sentence-transformers==5.2.0"
 ]
-cu128 = [
+gpu = [
   "torch==2.9.1",
   "torchvision==0.24.1",
   "onnxruntime-gpu>=1.17.0",
@@ -37,18 +37,18 @@ cu128 = [
 conflicts = [
   [
     { extra = "cpu" },
-    { extra = "cu128" },
+    { extra = "gpu" },
   ],
 ]
 
 [tool.uv.sources]
 torch = [
   { index = "pytorch-cpu", extra = "cpu" },
-  { index = "pytorch-cu128", extra = "cu128" },
+  { index = "pytorch-cu128", extra = "gpu" },
 ]
 torchvision = [
   { index = "pytorch-cpu", extra = "cpu" },
-  { index = "pytorch-cu128", extra = "cu128" },
+  { index = "pytorch-cu128", extra = "gpu" },
 ]
 
 [[tool.uv.index]]

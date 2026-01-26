@@ -12,6 +12,17 @@ jobs:
   build-and-push-ai:
     runs-on: ubuntu-latest
     if: contains(github.event.head_commit.message, '构建ai')
+    strategy:
+      matrix:
+        include:
+          - type: cpu
+            dockerfile: Dockerfile
+            platforms: linux/amd64,linux/arm64
+            tag_suffix: ""
+          - type: gpu
+            dockerfile: Dockerfile.gpu
+            platforms: linux/amd64
+            tag_suffix: "-gpu"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -37,6 +48,13 @@ jobs:
             BASE_TAG=${GITHUB_REF#refs/heads/}
             EXTRA_TAGS=""
           fi
+          
+          # Append suffix from matrix
+          BASE_TAG="${BASE_TAG}${{ matrix.tag_suffix }}"
+          if [ -n "$EXTRA_TAGS" ]; then
+            EXTRA_TAGS="${EXTRA_TAGS}${{ matrix.tag_suffix }}"
+          fi
+          
           echo "BASE_TAG=$BASE_TAG" >> $GITHUB_ENV
           echo "EXTRA_TAGS=$EXTRA_TAGS" >> $GITHUB_ENV
           echo "DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}" >> $GITHUB_ENV
@@ -45,8 +63,9 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./package/ai
-          platforms: linux/amd64,linux/arm64
+          file: ./package/ai/${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platforms }}
           push: true
           tags: |
             ${{ env.DOCKER_HUB_USERNAME }}/trailsnap-ai:${{ env.BASE_TAG }}
-            ${{ env.EXTRA_TAGS != '' && format('{0}/trailsnap-ai:latest', env.DOCKER_HUB_USERNAME) || '' }}
+            ${{ env.EXTRA_TAGS != '' && format('{0}/trailsnap-ai:{1}', env.DOCKER_HUB_USERNAME, env.EXTRA_TAGS) || '' }}
