@@ -13,7 +13,6 @@
         class="relative px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:text-primary-500 dark:hover:text-primary-500 transition-colors flex items-center gap-1.5"
         active-class="font-medium text-primary-600 dark:text-primary-400"
       >
-        <ImageIcon v-if="item.icon" class="w-4 h-4" />
         {{ item.label }}
         <span
           v-if="$route.path === item.href || ($route.path.startsWith(item.href) && item.href !== '/')"
@@ -21,7 +20,7 @@
         ></span>
       </RouterLink>
 
-      <div class="relative transition-all duration-300 ease-in-out" :class="[isSearchExpanded ? 'w-48' : 'w-8']">
+      <div class="relative transition-all duration-300 ease-in-out" :class="[isSearchExpanded ? 'w-64' : 'w-8']">
         <button 
           @click="toggleSearch"
           class="absolute left-0 top-1/2 -translate-y-1/2 p-1.5 text-gray-700 dark:text-gray-200 hover:text-primary-500 transition-colors z-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -35,10 +34,12 @@
           v-show="isSearchExpanded"
           ref="searchInputRef"
           v-model="searchText"
+          @input="onInput"
           @keydown.enter="handleSearch"
           @blur="handleBlur"
+          @focus="handleFocus"
           type="text"
-          placeholder="搜索"
+          placeholder="搜索 (支持文字/地点/人物/相册...)"
           class="w-full pl-9 pr-7 py-1 text-sm bg-transparent border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:border-primary-500 text-gray-700 dark:text-gray-200"
         />
         
@@ -49,6 +50,43 @@
         >
           <X class="w-3 h-3" />
         </button>
+
+        <!-- Suggestions Dropdown -->
+        <div 
+          v-if="isSearchExpanded && (suggestions.length > 0 || searchText)" 
+          class="absolute top-full left-0 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg mt-2 overflow-hidden z-50 max-h-60 overflow-y-auto"
+        >
+          <!-- Semantic Search Option (Always First) -->
+          <div 
+            v-if="searchText"
+            @mousedown.prevent="handleSearch"
+            class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-sm border-b last:border-0 border-gray-100 dark:border-gray-700 flex items-center gap-2"
+          >
+            <Sparkles class="w-4 h-4 text-primary-500" />
+            <div class="flex flex-col">
+              <span class="text-gray-800 dark:text-gray-200 font-medium">画面识别: "{{ searchText }}"</span>
+              <span class="text-xs text-gray-500">使用AI进行语义搜索</span>
+            </div>
+          </div>
+
+          <!-- Other Suggestions -->
+          <div 
+            v-for="(item, index) in suggestions" 
+            :key="index" 
+            @mousedown.prevent="selectSuggestion(item)"
+            class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-sm border-b last:border-0 border-gray-100 dark:border-gray-700 flex items-center gap-2"
+          >
+            <!-- Icons for different types -->
+            <component :is="getIcon(item.type)" class="w-4 h-4 text-gray-500" />
+            
+            <div class="flex-1 min-w-0">
+               <div class="flex items-center justify-between">
+                 <span class="text-gray-800 dark:text-gray-200 font-medium truncate">{{ item.value }}</span>
+                 <span class="text-xs text-gray-500 ml-2 whitespace-nowrap bg-gray-100 dark:bg-gray-600 px-1.5 py-0.5 rounded">{{ getLabel(item.type) }}</span>
+               </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- More Menu -->
@@ -81,14 +119,28 @@
   </header>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
 import {
-  Image as ImageIcon, Images, MoreHorizontal, ChevronDown, Search, X
+  Image as ImageIcon, 
+  Images, 
+  MoreHorizontal, 
+  ChevronDown, 
+  Search, 
+  X,
+  User,
+  MapPin,
+  Type,
+  Folder,
+  FileText,
+  Tag,
+  Mountain,
+  Sparkles
 } from 'lucide-vue-next';
 import { useRouter } from 'vue-router'
-import { onClickOutside } from '@vueuse/core'
+import { onClickOutside, useDebounceFn } from '@vueuse/core'
 import { usePhotoStore } from '@/stores/photoStore'
+import searchService, { type SearchSuggestion } from '@/api/search'
 
 // 导航数据
 const navLinks = [
@@ -110,7 +162,8 @@ const router = useRouter();
 const store = usePhotoStore();
 const searchText = ref('');
 const isSearchExpanded = ref(false);
-const searchInputRef = ref(null);
+const searchInputRef = ref<HTMLInputElement | null>(null);
+const suggestions = ref<SearchSuggestion[]>([]);
 
 // Sync with store
 watch(() => store.currentContext, (ctx) => {
@@ -120,6 +173,7 @@ watch(() => store.currentContext, (ctx) => {
   } else if (ctx.type !== 'search') {
     searchText.value = '';
     isSearchExpanded.value = false;
+    suggestions.value = [];
   }
 });
 
@@ -132,6 +186,8 @@ const toggleSearch = () => {
       nextTick(() => {
         searchInputRef.value?.focus();
       });
+    } else {
+      suggestions.value = [];
     }
   }
 };
@@ -139,23 +195,93 @@ const toggleSearch = () => {
 const handleBlur = () => {
   // Give some time for other interactions (like clear button)
   setTimeout(() => {
+    // If we click on a suggestion, mousedown.prevent handles it, so this might not be needed
+    // But if user clicks elsewhere, we want to close suggestions.
+    // However, we only close search box if it's empty? 
+    // The original logic closed search box if empty.
     if (!searchText.value) {
       isSearchExpanded.value = false;
     }
+    suggestions.value = []; // Clear suggestions on blur
   }, 200);
 };
 
+const handleFocus = () => {
+  if (searchText.value) {
+    fetchSuggestions(searchText.value);
+  }
+}
+
 const handleSearch = () => {
   if (searchText.value.trim()) {
+    suggestions.value = []; // Clear suggestions
     router.push({ path: '/search', query: { q: searchText.value } });
   }
 };
 
 const clearSearch = () => {
   searchText.value = '';
+  suggestions.value = [];
   store.loadPhotos(true); // Reset to default
   searchInputRef.value?.focus();
 };
+
+const fetchSuggestions = useDebounceFn(async (q: string) => {
+  if (!q.trim()) {
+    suggestions.value = [];
+    return;
+  }
+  try {
+    const res = await searchService.getSuggestions(q);
+    suggestions.value = res;
+  } catch (e) {
+    console.error("Failed to fetch suggestions", e);
+  }
+}, 300);
+
+const onInput = () => {
+  fetchSuggestions(searchText.value);
+}
+
+const selectSuggestion = (item: SearchSuggestion) => {
+  searchText.value = item.value;
+  suggestions.value = [];
+  router.push({ 
+    path: '/search', 
+    query: { 
+      q: item.value, 
+      type: item.type 
+    } 
+  });
+};
+
+const getLabel = (type: string) => {
+  const map: Record<string, string> = {
+    'person': '人物',
+    'location': '地点',
+    'ocr': '文字',
+    'album': '相册',
+    'folder': '文件夹',
+    'filename': '文件',
+    'tag': '标签',
+    'scene': '景区'
+  };
+  return map[type] || type;
+}
+
+const getIcon = (type: string) => {
+  const map: Record<string, any> = {
+    'person': User,
+    'location': MapPin,
+    'ocr': Type,
+    'album': Images,
+    'folder': Folder,
+    'filename': FileText,
+    'tag': Tag,
+    'scene': Mountain
+  };
+  return map[type] || Search;
+}
 
 onClickOutside(moreMenuRef, () => {
   showMoreMenu.value = false;

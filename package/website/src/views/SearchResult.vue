@@ -92,7 +92,23 @@ const route = useRoute()
 const router = useRouter()
 
 const query = computed(() => route.query.q as string || '')
-const title = computed(() => query.value ? `搜索: ${query.value}` : '搜索结果')
+const type = computed(() => route.query.type as string | undefined)
+
+const title = computed(() => {
+  if (!query.value) return '搜索结果'
+  const typeMap: Record<string, string> = {
+    'person': '人物',
+    'location': '地点',
+    'ocr': '文字',
+    'album': '相册',
+    'folder': '文件夹',
+    'filename': '文件',
+    'tag': '标签',
+    'scene': '景区'
+  }
+  const typeLabel = type.value ? typeMap[type.value] : ''
+  return typeLabel ? `搜索 ${typeLabel}: ${query.value}` : `搜索: ${query.value}`
+})
 
 const loading = ref(false)
 const photos = ref<AlbumImage[]>([])
@@ -191,6 +207,7 @@ const performSearch = async (isLoadMore = false) => {
   try {
     const res = await searchService.searchByText({
       text: query.value,
+      type: type.value,
       limit: limit,
       skip: skip.value,
       threshold: 0.22
@@ -223,7 +240,7 @@ const loadMore = () => {
   }
 }
 
-watch(() => route.query.q, () => {
+watch([() => route.query.q, () => route.query.type], () => {
   performSearch()
 }, { immediate: true })
 

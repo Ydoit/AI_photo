@@ -13,11 +13,18 @@ export interface SearchResult {
   score: number;
 }
 
+export interface SearchSuggestion {
+  type: string;
+  value: string;
+  label: string;
+}
+
 export interface TextSearchRequest {
   text: string;
   limit?: number;
   skip?: number;
   threshold?: number;
+  type?: string;
 }
 
 const searchService = {
@@ -26,6 +33,16 @@ const searchService = {
    */
   async searchByText(data: TextSearchRequest) {
     const { data: res } = await api.post<SearchResult[]>('/api/search/text', data);
+    return res;
+  },
+
+  /**
+   * Get search suggestions
+   */
+  async getSuggestions(q: string) {
+    const { data: res } = await api.get<SearchSuggestion[]>('/api/search/suggestions', {
+      params: { q }
+    });
     return res;
   },
   
