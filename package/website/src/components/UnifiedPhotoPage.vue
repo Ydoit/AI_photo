@@ -5,16 +5,16 @@
       <div class="flex md:flex-row items-center justify-between gap-4 max-w-7xl mx-auto px-4 py-3 pointer-events-auto">
         
         <!-- Back & Title -->
-        <div class="flex items-center gap-3 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
+        <div class="flex items-center gap-3 w-full max-w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
           <button @click="$emit('back')" class="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors bg-white dark:bg-gray-900">
             <ArrowLeft class="w-5 h-5 text-gray-600 dark:text-gray-300" />
           </button>
-          <div class="pr-2" v-if="!loadingTitle">
-            <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight flex items-center gap-2 truncate">
-              {{ title.length > 5 ? title.slice(0, 5) + '···' : title }}
+          <div class="pr-2 min-w-0" v-if="!loadingTitle">
+            <h1 class="max-w-[140px] md:max-w-[300px] text-sm md:text-lg font-bold text-gray-900 dark:text-white leading-tight flex items-center gap-2 truncate">
+              <span class="truncate">{{ title+subtitle }}</span>
               <slot name="title-extra"></slot>
             </h1>
-            <p class="text-xs text-gray-500">{{ subtitle }}</p>
+            <p class="text-xs text-gray-500 truncate">{{ subtitle }}</p>
           </div>
           <div v-else class="pr-2 animate-pulse">
             <div class="h-6 w-32 bg-gray-200 dark:bg-gray-800 rounded"></div>
@@ -306,7 +306,12 @@ const lightboxImage = ref<AlbumImage | null>(null)
 const showViewOptions = ref(false)
 const viewOptionsRef = ref<HTMLElement | null>(null)
 const galleryRef = ref<InstanceType<typeof PhotoGallery> | null>(null)
+const isMobile = ref(window.innerWidth < 768)
 
+// Add a resize listener to update isMobile
+window.addEventListener('resize', () => {
+  isMobile.value = window.innerWidth < 768
+})
 
 const albumStore = useAlbumStore()
 const albums = computed(() => albumStore.allAlbums)

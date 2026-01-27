@@ -79,6 +79,10 @@ export const settingsApi = {
       responseType: 'blob'
     })
     return response.data
+  },
+  async deleteMapData(filename: string) {
+    const { data } = await api.delete(`/api/settings/map/files/${filename}`)
+    return data
   }
 }
 

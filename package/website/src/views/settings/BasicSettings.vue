@@ -67,7 +67,7 @@
 
       <div class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
         <h3 class="text-md font-semibold mb-3 dark:text-white">离线地图数据</h3>
-        <p class="text-sm text-gray-500 mb-4">下载或上传城市数据以支持离线反向地理编码 (Reverse Geocoding)。</p>
+        <p class="text-sm text-gray-500 mb-4">下载或上传城市数据以支持离线解析照片拍摄位置。（下载越多解析的时候占用内存越大，请根据实际情况选择下载）<a href="http://trailsnap.cn/docs/guide/settings/mapsetting.html#_4-离线地图数据-offline-map-data" target="_blank" class="text-blue-500 hover:underline">查看详细说明</a></p>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -117,10 +117,24 @@
                  <tr v-for="item in downloadedCountries" :key="item.filename">
                    <td class="px-4 py-2 text-gray-800 dark:text-gray-200">{{ item.name }}</td>
                    <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ item.code }}</td>
-                   <td class="px-4 py-2 text-gray-500 font-mono text-xs flex items-center justify-between">
-                      <span>{{ item.filename }}</span>
-                      <button @click="downloadFile(item.filename)" class="text-blue-500 hover:text-blue-700 p-1" title="下载到本地">
-                        <Download class="w-4 h-4" />
+                   <td class="px-4 py-2 text-gray-500 font-mono text-xs flex items-center justify-end gap-2">
+                      <span class="mr-auto">{{ item.filename }}</span>
+                      <button 
+                        @click="downloadFile(item.filename)" 
+                        class="text-blue-500 hover:text-blue-700 p-1 disabled:opacity-50 disabled:cursor-not-allowed" 
+                        :title="downloadingFiles.has(item.filename) ? '下载中...' : '下载到本地'"
+                        :disabled="downloadingFiles.has(item.filename)"
+                      >
+                        <Loader2 v-if="downloadingFiles.has(item.filename)" class="w-4 h-4 animate-spin" />
+                        <Download v-else class="w-4 h-4" />
+                      </button>
+                      <button 
+                        @click="deleteFile(item.filename)" 
+                        class="text-red-500 hover:text-red-700 p-1 disabled:opacity-50 disabled:cursor-not-allowed" 
+                        title="删除文件"
+                        :disabled="downloadingFiles.has(item.filename)"
+                      >
+                        <Trash2 class="w-4 h-4" />
                       </button>
                    </td>
                  </tr>
@@ -320,9 +334,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { settingsApi } from '@/api/settings'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { injectTheme } from '@/composables/useTheme.js'
-import { Sun, Moon, Palette, Check, Info, Download } from 'lucide-vue-next'
+import { Sun, Moon, Palette, Check, Info, Download, Loader2, Trash2 } from 'lucide-vue-next'
 
 const {
   currentMode,
@@ -382,6 +396,7 @@ const countries = ref<any[]>([])
 const downloadedCountries = ref<any[]>([])
 const selectedCountry = ref('')
 const downloading = ref(false)
+const downloadingFiles = ref(new Set<string>())
 
 const loadMapDataInfo = async () => {
   try {
@@ -427,6 +442,10 @@ const handleUploadMapData = async (options: any) => {
 }
 
 const downloadFile = async (filename: string) => {
+  if (downloadingFiles.value.has(filename)) return
+  downloadingFiles.value.add(filename)
+  ElMessage.info(`开始下载文件: ${filename}`)
+
   try {
     const blob = await settingsApi.downloadMapFile(filename)
     const url = window.URL.createObjectURL(blob)
@@ -435,8 +454,33 @@ const downloadFile = async (filename: string) => {
     link.download = filename
     link.click()
     window.URL.revokeObjectURL(url)
+    ElMessage.success(`文件 ${filename} 下载完成`)
   } catch (e) {
-    ElMessage.error('文件下载失败')
+    ElMessage.error(`文件 ${filename} 下载失败`)
+  } finally {
+    downloadingFiles.value.delete(filename)
+  }
+}
+
+const deleteFile = async (filename: string) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除已下载的数据文件 "${filename}" 吗？`,
+      '删除确认',
+      {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    
+    await settingsApi.deleteMapData(filename)
+    ElMessage.success('删除成功')
+    await loadMapDataInfo()
+  } catch (e) {
+    if (e !== 'cancel') {
+       ElMessage.error('删除失败')
+    }
   }
 }
 

@@ -1,5 +1,5 @@
 <template>
-  <div :class="['container mx-auto location-list min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col h-screen relative', (viewMode === 'map') ? 'p-0' : 'p-6']">
+  <div :class="['container mx-auto location-list min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col h-screen relative', (viewMode === 'map') ? 'p-0' : 'px-6']">
     <!-- Header -->
     <div :class="['flex sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0 z-50 transition-all duration-300', (viewMode === 'map') ? 'absolute top-0 left-0 right-0 p-4 pointer-events-none' : 'mb-6']">
       <div class="flex flex-col gap-3 pointer-events-auto">
@@ -7,7 +7,7 @@
           <button @click="router.back()" class="p-0 md:p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors bg-white dark:bg-gray-900">
             <ArrowLeft class="w-5 h-5 text-gray-600 dark:text-gray-300" />
           </button>
-          <h1 class="text-2xl font-bold text-gray-800 dark:text-white">位置相册</h1>
+          <h1 class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">位置相册</h1>
         </div>
 
         <!-- Stats Block -->

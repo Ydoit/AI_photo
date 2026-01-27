@@ -182,7 +182,7 @@ def download_map_data(payload: dict, background_tasks: BackgroundTasks):
     code = payload.get('code')
     if not code:
          raise HTTPException(status_code=400, detail='Country code required')
-    
+
     # We can run this in background
     background_tasks.add_task(download_country_data, code, RG_DATA_DIR)
     return {"status": "downloading", "code": code}
@@ -191,7 +191,7 @@ def download_map_data(payload: dict, background_tasks: BackgroundTasks):
 async def upload_map_data(file: UploadFile = File(...)):
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail='Only CSV files are allowed')
-    
+
     # Validate headers
     content = await file.read()
     # Need to read first line
@@ -199,18 +199,18 @@ async def upload_map_data(file: UploadFile = File(...)):
         text_content = content.decode('utf-8')
     except UnicodeDecodeError:
          raise HTTPException(status_code=400, detail='Invalid encoding')
-         
+
     lines = text_content.splitlines()
     if not lines:
         raise HTTPException(status_code=400, detail='Empty file')
-        
+
     header = lines[0].strip().split(',')
     required = ['longitude','latitude','country','admin_1','admin_2','admin_3','admin_4']
-    
+
     # Check if all required columns are present.
     if not all(col in header for col in required):
          raise HTTPException(status_code=400, detail=f'Missing required columns: {required}')
-         
+
     # Save file
     if not os.path.exists(RG_DATA_DIR):
         os.makedirs(RG_DATA_DIR)
@@ -218,20 +218,40 @@ async def upload_map_data(file: UploadFile = File(...)):
     file_path = os.path.join(RG_DATA_DIR, file.filename)
     with open(file_path, 'wb') as f:
         f.write(content)
-        
+
     return {"status": "success", "filename": file.filename}
 
 @router.get('/map/files/{filename}')
 def download_map_file(filename: str):
     if not os.path.exists(RG_DATA_DIR):
         raise HTTPException(status_code=404, detail='Data directory not found')
-    
+
     # Security check: ensure filename does not contain path separators
     if os.path.sep in filename or '..' in filename:
          raise HTTPException(status_code=400, detail='Invalid filename')
-         
+
     file_path = os.path.join(RG_DATA_DIR, filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail='File not found')
-        
+
     return FileResponse(file_path, filename=filename, media_type='text/csv')
+
+@router.delete('/map/files/{filename}')
+def delete_map_file(filename: str):
+    if not os.path.exists(RG_DATA_DIR):
+        raise HTTPException(status_code=404, detail='Data directory not found')
+
+    # Security check: ensure filename does not contain path separators
+    if os.path.sep in filename or '..' in filename:
+         raise HTTPException(status_code=400, detail='Invalid filename')
+
+    file_path = os.path.join(RG_DATA_DIR, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail='File not found')
+
+    try:
+        os.remove(file_path)
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f'Error deleting file: {e}')
+
+    return {"status": "success", "filename": filename}
