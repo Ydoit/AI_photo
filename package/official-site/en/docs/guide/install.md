@@ -123,6 +123,8 @@ If you are deploying on a NAS (such as Ugreen, Zspace, Fnos), it is recommended 
 - **Data Persistence**: Database data will be saved in the `pg_data` folder in the current directory, and application data in the `data` folder. Please do not delete these directories arbitrarily to avoid data loss.
 - **Port Conflicts**: If the default ports are occupied, please modify the `ports` mapping in `docker-compose.yml` (e.g., `8083:80`).
 - **Photo Permissions**: Ensure that the Docker container has permission to read the mounted photo directory.
+- **GPU Acceleration**：If your system supports GPU acceleration, it is recommended to add GPU support in `docker-compose.yml`. Please refer to [Docker Deployment (GPU Support)](./docker/index.md) for detailed steps.
+- **Experience New Features**：If you want to experience the latest features, you can replace the `latest` tag with the `master` version.
 
 ## Source Code Deployment
 

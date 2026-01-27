@@ -119,6 +119,28 @@ docker-compose up -d
 1. 宿主机已安装 NVIDIA 显卡驱动。
 2. 已安装 [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)。
 
+**【Windows 安装步骤】**（其他系统请自行搜索教程）：
+
+**步骤 1**：打开 WSL 2 的 Linux 终端
+在 Windows 开始菜单中找到你安装的 Linux 发行版（比如 Ubuntu），打开其终端（不是 Windows 的 PowerShell）。
+
+**步骤 2**：在 WSL 2 中安装 nvidia-docker2
+以 Ubuntu 为例，执行以下命令：
+
+```bash
+# 1. 设置NVIDIA软件源
+distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+
+# 2. 更新软件源并安装nvidia-docker2
+sudo apt-get update
+sudo apt-get install -y nvidia-docker2
+
+# 3. 重启Docker服务
+sudo systemctl restart docker
+```
+
 ### 修改 docker-compose.yml
 
 请对 `ai` 服务进行如下修改：
