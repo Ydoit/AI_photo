@@ -105,9 +105,17 @@ class TicketService:
         if img is None:
             raise ValueError("Could not decode image data")
 
+        # 查找 'label' 标签的索引
+        target_classes = None
+        if hasattr(yolo, "names"):
+            for idx, name in yolo.names.items():
+                if name == "label":
+                    target_classes = [idx]
+                    break
+
         # YOLO 推理
         # save=False, verbose=False 以提高性能
-        results = yolo.predict(source=img, save=False, verbose=False)
+        results = yolo.predict(source=img, save=False, verbose=False, classes=target_classes)
 
         tickets = []
 
