@@ -51,6 +51,34 @@ export const settingsApi = {
   async importSettings(config: any) {
     const { data } = await api.post('/api/settings/import', config)
     return data
+  },
+  async getMapCountries() {
+    const { data } = await api.get('/api/settings/map/countries')
+    return data
+  },
+  async getDownloadedMapData() {
+    const { data } = await api.get('/api/settings/map/downloaded')
+    return data
+  },
+  async downloadMapData(code: string) {
+    const { data } = await api.post('/api/settings/map/download', { code })
+    return data
+  },
+  async uploadMapData(file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const { data } = await api.post('/api/settings/map/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return data
+  },
+  async downloadMapFile(filename: string) {
+    const response = await api.get(`/api/settings/map/files/${filename}`, {
+      responseType: 'blob'
+    })
+    return response.data
   }
 }
 

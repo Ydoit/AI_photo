@@ -101,6 +101,39 @@ Map service providers (such as Tianditu, Amap, Baidu) usually require developers
 
 ---
 
+## 4. Offline Map Data
+
+TrailSnap supports offline reverse geocoding. Even without an internet connection, it can resolve the city and region based on the GPS coordinates of photos. This feature relies on offline city data files.
+
+### Feature Description
+
+You can find the **Offline Map Data** management area under **Settings** -> **Basic Settings** -> **Map Configuration**.
+
+### Download Country Data
+1. In the **Download Country Data** area, select the country you need (e.g., "China") from the dropdown menu.
+2. Click the **Download** button.
+3. The system will automatically download and process the city data for that country in the background. Once completed, the country's data will appear in the **Downloaded Data** list below.
+
+### Upload Custom Data
+If you cannot download directly through the system, or have custom city data files, you can manually upload them using this feature.
+1. Prepare a city data file in CSV format. The file must include the following header fields:
+   - `longitude`: Longitude
+   - `latitude`: Latitude
+   - `country`: Country Code (e.g., CN, US)
+   - `admin_1`: Admin Level 1 (e.g., Province/State)
+   - `admin_2`: Admin Level 2 (e.g., City)
+   - `admin_3`: Admin Level 3 (e.g., District/County)
+   - `admin_4`: Admin Level 4 (Optional)
+2. Click the **Click to Upload CSV File** button and select your file.
+3. After successful upload, the data will take effect immediately and appear in the list.
+
+### Manage Downloaded Data
+In the **Downloaded Data** list, you can:
+- View all currently installed country/region data.
+- Click the **Download Icon** next to the filename to download the CSV data file from the server to your local computer for backup or inspection.
+
+---
+
 ## FAQ
 
 **Q: Map loads blank or grid?**
@@ -111,3 +144,6 @@ A:
 
 **Q: What if the Tianditu quota is not enough?**
 A: The free quota for individual developers is usually sufficient for daily browsing needs of personal albums. If it really exceeds the limit, you can consider registering multiple accounts or upgrading to enterprise certification.
+
+**Q: Offline map data download failed?**
+A: It may be due to network connection issues preventing connection to the data source (GeoNames). You can try again later, or manually download the data and import it using the "Upload Custom Data" feature.

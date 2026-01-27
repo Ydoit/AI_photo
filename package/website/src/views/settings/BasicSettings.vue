@@ -64,6 +64,71 @@
           <el-button type="primary" @click="saveMapSettings">保存地图配置</el-button>
         </el-form-item>
       </el-form>
+
+      <div class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-700">
+        <h3 class="text-md font-semibold mb-3 dark:text-white">离线地图数据</h3>
+        <p class="text-sm text-gray-500 mb-4">下载或上传城市数据以支持离线反向地理编码 (Reverse Geocoding)。</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+             <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">下载国家数据</h4>
+             <div class="flex gap-2">
+               <el-select v-model="selectedCountry" placeholder="选择国家" filterable class="flex-1">
+                 <el-option v-for="c in countries" :key="c.code" :label="c.name" :value="c.code">
+                    <span class="float-left">{{ c.name }}</span>
+                    <span class="float-right text-gray-400 text-xs">{{ c.code }}</span>
+                 </el-option>
+               </el-select>
+               <el-button type="primary" @click="downloadCountry" :loading="downloading">下载</el-button>
+             </div>
+          </div>
+          
+          <div>
+            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">上传自定义数据</h4>
+             <el-upload
+                :auto-upload="true"
+                :show-file-list="false"
+                accept=".csv"
+                :http-request="handleUploadMapData"
+              >
+                <el-button>点击上传 CSV 文件</el-button>
+                <template #tip>
+                  <div class="el-upload__tip">
+                    格式要求: longitude,latitude,country,admin_1,admin_2,admin_3,admin_4
+                  </div>
+                </template>
+              </el-upload>
+          </div>
+        </div>
+        
+        <div class="mt-6">
+           <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">已下载数据</h4>
+           <div class="bg-gray-50 dark:bg-gray-900 rounded border dark:border-gray-700 overflow-hidden">
+             <div v-if="downloadedCountries.length === 0" class="p-4 text-center text-gray-500 text-sm">暂无数据</div>
+             <table v-else class="min-w-full text-sm">
+               <thead class="bg-gray-100 dark:bg-gray-800">
+                 <tr>
+                   <th class="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">国家/地区</th>
+                   <th class="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">代码</th>
+                   <th class="px-4 py-2 text-left font-medium text-gray-600 dark:text-gray-300">文件名</th>
+                 </tr>
+               </thead>
+               <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                 <tr v-for="item in downloadedCountries" :key="item.filename">
+                   <td class="px-4 py-2 text-gray-800 dark:text-gray-200">{{ item.name }}</td>
+                   <td class="px-4 py-2 text-gray-600 dark:text-gray-400">{{ item.code }}</td>
+                   <td class="px-4 py-2 text-gray-500 font-mono text-xs flex items-center justify-between">
+                      <span>{{ item.filename }}</span>
+                      <button @click="downloadFile(item.filename)" class="text-blue-500 hover:text-blue-700 p-1" title="下载到本地">
+                        <Download class="w-4 h-4" />
+                      </button>
+                   </td>
+                 </tr>
+               </tbody>
+             </table>
+           </div>
+        </div>
+      </div>
     </div>
 
     <!-- AI Settings -->
@@ -257,7 +322,7 @@ import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { settingsApi } from '@/api/settings'
 import { ElMessage } from 'element-plus'
 import { injectTheme } from '@/composables/useTheme.js'
-import { Sun, Moon, Palette, Check, Info } from 'lucide-vue-next'
+import { Sun, Moon, Palette, Check, Info, Download } from 'lucide-vue-next'
 
 const {
   currentMode,
@@ -311,6 +376,69 @@ const pathValid = ref<boolean | null>(null)
 const indexStatus = ref({ running: false, progress: 0, added: 0, deleted: 0, errors: 0, message: '', current_task: '' })
 const logs = ref<any[]>([])
 let pollTimer: number | null = null
+
+// Map Data Logic
+const countries = ref<any[]>([])
+const downloadedCountries = ref<any[]>([])
+const selectedCountry = ref('')
+const downloading = ref(false)
+
+const loadMapDataInfo = async () => {
+  try {
+    const [cData, dData] = await Promise.all([
+      settingsApi.getMapCountries(),
+      settingsApi.getDownloadedMapData()
+    ])
+    countries.value = cData
+    downloadedCountries.value = dData
+  } catch (e) {
+    console.error('Failed to load map data info', e)
+  }
+}
+
+const downloadCountry = async () => {
+  if (!selectedCountry.value) return
+  downloading.value = true
+  try {
+    await settingsApi.downloadMapData(selectedCountry.value)
+    ElMessage.success('已开始后台下载，请稍候刷新查看')
+    // We might want to poll or just reload after a delay?
+    // Since it's background, immediate reload might not show it.
+    // Just tell user it started.
+    selectedCountry.value = ''
+    setTimeout(loadMapDataInfo, 2000)
+  } catch (e) {
+    ElMessage.error('下载请求失败')
+  } finally {
+    downloading.value = false
+  }
+}
+
+const handleUploadMapData = async (options: any) => {
+  const { file } = options
+  try {
+    await settingsApi.uploadMapData(file)
+    ElMessage.success('上传成功')
+    await loadMapDataInfo()
+  } catch (e: any) {
+    const msg = e.response?.data?.detail || '上传失败'
+    ElMessage.error(msg)
+  }
+}
+
+const downloadFile = async (filename: string) => {
+  try {
+    const blob = await settingsApi.downloadMapFile(filename)
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    link.click()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    ElMessage.error('文件下载失败')
+  }
+}
 
 const pathStatusText = computed(() => {
   if (pathValid.value === null) return ''
@@ -485,6 +613,7 @@ const fetchLogs = async () => {
 
 onMounted(() => {
   loadData()
+  loadMapDataInfo()
   pollStatus()
 })
 

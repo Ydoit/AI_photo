@@ -27,13 +27,15 @@ if sys.platform == 'win32':
     csv.field_size_limit(2**31-1)
 else:
     csv.field_size_limit(sys.maxsize)
+import glob
 import zipfile
+
 from scipy.spatial import cKDTree as KDTree
 from reverse_geocoder import cKDTree_MP as KDTree_MP
 import numpy as np
 
 GN_URL = 'http://download.geonames.org/export/dump/'
-GN_CITIES1000 = 'CN'
+GN_CITIES1000 = 'JP'
 GN_ADMIN1 = 'admin1CodesASCII.txt'
 GN_ADMIN2 = 'admin2Codes.txt'
 
@@ -68,30 +70,141 @@ ADMIN_COLUMNS = {
     'geoNameId': 3
 }
 
+
 # Schema of the cities file created by this library
 RG_COLUMNS = [
-    'lat',
-    'lon',
-    'name',
-    'admin1',
-    'admin2',
-    'cc',
-    'admin3'
-]
-
-RG_COLUMNS = [
-    'longitude','latitude','country','name','admin_1','admin_2','admin_3','admin_4'
+    'longitude','latitude','country','admin_1','admin_2','admin_3','admin_4'
 ]
 
 # Name of cities file created by this library
-RG_FILE = 'rg_cities1000.csv'
-RG_FILE = 'rg_cities_cn.csv'
+RG_FILE = f'rg_cities1000_{GN_CITIES1000}.csv'
+# RG_FILE = 'rg_cities_cn.csv'
 
 # WGS-84 major axis in kms
 A = 6378.137
 
 # WGS-84 eccentricity squared
 E2 = 0.00669437999014
+
+def load_admin_codes(output_dir, verbose=True):
+    if verbose:
+        print('Loading admin codes...')
+    
+    admin1_file = os.path.join(output_dir, GN_ADMIN1)
+    admin2_file = os.path.join(output_dir, GN_ADMIN2)
+    
+    admin1_map = {}
+    if os.path.exists(admin1_file):
+        t_rows = csv.reader(open(admin1_file, 'rt', encoding='utf-8'), delimiter='\t')
+        for row in t_rows:
+            admin1_map[row[ADMIN_COLUMNS['concatCodes']]] = row[ADMIN_COLUMNS['asciiName']]
+            
+    admin2_map = {}
+    if os.path.exists(admin2_file):
+        for row in csv.reader(open(admin2_file, 'rt', encoding='utf-8'), delimiter='\t'):
+            admin2_map[row[ADMIN_COLUMNS['concatCodes']]] = row[ADMIN_COLUMNS['asciiName']]
+            
+    return admin1_map, admin2_map
+
+def convert_geonames_to_csv(txt_path, csv_path, admin1_map, admin2_map, verbose=True):
+    if verbose:
+        print(f'Creating formatted geocoded file {csv_path}...')
+        
+    writer = csv.DictWriter(open(csv_path, 'wt', encoding='utf-8', newline=''), fieldnames=RG_COLUMNS)
+    writer.writeheader()
+    
+    rows = []
+    with open(txt_path, 'rt', encoding='utf-8') as fin:
+        reader = csv.reader(fin, delimiter='\t', quoting=csv.QUOTE_NONE)
+        for row in reader:
+            lat = row[GN_COLUMNS['latitude']]
+            lon = row[GN_COLUMNS['longitude']]
+            name = row[GN_COLUMNS['asciiName']]
+            cc = row[GN_COLUMNS['countryCode']]
+
+            admin1_c = row[GN_COLUMNS['admin1Code']]
+            admin2_c = row[GN_COLUMNS['admin2Code']]
+            admin3_c = row[GN_COLUMNS['admin3Code']]
+            admin4_c = row[GN_COLUMNS['admin4Code']]
+
+            cc_admin1 = cc+'.'+admin1_c
+            cc_admin2 = cc+'.'+admin1_c+'.'+admin2_c
+
+            admin1 = ''
+            admin2 = ''
+
+            if cc_admin1 in admin1_map:
+                admin1 = admin1_map[cc_admin1]
+            if cc_admin2 in admin2_map:
+                admin2 = admin2_map[cc_admin2]
+
+            write_row = {
+                'latitude': lat,
+                'longitude': lon,
+                'country': cc,
+                'admin_1': admin1,
+                'admin_2': admin2,
+                'admin_3': name,
+                'admin_4': admin4_c,
+            }
+            rows.append(write_row)
+    
+    writer.writerows(rows)
+
+def download_file(url, local_path, verbose=True):
+    if not os.path.exists(local_path):
+        if verbose:
+            print(f'Downloading {url} to {local_path}...')
+        try: # Python 3
+            import urllib.request
+            urllib.request.urlretrieve(url, local_path)
+        except ImportError: # Python 2
+            import urllib
+            urllib.urlretrieve(url, local_path)
+
+def download_country_data(country_code, output_dir, verbose=True):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        
+    # Ensure admin files exist
+    admin1_path = os.path.join(output_dir, GN_ADMIN1)
+    admin2_path = os.path.join(output_dir, GN_ADMIN2)
+    
+    download_file(GN_URL + GN_ADMIN1, admin1_path, verbose)
+    download_file(GN_URL + GN_ADMIN2, admin2_path, verbose)
+    
+    # Download country zip
+    zip_filename = f'{country_code}.zip'
+    zip_path = os.path.join(output_dir, zip_filename)
+    txt_filename = f'{country_code}.txt'
+    
+    try:
+        download_file(GN_URL + zip_filename, zip_path, verbose)
+    except Exception as e:
+        print(f"Error downloading {country_code}: {e}")
+        return
+
+    # Extract
+    if verbose:
+        print(f'Extracting {zip_filename}...')
+    with zipfile.ZipFile(zip_path, 'r') as z:
+        z.extract(txt_filename, output_dir)
+        
+    # Convert
+    admin1_map, admin2_map = load_admin_codes(output_dir, verbose)
+    txt_path = os.path.join(output_dir, txt_filename)
+    csv_path = os.path.join(output_dir, f'{country_code}.csv')
+    
+    convert_geonames_to_csv(txt_path, csv_path, admin1_map, admin2_map, verbose)
+    
+    # Cleanup
+    if os.path.exists(txt_path):
+        os.remove(txt_path)
+    if os.path.exists(zip_path):
+        os.remove(zip_path)
+    
+    if verbose:
+        print(f'Successfully processed {country_code} to {csv_path}')
 
 def singleton(cls):
     """
@@ -112,7 +225,7 @@ class RGeocoder(object):
     """
     The main reverse geocoder class
     """
-    def __init__(self, mode=1, verbose=True, stream=None):
+    def __init__(self, mode=1, verbose=True, stream=None, data_dir=None):
         """ Class Instantiation
         Args:
         mode (int): Library supports the following two modes:
@@ -120,22 +233,55 @@ class RGeocoder(object):
                     - 2 = Multi-threaded K-D Tree (Default)
         verbose (bool): For verbose output, set to True
         stream (io.StringIO): An in-memory stream of a custom data source
+        data_dir (str): Directory containing CSV files to load
         """
         self.mode = mode
         self.verbose = verbose
         self.stream = stream
+        self.data_dir = data_dir
         self.tree = None
         self.locations = None
         # Lazy load: Data will be loaded on first query
 
     def _load_data(self):
         """ Helper to load data if not already loaded """
+        coordinates = []
+        self.locations = []
+
         if self.stream:
             if hasattr(self.stream, 'seek'):
                 self.stream.seek(0)
-            coordinates, self.locations = self.load(self.stream)
+            coords, locs = self.load(self.stream)
+            coordinates.extend(coords)
+            self.locations.extend(locs)
+        elif self.data_dir:
+            if not os.path.exists(self.data_dir):
+                if self.verbose:
+                    print(f"Data directory {self.data_dir} does not exist.")
+            else:
+                files = glob.glob(os.path.join(self.data_dir, '*.csv'))
+                if not files and self.verbose:
+                     print(f"No CSV files found in {self.data_dir}")
+                
+                for f in files:
+                    if self.verbose:
+                        print(f"Loading {f}...")
+                    try:
+                        with open(f, 'rt', encoding='utf-8') as fin:
+                            coords, locs = self.load(fin)
+                            coordinates.extend(coords)
+                            self.locations.extend(locs)
+                    except Exception as e:
+                        print(f"Failed to load {f}: {e}")
         else:
-            coordinates, self.locations = self.extract(rel_path(RG_FILE))
+            coords, locs = self.extract(rel_path(RG_FILE))
+            coordinates.extend(coords)
+            self.locations.extend(locs)
+
+        if not coordinates:
+            if self.verbose:
+                print("No data loaded.")
+            return
 
         if self.mode == 1: # Single-process
             self.tree = KDTree(coordinates)
@@ -269,10 +415,9 @@ class RGeocoder(object):
                 write_row = {'latitude':lat,
                              'longitude':lon,
                              'country': cc,
-                             'name':name,
                              'admin_1':admin1,
                              'admin_2':admin2,
-                            'admin_3':admin3_c,
+                            'admin_3':name,
                             'admin_4':admin4_c,
                              }
                 rows.append(write_row)
@@ -311,7 +456,7 @@ def rel_path(filename):
     """
     return os.path.join(os.getcwd(), os.path.dirname(__file__), filename)
 
-def get(geo_coord, mode=1, verbose=True):
+def get(geo_coord, mode=1, verbose=True, data_dir=None):
     """
     Function to query for a single coordinate
     """
@@ -321,7 +466,7 @@ def get(geo_coord, mode=1, verbose=True):
     _rg = RGeocoder(mode=mode, verbose=verbose)
     return _rg.query([geo_coord])[0]
 
-def search(geo_coords, mode=1, verbose=True):
+def search(geo_coords, mode=1, verbose=True, data_dir=None):
     """
     Function to query for a list of coordinates
     """
@@ -330,7 +475,7 @@ def search(geo_coords, mode=1, verbose=True):
     elif not isinstance(geo_coords[0], tuple):
         geo_coords = [geo_coords]
 
-    _rg = RGeocoder(mode=mode, verbose=verbose)
+    _rg = RGeocoder(mode=mode, verbose=verbose, data_dir=data_dir)
     return _rg.query(geo_coords)
 
 def unload():
@@ -343,8 +488,17 @@ def unload():
     RGeocoder().unload()
 
 if __name__ == '__main__':
+    # 1. 下载中国数据到 'my_data' 目录
+    # download_country_data('CN', 'my_data')
+
+    # 2. 从 'my_data' 目录加载数据进行反向地理编码
+    geocoder = RGeocoder(data_dir='my_data')
+    result = geocoder.query([(39.9042, 116.4074)])  # 北京坐标
+    print(result)
     print('Testing single coordinate through get...')
     city = (37.78674, -122.39222)
+    city = (35.6895, 139.6917)
+    # city = (34.0522, -118.2437)
     print('Reverse geocoding 1 city...')
     result = get(city)
     print(result)
