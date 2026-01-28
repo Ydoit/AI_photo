@@ -29,25 +29,7 @@ except ImportError:
 router = APIRouter()
 
 RG_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'resources', 'rg_data')
-
-# Common countries list
-COUNTRIES = [
-    {"code": "CN", "name": "China"},
-    {"code": "US", "name": "United States"},
-    {"code": "JP", "name": "Japan"},
-    {"code": "FR", "name": "France"},
-    {"code": "DE", "name": "Germany"},
-    {"code": "GB", "name": "United Kingdom"},
-    {"code": "RU", "name": "Russia"},
-    {"code": "IT", "name": "Italy"},
-    {"code": "ES", "name": "Spain"},
-    {"code": "CA", "name": "Canada"},
-    {"code": "AU", "name": "Australia"},
-    {"code": "BR", "name": "Brazil"},
-    {"code": "IN", "name": "India"},
-    {"code": "KR", "name": "South Korea"},
-    {"code": "AD", "name": "Andorra"},
-]
+COUNTRIES_JSON_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'resources', 'rg_data', 'countries.json')
 
 def get_storage_root() -> str:
     return _get_storage_root()
@@ -156,7 +138,11 @@ def import_settings(payload: dict):
 
 @router.get('/map/countries')
 def get_map_countries():
-    return COUNTRIES
+    if not os.path.exists(COUNTRIES_JSON_FILE):
+        return []
+    with open(COUNTRIES_JSON_FILE, 'r') as f:
+        countries = json.load(f)
+    return countries
 
 @router.get('/map/downloaded')
 def get_downloaded_countries():
@@ -170,7 +156,7 @@ def get_downloaded_countries():
             code = f[:-4]
             # Try to find name
             name = code
-            for c in COUNTRIES:
+            for c in get_map_countries():
                 if c['code'] == code:
                     name = c['name']
                     break

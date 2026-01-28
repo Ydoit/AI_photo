@@ -4,13 +4,25 @@ This document aims to provide developers with a guide to the TrailSnap project, 
 
 ## Table of Contents
 
-1. [Project Introduction & Tech Stack](#1-project-introduction--tech-stack)
-2. [Development Environment Preparation](#2-development-environment-preparation)
-3. [Project Structure Detail](#3-project-structure-detail)
-4. [Backend Development Guide](#4-backend-development-guide)
-5. [Frontend Development Guide](#5-frontend-development-guide)
-6. [AI Service Development Guide](#6-ai-service-development-guide)
-7. [Database Migration](#7-database-migration)
+- [TrailSnap Developer Documentation](#trailsnap-developer-documentation)
+  - [Table of Contents](#table-of-contents)
+  - [1. Project Introduction \& Tech Stack](#1-project-introduction--tech-stack)
+  - [2. Development Environment Preparation](#2-development-environment-preparation)
+  - [3. Project Structure Detail](#3-project-structure-detail)
+  - [4. Backend Development Guide](#4-backend-development-guide)
+    - [4.1 Start Database](#41-start-database)
+    - [4.2 Install Dependencies](#42-install-dependencies)
+    - [4.3 Configuration File](#43-configuration-file)
+    - [4.4 Run Service](#44-run-service)
+  - [5. Frontend Development Guide](#5-frontend-development-guide)
+    - [5.1 Install Dependencies](#51-install-dependencies)
+    - [5.2 Run Development Server](#52-run-development-server)
+    - [5.3 Build](#53-build)
+  - [6. AI Service Development Guide](#6-ai-service-development-guide)
+    - [6.1 Install Dependencies](#61-install-dependencies)
+    - [6.2 Run Service](#62-run-service)
+  - [7. Database Migration](#7-database-migration)
+  - [8. Build Docker Image](#8-build-docker-image)
 
 ---
 
@@ -121,8 +133,14 @@ The AI service is located in `package/ai`, providing OCR and face recognition ca
 ### 6.1 Install Dependencies
 ```bash
 cd package/ai
-# Select requirements based on whether GPU is used
-pip install -r requirements.txt
+
+pip install uv
+
+# Install dependencies (CPU version)
+uv sync --extra cpu
+
+# Install dependencies (GPU version)
+uv sync --extra gpu
 ```
 
 ### 6.2 Run Service

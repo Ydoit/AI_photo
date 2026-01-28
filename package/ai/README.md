@@ -33,7 +33,7 @@ TrailSnap 的 AI 微服务模块，负责处理所有计算机视觉相关的任
 
    **GPU 版本 (CUDA 12.8)**:
    ```bash
-   uv sync --extra cu128
+   uv sync --extra gpu
    ```
    *(注意：GPU 版本需要系统已安装对应的 CUDA 驱动)*
 
@@ -57,8 +57,11 @@ http://localhost:8001/docs
 构建并运行 Docker 镜像：
 
 ```bash
-# 构建镜像
+# 构建镜像（CPU版本）
 docker build -t trailsnap-ai .
+
+# # 构建镜像（GPU版本）
+# docker build -t trailsnap-ai -f Dockerfile.gpu .
 
 # 运行容器
 docker run -d -p 8001:8001 --name trailsnap-ai trailsnap-ai

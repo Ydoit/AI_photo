@@ -121,8 +121,14 @@ AI 服务位于 `package/ai`，为后端提供 OCR 和人脸识别能力。
 ### 6.1 安装依赖
 ```bash
 cd package/ai
-# 根据是否使用 GPU 选择 requirements
-pip install -r requirements.txt
+
+pip install uv
+
+# 安装依赖（CPU版本）
+uv sync --extra cpu
+
+# 安装依赖（GPU版本）
+uv sync --extra gpu
 ```
 
 ### 6.2 运行服务
