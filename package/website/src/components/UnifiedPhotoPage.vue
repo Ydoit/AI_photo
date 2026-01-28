@@ -11,7 +11,7 @@
           </button>
           <div class="pr-2 min-w-0" v-if="!loadingTitle">
             <h1 class="max-w-[140px] md:max-w-[300px] text-sm md:text-lg font-bold text-gray-900 dark:text-white leading-tight flex items-center gap-2 truncate">
-              <span class="truncate">{{ title+subtitle }}</span>
+              <span class="truncate">{{ title }}</span>
               <slot name="title-extra"></slot>
             </h1>
             <p class="text-xs text-gray-500 truncate">{{ subtitle }}</p>
@@ -130,6 +130,7 @@
       <slot name="intro"></slot>
       <PhotoGallery
         ref="galleryRef"
+        :store="props.store"
         :photos="photos"
         :timeline-stats="timelineStats"
         :loading="loading"
@@ -268,6 +269,7 @@ const props = withDefaults(defineProps<{
   timelineStats?: any
   confirmRemove?: boolean
   pendingRemoveIds?: Set<string>
+  store?: any
 }>(), {
   title: '',
   subtitle: '',
@@ -314,6 +316,8 @@ window.addEventListener('resize', () => {
 })
 
 const albumStore = useAlbumStore()
+const photoStore = usePhotoStore()
+const store = computed(() => props.store || photoStore)
 const albums = computed(() => albumStore.allAlbums)
 
 // Delete/Remove State

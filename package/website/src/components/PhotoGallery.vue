@@ -31,7 +31,7 @@
       leave-from-class="transform translate-y-0 opacity-100"
       leave-to-class="transform -translate-y-full opacity-0"
     >
-      <div v-if="isSelectionMode" class="fixed bottom-[20px] left-0 right-0 z-40 flex justify-center pointer-events-none px-2">
+      <div v-if="isSelectionMode && showActionBar" class="fixed bottom-[20px] left-0 right-0 z-40 flex justify-center pointer-events-none px-2">
         <div class="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200 dark:border-gray-700 shadow-lg rounded-full px-3 py-0 md:py-1 flex items-center gap-1 sm:gap-6 pointer-events-auto min-w-[320px] max-w-full overflow-x-auto scrollbar-hide">
           <div class="flex items-center gap-0 md:gap-3 flex-shrink-0">
             <button @click="exitSelectionMode" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors dark:text-gray-300 bg-transparent" title="取消选择">
@@ -278,9 +278,7 @@ import { useAlbumStore } from '@/stores/albumStore'
 import { usePhotoStore } from '@/stores/photoStore'
 import type { TimelineStats, AlbumImage } from '@/types/album'
 import { useVirtualLayout, type MonthBlock, type DayBlock } from '@/composables/useVirtualLayout'
-import { useWindowScroll, useDebounceFn } from '@vueuse/core'
-
-const store = usePhotoStore()
+import { useWindowScroll, useScroll, useDebounceFn } from '@vueuse/core'
 
 // Props
 interface Props {
@@ -295,6 +293,9 @@ interface Props {
   activeDate?: string // v-model
   pendingRemoveIds?: Set<string>
   error?: string | null
+  store?: any
+  scrollContainer?: HTMLElement | null,
+  showActionBar?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -305,17 +306,21 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   hasMore: false,
   pendingRemoveIds: () => new Set(),
-  error: null
+  error: null,
+  showActionBar: true
 })
 
-const emit = defineEmits(['click-photo', 'load-more', 'load-range', 'update:activeDate', 'batch-delete', 'add-to-album', 'remove-from-album', 'set-album-cover', 'retry'])
+const emit = defineEmits(['click-photo', 'load-more', 'load-range', 'update:activeDate', 'batch-delete', 'add-to-album', 'remove-from-album', 'set-album-cover', 'retry', 'selection-change'])
 
     // --- Selection State ---
 const isSelectionMode = ref(false)
-const localSelectedIds = ref(new Set<string>())
+const localSelectedIds = reactive(new Set<string>())
 
 const isDownloading = ref(false)
 const downloadProgress = ref(0)
+
+const photoStore = usePhotoStore()
+const store = computed(() => props.store || photoStore)
 
 // --- Image Loading Logic ---
 const loadedImages = reactive<Record<string, string>>({})
@@ -368,6 +373,7 @@ const cancelImageLoad = (imageId: string) => {
 
 // Ensure cleanup on component unmount
 onUnmounted(() => {
+    window.removeEventListener('resize', handleResize)
     imageLoaders.forEach(c => c.abort())
     imageLoaders.clear()
     if (resizeObserver) resizeObserver.disconnect()
@@ -378,8 +384,35 @@ onUnmounted(() => {
 const galleryEl = ref<HTMLElement | null>(null)
 const containerWidth = ref(1000)
 
-const { y: scrollTop } = useWindowScroll()
+const { y: windowScrollTop } = useWindowScroll()
+const { y: containerScrollTop } = useScroll(computed(() => props.scrollContainer))
+
+const scrollTop = computed(() => {
+  if (props.scrollContainer) return containerScrollTop.value
+  return windowScrollTop.value
+})
+
 const viewportHeight = ref(window.innerHeight)
+
+const handleResize = () => {
+  if (props.scrollContainer) {
+    viewportHeight.value = props.scrollContainer.clientHeight
+  } else {
+    viewportHeight.value = window.innerHeight
+  }
+  updateVisibleBlocks()
+}
+
+// Update viewport height based on scroll container
+watch(() => props.scrollContainer, (container) => {
+  if (container) {
+    viewportHeight.value = container.clientHeight
+    const ro = new ResizeObserver(handleResize)
+    ro.observe(container)
+  } else {
+    viewportHeight.value = window.innerHeight
+  }
+}, { immediate: true })
 
 const layoutOptions = {
     timelineStats: toRef(props, 'timelineStats'),
@@ -497,6 +530,7 @@ watch(monthBlocks, () => {
 // Resize Observer for Container Width
 let resizeObserver: ResizeObserver | null = null
 onMounted(() => {
+    window.addEventListener('resize', handleResize)
     if (galleryEl.value) {
         containerWidth.value = galleryEl.value.clientWidth
         resizeObserver = new ResizeObserver((entries) => {
@@ -509,8 +543,6 @@ onMounted(() => {
         })
         resizeObserver.observe(galleryEl.value)
     }
-    viewportHeight.value = window.innerHeight
-    window.addEventListener('resize', () => { viewportHeight.value = window.innerHeight })
     updateVisibleBlocks()
     setTimeout(() => {
       updateVisibleBlocks()
@@ -519,7 +551,7 @@ onMounted(() => {
 
 // --- Data Fetching Logic ---
 const checkAndLoadVisibleMonths = (refresh = false) => {
-    const context = store.currentContext
+    const context = store.value.currentContext
     const albumId = context.type === 'album' ? context.id : undefined
     visibleBlocksList.value.forEach(block => {
         const key = `${block.year}-${block.month}`
@@ -527,7 +559,7 @@ const checkAndLoadVisibleMonths = (refresh = false) => {
         // store uses "YYYY-MM" format in loadPhotosByMonth
         // Note: hasPhotos(key) checks props.photos. 
         if (!hasPhotosForMonth(key) || refresh) {
-             store.loadPhotosByMonth(block.year, block.month, albumId, refresh)
+             store.value.loadPhotosByMonth(block.year, block.month, albumId, refresh)
         }
     })
 }
@@ -573,7 +605,11 @@ const scrollToDate = (date: string) => {
         const month = parseInt(match[2])
         const block = monthBlocks.value.find(b => b.year === year && b.month === month)
         if (block) {
-            window.scrollTo({ top: block.top + 60, behavior: 'smooth' }) // + offset for header
+            if (props.scrollContainer) {
+                props.scrollContainer.scrollTo({ top: block.top + 60, behavior: 'smooth' })
+            } else {
+                window.scrollTo({ top: block.top + 60, behavior: 'smooth' })
+            }
         }
     }
 }
@@ -589,22 +625,24 @@ const enterSelectionMode = (photo?: AlbumImage) => {
 
 const exitSelectionMode = () => {
   isSelectionMode.value = false
-  localSelectedIds.value.clear()
+  localSelectedIds.clear()
+  emit('selection-change', [])
 }
 
 const toggleSelection = (photo: AlbumImage) => {
-  if (localSelectedIds.value.has(photo.id)) {
-    localSelectedIds.value.delete(photo.id)
+  if (localSelectedIds.has(photo.id)) {
+    localSelectedIds.delete(photo.id)
   } else {
-    localSelectedIds.value.add(photo.id)
+    localSelectedIds.add(photo.id)
     isSelectionMode.value = true
   }
+  emit('selection-change', Array.from(localSelectedIds))
 }
 
 const isDaySelected = (day: DayBlock) => {
     const photos = getPhotos(day.key)
     if (photos.length === 0) return false
-    return photos.every(p => localSelectedIds.value.has(p.id))
+    return photos.every(p => localSelectedIds.has(p.id))
 }
 
 const toggleDaySelection = (day: DayBlock) => {
@@ -614,12 +652,13 @@ const toggleDaySelection = (day: DayBlock) => {
     const allSelected = isDaySelected(day)
     
     if (allSelected) {
-        photos.forEach(p => localSelectedIds.value.delete(p.id))
-        if (localSelectedIds.value.size === 0) isSelectionMode.value = false
+        photos.forEach(p => localSelectedIds.delete(p.id))
+        if (localSelectedIds.size === 0) isSelectionMode.value = false
     } else {
-        photos.forEach(p => localSelectedIds.value.add(p.id))
+        photos.forEach(p => localSelectedIds.add(p.id))
         isSelectionMode.value = true
     }
+    emit('selection-change', Array.from(localSelectedIds))
 }
 
 const handlePhotoClick = (photo: AlbumImage) => {
@@ -631,22 +670,23 @@ const handlePhotoClick = (photo: AlbumImage) => {
 }
 
 const isAllSelected = computed(() => {
-    return props.photos.length > 0 && props.photos.every(p => localSelectedIds.value.has(p.id))
+    return props.photos.length > 0 && props.photos.every(p => localSelectedIds.has(p.id))
 })
 
 const toggleSelectAll = () => {
     if (isAllSelected.value) {
         exitSelectionMode()
     } else {
-        props.photos.forEach(p => localSelectedIds.value.add(p.id))
+        props.photos.forEach(p => localSelectedIds.add(p.id))
         isSelectionMode.value = true
+        emit('selection-change', Array.from(localSelectedIds))
     }
 }
 
 const handleDelete = () => {
-    if (localSelectedIds.value.size === 0) return
+    if (localSelectedIds.size === 0) return
     
-    const ids = Array.from(localSelectedIds.value)
+    const ids = Array.from(localSelectedIds)
     if (props.deleteLabel.includes('移除')) {
         emit('remove-from-album', ids)
     } else {
@@ -655,14 +695,14 @@ const handleDelete = () => {
 }
 
 const handleDownload = async () => {
-  if (localSelectedIds.value.size === 0) return
+  if (localSelectedIds.size === 0) return
   isDownloading.value = true
   downloadProgress.value = 0
   
-  const total = localSelectedIds.value.size
+  const total = localSelectedIds.size
   let completed = 0
   
-  for (const id of localSelectedIds.value) {
+  for (const id of localSelectedIds) {
     try {
       const photo = props.photos.find(p => p.id === id)
       if (!photo) continue

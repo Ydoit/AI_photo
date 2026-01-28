@@ -110,7 +110,7 @@ export const mapPhotoToImage = (photo: Photo): AlbumImage => {
     }
   }
 
-export const usePhotoStore = defineStore('photo', () => {
+export const photoStoreSetup = () => {
   // --- 状态 ---
   const images = ref<AlbumImage[]>([])
   const loading = ref(false)
@@ -403,4 +403,7 @@ export const usePhotoStore = defineStore('photo', () => {
     isSearchMode,
     searchPhotos
   }
-})
+}
+
+export const usePhotoStore = defineStore('photo', photoStoreSetup)
+

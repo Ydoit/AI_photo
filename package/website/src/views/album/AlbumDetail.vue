@@ -19,7 +19,33 @@
     @photo-update="handlePhotoUpdate"
     @set-cover="setCover"
   >
+    <template #header-actions>
+      <button 
+        v-if="album?.type === 'custom' || album?.type === 'user'"
+        @click="showPhotoSelector = true"
+        class="flex items-center gap-2 p-2 sm:px-4 sm:py-2 text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-full transition-colors font-medium text-sm"
+        title="添加照片"
+      >
+        <ImagePlus class="w-5 h-5" />
+        <span class="hidden sm:inline">添加照片</span>
+      </button>
+    </template>
     <template #extra-modals>
+      <!-- Photo Selector Modal -->
+      <Transition name="slide-up">
+        <div v-if="showPhotoSelector" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm md:p-4" @click.self="showPhotoSelector = false">
+          <div class="bg-white dark:bg-gray-900 md:rounded-2xl shadow-2xl w-full h-full md:max-w-7xl md:h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            <PhotoSelector 
+              :is-selector="true" 
+              :store="selectionStore"
+              :title="`添加到 ${album?.title}`"
+              @select="handlePhotosSelected"
+              @cancel="showPhotoSelector = false"
+            />
+          </div>
+        </div>
+      </Transition>
+
       <!-- Upload Progress Toast -->
       <Transition name="slide-up">
         <div v-if="showUploadModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -43,10 +69,12 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAlbumStore } from '@/stores/albumStore'
 import { usePhotoStore } from '@/stores/photoStore'
+import { useSelectionStore } from '@/stores/selectionStore'
 import { albumService } from '@/api/album'
-import { X, Folder, Loader2, Check } from 'lucide-vue-next'
+import { X, Folder, Loader2, Check, ImagePlus } from 'lucide-vue-next'
 import UnifiedPhotoPage from '@/components/UnifiedPhotoPage.vue'
 import MultiFileUpload from '@/components/MultiFileUpload.vue'
+import PhotoSelector from '@/components/PhotoSelector.vue'
 import { format } from 'date-fns'
 import { ElMessage } from 'element-plus'
 
@@ -54,6 +82,7 @@ const route = useRoute()
 const router = useRouter()
 const albumStore = useAlbumStore()
 const photoStore = usePhotoStore()
+const selectionStore = useSelectionStore()
 const albumId = route.params.id as string
 
 // State
@@ -62,6 +91,7 @@ const images = computed(() => photoStore.images)
 
 // UI State
 const showUploadModal = ref(false)
+const showPhotoSelector = ref(false)
 const pendingRemoveIds = ref(new Set<string>())
 
 // Used by UnifiedPhotoPage for sidebar
@@ -75,6 +105,21 @@ const triggerUpload = () => {
 const handleUploadComplete = () => {
     showUploadModal.value = false
     photoStore.loadAlbumPhotos(albumId, true)
+}
+
+const handlePhotosSelected = async (ids: string[]) => {
+    if (ids.length === 0) return
+    try {
+        await albumStore.addPhotosToAlbum(ids, 'add_to_album', albumId)
+        ElMessage.success(`成功添加 ${ids.length} 张照片`)
+        showPhotoSelector.value = false
+        photoStore.resetAll()
+        albumStore.fetchAlbums()
+        photoStore.loadAlbumPhotos(albumId, true)
+    } catch (e) {
+        console.error(e)
+        ElMessage.error('添加失败')
+    }
 }
 
 const loadMorePhotos = () => {
