@@ -3,11 +3,11 @@
     <!-- Header -->
     <div :class="['flex sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0 z-50 transition-all duration-300', (viewMode === 'map') ? 'absolute top-0 left-0 right-0 p-4 pointer-events-none' : 'mb-6']">
       <div class="flex flex-col gap-3 pointer-events-auto">
-        <div class="flex items-center gap-3 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-1 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
+        <div class="flex items-center gap-3 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
           <button @click="router.back()" class="p-0 md:p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors bg-white dark:bg-gray-900">
             <ArrowLeft class="w-5 h-5 text-gray-600 dark:text-gray-300" />
           </button>
-          <h1 class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">位置相册</h1>
+          <h1 class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">位置</h1>
         </div>
 
         <!-- Stats Block -->
@@ -22,6 +22,29 @@
       </div>
 
       <div class="pointer-events-auto flex items-center gap-1 md:gap-3">
+        <!-- Add Scene Button (Left) -->
+        <button
+          v-if="level === 'scene'"
+          @click="editingScene = null; showAddScene = true"
+          class="px-3 py-1.5 rounded-lg bg-primary-500 text-white hover:bg-primary-600 shadow-sm transition-all flex items-center gap-1.5"
+          title="新增景区"
+        >
+          <Plus class="w-4 h-4" />
+          <span class="hidden sm:inline">新增景区</span>
+        </button>
+
+        <!-- Filter Toggle (Only for Scene Level) -->
+        <div v-if="level === 'scene'" class="bg-gray-200 dark:bg-gray-800 p-1 rounded-lg hidden md:flex">
+          <button
+            v-for="opt in filterOptions"
+            :key="opt.value"
+            @click="filterStatus = opt.value as any"
+            :class="['px-3 py-1 rounded-md text-xs font-medium transition-all', filterStatus === opt.value ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
+          >
+            {{ opt.label }}
+          </button>
+        </div>
+
         <!-- Level Toggle -->
         <div class="bg-gray-200 dark:bg-gray-800 p-0 md:p-1 rounded-lg flex relative" ref="levelMenuRef">
           <!-- Mobile Dropdown Trigger -->
@@ -46,6 +69,18 @@
             >
               {{ opt.label }}
             </button>
+            <!-- Mobile Filter Options -->
+            <template v-if="level === 'scene'">
+              <div class="h-px bg-gray-200 dark:bg-gray-700 my-1"></div>
+              <button
+                v-for="opt in filterOptions"
+                :key="'m-' + opt.value"
+                @click="filterStatus = opt.value as any; showLevelMenu = false"
+                :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors', filterStatus === opt.value ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
+              >
+                {{ opt.label }}
+              </button>
+            </template>
             <div class="h-px bg-gray-200 dark:bg-gray-700 my-1"></div>
             <button
                v-show="viewMode !== 'grid'"
@@ -88,16 +123,6 @@
           <div v-show="viewMode !== 'grid'" class="hidden md:block w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1 my-auto"></div>
 
           <button
-            v-if="level === 'scene'"
-            @click="editingScene = null; showAddScene = true"
-            class="px-3 py-1.5 rounded-md bg-primary-500 text-white hover:bg-primary-600 transition-colors flex items-center gap-1.5 ml-1"
-            title="新增景区"
-          >
-            <Plus class="w-4 h-4" />
-            <span class="hidden sm:inline">新增</span>
-          </button>
-
-          <button
             v-show="viewMode !== 'grid'"
             @click="level = 'photo-map'"
             :class="['hidden md:flex px-3 py-1.5 rounded-md text-sm font-medium transition-all items-center gap-1.5', level === 'photo-map' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
@@ -138,7 +163,7 @@
     </div>
 
     <!-- Photo Map View -->
-    <LocationMap v-if="viewMode === 'map' && (level === 'photo-map' || level === 'scene')" class="flex-1 overflow-hidden bg-white dark:bg-gray-900 shadow-sm" />
+    <LocationMap v-if="viewMode === 'map' && (level === 'photo-map' || level === 'scene')" :filter-status="filterStatus" class="flex-1 overflow-hidden bg-white dark:bg-gray-900 shadow-sm" />
 
     <!-- Grid View -->
     <div v-show="viewMode === 'grid'" class="flex-1 overflow-y-auto">
@@ -168,14 +193,24 @@
           @click="goToLocation(loc.name)"
         >
           <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-sm group-hover:shadow-md transition-all duration-300">
-             <button
-                v-if="level === 'scene' && loc.id"
-                @click.stop="handleEdit(loc)"
-                class="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full shadow-sm hover:bg-white transition-all opacity-0 group-hover:opacity-100 z-10 text-gray-600 hover:text-primary-500"
-                title="编辑景区"
-             >
-                <Pencil class="w-4 h-4" />
-             </button>
+             <div class="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <button
+                   v-if="level === 'scene' && loc.id"
+                   @click.stop="handleEdit(loc)"
+                   class="p-1.5 bg-white/90 rounded-full shadow-sm hover:bg-white transition-all text-gray-600 hover:text-primary-500"
+                   title="编辑景区"
+                >
+                   <Pencil class="w-4 h-4" />
+                </button>
+                <button
+                   v-if="level === 'scene' && loc.id"
+                   @click.stop="handleDelete(loc)"
+                   class="p-1.5 bg-white/90 rounded-full shadow-sm hover:bg-white transition-all text-gray-600 hover:text-red-500"
+                   title="删除景区"
+                >
+                   <Trash2 class="w-4 h-4" />
+                </button>
+             </div>
              <img
                v-if="loc.cover"
                :src="mapPhotoToImage(loc.cover).thumbnail"
@@ -191,7 +226,7 @@
           </div>
 
           <div class="mt-2.5 px-1">
-            <h3 class="font-semibold text-gray-900 dark:text-white truncate" :title="loc.name">
+            <h3 class="font-semibold text-sm text-gray-900 dark:text-white truncate" :title="loc.name">
               {{ loc.name }}
             </h3>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
@@ -214,17 +249,18 @@ import { useLocationStore } from '@/stores/locationStore'
 import { locationService } from '@/api/location'
 import { mapPhotoToImage } from '@/stores/photoStore'
 import type { Location, LocationStatistics, Scene } from '@/types/location'
-import { ArrowLeft, MapPin, LayoutGrid, Map, Images, Plus, ChevronDown, Pencil } from 'lucide-vue-next'
+import { ArrowLeft, MapPin, LayoutGrid, Map, Images, Plus, ChevronDown, Pencil, Trash2 } from 'lucide-vue-next'
 import * as echarts from 'echarts'
 import { useDark, onClickOutside } from '@vueuse/core'
+import { ElMessageBox, ElMessage } from 'element-plus'
 import LocationMap from './LocationMap.vue'
 import AddSceneDialog from './AddSceneDialog.vue'
 
 const router = useRouter()
 const isDark = useDark()
 const locationStore = useLocationStore()
-const { level, viewMode } = storeToRefs(locationStore)
-const locations = ref<Location[]>([])
+const { level, viewMode, filterStatus } = storeToRefs(locationStore)
+const locationsRaw = ref<Location[]>([])
 const statistics = ref<LocationStatistics | null>(null)
 const loading = ref(true)
 const showAddScene = ref(false)
@@ -234,6 +270,27 @@ let myMap: echarts.ECharts | null = null
 let zoomTimer: any = null
 const showLevelMenu = ref(false)
 const levelMenuRef = ref<HTMLElement | null>(null)
+
+const filterOptions = [
+  { label: '全部', value: 'all' },
+  { label: '已打卡', value: 'checked' },
+  { label: '未打卡', value: 'unchecked' }
+]
+
+const locations = computed(() => {
+  if (level.value !== 'scene' || filterStatus.value === 'all') {
+    return locationsRaw.value
+  }
+  return locationsRaw.value.filter(loc => {
+    // Both Location and Scene might be in locationsRaw
+    const count = (loc as any).count !== undefined ? (loc as any).count : (loc as any).photo_count
+    if (filterStatus.value === 'checked') {
+      return count > 0
+    } else {
+      return count === 0
+    }
+  })
+})
 
 onClickOutside(levelMenuRef, () => {
   showLevelMenu.value = false
@@ -266,10 +323,21 @@ const fetchLocations = async () => {
     statistics.value = await locationService.getStatistics()
 
     if (level.value === 'photo-map') {
-      locations.value = await locationService.getLocations('city')
+      locationsRaw.value = await locationService.getLocations('city')
       return
     }
-    locations.value = await locationService.getLocations(level.value)
+    
+    if (level.value === 'scene') {
+      const scenes = await locationService.getScenesList(0, 1000)
+      // Map Scene to Location-like structure for the grid view
+      locationsRaw.value = scenes.map(s => ({
+        ...s,
+        count: s.photo_count || 0,
+        level: 'scene' as const
+      })) as any[]
+    } else {
+      locationsRaw.value = await locationService.getLocations(level.value)
+    }
   } catch (e) {
     console.error(e)
   } finally {
@@ -305,6 +373,35 @@ const handleEdit = async (loc: Location) => {
     showAddScene.value = true
   } catch (e) {
     console.error(e)
+  }
+}
+
+const handleDelete = async (loc: Location) => {
+  if (!loc.id) return
+  
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除景区 "${loc.name}" 吗？此操作不可撤销。`,
+      '确认删除',
+      {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+    
+    loading.value = true
+    await locationService.deleteScene(loc.id)
+    ElMessage.success('删除成功')
+    await fetchLocations()
+  } catch (e: any) {
+    if (e !== 'cancel') {
+      console.error(e)
+      ElMessage.error(e.response?.data?.detail || '删除失败')
+    }
+  } finally {
+    loading.value = false
   }
 }
 

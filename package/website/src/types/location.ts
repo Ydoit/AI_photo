@@ -28,6 +28,7 @@ export interface Scene {
   radius?: number
   polygon?: number[][]
   photo_count?: number
+  cover?: Photo | null
 }
 
 export interface SceneCreate {

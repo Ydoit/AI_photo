@@ -25,8 +25,10 @@ def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 
             Scene.id,
             Scene.is_custom,
             func.count(Photo.id).label('count')
-        ).join(
-            PhotoMetadata, Photo.id == PhotoMetadata.photo_id
+        ).outerjoin(
+            PhotoMetadata, Scene.id == PhotoMetadata.scene_id
+        ).outerjoin(
+            Photo, Photo.id == PhotoMetadata.photo_id
         )
     else:
         query = db.query(
@@ -36,13 +38,17 @@ def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 
             PhotoMetadata, Photo.id == PhotoMetadata.photo_id
         )
 
-    if is_scene:
-        query = query.join(Scene, PhotoMetadata.scene_id == Scene.id)
+    # if is_scene:
+    #     query = query.join(Scene, PhotoMetadata.scene_id == Scene.id)
 
-    query = query.filter(
-        group_col.is_not(None),
-        group_col != ''
-    )
+    if is_scene:
+        # For scenes, we don't filter out None/empty names if they are defined in the Scene table
+        pass
+    else:
+        query = query.filter(
+            group_col.is_not(None),
+            group_col != ''
+        )
 
     if is_scene:
         query = query.group_by(Scene.name, Scene.id, Scene.is_custom)

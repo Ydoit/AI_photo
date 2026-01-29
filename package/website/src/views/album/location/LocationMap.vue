@@ -37,6 +37,10 @@ const router = useRouter()
 const locationStore = useLocationStore()
 const { level } = storeToRefs(locationStore)
 
+const props = defineProps<{
+  filterStatus?: 'all' | 'checked' | 'unchecked'
+}>()
+
 onMounted(async () => {
   try {
     await loadMapScript()
@@ -68,6 +72,12 @@ watch(level, async (newVal) => {
   if (!map.value) return
   map.value.clearOverLays()
   await loadContent()
+})
+
+watch(() => props.filterStatus, async () => {
+  if (level.value === 'scene') {
+    await loadContent()
+  }
 })
 
 const initMap = () => {
@@ -109,10 +119,20 @@ const loadContent = async () => {
 const loadScenes = async () => {
   loading.value = true
   try {
-    scenesData.value = await locationService.getScenesList(0, 10000)
+    let allScenes = await locationService.getScenesList(0, 10000)
+    
+    // Apply filter
+    if (props.filterStatus === 'checked') {
+      scenesData.value = allScenes.filter(s => s.photo_count && s.photo_count > 0)
+    } else if (props.filterStatus === 'unchecked') {
+      scenesData.value = allScenes.filter(s => !s.photo_count || s.photo_count === 0)
+    } else {
+      scenesData.value = allScenes
+    }
     
     if (scenesData.value.length === 0) {
-      ElMessage.info('暂无景区数据')
+      map.value.clearOverLays()
+      // ElMessage.info('暂无景区数据')
       return
     }
 
@@ -203,11 +223,31 @@ const renderScenes = () => {
       return label
   }
 
-  const createTextLabel = (position: any, name: string, isBlue: boolean) => {
+  const createSimpleNameLabel = (position: any, name: string, isBlue: boolean) => {
+    const label = new T.Label({
+      text: `<div class="px-2 py-0.5 bg-white/90 rounded shadow-sm text-xs font-bold ${isBlue ? 'text-blue-600' : 'text-orange-600'} whitespace-nowrap border border-white/50">${name}</div>`,
+      position: position,
+      offset: new T.Point(-name.length * 4, isBlue ? 12 : 10)
+    })
+    label.setBackgroundColor("transparent")
+    label.setBorderLine(0)
+    return label
+  }
+
+  const createCoverCard = (position: any, scene: any, isBlue: boolean) => {
+      const coverUrl = scene.cover ? `/api/medias/${scene.cover.id}/thumbnail` : null;
+      if (!coverUrl) return null;
+      
       const label = new T.Label({
-        text: `<div class="px-2 py-1 bg-white/90 rounded shadow text-sm font-medium ${isBlue ? 'text-blue-600' : 'text-orange-600'} whitespace-nowrap">${name}</div>`,
+        text: `
+          <div class="flex flex-col items-center bg-white/95 backdrop-blur-sm rounded-lg shadow-xl border border-white/50 overflow-hidden">
+            <div class="w-32 h-20 overflow-hidden bg-gray-100">
+              <img src="${coverUrl}" class="w-full h-full object-cover" />
+            </div>
+          </div>
+        `,
         position: position,
-        offset: new T.Point(0, isBlue ? -32 : -26)
+        offset: new T.Point(-64, -110)
       })
       label.setBackgroundColor("transparent")
       label.setBorderLine(0)
@@ -230,7 +270,7 @@ const renderScenes = () => {
       return null
   }
 
-  // --- 1. Render Scenes WITH Photos (Always Visible) ---
+  // --- 1. Render Scenes WITH Photos (Always Visible Name) ---
   scenesWithPhotos.value.forEach((scene: any) => {
     // Determine center
     let centerPt = null
@@ -248,16 +288,27 @@ const renderScenes = () => {
     marker.addEventListener('click', handleClick)
     map.value.addOverLay(marker)
 
-    // Draw Text Label (Always visible for photos)
-    const textLabel = createTextLabel(centerPt, scene.name, true)
-    textLabel.addEventListener('click', handleClick)
-    map.value.addOverLay(textLabel)
+    // Draw Simple Name Label (Always visible for photos)
+    const nameLabel = createSimpleNameLabel(centerPt, scene.name, true)
+    nameLabel.addEventListener('click', handleClick)
+    map.value.addOverLay(nameLabel)
+    
+    // Draw Cover Card (Hover only)
+    const coverCard = createCoverCard(centerPt, scene, true)
+    
+    const showCover = () => coverCard && map.value.addOverLay(coverCard)
+    const hideCover = () => coverCard && map.value.removeOverLay(coverCard)
+
+    marker.addEventListener('mouseover', showCover)
+    marker.addEventListener('mouseout', hideCover)
 
     // Draw Polygon if zoomed in
     if (showPolygon) {
         const polygon = drawPolygon(scene, true)
         if (polygon) {
             polygon.addEventListener('click', handleClick)
+            polygon.addEventListener('mouseover', showCover)
+            polygon.addEventListener('mouseout', hideCover)
         }
     }
   })
@@ -291,12 +342,12 @@ const renderScenes = () => {
         marker.addEventListener('click', handleClick)
         map.value.addOverLay(marker)
 
-        // Draw Text Label (Hover only)
-        const textLabel = createTextLabel(point, scene.name, false)
-        textLabel.addEventListener('click', handleClick)
+        // Name Label (Hover only for no photos)
+        const nameLabel = createSimpleNameLabel(point, scene.name, false)
+        nameLabel.addEventListener('click', handleClick)
         
-        const showLabel = () => map.value.addOverLay(textLabel)
-        const hideLabel = () => map.value.removeOverLay(textLabel)
+        const showLabel = () => map.value.addOverLay(nameLabel)
+        const hideLabel = () => map.value.removeOverLay(nameLabel)
 
         marker.addEventListener('mouseover', showLabel)
         marker.addEventListener('mouseout', hideLabel)

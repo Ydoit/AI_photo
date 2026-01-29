@@ -6,7 +6,7 @@ export const useLocationStore = defineStore('location', () => {
   // Persistent State
   const viewMode = useStorage<'grid' | 'map'>('trailsnap-location-view-mode', 'grid');
   const level = useStorage<'city' | 'province' | 'district' | 'scene' | 'photo-map'>('trailsnap-location-level', 'city');
-
+  const filterStatus = useStorage<'all' | 'checked' | 'unchecked'>('trailsnap-location-filter-status', 'checked')
   // State for Map Selection
   const mapSelectedIds = ref<string[]>([]);
 
@@ -18,6 +18,7 @@ export const useLocationStore = defineStore('location', () => {
     viewMode,
     level,
     mapSelectedIds,
-    setMapSelection
+    setMapSelection,
+    filterStatus
   };
 });

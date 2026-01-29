@@ -262,7 +262,6 @@
     <div v-if="totalHeight === 0 && !loading" class="flex flex-col items-center justify-center py-20 text-gray-400">
         <ImageIcon class="w-16 h-16 mb-4 opacity-20" />
         <p>暂无照片</p>
-        <a href="/settings#external" class="text-primary-500 hover:underline">添加外部图库</a>
     </div>
   </div>
 </template>

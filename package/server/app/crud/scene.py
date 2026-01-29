@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, desc
 from app.db.models.scene import Scene
 from app.db.models.photo_metadata import PhotoMetadata
+from app.db.models.photo import Photo
 from app.schemas.scene import SceneCreate, SceneUpdate
 from uuid import uuid4, UUID
 from typing import List, Optional
@@ -84,11 +85,35 @@ def get_scenes(db: Session, skip: int = 0, limit: int = 100):
         PhotoMetadata, Scene.id == PhotoMetadata.scene_id
     ).group_by(
         Scene.id
+    ).order_by(
+        desc("photo_count")
     ).offset(skip).limit(limit).all()
+    
+    # Batch fetch cover photos
+    scene_ids = [s[0].id for s in results]
+    
+    # Get covers for these scenes
+    cover_query = db.query(
+        Photo,
+        PhotoMetadata.scene_id
+    ).join(
+        PhotoMetadata, Photo.id == PhotoMetadata.photo_id
+    ).filter(
+        PhotoMetadata.scene_id.in_(scene_ids)
+    ).distinct(
+        PhotoMetadata.scene_id
+    ).order_by(
+        PhotoMetadata.scene_id,
+        desc(Photo.photo_time)
+    )
+    
+    covers = cover_query.all()
+    cover_map = {sid: photo for photo, sid in covers}
     
     scenes = []
     for scene, count in results:
         scene.photo_count = count
+        scene.cover = cover_map.get(scene.id)
         scenes.append(scene)
     return scenes
 

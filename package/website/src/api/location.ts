@@ -61,5 +61,10 @@ export const locationService = {
       params: { skip, limit }
     });
     return data;
+  },
+
+  async deleteScene(id: string) {
+    const { data } = await api.delete(`/api/locations/scenes/${id}`);
+    return data;
   }
 };

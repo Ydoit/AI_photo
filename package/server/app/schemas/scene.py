@@ -2,6 +2,7 @@ from typing import List, Optional, Any
 from pydantic import BaseModel
 from uuid import UUID
 from decimal import Decimal
+from app.schemas.photo import Photo
 
 class SceneBase(BaseModel):
     name: str
@@ -23,6 +24,7 @@ class Scene(SceneBase):
     id: UUID
     is_custom: bool
     photo_count: Optional[int] = 0
+    cover: Optional[Photo] = None
     
     class Config:
         from_attributes = True

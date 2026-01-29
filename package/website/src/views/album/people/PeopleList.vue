@@ -6,7 +6,7 @@
         <button @click="router.back()" class="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors bg-white dark:bg-gray-900">
               <ArrowLeft class="w-5 h-5 text-gray-600 dark:text-gray-300" />
         </button>
-        <h1 class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">人物相册</h1>
+        <h1 class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">人物</h1>
       </div>
 
       <div class="flex items-center gap-3">
