@@ -9,6 +9,6 @@ from .task import Task
 from .index_log import IndexLog
 from .image_vector import ImageVector
 from .ocr import OCR
-from .trip import TrainTicket
+from .trip import TrainTicket, FlightTicket
 from .image_description import ImageDescription
 from .scene import Scene

@@ -51,3 +51,31 @@ class TrainTicket(Base):
     
     # 新增字段：关联照片ID
     photo_id = Column(String(36), nullable=True, comment="关联照片ID", index=True)
+
+class FlightTicket(Base):
+    """飞机票模型"""
+    __tablename__ = "flight_tickets"
+
+    # 修改为UUID类型主键
+    id = Column(
+        String(36),
+        primary_key=True,
+        index=True,
+        default=lambda: str(uuid.uuid4()),  # 自动生成UUID
+        comment="票据ID（UUID）"
+    )
+    flight_code = Column(String(20), index=True, nullable=False, comment="航班号")
+    departure_city = Column(String(50), nullable=False, comment="出发地")
+    arrival_city = Column(String(50), nullable=False, comment="目的地")
+    date_time = Column(DateTime, nullable=False, comment="出发日期时间")
+    price = Column(Numeric(10, 2), nullable=False, comment="票价")
+    name = Column(String(50), nullable=False, comment="乘车人姓名")
+    
+    total_mileage = Column(DECIMAL(10, 1), nullable=False, default=0, comment="里程")
+    total_running_time = Column(Integer, nullable=False, default=0, comment="飞行时长（分钟）")
+    comments = Column(Text, nullable=True, comment="备注信息")
+    created_at = Column(DateTime, default=datetime.now, comment="创建时间")
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, comment="更新时间")
+    
+    # 新增字段：关联照片ID
+    photo_id = Column(String(36), nullable=True, comment="关联照片ID", index=True)
