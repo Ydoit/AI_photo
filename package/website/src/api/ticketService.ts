@@ -1,6 +1,6 @@
 // src/services/ticketService.ts
 import axios from 'axios';
-import type { TicketBackend, TicketQueryParams } from '@/types/ticket';
+import type { TicketBackend, TicketQueryParams, FlightTicketBackend } from '@/types/ticket';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -22,20 +22,48 @@ export const ticketService = {
     return res;
   },
 
+  // 获取飞机票列表
+  async getFlightTickets(params: TicketQueryParams) {
+    const { data } = await api.get<{ items: FlightTicketBackend[], total: number }>('/api/flight-ticket', { params });
+    // 标记类型
+    data.items.forEach(item => item.type = 'flight');
+    return data;
+  },
+
+  // 创建飞机票
+  async createFlightTicket(data: Partial<FlightTicketBackend>) {
+    const { data: res } = await api.post<FlightTicketBackend>('/api/flight-ticket', data);
+    res.type = 'flight';
+    return res;
+  },
+
+  // 更新飞机票
+  async updateFlightTicket(id: string, data: Partial<FlightTicketBackend>) {
+    const { data: res } = await api.put<FlightTicketBackend>(`/api/flight-ticket/${id}`, data);
+    res.type = 'flight';
+    return res;
+  },
+
+  // 删除飞机票
+  async deleteFlightTicket(id: string) {
+    await api.delete(`/api/flight-ticket/${id}`);
+    return true;
+  },
+
   // 更新
-  async updateTicket(id: number, data: Partial<TicketBackend>) {
+  async updateTicket(id: number | string, data: Partial<TicketBackend>) {
     const { data: res } = await api.put<TicketBackend>(`/api/train-ticket/${id}`, data);
     return res;
   },
 
   // 删除
-  async deleteTicket(id: number) {
+  async deleteTicket(id: number | string) {
     await api.delete(`/api/train-ticket/${id}`);
     return true;
   },
 
   // 批量删除 (前端循环调用或后端支持批量接口)
-  async batchDeleteTickets(ids: number[]) {
+  async batchDeleteTickets(ids: (number | string)[]) {
     // 假设后端没有批量接口，使用 Promise.all
     const promises = ids.map(id => api.delete(`/api/train-ticket/${id}`));
     await Promise.all(promises);

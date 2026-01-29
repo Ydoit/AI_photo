@@ -132,6 +132,7 @@
                   @change="fetchTickets"
                 >
                   <option value="all">全部车票</option>
+                  <option value="flight">飞机票</option>
                   <option value="highspeed">高铁/动车</option>
                   <option value="normal">普速列车</option>
                 </select>
@@ -247,6 +248,40 @@
       @cancel="closeModal"
     />
 
+    <FlightTicketFormModal
+      :is-open="isFlightModalOpen"
+      :is-editing="isEditing"
+      :initial-data="currentFlightTicket"
+      :current-theme="currentTheme"
+      :saving="saving"
+      @save="handleFlightModalSave"
+      @cancel="closeFlightModal"
+    />
+
+    <Transition name="fade">
+      <div v-if="showTypeSelector" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="showTypeSelector = false"></div>
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm relative z-10 p-6 flex flex-col gap-4">
+          <div class="flex justify-between items-center">
+            <h3 class="text-lg font-bold text-slate-800 dark:text-white">选择添加票据类型</h3>
+            <button @click="showTypeSelector = false" class="text-slate-400 hover:text-red-500 transition-colors">
+              <X class="w-5 h-5" />
+            </button>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <button @click="selectTicketType('train')" class="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-100 dark:border-slate-700 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all gap-2 group">
+              <TrainFront class="w-10 h-10 text-slate-400 group-hover:text-primary-500 transition-colors" />
+              <span class="font-medium text-slate-600 dark:text-slate-300 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">火车票</span>
+            </button>
+            <button @click="selectTicketType('flight')" class="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-100 dark:border-slate-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all gap-2 group">
+              <Plane class="w-10 h-10 text-slate-400 group-hover:text-blue-500 transition-colors" />
+              <span class="font-medium text-slate-600 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">飞机票</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <Transition name="fade">
       <div v-if="showCityModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="showCityModal = false"></div>
@@ -279,7 +314,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { 
   TrainFront, Search, Plus, MapPin, Clock, Route,
-  ChevronDown, Trash2, X, User, RefreshCw, Database
+  ChevronDown, Trash2, X, User, RefreshCw, Database, Plane
 } from 'lucide-vue-next';
 import { ElMessage } from 'element-plus';
 import { ListTree, LayoutGrid } from 'lucide-vue-next'; // 引入图标
@@ -291,8 +326,11 @@ import { useTicketStore } from '@/stores/ticketStore';
 import type {
   TicketFrontend,
   TicketFormData,
+  FlightTicketFormData,
   SortType,
-  FilterType
+  FilterType,
+  TicketBackend,
+  FlightTicketBackend
 } from '@/types/ticket';
 import { ticketService } from '@/api/ticketService';
 import { railwayService, type TicketStats } from '@/api/railway';
@@ -301,6 +339,7 @@ import { injectTheme } from '@/composables/useTheme';
 
 // 组件
 import TicketFormModal from '@/components/TicketFormModal.vue';
+import FlightTicketFormModal from '@/components/FlightTicketFormModal.vue';
 import TicketCard from '@/components/TicketCard.vue';
 import StatsCard from '@/components/StatsCard.vue'; // 新组件
 
@@ -321,13 +360,16 @@ const {
   statsMap
 } = storeToRefs(ticketStore);
 
-const selectedTickets = ref<number[]>([]);
+const selectedTickets = ref<(number | string)[]>([]);
 const isModalOpen = ref(false);
+const isFlightModalOpen = ref(false);
+const showTypeSelector = ref(false);
 const isEditing = ref(false);
 const showCityModal = ref(false);
 const saving = ref(false);
 // 初始编辑对象，使用 Partial 或特定类型
 const currentTicket = ref<Partial<TicketFormData>>({});
+const currentFlightTicket = ref<Partial<FlightTicketFormData>>({});
 
 // 监听车票变化，自动更新统计数据
 watch(tickets, () => {
@@ -397,6 +439,13 @@ const filteredTickets = computed<TicketFrontend[]>(() => {
   // 2. 列车类型筛选
   if (filterType.value !== 'all') {
     res = res.filter(t => {
+      if (filterType.value === 'flight') {
+        return t.type === 'flight';
+      }
+      
+      // 如果选的是火车相关 (highspeed/normal)，排除飞机
+      if (t.type === 'flight') return false;
+
       const firstChar = t.trainCode.charAt(0).toUpperCase();
       const isHighSpeed = ['G', 'D', 'C'].includes(firstChar);
       return filterType.value === 'highspeed' ? isHighSpeed : !isHighSpeed;
@@ -428,8 +477,15 @@ const filteredTickets = computed<TicketFrontend[]>(() => {
 const uniqueCities = computed(() => {
   const cities = new Set<string>();
   tickets.value.forEach(t => {
-    cities.add(t.departure_station);
-    cities.add(t.arrival_station);
+    if (t.type === 'flight') {
+      const flight = t as FlightTicketBackend;
+      cities.add(flight.departure_city);
+      cities.add(flight.arrival_city);
+    } else {
+      const train = t as TicketBackend;
+      cities.add(train.departure_station);
+      cities.add(train.arrival_station);
+    }
   });
   return Array.from(cities).sort();
 });
@@ -443,13 +499,20 @@ const uniquePassengers = computed(() => {
 });
 
 const totalDistance = computed(() => {
-  // 优先使用 Store 中的 statsMap
+  // 优先使用 Store 中的 statsMap (仅火车票有)
   let sum = 0;
   for (const t of tickets.value) {
-    if (t.id && statsMap.value[t.id]) {
-      sum += statsMap.value[t.id].distance_km;
+    if (t.type === 'flight') {
+        // 飞机票直接累加 flight.total_mileage
+        const flight = t as FlightTicketBackend;
+        sum += Number(flight.total_mileage || 0);
     } else {
-      sum += (t.total_mileage || 0);
+        // 火车票优先取 statsMap，否则取 ticket.total_mileage
+        if (t.id && statsMap.value[t.id]) {
+          sum += statsMap.value[t.id].distance_km;
+        } else {
+          sum += (t.total_mileage || 0);
+        }
     }
   }
   return Math.round(sum);
@@ -499,8 +562,8 @@ const filterByCity = (city: string) => {
 // --- 事件处理 ---
 
 const openTicketModal = (ticket: TicketFrontend | null = null) => {
-  isModalOpen.value = true;
   if (ticket) {
+    isModalOpen.value = true;
     isEditing.value = true;
     // 需要把 Frontend 数据转回 FormData 格式供表单使用
     currentTicket.value = {
@@ -521,8 +584,56 @@ const openTicketModal = (ticket: TicketFrontend | null = null) => {
         comments: ticket.comments
     };
   } else {
-    isEditing.value = false;
-    currentTicket.value = {}; 
+    // 新增模式：显示类型选择器
+    showTypeSelector.value = true;
+  }
+};
+
+const selectTicketType = (type: 'train' | 'flight') => {
+  showTypeSelector.value = false;
+  isEditing.value = false;
+  if (type === 'train') {
+    currentTicket.value = {};
+    isModalOpen.value = true;
+  } else {
+    currentFlightTicket.value = {};
+    isFlightModalOpen.value = true;
+  }
+};
+
+const closeFlightModal = () => {
+  isFlightModalOpen.value = false;
+  setTimeout(() => {
+    currentFlightTicket.value = {};
+  }, 300);
+};
+
+const handleFlightModalSave = async (formData: FlightTicketFormData) => {
+  saving.value = true;
+  try {
+    // 简单的日期格式处理，如果需要更复杂的转换可以使用 utils
+    const backendData = {
+      ...formData,
+      id: formData.id || undefined,
+      // 确保日期格式符合后端要求 (ISO)
+      date_time: formData.date_time ? new Date(formData.date_time).toISOString() : new Date().toISOString()
+    };
+    
+    if (isEditing.value && formData.id) {
+       // 暂时不支持编辑飞机票，或者需要扩展 ticketService.updateFlightTicket
+       // await ticketService.updateFlightTicket(formData.id, backendData);
+    } else {
+       await ticketService.createFlightTicket(backendData);
+    }
+
+    await fetchTickets(true);
+    closeFlightModal();
+    ElMessage.success(isEditing.value ? '更新成功' : '新增成功');
+  } catch (err: any) {
+    ElMessage.error(err.message || '保存失败');
+    console.error('Save flight ticket error:', err);
+  } finally {
+    saving.value = false;
   }
 };
 
@@ -558,7 +669,7 @@ const handleModalSave = async (formData: TicketFormData) => {
   }
 };
 
-const toggleSelect = (id: number) => {
+const toggleSelect = (id: number | string) => {
   if (selectedTickets.value.includes(id)) {
     selectedTickets.value = selectedTickets.value.filter(item => item !== id);
   } else {
@@ -566,10 +677,19 @@ const toggleSelect = (id: number) => {
   }
 };
 
-const confirmDelete = async (id: number) => {
+const confirmDelete = async (id: number | string) => {
+  // 查找票据类型
+  const ticket = frontendTickets.value.find(t => t.id === id);
+  if (!ticket) return;
+
   if (confirm('确定要删除这张车票吗？删除后不可恢复')) {
     try {
-      await ticketService.deleteTicket(id);
+      if (ticket.type === 'flight') {
+         await ticketService.deleteFlightTicket(id as string);
+      } else {
+         await ticketService.deleteTicket(id);
+      }
+      
       ticketStore.removeLocalTickets([id]);
       selectedTickets.value = selectedTickets.value.filter(tid => tid !== id);
       ElMessage.success('删除成功');
@@ -583,7 +703,18 @@ const batchDelete = async () => {
   if (selectedTickets.value.length === 0) return;
   if (confirm(`确定删除选中的 ${selectedTickets.value.length} 张车票吗？删除后不可恢复`)) {
     try {
-      await ticketService.batchDeleteTickets(selectedTickets.value);
+      // 区分类型进行删除
+      const promises = selectedTickets.value.map(id => {
+         const ticket = frontendTickets.value.find(t => t.id === id);
+         if (ticket && ticket.type === 'flight') {
+             return ticketService.deleteFlightTicket(id as string);
+         } else {
+             return ticketService.deleteTicket(id);
+         }
+      });
+      
+      await Promise.all(promises);
+      
       // 前端乐观更新
       // 注意：这里需要调用 store 的方法来更新数据，或者重新 fetch
       // 简单起见，我们更新 store 中的 tickets

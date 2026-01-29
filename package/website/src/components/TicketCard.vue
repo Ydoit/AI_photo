@@ -19,12 +19,16 @@
           <div>
              <div class="flex items-center gap-2 text-lg font-bold text-slate-800 dark:text-slate-100">
                <span>{{ ticket.from }}</span>
-               <MoveRight class="w-4 h-4 text-primary-500" />
+               <div v-if="ticket.type === 'flight'" class="relative flex items-center justify-center w-8">
+                  <Plane class="w-4 h-4 text-blue-500 transform rotate-45" />
+               </div>
+               <MoveRight v-else class="w-4 h-4 text-primary-500" />
                <span>{{ ticket.to }}</span>
              </div>
              <!-- 乘车人显示 -->
-             <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-               乘车人：{{ ticket.name }}
+             <div class="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2">
+               <span>{{ ticket.type === 'flight' ? '乘机人' : '乘车人' }}：{{ ticket.name }}</span>
+               <span v-if="ticket.type === 'flight'" class="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-[10px]">机票</span>
              </div>
           </div>
         </div>
@@ -51,8 +55,13 @@
             <span>{{ ticket.price }}元</span>
           </div>
           <div class="text-sm font-medium text-slate-600 dark:text-slate-300">
-            {{ ticket.seatType }} · {{ ticket.carriage }}车 {{ ticket.seatNumber }}
-            <span v-if="ticket.berthType !== '无'" class="text-xs text-slate-400 ml-2">{{ ticket.berthType }}铺</span>
+            <template v-if="ticket.type === 'flight'">
+              <!-- <span class="text-xs text-slate-500">航班行程</span> -->
+            </template>
+            <template v-else>
+              {{ ticket.seatType }} · {{ ticket.carriage }}车 {{ ticket.seatNumber }}
+              <span v-if="ticket.berthType !== '无'" class="text-xs text-slate-400 ml-2">{{ ticket.berthType }}铺</span>
+            </template>
           </div>
         </div>
 
@@ -74,7 +83,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import { MoveRight, Clock, Route, Pencil, Trash2, Check } from 'lucide-vue-next';
+import { MoveRight, Clock, Route, Pencil, Trash2, Check, Plane } from 'lucide-vue-next';
 
 const props = defineProps({
   // 车票数据

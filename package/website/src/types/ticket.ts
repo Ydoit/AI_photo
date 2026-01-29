@@ -2,7 +2,7 @@
 
 // 后端原始数据接口 (Snake Case)
 export interface TicketBackend {
-  id: number;
+  id: number | string; // 兼容 UUID
   train_code: string;
   departure_station: string;
   arrival_station: string;
@@ -18,24 +18,43 @@ export interface TicketBackend {
   total_mileage: number; // km
   stop_stations?: string;
   comments?: string;
+  type?: 'train'; // 标识字段
 }
+
+export interface FlightTicketBackend {
+  id: string;
+  flight_code: string;
+  departure_city: string;
+  arrival_city: string;
+  date_time: string;
+  price: number;
+  name: string;
+  total_running_time: number;
+  total_mileage: number;
+  comments?: string;
+  photo_id?: string;
+  type?: 'flight'; // 标识字段
+}
+
+export type UniversalTicket = TicketBackend | FlightTicketBackend;
 
 // 前端展示用的数据接口 (Camel Case)
 export interface TicketFrontend {
-  id: number;
+  id: number | string;
+  type: 'train' | 'flight'; // 新增类型标识
   from: string;
   to: string;
-  trainCode: string;
+  trainCode: string; // 对于飞机票，这里存航班号
   name: string;
   date: string;       // "YYYY-MM-DD"
   time: string;       // "HH:mm"
   dateTime: string;   // 原始完整时间字符串
-  carriage: string;
-  seatNumber: string;
-  berthType: string;
+  carriage?: string;  // 可选
+  seatNumber?: string; // 可选
+  berthType?: string; // 可选
   price: number;
-  seatType: string;
-  discountType: string;
+  seatType?: string; // 可选
+  discountType?: string; // 可选
   totalRunningTime: number;
   distance: number;
   comments: string;
@@ -44,7 +63,7 @@ export interface TicketFrontend {
 
 // 表单提交用的数据接口
 export interface TicketFormData {
-  id?: number | null;
+  id?: number | string | null;
   from: string;
   to: string;
   train_code: string;
@@ -58,6 +77,19 @@ export interface TicketFormData {
   discountType: string;
   totalRunningTime: number;
   distance: number;
+  comments: string;
+}
+
+export interface FlightTicketFormData {
+  id?: string | null;
+  flight_code: string;
+  departure_city: string;
+  arrival_city: string;
+  date_time: string;
+  price: number;
+  name: string;
+  total_running_time: number;
+  total_mileage: number;
   comments: string;
 }
 

@@ -26,7 +26,7 @@ if not os.path.exists('./data'):
     os.mkdir('./data')
 load_dotenv('./data/.env')
 
-from app.api import user, train_ticket, album, index, settings, face, ocr, location, search, classification, system
+from app.api import user, train_ticket, flight_ticket, album, index, settings, face, ocr, location, search, classification, system
 from railway.api import router as railway_router
 from app.db.session import engine, SessionLocal
 from app.api import user, album, settings, index, media, stats, photo, tasks, annual_report, system
@@ -142,6 +142,7 @@ def root():
 
 app.include_router(user.router, prefix="/users", tags=["Users"])
 app.include_router(train_ticket.router, prefix="/train-ticket", tags=["train-ticket"])
+app.include_router(flight_ticket.router, prefix="/flight-ticket", tags=["flight-ticket"])
 app.include_router(railway_router, prefix="/railway", tags=["railway"])
 app.include_router(photo.router, prefix="/photos", tags=["Photos"])
 app.include_router(album.router,prefix="/albums", tags=["Albums"])

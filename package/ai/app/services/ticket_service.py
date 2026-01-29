@@ -9,6 +9,7 @@ from app.services.model_manager import model_manager
 from app.services.model_downloader import model_downloader
 from app.services.ai_config_manager import ai_config_manager
 from app.services.ticket_parser import parse_ticket_info, extract_text
+from app.services.fly_ticket_parser import extract_flight_info
 
 def load_modelscope_model():
     """
@@ -105,13 +106,12 @@ class TicketService:
         if img is None:
             raise ValueError("Could not decode image data")
 
-        # 查找 'label' 标签的索引
-        target_classes = None
+        # 查找 'label' (火车票) 和 'label1' (飞机票) 标签的索引
+        target_classes = []
         if hasattr(yolo, "names"):
             for idx, name in yolo.names.items():
-                if name == "label":
-                    target_classes = [idx]
-                    break
+                if name == "label" or name == "label1":
+                    target_classes.append(idx)
 
         # YOLO 推理
         # save=False, verbose=False 以提高性能
@@ -224,8 +224,19 @@ class TicketService:
                     # logging.info(f"Ticket detection {i}: extracted texts from JSON: {texts}")
 
                     # 5. 解析车票信息
-                    info = parse_ticket_info(texts, polys)
-                    logging.info(f"Ticket detection {i}: parsed info: {info}")
+                    cls_id = int(box.cls[0].item())
+                    cls_name = result.names[cls_id]
+                    
+                    if cls_name == "label1":
+                        # 飞机票
+                        info = extract_flight_info(texts)
+                        info["type"] = "flight"
+                    else:
+                        # 火车票 (label)
+                        info = parse_ticket_info(texts, polys)
+                        info["type"] = "train"
+                    
+                    logging.info(f"Ticket detection {i} ({cls_name}): parsed info: {info}")
                     if info:
                         info['detection_id'] = i
                         tickets.append(info)
