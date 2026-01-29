@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from typing import List
-from pydantic import BaseModel
+from typing import List, Optional
+from pydantic import BaseModel, Field
 import logging
 import traceback
 
@@ -9,17 +9,24 @@ from app.services.ticket_service import ticket_service
 router = APIRouter()
 
 class TicketInfo(BaseModel):
-    train_code: str = ""
-    departure_station: str = ""
-    arrival_station: str = ""
-    datetime: str = ""
-    carriage: str = ""
-    seat_num: str = ""
-    berth_type: str = ""
-    price: str = ""
-    seat_type: str = ""
-    name: str = ""
-    discount_type: str = ""
+    train_code: Optional[str] = Field(default=None)
+    departure_station: Optional[str] = Field(default=None)
+    arrival_station: Optional[str] = Field(default=None)
+    datetime: Optional[str] = Field(default=None)
+    carriage: Optional[str] = Field(default=None)
+    seat_num: Optional[str] = Field(default=None)
+    berth_type: Optional[str] = Field(default=None)
+    price: Optional[str] = Field(default=None)
+    seat_type: Optional[str] = Field(default=None)
+    name: Optional[str] = Field(default=None)
+    discount_type: Optional[str] = Field(default=None)
+    
+    # 飞机票特有字段 (兼容)
+    flight_code: Optional[str] = Field(default=None)
+    departure_city: Optional[str] = Field(default=None)
+    arrival_city: Optional[str] = Field(default=None)
+    type: Optional[str] = Field(default="train")
+    
     detection_id: int = 0
 
 class TicketRecognitionResponse(BaseModel):
