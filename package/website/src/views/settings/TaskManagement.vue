@@ -22,7 +22,11 @@
         <div v-for="cat in groupedTasks" :key="cat.category" class="border rounded-lg p-4 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
           <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2 sm:gap-0">
             <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-              <h3 class="text-lg font-medium dark:text-white">{{cat.task_name}}</h3>
+              <h3 class="text-lg flex items-center font-medium dark:text-white">{{cat.task_name}}
+                <el-tooltip :content="cat.description" placement="top">
+                    <Info class="w-4 h-4 ml-1 text-gray-400 cursor-help" />
+                </el-tooltip>
+              </h3>
               <el-tag effect="plain" size="small" class="ml-0 sm:ml-2">
                  优先级: {{ cat.priority }}
               </el-tag>
@@ -98,6 +102,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { tasksApi } from '@/api/tasks'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Sun, Moon, Palette, Check, Info, Download, Loader2, Trash2 } from 'lucide-vue-next'
 
 interface GroupedTask {
     task_name: string
@@ -107,6 +112,7 @@ interface GroupedTask {
     failed: number
     status: string
     priority: number
+    description: string
 }
 
 const groupedTasks = ref<GroupedTask[]>([])

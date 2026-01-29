@@ -289,3 +289,4 @@ async def handle_rebuild_metadata(task_manager, task: Task, db: Session):
 def release_resources():
     import reverse_geocoder as rg
     rg.unload()
+    logging.info("Reverse geocoder resources released")

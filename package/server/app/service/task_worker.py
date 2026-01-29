@@ -164,9 +164,9 @@ class TaskWorker:
             last_run = self.last_active_time[task_type]
             if (datetime.now() - last_run).total_seconds() > 30:
                 # Release module specific resources
-                if task_type == TaskType.GENERATE_THUMBNAIL or task_type == TaskType.REBUILD_THUMBNAILS:
+                if task_type == TaskType.PROCESS_BASIC:
                     thumbnail.release_resources()
-                elif task_type == TaskType.EXTRACT_METADATA or task_type == TaskType.REBUILD_METADATA:
+                elif task_type == TaskType.EXTRACT_METADATA:
                     metadata.release_resources()
                 elif task_type == TaskType.OCR:
                     if hasattr(ocr, 'release_resources'): ocr.release_resources()

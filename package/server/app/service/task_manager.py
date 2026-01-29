@@ -53,6 +53,17 @@ CATEGORY_MAP = {
     TaskType.OCR: 'ocr',
 }
 
+CATEGORY_DESCRIPTION_MAP = {
+    'scanning': '用于扫描文件夹中的文件',
+    'basic': '用于基本文件处理',
+    'metadata': '用于提取文件元数据（GPS位置、拍摄参数等）',
+    'face': '用于识别图片中的人脸',
+    'tickets': '用于识别火车票、飞机票等',
+    'classification': '用于场景分类',
+    'ai': '用于生成图片的视觉描述',
+    'ocr': '用于识别图片中的文字',
+}
+
 CATEGORY_NAME_MAP = {
     'scanning': '扫描文件夹',
     'basic': '基本处理',
@@ -168,7 +179,8 @@ class TaskManager:
                 'completed': completed,
                 'failed': failed,
                 'status': 'paused' if cat in self.paused_categories else 'active',
-                'priority': cat_priority.get(cat, 0)
+                'priority': cat_priority.get(cat, 0),
+                'description': CATEGORY_DESCRIPTION_MAP.get(cat, '')
             })
 
         # Sort by priority desc
