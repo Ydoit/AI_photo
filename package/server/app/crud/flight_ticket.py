@@ -1,0 +1,82 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+from sqlalchemy.orm import Session
+from typing import List, Optional, Dict, Any
+from decimal import Decimal
+from datetime import datetime
+
+from app.db.models.trip import FlightTicket
+from app.schemas.flight_ticket import FlightTicketCreate, FlightTicketUpdate
+
+def get_flight_ticket(db: Session, ticket_id: str) -> Optional[FlightTicket]:
+    """根据ID获取单张飞机票"""
+    return db.query(FlightTicket).filter(FlightTicket.id == ticket_id).first()
+
+def get_flight_tickets(
+        db: Session,
+        skip: int = 0,
+        limit: int = 100,
+        filters: Optional[Dict[str, Any]] = None
+) -> (int, List[FlightTicket]):
+    """获取飞机票列表（支持过滤、分页）"""
+    query = db.query(FlightTicket)
+
+    if filters:
+        for key, value in filters.items():
+            if hasattr(FlightTicket, key) and value is not None:
+                if isinstance(value, str):
+                    query = query.filter(getattr(FlightTicket, key).ilike(f"%{value}%"))
+                elif isinstance(value, (int, Decimal, datetime)):
+                    query = query.filter(getattr(FlightTicket, key) == value)
+
+    total = query.count()
+    items = query.order_by(FlightTicket.date_time.desc()).offset(skip).limit(limit).all()
+    return total, items
+
+def create_flight_ticket(db: Session, ticket: FlightTicketCreate) -> FlightTicket:
+    """创建新的飞机票"""
+    db_ticket = FlightTicket(
+        flight_code=ticket.flight_code,
+        departure_city=ticket.departure_city,
+        arrival_city=ticket.arrival_city,
+        date_time=ticket.date_time,
+        price=ticket.price,
+        name=ticket.name,
+        total_mileage=ticket.total_mileage or Decimal('0.0'),
+        total_running_time=ticket.total_running_time or 0,
+        comments=ticket.comments,
+        photo_id=ticket.photo_id
+    )
+    db.add(db_ticket)
+    db.commit()
+    db.refresh(db_ticket)
+    return db_ticket
+
+def update_flight_ticket(
+        db: Session,
+        ticket_id: str,
+        ticket_update: FlightTicketUpdate
+) -> Optional[FlightTicket]:
+    """更新飞机票信息"""
+    db_ticket = get_flight_ticket(db, ticket_id)
+    if not db_ticket:
+        return None
+
+    update_data = ticket_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_ticket, key, value)
+
+    db.commit()
+    db.refresh(db_ticket)
+    return db_ticket
+
+def delete_flight_ticket(db: Session, ticket_id: str) -> bool:
+    """删除飞机票"""
+    db_ticket = get_flight_ticket(db, ticket_id)
+    if not db_ticket:
+        return False
+
+    db.delete(db_ticket)
+    db.commit()
+    return True

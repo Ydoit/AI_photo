@@ -6,7 +6,7 @@ from aiohttp import FormData
 from sqlalchemy.orm import Session
 from app.db.models.task import Task, TaskType
 from app.db.models.photo import Photo, FileType
-from app.db.models.trip import TrainTicket
+from app.db.models.trip import TrainTicket, FlightTicket
 from typing import Dict, Any, List
 from datetime import datetime
 from app.core.config_manager import config_manager
@@ -156,8 +156,9 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
             target_path = photo.file_path
             if not target_path or not os.path.exists(target_path):
                 return {'status': 'failed', 'error': 'file not found'}
-        # 删除photo对应的车票
+        # 删除photo对应的车票和机票
         db.query(TrainTicket).filter(TrainTicket.photo_id == str(photo.id)).delete()
+        db.query(FlightTicket).filter(FlightTicket.photo_id == str(photo.id)).delete()
         db.commit()
 
         async with aiohttp.ClientSession() as session:
@@ -182,9 +183,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                         added_count = 0
                         for t_info in tickets_data:
                             try:
-                                # Validation
-                                if not t_info.get('train_code') or not t_info.get('datetime'):
-                                    continue
+                                # Common parsing for datetime and price
                                 # Parse datetime
                                 dt_str = t_info.get('datetime')
                                 dt = None
@@ -203,8 +202,9 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                                     except ValueError:
                                         continue
                                 # 如果dt_str没有年份""%m月%d日 %H:%M""，默认使用photo.photo_time的年份
-                                if dt.year == 1900:
+                                if dt and dt.year == 1900:
                                     dt = dt.replace(year=photo.photo_time.year)
+                                
                                 if not dt:
                                     logger.warning(f"Skipping ticket due to invalid datetime: {dt_str}")
                                     continue
@@ -217,44 +217,84 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                                 except:
                                     pass
 
-                                # Check duplicate
-                                existing = db.query(TrainTicket).filter(
-                                    TrainTicket.train_code == t_info['train_code'],
-                                    TrainTicket.date_time == dt,
-                                    TrainTicket.seat_num == (t_info.get('seat_num') or '无座')
-                                ).first()
-                                if existing:
-                                    logger.info(f"Duplicate ticket found: {t_info['train_code']} {dt}")
-                                    continue
-                                # Create Ticket
-                                new_ticket = TrainTicket(
-                                    train_code=t_info['train_code'],
-                                    departure_station=t_info.get('departure_station', '未知'),
-                                    arrival_station=t_info.get('arrival_station', '未知'),
-                                    date_time=dt,
-                                    carriage=t_info.get('carriage') or '无',
-                                    seat_num=t_info.get('seat_num') or '无座',
-                                    berth_type=t_info.get('berth_type') or '无',
-                                    price=price_val,
-                                    seat_type=t_info.get('seat_type') or '二等座',
-                                    name=t_info.get('name') or '未知',
-                                    discount_type=t_info.get('discount_type') or '全价票',
-                                    total_mileage=0,
-                                    total_running_time=0,
-                                    stop_stations="[]",
-                                    comments=f"自动识别自图片: {photo.filename}",
-                                    photo_id=str(photo.id)
-                                )
-                                # Calculate mileage and time
-                                ticket_info = await calculate_ticket_mileage_and_time(new_ticket)
-                                print(ticket_info)
-                                new_ticket.total_mileage = ticket_info['total_mileage']
-                                new_ticket.total_running_time = ticket_info['total_time']
-                                new_ticket.stop_stations = json.dumps(ticket_info['stop_stations'], ensure_ascii=False)
-                                db.add(new_ticket)
-                                db.flush()
-                                t_info['saved_id'] = new_ticket.id
-                                added_count += 1
+                                ticket_type = t_info.get('type', 'train')
+
+                                if ticket_type == 'flight':
+                                    # Process Flight Ticket
+                                    if not t_info.get('flight_code'):
+                                        continue
+                                    
+                                    # Check duplicate
+                                    existing = db.query(FlightTicket).filter(
+                                        FlightTicket.flight_code == t_info['flight_code'],
+                                        FlightTicket.date_time == dt,
+                                        FlightTicket.name == (t_info.get('name') or '未知')
+                                    ).first()
+                                    if existing:
+                                        logger.info(f"Duplicate flight ticket found: {t_info['flight_code']} {dt}")
+                                        continue
+
+                                    new_ticket = FlightTicket(
+                                        flight_code=t_info['flight_code'],
+                                        departure_city=t_info.get('departure_city', '未知'),
+                                        arrival_city=t_info.get('arrival_city', '未知'),
+                                        date_time=dt,
+                                        price=price_val,
+                                        name=t_info.get('name') or '未知',
+                                        total_mileage=0,
+                                        total_running_time=0,
+                                        comments=f"自动识别自图片: {photo.filename}",
+                                        photo_id=str(photo.id)
+                                    )
+                                    db.add(new_ticket)
+                                    db.flush()
+                                    t_info['saved_id'] = new_ticket.id
+                                    added_count += 1
+                                
+                                else:
+                                    # Process Train Ticket
+                                    if not t_info.get('train_code'):
+                                        continue
+
+                                    # Check duplicate
+                                    existing = db.query(TrainTicket).filter(
+                                        TrainTicket.train_code == t_info['train_code'],
+                                        TrainTicket.date_time == dt,
+                                        TrainTicket.seat_num == (t_info.get('seat_num') or '无座')
+                                    ).first()
+                                    if existing:
+                                        logger.info(f"Duplicate train ticket found: {t_info['train_code']} {dt}")
+                                        continue
+                                    
+                                    # Create Ticket
+                                    new_ticket = TrainTicket(
+                                        train_code=t_info['train_code'],
+                                        departure_station=t_info.get('departure_station', '未知'),
+                                        arrival_station=t_info.get('arrival_station', '未知'),
+                                        date_time=dt,
+                                        carriage=t_info.get('carriage') or '无',
+                                        seat_num=t_info.get('seat_num') or '无座',
+                                        berth_type=t_info.get('berth_type') or '无',
+                                        price=price_val,
+                                        seat_type=t_info.get('seat_type') or '二等座',
+                                        name=t_info.get('name') or '未知',
+                                        discount_type=t_info.get('discount_type') or '全价票',
+                                        total_mileage=0,
+                                        total_running_time=0,
+                                        stop_stations="[]",
+                                        comments=f"自动识别自图片: {photo.filename}",
+                                        photo_id=str(photo.id)
+                                    )
+                                    # Calculate mileage and time
+                                    ticket_info = await calculate_ticket_mileage_and_time(new_ticket)
+                                    print(ticket_info)
+                                    new_ticket.total_mileage = ticket_info['total_mileage']
+                                    new_ticket.total_running_time = ticket_info['total_time']
+                                    new_ticket.stop_stations = json.dumps(ticket_info['stop_stations'], ensure_ascii=False)
+                                    db.add(new_ticket)
+                                    db.flush()
+                                    t_info['saved_id'] = new_ticket.id
+                                    added_count += 1
 
                             except Exception as ex:
                                 logger.error(f"Error saving ticket to DB: {ex}")
