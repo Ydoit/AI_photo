@@ -109,7 +109,7 @@ const loadContent = async () => {
 const loadScenes = async () => {
   loading.value = true
   try {
-    scenesData.value = await locationService.getScenesList()
+    scenesData.value = await locationService.getScenesList(0, 10000)
     
     if (scenesData.value.length === 0) {
       ElMessage.info('暂无景区数据')

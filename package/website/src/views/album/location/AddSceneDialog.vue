@@ -321,8 +321,9 @@ const handleSelect = (item: any) => {
     
     // Trigger a normal search for the selected name to get coordinates
     // We don't set autocompleteCallback, so it falls to the "else" block in onSearchComplete
-    searchService.search(item.value, 1)
+    searchService.search(item.value, 7)
 }
+
 
 const onMapClick = (e: any) => {
     if (isDrawing.value) {
