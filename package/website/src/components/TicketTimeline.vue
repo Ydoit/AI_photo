@@ -17,7 +17,7 @@
           class="relative group"
         >
           <div class="absolute left-0 sm:left-0 top-6 w-3 h-3 -ml-[1.6rem] sm:-ml-[2.1rem] rounded-full border-2 border-white dark:border-slate-800 z-10 transition-colors duration-300"
-               :class="getDotColorClass(ticket.trainCode)">
+               :class="getDotColorClass(ticket.trainCode, ticket.type)">
           </div>
 
           <div class="absolute left-0 sm:left-0 top-[1.9rem] w-4 sm:w-6 -ml-[1.4rem] sm:-ml-[1.9rem] h-px bg-slate-200 dark:bg-slate-700"></div>
@@ -54,15 +54,15 @@ const { isDarkMode, currentTheme } = injectTheme();
 
 interface Props {
   tickets: TicketFrontend[];
-  selectedTicketIds: number[];
+  selectedTicketIds: (number | string)[];
 }
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-  (e: 'toggle-select', id: number): void;
+  (e: 'toggle-select', id: number | string): void;
   (e: 'edit', ticket: TicketFrontend): void;
-  (e: 'delete', id: number): void;
+  (e: 'delete', id: number | string): void;
 }>();
 
 // --- 辅助逻辑 ---
@@ -90,8 +90,11 @@ const groupedTickets = computed(() => {
 });
 
 // 2. 根据车次类型返回圆点颜色
-const getDotColorClass = (trainCode: string) => {
-  const firstChar = trainCode.charAt(0).toUpperCase();
+const getDotColorClass = (code: string, type: 'train' | 'flight' = 'train') => {
+  if (type === 'flight') {
+      return 'bg-blue-500 shadow-[0_0_0_4px_rgba(59,130,246,0.2)]'; // 飞机色
+  }
+  const firstChar = code.charAt(0).toUpperCase();
   if (['G', 'D', 'C'].includes(firstChar)) {
     return 'bg-primary-500 shadow-[0_0_0_4px_rgba(var(--primary-rgb),0.2)]'; // 高铁色
   }

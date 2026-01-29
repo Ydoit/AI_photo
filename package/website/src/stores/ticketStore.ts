@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { useStorage } from '@vueuse/core';
-import type { TicketBackend, TicketQueryParams } from '@/types/ticket';
+import type { TicketBackend, TicketQueryParams, UniversalTicket } from '@/types/ticket';
 import { ticketService } from '@/api/ticketService';
 import { railwayService, type TicketStats, type TicketItem } from '@/api/railway';
 
@@ -10,7 +10,7 @@ export const useTicketStore = defineStore('ticket', () => {
   // 视图模式
   const viewMode = useStorage<'timeline' | 'grid'>('ticket-view-mode', 'timeline');
   // 筛选状态
-  const filterType = useStorage<'all' | 'highspeed' | 'normal'>('ticket-filter-type', 'all');
+  const filterType = useStorage<'all' | 'highspeed' | 'normal' | 'flight'>('ticket-filter-type', 'all');
   const sortType = useStorage<'date' | 'distance' | 'duration' | 'price'>('ticket-sort-type', 'date');
   const selectedPassenger = useStorage<string>('ticket-selected-passenger', '');
 
@@ -21,7 +21,7 @@ export const useTicketStore = defineStore('ticket', () => {
   const statsMap = useStorage<Record<string, TicketStats>>('ticket-stats-map', {});
 
   // --- Data Cache (In-Memory) ---
-  const tickets = ref<TicketBackend[]>([]);
+  const tickets = ref<UniversalTicket[]>([]);
   const lastFetchTime = ref<number>(0);
   const loading = ref(false);
   const error = ref('');
@@ -38,15 +38,23 @@ export const useTicketStore = defineStore('ticket', () => {
     if (tickets.value.length === 0) return;
 
     try {
-      const items: TicketItem[] = tickets.value.map(t => ({
-        id: String(t.id),
-        train_code: t.train_code,
-        departure_station: t.departure_station,
-        arrival_station: t.arrival_station,
-        date_time: t.date_time
-      }));
+      // 仅为火车票获取统计数据
+      const trainItems: TicketItem[] = tickets.value
+        .filter(t => !t.type || t.type === 'train')
+        .map(t => {
+           const trainTicket = t as TicketBackend;
+           return {
+            id: String(trainTicket.id),
+            train_code: trainTicket.train_code,
+            departure_station: trainTicket.departure_station,
+            arrival_station: trainTicket.arrival_station,
+            date_time: trainTicket.date_time
+          };
+        });
 
-      const res = await railwayService.getBatchStats(items);
+      if (trainItems.length === 0) return;
+
+      const res = await railwayService.getBatchStats(trainItems);
       if (res.code === 200 && res.data) {
         // 更新缓存
         const newMap = { ...statsMap.value };
@@ -87,8 +95,36 @@ export const useTicketStore = defineStore('ticket', () => {
         // name: selectedPassenger.value || undefined,
       };
 
-      const res = await ticketService.getTickets(params);
-      tickets.value = res.items || [];
+      // 并行请求火车票和飞机票
+      const [trainRes, flightRes] = await Promise.allSettled([
+        ticketService.getTickets(params),
+        ticketService.getFlightTickets(params)
+      ]);
+
+      let allTickets: UniversalTicket[] = [];
+
+      // 处理火车票结果
+      if (trainRes.status === 'fulfilled') {
+        // 显式标记类型
+        const trainItems = (trainRes.value.items || []).map(t => ({ ...t, type: 'train' as const }));
+        allTickets = allTickets.concat(trainItems);
+      } else {
+        console.error('Fetch train tickets failed:', trainRes.reason);
+      }
+
+      // 处理飞机票结果
+      if (flightRes.status === 'fulfilled') {
+        const flightItems = (flightRes.value.items || []).map(t => ({ ...t, type: 'flight' as const }));
+        allTickets = allTickets.concat(flightItems);
+      } else {
+        console.error('Fetch flight tickets failed:', flightRes.reason);
+      }
+
+      // 按时间倒序合并
+      tickets.value = allTickets.sort((a, b) => {
+        return new Date(b.date_time).getTime() - new Date(a.date_time).getTime();
+      });
+
       lastFetchTime.value = now;
       
       // 获取车票后，自动触发统计数据更新
@@ -125,7 +161,7 @@ export const useTicketStore = defineStore('ticket', () => {
    * 更新单条车票数据 (用于编辑/新增后的本地更新，避免立即全量刷新)
    * 当然也可以选择直接调用 refreshData()
    */
-  function updateLocalTicket(ticket: TicketBackend) {
+  function updateLocalTicket(ticket: UniversalTicket) {
     const index = tickets.value.findIndex(t => t.id === ticket.id);
     if (index !== -1) {
       tickets.value[index] = ticket;
@@ -137,7 +173,7 @@ export const useTicketStore = defineStore('ticket', () => {
     lastFetchTime.value = Date.now();
   }
 
-  function removeLocalTickets(ids: number[]) {
+  function removeLocalTickets(ids: (number | string)[]) {
     tickets.value = tickets.value.filter(t => !ids.includes(t.id));
     lastFetchTime.value = Date.now();
   }
