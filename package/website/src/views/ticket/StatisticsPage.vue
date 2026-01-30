@@ -140,7 +140,7 @@ import { injectTheme } from '@/composables/useTheme';
 import { useTicketStore } from '@/stores/ticketStore';
 import { useStorage } from '@vueuse/core';
 import { railwayRequest } from '@/api/requestFactory';
-import { ticketService } from '@/api/ticketService';
+import { railwayService } from '@/api/railway';
 
 // 接收父组件传入的主题和模式（移除未使用的props）
 
@@ -169,6 +169,7 @@ const error = ref('');
 
 const selectedYear = useStorage<number>('stats-selected-year', new Date().getFullYear());
 const availableYears = ref<number[]>([selectedYear.value]);
+const stationToCityMap = new Map<string, string>();
 
 interface Aggregates {
   distance: number;
@@ -301,8 +302,30 @@ function buildCityCoordsFromGeojson(geojson: any) {
   }
 }
 
+async function loadStations() {
+  try {
+    // 获取所有站点信息，用于站点到城市的映射
+    // 由于站点较多，这里一次性获取 2000 条（覆盖绝大多数常用站点）
+    const res = await railwayService.getStations({ page: 1, page_size: 2000 });
+    if (res.code === 200 && res.data?.list) {
+      res.data.list.forEach(s => {
+        stationToCityMap.set(s.station_name, s.city);
+      });
+    }
+  } catch (e) {
+    console.error('Failed to load stations', e);
+  }
+}
+
 // 站点到城市归一化
 function normalizeCity(station: string): string {
+  // 1. 优先使用后端返回的映射
+  const cityFromBackend = stationToCityMap.get(station);
+  if (cityFromBackend) {
+    return cityFromBackend.replace('市', '');
+  }
+
+  // 2. 兜底使用硬编码的特殊映射
   const explicit: Record<string, string> = {
     '北京南': '北京', '北京北': '北京', '北京西': '北京', '北京朝阳': '北京', '北京大兴': '北京', '北京': '北京',
     '天津南': '天津', '天津西': '天津', '天津': '天津',
@@ -612,6 +635,7 @@ onMounted(async () => {
   loading.value = true;
   error.value = '';
   try {
+    await loadStations();
     await ticketStore.fetchTickets();
     const years = Array.from(new Set(ticketStore.tickets.map(t => getTicketYear(t)).filter(y => isFinite(y) && y > 0))).sort((a, b) => b - a);
     availableYears.value = years.length ? years : [selectedYear.value];

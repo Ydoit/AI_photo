@@ -95,7 +95,7 @@ def query_station_list(
     keyword: Optional[str] = Query(None, description="搜索关键词（匹配名称/全拼/简拼）"),
     # 分页参数
     page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(20, ge=1, le=100, description="每页条数（1-100）"),
+    page_size: int = Query(20, ge=1, le=5000, description="每页条数（1-5000）"),
     db: Session = Depends(get_db)
 ):
     # 构造查询参数对象

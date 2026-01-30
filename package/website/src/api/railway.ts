@@ -23,12 +23,32 @@ export interface TicketStats {
   train_no?: string;
 }
 
+export interface Station {
+  station_name: string;
+  city: string;
+  province: string;
+  telecode?: string;
+}
+
+export interface StationListResponse {
+  total: number;
+  list: Station[];
+}
+
 export const railwayService = {
   /**
    * 批量计算车票里程和时长
    */
   async getBatchStats(items: TicketItem[]) {
     const { data } = await api.post<BaseResponse<TicketStats[]>>('/api/railway/stats/batch', { items });
+    return data;
+  },
+
+  /**
+   * 获取所有站点信息
+   */
+  async getStations(params?: { page?: number; page_size?: number; keyword?: string }) {
+    const { data } = await api.get<BaseResponse<StationListResponse>>('/api/railway/stations', { params });
     return data;
   }
 };
