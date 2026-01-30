@@ -96,5 +96,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
   - `db/`: 数据库模型
   - `schemas/`: Pydantic 验证模型
   - `service/`: 业务服务
+- `alembic/`: Alembic 数据库迁移配置
 - `railway/`: 铁路数据相关逻辑
 - `data/`: 配置文件与数据存储
+- `reverse_geocode/`: 逆地理编码服务

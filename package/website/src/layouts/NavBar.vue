@@ -81,7 +81,9 @@
             
             <div class="flex-1 min-w-0">
                <div class="flex items-center justify-between">
-                 <span class="text-gray-800 dark:text-gray-200 font-medium truncate">{{ item.value }}</span>
+                 <span class="text-gray-800 dark:text-gray-200 font-medium truncate">
+                   {{ item.type === 'ocr' ? item.label : item.value }}
+                 </span>
                  <span class="text-xs text-gray-500 ml-2 whitespace-nowrap bg-gray-100 dark:bg-gray-600 px-1.5 py-0.5 rounded">{{ getLabel(item.type) }}</span>
                </div>
             </div>
@@ -138,7 +140,7 @@ import {
   Sparkles
 } from 'lucide-vue-next';
 import { useRouter } from 'vue-router'
-import { onClickOutside, useDebounceFn } from '@vueuse/core'
+import { onClickOutside, useDebounceFn, useBreakpoints, breakpointsTailwind } from '@vueuse/core'
 import { usePhotoStore } from '@/stores/photoStore'
 import searchService, { type SearchSuggestion } from '@/api/search'
 
@@ -159,6 +161,9 @@ const moreMenuRef = ref(null);
 
 const router = useRouter();
 const store = usePhotoStore();
+const breakpoints = useBreakpoints(breakpointsTailwind);
+const isMobile = breakpoints.smaller('md');
+
 const searchText = ref('');
 const isSearchExpanded = ref(false);
 const searchInputRef = ref<HTMLInputElement | null>(null);
@@ -177,6 +182,10 @@ watch(() => store.currentContext, (ctx) => {
 });
 
 const toggleSearch = () => {
+  if (isMobile.value) {
+    router.push('/mobile-search');
+    return;
+  }
   if (isSearchExpanded.value && searchText.value) {
     handleSearch();
   } else {
@@ -232,7 +241,28 @@ const fetchSuggestions = useDebounceFn(async (q: string) => {
   }
   try {
     const res = await searchService.getSuggestions(q);
-    suggestions.value = res;
+    
+    // Process suggestions to group OCR results
+    const processedSuggestions: SearchSuggestion[] = [];
+    let hasOcr = false;
+    
+    for (const item of res) {
+      if (item.type === 'ocr') {
+        hasOcr = true;
+      } else {
+        processedSuggestions.push(item);
+      }
+    }
+    
+    if (hasOcr) {
+      processedSuggestions.push({
+        type: 'ocr',
+        value: q,
+        label: `图片中包含文字：${q}`
+      } as SearchSuggestion);
+    }
+    
+    suggestions.value = processedSuggestions;
   } catch (e) {
     console.error("Failed to fetch suggestions", e);
   }
