@@ -3,39 +3,69 @@
     :class="[isDarkMode ? 'dark' : '']"
     class="min-h-screen font-sans transition-colors duration-300 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200"
   >
-    <nav class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm h-16 transition-colors duration-300">
+    <nav class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm h-14 transition-colors duration-300">
       <div class="max-w-[1400px] mx-auto px-4 h-full flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg flex items-center justify-center border border-primary-500 bg-primary-50 dark:bg-slate-700/50 transition-colors">
-            <TrainFront class="w-6 h-6 text-primary-600 dark:text-primary-400" />
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center border border-primary-500 bg-primary-50 dark:bg-slate-700/50 transition-colors">
+            <TrainFront class="w-5 h-5 text-primary-600 dark:text-primary-400" />
           </div>
-          <span class="text-xl font-light tracking-wide text-slate-800 dark:text-white hidden sm:block">车票收藏夹</span>
+          <span class="text-lg font-medium tracking-wide text-slate-800 dark:text-white hidden sm:block">车票管理</span>
         </div>
 
-        <div class="hidden lg:block w-1/3">
+        <div class="flex-1 max-w-md mx-4 hidden md:block">
           <div class="relative group">
             <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="搜索车次 / 出发地 / 目的地 / 乘车人"
-              class="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-900 transition-all text-sm dark:text-white dark:placeholder-slate-400"
+              placeholder="搜索车次 / 地点 / 乘车人"
+              class="w-full pl-9 pr-4 py-1.5 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-full focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-900 transition-all text-sm dark:text-white dark:placeholder-slate-400"
               @input="handleSearchInput"
             />
           </div>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
+          <button
+            @click="goToStatistics"
+            class="p-2 text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-slate-700 rounded-full transition-colors"
+            title="统计报表"
+          >
+            <BarChart2 class="w-5 h-5" />
+          </button>
+          
+          <div class="hidden sm:flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 ml-1 pl-2">
+            <button
+              @click="triggerImport"
+              class="p-2 text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-slate-700 rounded-full transition-colors"
+              title="导入数据"
+            >
+              <Upload class="w-5 h-5" />
+            </button>
+            <button
+              @click="handleExport"
+              class="p-2 text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-slate-700 rounded-full transition-colors"
+              title="导出数据"
+            >
+              <Download class="w-5 h-5" />
+            </button>
+          </div>
+
           <button
             @click="openTicketModal()"
-            class="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md transition-all active:scale-95 shadow-md shadow-primary-200 dark:shadow-none"
+            class="flex items-center gap-1.5 bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-full transition-all active:scale-95 shadow-md shadow-primary-200 dark:shadow-none ml-2"
           >
             <Plus class="w-4 h-4" />
-            <span class="hidden sm:inline text-sm font-medium">新增</span>
+            <span class="text-sm font-medium">新增</span>
           </button>
-          <div class="w-9 h-9 rounded-full bg-slate-200 overflow-hidden border border-white dark:border-slate-600 shadow-sm cursor-pointer">
-            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Traveler" alt="Avatar" class="w-full h-full object-cover" />
-          </div>
+          
+          <input 
+            type="file" 
+            ref="fileInput" 
+            class="hidden" 
+            accept=".json,.csv" 
+            @change="handleFileImport" 
+          />
         </div>
       </div>
     </nav>
@@ -314,10 +344,11 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { 
   TrainFront, Search, Plus, MapPin, Clock, Route,
-  ChevronDown, Trash2, X, User, RefreshCw, Database, Plane
+  ChevronDown, Trash2, X, User, RefreshCw, Database, Plane,
+  BarChart2, Download, Upload, ListTree, LayoutGrid
 } from 'lucide-vue-next';
-import { ElMessage } from 'element-plus';
-import { ListTree, LayoutGrid } from 'lucide-vue-next'; // 引入图标
+import { useRouter } from 'vue-router';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import TicketTimeline from '@/components/TicketTimeline.vue'; // 引入新组件
 import { storeToRefs } from 'pinia';
 import { useTicketStore } from '@/stores/ticketStore';
@@ -345,6 +376,7 @@ import StatsCard from '@/components/StatsCard.vue'; // 新组件
 
 const { isDarkMode, currentTheme } = injectTheme();
 const ticketStore = useTicketStore();
+const router = useRouter();
 
 // --- 状态定义 ---
 // 使用 storeToRefs 保持响应性
@@ -367,9 +399,62 @@ const showTypeSelector = ref(false);
 const isEditing = ref(false);
 const showCityModal = ref(false);
 const saving = ref(false);
+const fileInput = ref<HTMLInputElement | null>(null);
+
 // 初始编辑对象，使用 Partial 或特定类型
 const currentTicket = ref<Partial<TicketFormData>>({});
 const currentFlightTicket = ref<Partial<FlightTicketFormData>>({});
+
+// --- 统计与导入导出 ---
+const goToStatistics = () => {
+  router.push('/statistics');
+};
+
+const handleExport = async () => {
+  try {
+    // 弹出选择格式
+    await ElMessageBox.confirm(
+      '请选择导出的文件格式',
+      '导出车票数据',
+      {
+        confirmButtonText: 'JSON',
+        cancelButtonText: 'CSV',
+        distinguishCancelAndClose: true,
+        type: 'info'
+      }
+    ).then(() => {
+      ticketStore.exportTickets('json');
+    }).catch((action) => {
+      if (action === 'cancel') {
+        ticketStore.exportTickets('csv');
+      }
+    });
+  } catch (err) {
+    // User cancelled or error
+  }
+};
+
+const triggerImport = () => {
+  fileInput.value?.click();
+};
+
+const handleFileImport = async (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  if (target.files && target.files.length > 0) {
+    const file = target.files[0];
+    try {
+      loading.value = true;
+      const result = await ticketStore.importTickets(file);
+      ElMessage.success(`导入成功: ${result.success} 条记录, 更新 ${result.details?.updated || 0} 条`);
+      await fetchTickets(true);
+    } catch (err: any) {
+      ElMessage.error(err.message || '导入失败');
+    } finally {
+      loading.value = false;
+      target.value = ''; // Reset input
+    }
+  }
+};
 
 // 监听车票变化，自动更新统计数据
 watch(tickets, () => {

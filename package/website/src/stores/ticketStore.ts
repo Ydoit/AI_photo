@@ -178,6 +178,14 @@ export const useTicketStore = defineStore('ticket', () => {
     lastFetchTime.value = Date.now();
   }
 
+  async function exportTickets(format: 'json' | 'csv' = 'json') {
+    await ticketService.exportTickets(format);
+  }
+
+  async function importTickets(file: File) {
+    return await ticketService.importTickets(file);
+  }
+
   return {
     // State
     viewMode,
@@ -197,6 +205,8 @@ export const useTicketStore = defineStore('ticket', () => {
     resetFilters,
     updateLocalTicket,
     removeLocalTickets,
-    fetchAndCacheStats
+    fetchAndCacheStats,
+    exportTickets,
+    importTickets
   };
 });

@@ -4,7 +4,7 @@
     <div class="max-w-[1400px] mx-auto mb-6 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <button 
-          @click="$emit('back')" 
+          @click="router.back()" 
           class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
         >
           <ArrowLeft class="w-4 h-4" />
@@ -160,6 +160,9 @@ let myTrend: echarts.ECharts | null = null;
 let myBar: echarts.ECharts | null = null;
 
 // --- 车票数据接入与统计 ---
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 const ticketStore = useTicketStore();
 const loading = ref(false);
 const error = ref('');
@@ -358,8 +361,8 @@ function computeAggregates(year: number): Aggregates {
   const days = daySet.size;
   const citySet = new Set();
   tickets.forEach(t => {
-    citySet.add(normalizeCity(t.departure_station));
-    citySet.add(normalizeCity(t.arrival_station));
+    citySet.add(normalizeCity('departure_station' in t ? t.departure_station : t.departure_city));
+    citySet.add(normalizeCity('arrival_station' in t ? t.arrival_station : t.arrival_city));
   });
   const cities = citySet.size;
   const monthlyCounts = Array(12).fill(0);
@@ -369,13 +372,16 @@ function computeAggregates(year: number): Aggregates {
   });
   const cityCountMap = new Map<string, number>();
   tickets.forEach(t => {
-    const city = normalizeCity(t.arrival_station);
+    const city = normalizeCity('arrival_station' in t ? t.arrival_station : t.arrival_city);
     cityCountMap.set(city, (cityCountMap.get(city) || 0) + 1);
   });
   const cityRanking = Array.from(cityCountMap.entries())
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count);
-  const routes = tickets.map(t => ({ from: normalizeCity(t.departure_station), to: normalizeCity(t.arrival_station) }));
+  const routes = tickets.map(t => ({
+    from: normalizeCity('departure_station' in t ? t.departure_station : t.departure_city),
+    to: normalizeCity('arrival_station' in t ? t.arrival_station : t.arrival_city)
+  }));
   const pointSet = new Map<string, [number, number, number]>();
   routes.forEach(r => {
     const fc = cityCoords[r.from] || cityCoords[normalizeCity(r.from)];
@@ -409,7 +415,6 @@ const initMap = async () => {
 
   myMap = echarts.init(mapContainer.value);
 
-  // 加载中国地图 GeoJSON (使用阿里云的 CDN 数据源作为示例)
   try {
     const response = await fetch('/api/medias/geojson?level=city');
     const chinaJson = await response.json();
@@ -698,7 +703,10 @@ async function ensureLinearDistancesForYear(year: number) {
     const d = Number(t.total_mileage || 0);
     return y === year && (!isFinite(d) || d <= 0);
   });
-  const pairs = tickets.map(t => ({ from: t.departure_station, to: t.arrival_station }));
+  const pairs = tickets.map(t => ({
+    from: 'departure_station' in t ? t.departure_station : t.departure_city,
+    to: 'arrival_station' in t ? t.arrival_station : t.arrival_city
+  }));
   if (!pairs.length) {
     missingLinearDistanceCache.set(year, 0);
     return;
