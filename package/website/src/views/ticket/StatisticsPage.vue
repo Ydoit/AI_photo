@@ -4,7 +4,7 @@
     <div class="max-w-[1400px] mx-auto mb-6 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <button 
-          @click="$emit('back')" 
+          @click="router.back()" 
           class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
         >
           <ArrowLeft class="w-4 h-4" />
@@ -140,7 +140,7 @@ import { injectTheme } from '@/composables/useTheme';
 import { useTicketStore } from '@/stores/ticketStore';
 import { useStorage } from '@vueuse/core';
 import { railwayRequest } from '@/api/requestFactory';
-import { ticketService } from '@/api/ticketService';
+import { railwayService } from '@/api/railway';
 
 // 接收父组件传入的主题和模式（移除未使用的props）
 
@@ -160,12 +160,16 @@ let myTrend: echarts.ECharts | null = null;
 let myBar: echarts.ECharts | null = null;
 
 // --- 车票数据接入与统计 ---
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 const ticketStore = useTicketStore();
 const loading = ref(false);
 const error = ref('');
 
 const selectedYear = useStorage<number>('stats-selected-year', new Date().getFullYear());
 const availableYears = ref<number[]>([selectedYear.value]);
+const stationToCityMap = new Map<string, string>();
 
 interface Aggregates {
   distance: number;
@@ -298,8 +302,30 @@ function buildCityCoordsFromGeojson(geojson: any) {
   }
 }
 
+async function loadStations() {
+  try {
+    // 获取所有站点信息，用于站点到城市的映射
+    // 由于站点较多，这里一次性获取 2000 条（覆盖绝大多数常用站点）
+    const res = await railwayService.getStations({ page: 1, page_size: 2000 });
+    if (res.code === 200 && res.data?.list) {
+      res.data.list.forEach(s => {
+        stationToCityMap.set(s.station_name, s.city);
+      });
+    }
+  } catch (e) {
+    console.error('Failed to load stations', e);
+  }
+}
+
 // 站点到城市归一化
 function normalizeCity(station: string): string {
+  // 1. 优先使用后端返回的映射
+  const cityFromBackend = stationToCityMap.get(station);
+  if (cityFromBackend) {
+    return cityFromBackend.replace('市', '');
+  }
+
+  // 2. 兜底使用硬编码的特殊映射
   const explicit: Record<string, string> = {
     '北京南': '北京', '北京北': '北京', '北京西': '北京', '北京朝阳': '北京', '北京大兴': '北京', '北京': '北京',
     '天津南': '天津', '天津西': '天津', '天津': '天津',
@@ -358,8 +384,8 @@ function computeAggregates(year: number): Aggregates {
   const days = daySet.size;
   const citySet = new Set();
   tickets.forEach(t => {
-    citySet.add(normalizeCity(t.departure_station));
-    citySet.add(normalizeCity(t.arrival_station));
+    citySet.add(normalizeCity('departure_station' in t ? t.departure_station : t.departure_city));
+    citySet.add(normalizeCity('arrival_station' in t ? t.arrival_station : t.arrival_city));
   });
   const cities = citySet.size;
   const monthlyCounts = Array(12).fill(0);
@@ -369,13 +395,16 @@ function computeAggregates(year: number): Aggregates {
   });
   const cityCountMap = new Map<string, number>();
   tickets.forEach(t => {
-    const city = normalizeCity(t.arrival_station);
+    const city = normalizeCity('arrival_station' in t ? t.arrival_station : t.arrival_city);
     cityCountMap.set(city, (cityCountMap.get(city) || 0) + 1);
   });
   const cityRanking = Array.from(cityCountMap.entries())
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count);
-  const routes = tickets.map(t => ({ from: normalizeCity(t.departure_station), to: normalizeCity(t.arrival_station) }));
+  const routes = tickets.map(t => ({
+    from: normalizeCity('departure_station' in t ? t.departure_station : t.departure_city),
+    to: normalizeCity('arrival_station' in t ? t.arrival_station : t.arrival_city)
+  }));
   const pointSet = new Map<string, [number, number, number]>();
   routes.forEach(r => {
     const fc = cityCoords[r.from] || cityCoords[normalizeCity(r.from)];
@@ -409,7 +438,6 @@ const initMap = async () => {
 
   myMap = echarts.init(mapContainer.value);
 
-  // 加载中国地图 GeoJSON (使用阿里云的 CDN 数据源作为示例)
   try {
     const response = await fetch('/api/medias/geojson?level=city');
     const chinaJson = await response.json();
@@ -607,6 +635,7 @@ onMounted(async () => {
   loading.value = true;
   error.value = '';
   try {
+    await loadStations();
     await ticketStore.fetchTickets();
     const years = Array.from(new Set(ticketStore.tickets.map(t => getTicketYear(t)).filter(y => isFinite(y) && y > 0))).sort((a, b) => b - a);
     availableYears.value = years.length ? years : [selectedYear.value];
@@ -698,7 +727,10 @@ async function ensureLinearDistancesForYear(year: number) {
     const d = Number(t.total_mileage || 0);
     return y === year && (!isFinite(d) || d <= 0);
   });
-  const pairs = tickets.map(t => ({ from: t.departure_station, to: t.arrival_station }));
+  const pairs = tickets.map(t => ({
+    from: 'departure_station' in t ? t.departure_station : t.departure_city,
+    to: 'arrival_station' in t ? t.arrival_station : t.arrival_city
+  }));
   if (!pairs.length) {
     missingLinearDistanceCache.set(year, 0);
     return;

@@ -48,7 +48,7 @@ class StationCreate(BaseModel):
 class StationRead(BaseSchema):
     station_name: str
     station_pinyin: str
-    province: str
+    province: Optional[str]
     city: str
     district: Optional[str]
     telecode: Optional[str]
@@ -74,7 +74,7 @@ class StationListQuery(BaseModel):
     keyword: Optional[str] = Field(None, description="搜索关键词（匹配名称/全拼/简拼，如：bjx/北京西/beijingxi）")
     # 分页参数
     page: int = Field(1, ge=1, description="页码（默认第1页）")
-    page_size: int = Field(20, ge=1, le=100, description="每页条数（1-100，默认20）")
+    page_size: int = Field(20, ge=1, le=10000, description="每页条数（1-10000，默认20）")
 
 # 定义列表查询的响应数据结构（明确 list 是 StationRead 列表）
 class StationListResponse(BaseModel):

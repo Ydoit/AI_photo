@@ -80,5 +80,34 @@ export const ticketService = {
       }
     });
     return data;
+  },
+
+  // 导出数据
+  async exportTickets(format: 'json' | 'csv' = 'json') {
+    const response = await api.get(`/api/train-ticket/export`, {
+      params: { format },
+      responseType: 'blob'
+    });
+    
+    // 创建下载链接
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `tickets_export_${new Date().getTime()}.${format}`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  },
+
+  // 导入数据
+  async importTickets(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await api.post('/api/train-ticket/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return data;
   }
 };
