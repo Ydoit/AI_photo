@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.db.models.task import Task, TaskType
 from app.db.models.photo import Photo, FileType
 from app.db.models.face import Face
-from app.service.face_cluster import FaceClusterService
+from app.service.face_cluster import FaceClusterService, crud_face
 from typing import Dict, Any, List
 from app.core.config_manager import config_manager
 from app.service import storage
@@ -104,7 +104,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                     faces = result.get('faces', [])
                     
                     # Clean up old faces
-                    db.query(Face).filter(Face.photo_id == photo.id).delete()
+                    crud_face.delete_faces_by_photo(db, photo.id)
 
                     count = 0
                     has_unassigned = False

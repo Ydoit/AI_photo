@@ -45,6 +45,9 @@ def update_face(db: Session, face_id: int, obj_in: schemas.FaceUpdate) -> Option
         setattr(db_obj, field, value)
 
     db.add(db_obj)
+    identity = db.query(FaceIdentity).get(db_obj.face_identity_id)
+    if identity and not identity.default_face_id:
+        identity.default_face_id = db_obj.id
     db.commit()
     db.refresh(db_obj)
     return db_obj
@@ -64,6 +67,13 @@ def delete_face(db: Session, face_id: int) -> Optional[Face]:
     db.delete(face)
     db.commit()
     return face
+
+def delete_faces(db: Session, face_ids: List[int]):
+    """
+    Delete multiple face records.
+    """
+    for face_id in face_ids:
+        delete_face(db, face_id)
 
 def handle_face_deletion_dependency(db: Session, face: Face):
     """
