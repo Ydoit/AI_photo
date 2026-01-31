@@ -8,9 +8,9 @@ export class MapLoadError extends Error {
   }
 }
 
-let loadingPromise: Promise<any> | null = null
+let loadingPromise: Promise<string> | null = null
 
-export const loadMapScript = async () => {
+export const loadMapScript = async (): Promise<string> => {
   if (loadingPromise) return loadingPromise
 
   loadingPromise = (async () => {
@@ -41,7 +41,8 @@ export const loadMapScript = async () => {
 
     // 2. Load Provider Script
     if (provider === 'tianditu') {
-      return loadTianditu(apiKey)
+      await loadTianditu(apiKey)
+      return apiKey
     } else {
         // Placeholder for other providers
         throw new MapLoadError(`Provider ${provider} is not supported yet`, 'UNSUPPORTED_PROVIDER')
@@ -55,16 +56,16 @@ export const loadMapScript = async () => {
 }
 
 const loadTianditu = (key: string) => {
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     if ((window as any).T) {
-      resolve((window as any).T)
+      resolve()
       return
     }
 
     const script = document.createElement('script')
-    script.src = `http://api.tianditu.gov.cn/api?v=4.0&tk=${key}`
+    script.src = `https://api.tianditu.gov.cn/api?v=4.0&tk=${key}`
     script.type = 'text/javascript'
-    script.onload = () => resolve((window as any).T)
+    script.onload = () => resolve()
     script.onerror = () => reject(new MapLoadError('Failed to load map script', 'SCRIPT_LOAD_ERROR'))
     document.head.appendChild(script)
   })

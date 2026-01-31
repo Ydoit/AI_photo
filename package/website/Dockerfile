@@ -29,6 +29,9 @@ COPY --from=build-stage /app/dist /usr/share/nginx/html
 # 复制自定义Nginx配置（解决路由和API代理问题）
 COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 
+# 创建缓存目录并设置权限
+RUN mkdir -p /var/cache/nginx/tianditu && chown -R nginx:nginx /var/cache/nginx/tianditu
+
 # 暴露80端口（Nginx默认端口）
 EXPOSE 80
 

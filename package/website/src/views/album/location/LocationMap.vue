@@ -24,6 +24,7 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 declare const T: any
 
 const map = ref<any>(null)
+const currentApiKey = ref('')
 const loading = ref(false)
 const index = new Supercluster({
   radius: 60,
@@ -43,7 +44,7 @@ const props = defineProps<{
 
 onMounted(async () => {
   try {
-    await loadMapScript()
+    currentApiKey.value = await loadMapScript()
     initMap()
     await loadContent()
   } catch (e: any) {
@@ -83,7 +84,33 @@ watch(() => props.filterStatus, async () => {
 const initMap = () => {
   if (map.value) return
   
-  map.value = new T.Map('tianditu-map')
+  const isProd = import.meta.env.PROD;
+  
+  // 生产环境下使用 nginx 代理并缓存瓦片资源
+  if (isProd) {
+    // 初始化地图时不添加默认图层
+    map.value = new T.Map('tianditu-map', {
+      layers: []
+    })
+    
+    // 添加代理图层
+    const tk = currentApiKey.value;
+    const vecLayer = new T.TileLayer(`/tianditu-tiles/DataServer?T=vec_w&x={x}&y={y}&l={z}&tk=${tk}`, {
+      minZoom: 1,
+      maxZoom: 18
+    });
+    const cvaLayer = new T.TileLayer(`/tianditu-tiles/DataServer?T=cva_w&x={x}&y={y}&l={z}&tk=${tk}`, {
+      minZoom: 1,
+      maxZoom: 18
+    });
+    
+    map.value.addOverLay(vecLayer);
+    map.value.addOverLay(cvaLayer);
+  } else {
+    // 开发环境下直接使用天地图默认图层
+    map.value = new T.Map('tianditu-map')
+  }
+
   map.value.centerAndZoom(new T.LngLat(104.195, 35.861), 4) // Center of China
   map.value.enableScrollWheelZoom()
 }
