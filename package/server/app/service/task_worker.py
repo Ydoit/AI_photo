@@ -174,6 +174,7 @@ class TaskWorker:
                     if hasattr(face, 'release_resources'): face.release_resources()
                 elif task_type == TaskType.CLASSIFY_IMAGE:
                     if hasattr(classification, 'release_resources'): classification.release_resources()
+                del self.last_active_time[task_type]
 
 
     async def worker_loop(self):
