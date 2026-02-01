@@ -28,23 +28,22 @@
         <div class="flex items-center gap-2">
           <button
             @click="goToStatistics"
-            class="p-2 text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-slate-700 rounded-full transition-colors"
+            class="p-2 text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-slate-700 dark:bg-slate-800 rounded-full transition-colors"
             title="统计报表"
           >
             <BarChart2 class="w-5 h-5" />
           </button>
-          
-          <div class="hidden sm:flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 ml-1 pl-2">
+          <div class="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 ml-1 pl-2">
             <button
               @click="triggerImport"
-              class="p-2 text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-slate-700 rounded-full transition-colors"
+              class="p-2 text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-slate-700 dark:bg-slate-800 rounded-full transition-colors"
               title="导入数据"
             >
               <Upload class="w-5 h-5" />
             </button>
             <button
               @click="handleExport"
-              class="p-2 text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-slate-700 rounded-full transition-colors"
+              class="p-2 text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-slate-700 dark:bg-slate-800 rounded-full transition-colors"
               title="导出数据"
             >
               <Download class="w-5 h-5" />

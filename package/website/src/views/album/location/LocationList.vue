@@ -65,7 +65,7 @@
               v-for="opt in levelOptions"
               :key="opt.value"
               @click="changeLevel(opt.value as any); showLevelMenu = false"
-              :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors', level === opt.value ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
+              :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors dark:bg-gray-800', level === opt.value ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
             >
               {{ opt.label }}
             </button>
@@ -76,7 +76,7 @@
                 v-for="opt in filterOptions"
                 :key="'m-' + opt.value"
                 @click="filterStatus = opt.value as any; showLevelMenu = false"
-                :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors', filterStatus === opt.value ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
+                :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:bg-gray-800 transition-colors', filterStatus === opt.value ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
               >
                 {{ opt.label }}
               </button>
@@ -85,7 +85,7 @@
             <button
                v-show="viewMode !== 'grid'"
                @click="level = 'photo-map'; showLevelMenu = false"
-               :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2', level === 'photo-map' ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
+               :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:bg-gray-800 transition-colors flex items-center gap-2', level === 'photo-map' ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
             >
                <Images class="w-4 h-4" />
                地图照片
@@ -125,7 +125,7 @@
           <button
             v-show="viewMode !== 'grid'"
             @click="level = 'photo-map'"
-            :class="['hidden md:flex px-3 py-1.5 rounded-md text-sm font-medium transition-all items-center gap-1.5', level === 'photo-map' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
+            :class="['hidden md:flex px-3 py-1.5 rounded-md dark:bg-gray-700 text-sm font-medium transition-all items-center gap-1.5', level === 'photo-map' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
             title="地图照片"
           >
             <Images class="w-4 h-4" />

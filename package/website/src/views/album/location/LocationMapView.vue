@@ -12,8 +12,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
-import { useDark } from '@vueuse/core'
 import { locationService } from '@/api/location'
+import { useTheme } from '@/composables/useTheme'
 
 const props = defineProps<{
   level: string
@@ -28,7 +28,8 @@ const emit = defineEmits<{
 const mapContainer = ref<HTMLElement | null>(null)
 let myMap: echarts.ECharts | null = null
 let zoomTimer: any = null
-const isDark = useDark()
+const { isDarkMode } = useTheme()
+const isDark = isDarkMode
 
 const initMap = async (viewState?: { zoom: number, center: number[] }) => {
   if (!mapContainer.value) return
@@ -53,10 +54,24 @@ const initMap = async (viewState?: { zoom: number, center: number[] }) => {
     const distribution = await locationService.getDistribution(props.level as 'city' | 'province' | 'district' | 'scene' | undefined)
     
     // 3. Prepare Data
+    const nameMap: Record<string, string> = {}
+    if (geoJson && geoJson.features) {
+      geoJson.features.forEach((f: any) => {
+        const fullName = f.properties.name
+        if (fullName) {
+          nameMap[fullName] = fullName
+          // Add short names (e.g. "广东" for "广东省")
+          const shortName = fullName.replace(/(省|市|自治区|特别行政区|回族自治区|壮族自治区|维吾尔自治区|县|区)$/, '')
+          if (shortName && shortName !== fullName) {
+            nameMap[shortName] = fullName
+          }
+        }
+      })
+    }
+
     const data = distribution.map(item => ({
-      name: item.name,
+      name: nameMap[item.name] || item.name,
       value: item.count,
-      // Ensure specific style for each item if needed, but visualMap handles it
     }))
     
     // Calculate 90th percentile to handle outliers for better color distribution
@@ -66,32 +81,17 @@ const initMap = async (viewState?: { zoom: number, center: number[] }) => {
     // Use p90 as visual max, but allow real max to be shown
     const visualMax = maxVal > p90 * 2 ? p90 * 1.5 : maxVal
 
-    renderMap(data, visualMax, viewState)
+    renderMap(data, visualMax, geoJson, viewState)
     myMap.hideLoading()
 
     // 4. Bind Events
-    myMap.on('click', (params) => {
+    myMap.on('click', (params: any) => {
       if (params.name) {
+        // Find original name from nameMap if needed
+        // Actually params.name will be the name from 'data' if matched,
+        // or the name from GeoJSON if not matched in data.
         emit('click-location', params.name)
       }
-    })
-
-    // Zoom event for level switching
-    myMap.on('georoam', () => {
-      if (zoomTimer) clearTimeout(zoomTimer)
-      zoomTimer = setTimeout(() => {
-        const option = myMap?.getOption() as any
-        if (option && option.geo && option.geo[0]) {
-          const zoom = option.geo[0].zoom
-          const center = option.geo[0].center
-          
-          // if (props.level === 'province' && zoom > 2.5) {
-          //    emit('change-level', 'city', { zoom, center })
-          // } else if (props.level === 'city' && zoom < 1.5) {
-          //    emit('change-level', 'province', { zoom, center })
-          // }
-        }
-      }, 300)
     })
 
   } catch (e) {
@@ -100,20 +100,32 @@ const initMap = async (viewState?: { zoom: number, center: number[] }) => {
   }
 }
 
-const renderMap = (data: any[], max: number, viewState?: { zoom: number, center: number[] }) => {
+const renderMap = (data: any[], max: number, geoJson: any, viewState?: { zoom: number, center: number[] }) => {
   if (!myMap) return
 
   const isDarkMode = isDark.value
   const isMobile = window.innerWidth < 768
 
+  // Build nameMap for ECharts to match GeoJSON names with data names
+  const nameMap: Record<string, string> = {}
+  if (geoJson && geoJson.features) {
+    geoJson.features.forEach((f: any) => {
+      const fullName = f.properties.name
+      if (fullName) {
+        // Find if we have data for this (short name or full name)
+        const shortName = fullName.replace(/(省|市|自治区|特别行政区|回族自治区|壮族自治区|维吾尔自治区|县|区)$/, '')
+        const hasData = data.find(d => d.name === fullName || d.name === shortName)
+        if (hasData) {
+          nameMap[fullName] = hasData.name
+        }
+      }
+    })
+  }
+
   // High contrast palette: Deep Blue -> Cyan -> Green -> Yellow
   // Designed to be visible on both Light and Dark themes
   const colors = [
     '#3b82f6', // Blue 500
-    '#06b6d4', // Cyan 500
-    '#10b981', // Emerald 500
-    '#84cc16', // Lime 500
-    '#facc15', // Yellow 400
   ]
 
   const option = {
@@ -134,6 +146,7 @@ const renderMap = (data: any[], max: number, viewState?: { zoom: number, center:
       }
     },
     visualMap: {
+      show: false,
       min: 1, // Start from 1 so 0 is not colored (treated as empty)
       max: max,
       left: isMobile ? 'center' : 'left',
@@ -153,43 +166,46 @@ const renderMap = (data: any[], max: number, viewState?: { zoom: number, center:
       itemWidth: isMobile ? 15 : 20,
       itemHeight: isMobile ? 100 : 140
     },
-    geo: {
-      map: 'china',
-      roam: true,
-      zoom: viewState?.zoom || 1.2,
-      center: viewState?.center || undefined,
-      label: {
-        show: false
-      },
-      itemStyle: {
-        // Distinct color for empty regions
-        areaColor: isDarkMode ? '#1e293b' : '#f1f5f9',
-        borderColor: isDarkMode ? '#334155' : '#cbd5e1',
-        borderWidth: 1
-      },
-      emphasis: {
-        itemStyle: {
-          areaColor: isDarkMode ? '#334155' : '#e2e8f0',
-          // Highlight border on hover
-          borderColor: isDarkMode ? '#94a3b8' : '#64748b',
-          borderWidth: 2
-        },
-        label: {
-          show: true,
-          color: isDarkMode ? '#fff' : '#0f172a'
-        }
-      }
-    },
     series: [
       {
         name: '照片数量',
         type: 'map',
-        geoIndex: 0,
+        map: 'china',
+        roam: true,
+        zoom: viewState?.zoom || 1.2,
+        center: viewState?.center || undefined,
+        nameMap: nameMap,
         data: data,
-        // Add specific border to data items to make them pop against empty regions
+        label: {
+          show: true,
+          formatter: (params: any) => {
+            // Only show name for regions with data (lit up)
+            return params.value > 0 ? params.name : ''
+          },
+          color: isDarkMode ? '#cbd5e1' : '#475569',
+          fontSize: props.level === 'province' ? (isMobile ? 10 : 12) : (isMobile ? 9 : 11),
+          textBorderColor: isDarkMode ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.8)',
+          textBorderWidth: 2,
+        },
+        labelLayout: {
+          hideOverlap: true
+        },
         itemStyle: {
-          borderColor: isDarkMode ? '#334155' : '#fff',
+          // Distinct color for empty regions
+          areaColor: isDarkMode ? '#1e293b' : '#f1f5f9',
+          borderColor: isDarkMode ? '#334155' : '#cbd5e1',
           borderWidth: 0.5
+        },
+        emphasis: {
+          itemStyle: {
+            areaColor: isDarkMode ? '#334155' : '#e2e8f0',
+            borderColor: isDarkMode ? '#94a3b8' : '#64748b',
+            borderWidth: 1
+          },
+          label: {
+            show: true,
+            color: isDarkMode ? '#fff' : '#1e293b'
+          }
         }
       }
     ],
@@ -233,7 +249,9 @@ watch(() => props.viewMode, (newMode) => {
 // When level changes, we might need to re-init if we are in map view
 watch(() => props.level, (newLevel) => {
   if (props.viewMode === 'map' && newLevel !== 'photo-map' && newLevel !== 'scene') {
+    nextTick(() => {
       initMap()
+    })
   }
 })
 
