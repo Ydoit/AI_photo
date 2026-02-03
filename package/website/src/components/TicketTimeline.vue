@@ -35,6 +35,7 @@
                   @toggle-select="$emit('toggle-select', ticket.id)"
                   @edit="$emit('edit', ticket)"
                   @delete="$emit('delete', ticket.id)"
+                  @view-paper="$emit('view-paper', ticket)"
                 />
             </div>
           </div>
@@ -48,13 +49,12 @@
 import { computed } from 'vue';
 import type { TicketFrontend } from '@/types/ticket';
 import TicketCard from '@/components/TicketCard.vue';
-import { injectTheme } from '@/composables/useTheme';
-
-const { isDarkMode, currentTheme } = injectTheme();
+import type { ThemeColor } from '@/composables/useTheme';
 
 interface Props {
   tickets: TicketFrontend[];
   selectedTicketIds: (number | string)[];
+  currentTheme: ThemeColor;
 }
 
 const props = defineProps<Props>();
@@ -63,6 +63,7 @@ const emit = defineEmits<{
   (e: 'toggle-select', id: number | string): void;
   (e: 'edit', ticket: TicketFrontend): void;
   (e: 'delete', id: number | string): void;
+  (e: 'view-paper', ticket: TicketFrontend): void;
 }>();
 
 // --- 辅助逻辑 ---

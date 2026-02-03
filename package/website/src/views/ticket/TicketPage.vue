@@ -3,266 +3,61 @@
     :class="[isDarkMode ? 'dark' : '']"
     class="min-h-screen font-sans transition-colors duration-300 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200"
   >
-    <nav class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm h-14 transition-colors duration-300">
-      <div class="max-w-[1400px] mx-auto px-4 h-full flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg flex items-center justify-center border border-primary-500 bg-primary-50 dark:bg-slate-700/50 transition-colors">
-            <TrainFront class="w-5 h-5 text-primary-600 dark:text-primary-400" />
-          </div>
-          <span class="text-lg font-medium tracking-wide text-slate-800 dark:text-white hidden sm:block">车票管理</span>
-        </div>
-
-        <div class="flex-1 max-w-md mx-4 hidden md:block">
-          <div class="relative group">
-            <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="搜索车次 / 地点 / 乘车人"
-              class="w-full pl-9 pr-4 py-1.5 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-full focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200 dark:focus:ring-primary-900 transition-all text-sm dark:text-white dark:placeholder-slate-400"
-              @input="handleSearchInput"
-            />
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <button
-            @click="goToStatistics"
-            class="p-2 text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-slate-700 dark:bg-slate-800 rounded-full transition-colors"
-            title="统计报表"
-          >
-            <BarChart2 class="w-5 h-5" />
-          </button>
-          <div class="flex items-center gap-1 border-l border-slate-200 dark:border-slate-700 ml-1 pl-2">
-            <button
-              @click="triggerImport"
-              class="p-2 text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-slate-700 dark:bg-slate-800 rounded-full transition-colors"
-              title="导入数据"
-            >
-              <Upload class="w-5 h-5" />
-            </button>
-            <button
-              @click="handleExport"
-              class="p-2 text-slate-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-slate-700 dark:bg-slate-800 rounded-full transition-colors"
-              title="导出数据"
-            >
-              <Download class="w-5 h-5" />
-            </button>
-          </div>
-
-          <button
-            @click="openTicketModal()"
-            class="flex items-center gap-1.5 bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-full transition-all active:scale-95 shadow-md shadow-primary-200 dark:shadow-none ml-2"
-          >
-            <Plus class="w-4 h-4" />
-            <span class="text-sm font-medium">新增</span>
-          </button>
-          
-          <input 
-            type="file" 
-            ref="fileInput" 
-            class="hidden" 
-            accept=".json,.csv" 
-            @change="handleFileImport" 
-          />
-        </div>
-      </div>
-    </nav>
+    <TicketHeader
+      v-model:searchQuery="searchQuery"
+      @go-to-statistics="goToStatistics"
+      @handle-export="handleExport"
+      @open-ticket-modal="openTicketModal()"
+      @handle-file-import="handleFileImport"
+    />
 
     <main class="max-w-[1400px] mx-auto px-4 py-4">
       <div class="flex flex-col xl:flex-row gap-6">
-        <aside class="w-full xl:w-[320px] shrink-0 space-y-4">
-          <div class="lg:hidden mb-4">
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="搜索车票 / 乘车人..."
-              class="w-full px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg dark:text-white"
-              @input="handleSearchInput"
-            />
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-1 gap-4">
-            <StatsCard 
-              label="点击查看足迹地图" 
-              :icon="MapPin" 
-              clickable 
-              @click="showCityModal = true"
-            >
-              <template #value>
-                <span class="text-3xl font-bold text-slate-800 dark:text-white">{{ uniqueCities.length }}</span>
-                <span class="text-xs text-slate-500 dark:text-slate-400">座城市</span>
-              </template>
-            </StatsCard>
-
-            <StatsCard label="总时长" :icon="Clock">
-              <template #value>
-                <div v-if="loading && tickets.length > 0 && !statsMap" class="flex items-center gap-2">
-                  <div class="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span class="text-sm text-slate-400">计算中...</span>
-                </div>
-                <div v-else>
-                  <span class="text-3xl font-bold text-slate-800 dark:text-white">{{ totalDuration.hours }}<span class="text-sm font-normal text-slate-500 ml-0.5">小时</span></span>
-                  <span class="text-lg font-semibold text-slate-600 dark:text-slate-300">{{ totalDuration.minutes }}<span class="text-xs font-normal text-slate-500 ml-0.5">分钟</span></span>
-                </div>
-              </template>
-            </StatsCard>
-
-            <StatsCard label="总里程" :icon="Route">
-              <template #value>
-                <div v-if="loading && tickets.length > 0 && !statsMap" class="flex items-center gap-2">
-                  <div class="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-                  <span class="text-sm text-slate-400">计算中...</span>
-                </div>
-                <div v-else>
-                  <span class="text-3xl font-bold text-slate-800 dark:text-white">{{ totalDistance.toLocaleString() }}</span>
-                  <span class="text-xs text-slate-500 dark:text-slate-400">km</span>
-                </div>
-              </template>
-            </StatsCard>
-          </div>
-
-          <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-sm">
-            <h3 class="text-sm font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2">
-              <User class="w-4 h-4 text-primary-600 dark:text-primary-400" />
-              乘车人筛选
-            </h3>
-            <div class="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto">
-              <span 
-                v-for="passenger in uniquePassengers" 
-                :key="passenger"
-                @click="filterByPassenger(passenger)"
-                class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-full text-sm hover:bg-primary-50 hover:text-primary-600 hover:border-primary-200 dark:hover:bg-slate-600 dark:hover:text-primary-400 border border-transparent cursor-pointer transition-colors"
-                :class="selectedPassenger === passenger ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' : ''"
-              >
-                {{ passenger }}
-              </span>
-              <span 
-                @click="clearPassengerFilter()"
-                class="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-full text-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 cursor-pointer transition-colors"
-              >
-                全部
-              </span>
-            </div>
-          </div>
-        </aside>
+        <TicketStatsSidebar
+          v-model:searchQuery="searchQuery"
+          :unique-cities="uniqueCities"
+          :total-duration="totalDuration"
+          :total-distance="totalDistance"
+          :unique-passengers="uniquePassengers"
+          :selected-passenger="selectedPassenger"
+          :loading="loading"
+          :tickets="tickets"
+          :stats-map="statsMap"
+          @show-city-modal="showCityModal = true"
+          @filter-by-passenger="filterByPassenger"
+          @clear-passenger-filter="clearPassengerFilter"
+        />
 
         <section class="flex-1 min-w-0">
-          <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-6 flex flex-wrap gap-4 justify-between items-center shadow-sm transition-colors">
-            <div class="flex items-center gap-3 w-full sm:w-auto">
-              <div class="relative w-full sm:w-40">
-                <select
-                  v-model="filterType"
-                  class="w-full appearance-none bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm rounded-md px-3 py-2 pr-8 focus:border-primary-500 dark:text-white outline-none cursor-pointer"
-                  @change="fetchTickets()"
-                >
-                  v-model="filterType"
-                  class="w-full appearance-none bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-sm rounded-md px-3 py-2 pr-8 focus:border-primary-500 dark:text-white outline-none cursor-pointer"
-                  @change="fetchTickets"
-                >
-                  <option value="all">全部车票</option>
-                  <option value="flight">飞机票</option>
-                  <option value="highspeed">高铁/动车</option>
-                  <option value="normal">普速列车</option>
-                </select>
-                <ChevronDown class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-              </div>
+          <TicketFilterBar
+            v-model:filterType="filterType"
+            v-model:sortType="sortType"
+            v-model:viewMode="viewMode"
+            :is-all-selected="isAllSelected"
+            :is-indeterminate="isIndeterminate"
+            :loading="loading"
+            :selected-tickets="selectedTickets"
+            :sort-options="sortOptions"
+            @fetch-tickets="fetchTickets(true)"
+            @change-sort-type="changeSortType"
+            @toggle-select-all="toggleSelectAll"
+            @batch-delete="batchDelete"
+          />
 
-              <div class="hidden sm:flex bg-slate-100 dark:bg-slate-700 rounded-md p-1 flex-wrap gap-1">
-                <button 
-                  v-for="type in sortOptions"
-                  :key="type.value"
-                  @click="changeSortType(type.value)"
-                  :class="['px-3 py-1 text-xs font-medium rounded transition-all dark:bg-gray-800', sortType === type.value ? 'bg-white dark:bg-slate-600 text-primary-600 dark:text-primary-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-100']"
-                >
-                  {{ type.label }}
-                </button>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
-              <div class="bg-slate-100 dark:bg-slate-700 p-1 rounded-md flex gap-1">
-                <button 
-                  @click="fetchTickets(true)"
-                  class="p-1.5 rounded transition-all text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm dark:bg-gray-800"
-                  title="刷新数据"
-                  :disabled="loading"
-                >
-                  <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': loading }" />
-                </button>
-                <div class="w-px bg-slate-300 dark:bg-slate-600 my-1 mx-0.5"></div>
-                <button 
-                  @click="viewMode = 'timeline'"
-                  :class="['p-1.5 rounded transition-all dark:bg-gray-800', viewMode === 'timeline' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-slate-500 hover:text-slate-600 dark:hover:text-slate-300']"
-                  title="时间轴视图"
-                >
-                  <ListTree class="w-4 h-4" />
-                </button>
-                <button 
-                  @click="viewMode = 'grid'"
-                  :class="['p-1.5 rounded transition-all dark:bg-gray-800', viewMode === 'grid' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-slate-500 hover:text-slate-600 dark:hover:text-slate-300']"
-                  title="卡片视图"
-                >
-                  <LayoutGrid class="w-4 h-4" />
-                </button>
-              </div>
-
-              <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block"></div>
-
-              <button 
-                :disabled="selectedTickets.length === 0 || loading"
-                @click="batchDelete"
-                :class="['flex items-center gap-2 text-sm px-4 py-2 rounded-md transition-colors', selectedTickets.length > 0 ? 'text-red-600 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50' : 'text-slate-300 dark:text-slate-400 bg-slate-50 dark:bg-slate-700 cursor-not-allowed']"
-              >
-                <Trash2 class="w-4 h-4" />
-                <span class="hidden sm:inline">删除选中</span>
-                <span v-if="selectedTickets.length > 0">({{ selectedTickets.length }})</span>
-              </button>
-            </div>
-          </div>
-
-          <div v-if="loading" class="flex justify-center items-center py-20">
-            <div class="w-10 h-10 border-4 border-slate-200 dark:border-slate-700 border-t-primary-500 rounded-full animate-spin"></div>
-          </div>
-
-          <div v-else-if="error" class="flex flex-col items-center justify-center py-20 text-center text-red-500">
-            <X class="w-12 h-12 mb-4" />
-            <h3 class="text-xl font-medium mb-2">数据加载失败</h3>
-            <p class="mb-4">{{ error }}</p>
-            <button @click="fetchTickets()" class="px-4 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600 transition-colors">重试</button>
-          </div>
-
-          <div v-else-if="filteredTickets.length > 0">
-            <TicketTimeline
-              v-if="viewMode === 'timeline'"
-              :tickets="filteredTickets"
-              :selected-ticket-ids="selectedTickets"
-              :current-theme="currentTheme"
-              @toggle-select="toggleSelect"
-              @edit="openTicketModal"
-              @delete="confirmDelete"
-            />
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <TicketCard
-                v-for="ticket in filteredTickets"
-                :key="ticket.id"
-                :ticket="ticket"
-                :selected-ticket-ids="selectedTickets"
-                :current-theme="currentTheme"
-                @toggle-select="toggleSelect"
-                @edit="openTicketModal"
-                @delete="confirmDelete"
-              />
-            </div>
-          </div>
-
-          <div v-else class="flex flex-col items-center justify-center py-20 text-center">
-            <div class="w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-              <TrainFront class="w-12 h-12 text-slate-300 dark:text-slate-600" />
-            </div>
-            <h3 class="text-xl font-medium text-slate-400 mb-2">暂无收藏车票</h3>
-            <button @click="openTicketModal()" class="text-primary-500 hover:underline">点击新增添加你的第一张车票</button>
-          </div>
+          <TicketList
+            :loading="loading"
+            :error="error"
+            :filtered-tickets="filteredTickets"
+            :view-mode="viewMode"
+            :selected-tickets="selectedTickets"
+            :current-theme="currentTheme"
+            @fetch-tickets="fetchTickets()"
+            @toggle-select="toggleSelect"
+            @edit="openTicketModal"
+            @delete="confirmDelete"
+            @view-paper="openPaperTicketModal"
+            @open-ticket-modal="openTicketModal()"
+          />
         </section>
       </div>
     </main>
@@ -287,68 +82,50 @@
       @cancel="closeFlightModal"
     />
 
-    <Transition name="fade">
-      <div v-if="showTypeSelector" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="showTypeSelector = false"></div>
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm relative z-10 p-6 flex flex-col gap-4">
-          <div class="flex justify-between items-center">
-            <h3 class="text-lg font-bold text-slate-800 dark:text-white">选择添加票据类型</h3>
-            <button @click="showTypeSelector = false" class="text-slate-400 hover:text-red-500 transition-colors">
-              <X class="w-5 h-5" />
-            </button>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <button @click="selectTicketType('train')" class="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-100 dark:border-slate-700 hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all gap-2 group">
-              <TrainFront class="w-10 h-10 text-slate-400 group-hover:text-primary-500 transition-colors" />
-              <span class="font-medium text-slate-600 dark:text-slate-300 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">火车票</span>
-            </button>
-            <button @click="selectTicketType('flight')" class="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-100 dark:border-slate-700 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all gap-2 group">
-              <Plane class="w-10 h-10 text-slate-400 group-hover:text-blue-500 transition-colors" />
-              <span class="font-medium text-slate-600 dark:text-slate-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">飞机票</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
+    <TicketTypeSelectorModal
+      v-model:show="showTypeSelector"
+      @select-type="selectTicketType"
+    />
 
-    <Transition name="fade">
-      <div v-if="showCityModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" @click="showCityModal = false"></div>
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg relative z-10 p-6">
-          <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <MapPin class="w-5 h-5 text-primary-600 dark:text-primary-400" />
-              足迹地图
-            </h2>
-            <button @click="showCityModal = false"><X class="w-5 h-5 text-slate-400" /></button>
-          </div>
-          
-          <div class="flex flex-wrap gap-2 max-h-[60vh] overflow-y-auto">
-            <span 
-              v-for="city in uniqueCities" 
-              :key="city"
-              @click="filterByCity(city)"
-              class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-full text-sm hover:bg-primary-50 hover:text-primary-600 hover:border-primary-200 dark:hover:bg-slate-600 dark:hover:text-primary-400 border border-transparent cursor-pointer transition-colors"
-            >
-              {{ city }}
-            </span>
-          </div>
-        </div>
-      </div>
-    </Transition>
+    <TicketCityStatsModal
+      v-model:show="showCityModal"
+      :unique-cities="uniqueCities"
+      @filter-by-city="filterByCity"
+    />
+
+    <TicketPaperModal
+      v-model:show="isPaperModalOpen"
+      v-model:selectedStyle="selectedPaperStyle"
+      :ticket="currentPaperTicket"
+      @export="exportPaperTicket(currentPaperTicket!)"
+    />
+
+    <TicketExportModal
+      v-model:show="isExportModalOpen"
+      v-model:selectedStyle="selectedPaperStyle"
+      :has-selected-tickets="selectedTickets.length > 0"
+      :is-batch-exporting="isBatchExporting"
+      :export-progress="exportProgress"
+      @execute="executeExport"
+    />
+
+    <!-- 隐藏的导出专用组件 -->
+    <div style="position: absolute; left: -9999px; top: -9999px; overflow: hidden;">
+      <TrainTicket
+        v-if="currentPaperTicket"
+        ref="exportTicketRef"
+        :ticket="currentPaperTicket"
+        :ticket_style="selectedPaperStyle"
+        style="width: 856px; height: 540px;"
+      />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { 
-  TrainFront, Search, Plus, MapPin, Clock, Route,
-  ChevronDown, Trash2, X, User, RefreshCw, Database, Plane,
-  BarChart2, Download, Upload, ListTree, LayoutGrid
-} from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import TicketTimeline from '@/components/TicketTimeline.vue'; // 引入新组件
+import { ElMessage } from 'element-plus';
 import { storeToRefs } from 'pinia';
 import { useTicketStore } from '@/stores/ticketStore';
 
@@ -358,20 +135,26 @@ import type {
   TicketFormData,
   FlightTicketFormData,
   SortType,
-  FilterType,
   TicketBackend,
   FlightTicketBackend
 } from '@/types/ticket';
 import { ticketService } from '@/api/ticketService';
-import { railwayService, type TicketStats } from '@/api/railway';
 import { formatTicketToFrontend, formatFormToBackend, debounce } from '@/utils/ticketFormatters';
 import { injectTheme } from '@/composables/useTheme';
+import { toPng } from 'html-to-image';
 
 // 组件
+import TicketHeader from './components/TicketHeader.vue';
+import TicketStatsSidebar from './components/TicketStatsSidebar.vue';
+import TicketFilterBar from './components/TicketFilterBar.vue';
+import TicketList from './components/TicketList.vue';
+import TicketTypeSelectorModal from './components/TicketTypeSelectorModal.vue';
+import TicketCityStatsModal from './components/TicketCityStatsModal.vue';
+import TicketPaperModal from './components/TicketPaperModal.vue';
+import TicketExportModal from './components/TicketExportModal.vue';
 import TicketFormModal from '@/components/TicketFormModal.vue';
 import FlightTicketFormModal from '@/components/FlightTicketFormModal.vue';
-import TicketCard from '@/components/TicketCard.vue';
-import StatsCard from '@/components/StatsCard.vue'; // 新组件
+import TrainTicket from '@/components/TrainTicket.vue';
 
 const { isDarkMode, currentTheme } = injectTheme();
 const ticketStore = useTicketStore();
@@ -394,11 +177,19 @@ const {
 const selectedTickets = ref<(number | string)[]>([]);
 const isModalOpen = ref(false);
 const isFlightModalOpen = ref(false);
+const isPaperModalOpen = ref(false);
+// paperTicketRef is now inside the modal component, but we don't access it from here anymore
+// const paperTicketRef = ref<any>(null); 
+const exportTicketRef = ref<any>(null);
+const currentPaperTicket = ref<TicketFrontend | null>(null);
+const selectedPaperStyle = ref<'red' | 'blue'>('blue');
+const isBatchExporting = ref(false);
+const exportProgress = ref(0);
+const isExportModalOpen = ref(false);
 const showTypeSelector = ref(false);
 const isEditing = ref(false);
 const showCityModal = ref(false);
 const saving = ref(false);
-const fileInput = ref<HTMLInputElement | null>(null);
 
 // 初始编辑对象，使用 Partial 或特定类型
 const currentTicket = ref<Partial<TicketFormData>>({});
@@ -409,32 +200,26 @@ const goToStatistics = () => {
   router.push('/statistics');
 };
 
-const handleExport = async () => {
-  try {
-    // 弹出选择格式
-    await ElMessageBox.confirm(
-      '请选择导出的文件格式',
-      '导出车票数据',
-      {
-        confirmButtonText: 'JSON',
-        cancelButtonText: 'CSV',
-        distinguishCancelAndClose: true,
-        type: 'info'
-      }
-    ).then(() => {
-      ticketStore.exportTickets('json');
-    }).catch((action) => {
-      if (action === 'cancel') {
-        ticketStore.exportTickets('csv');
-      }
-    });
-  } catch (err) {
-    // User cancelled or error
-  }
+const handleExport = () => {
+  selectedPaperStyle.value = 'blue'; // 默认自动识别
+  isExportModalOpen.value = true;
 };
 
-const triggerImport = () => {
-  fileInput.value?.click();
+const executeExport = async (format: 'json' | 'csv' | 'png') => {
+  if (format === 'json') {
+    ticketStore.exportTickets('json');
+    isExportModalOpen.value = false;
+  } else if (format === 'csv') {
+    ticketStore.exportTickets('csv');
+    isExportModalOpen.value = false;
+  } else if (format === 'png') {
+    if (selectedTickets.value.length === 0) {
+      ElMessage.warning('请先选择要导出的车票');
+      return;
+    }
+    await batchExportPaperTickets();
+    isExportModalOpen.value = false;
+  }
 };
 
 const handleFileImport = async (event: Event) => {
@@ -457,14 +242,6 @@ const handleFileImport = async (event: Event) => {
 
 // 监听车票变化，自动更新统计数据
 watch(tickets, () => {
-  // 已经在 Store 的 fetchTickets 中触发了 fetchAndCacheStats，但如果是本地修改导致的 tickets 变化，
-  // 也应该尝试刷新统计（如果需要）。
-  // 由于 fetchTickets 已经包含了调用，这里其实主要是为了应对非 fetchTickets 引起的 tickets 变化
-  // 或者为了确保数据最新。
-  // 考虑到性能，我们可以加一个防抖，或者只在必要时调用。
-  // 目前 Store 中的 fetchTickets 已经处理了大部分情况。
-  // 如果是新增/编辑车票，updateLocalTicket 被调用，此时 tickets 变了。
-  // 我们可以在这里调用 store.fetchAndCacheStats()。
   ticketStore.fetchAndCacheStats();
 }, { deep: true });
 
@@ -477,18 +254,19 @@ const sortOptions: { label: string; value: SortType }[] = [
 ];
 
 // --- 搜索防抖 ---
-// 使用我们封装的带类型的防抖函数
 const debouncedFetchTickets = debounce(() => {
-  // 搜索时触发 store 的 fetch，或者因为 store 中 tickets 已经是全量数据，
-  // 其实搜索主要是在前端过滤，所以这里可能不需要重新请求后端，
-  // 除非后端支持搜索参数且我们希望服务端过滤。
-  // 原逻辑中 fetchTickets 会带上 params，所以这里保留调用
   fetchTickets();
 }, 500);
 
-const handleSearchInput = () => {
+// 这个其实在 TicketHeader 里被触发，更新了 searchQuery，然后 watch searchQuery 触发 debouncedFetchTickets？
+// 不，searchQuery 是 v-model 绑定的。
+// store 中的 searchQuery 变化时，我们需要触发搜索吗？
+// 原来的代码是 handleSearchInput 调用 debouncedFetchTickets。
+// 现在的 TicketHeader emit update:searchQuery。
+// 当 searchQuery 变化时，我们需要监听它。
+watch(searchQuery, () => {
   debouncedFetchTickets();
-};
+});
 
 // --- 生命周期 ---
 onMounted(() => {
@@ -618,6 +396,28 @@ const totalDuration = computed(() => {
   };
 });
 
+// --- 全选逻辑 ---
+const isAllSelected = computed({
+  get: () => {
+    return filteredTickets.value.length > 0 && selectedTickets.value.length === filteredTickets.value.length;
+  },
+  set: (val) => {
+    // 这里的 set 其实不会被直接触发，因为我们用 @change 处理了
+  }
+});
+
+const isIndeterminate = computed(() => {
+  return selectedTickets.value.length > 0 && selectedTickets.value.length < filteredTickets.value.length;
+});
+
+const toggleSelectAll = (val: boolean | string | number) => {
+  if (val) {
+    selectedTickets.value = filteredTickets.value.map(t => t.id);
+  } else {
+    selectedTickets.value = [];
+  }
+};
+
 // --- API 方法 ---
 
 async function fetchTickets(force = false) {
@@ -630,8 +430,6 @@ const changeSortType = (type: SortType) => {
 
 const filterByPassenger = (passenger: string) => {
   selectedPassenger.value = passenger;
-  // 如果需要重新请求后端筛选，这里调用 fetchTickets
-  // 目前是前端筛选，所以不需要
 };
 
 const clearPassengerFilter = () => {
@@ -695,16 +493,13 @@ const closeFlightModal = () => {
 const handleFlightModalSave = async (formData: FlightTicketFormData) => {
   saving.value = true;
   try {
-    // 简单的日期格式处理，如果需要更复杂的转换可以使用 utils
     const backendData = {
       ...formData,
       id: formData.id || undefined,
-      // 确保日期格式符合后端要求 (ISO)
       date_time: formData.date_time ? new Date(formData.date_time).toISOString() : new Date().toISOString()
     };
     
     if (isEditing.value && formData.id) {
-       // 暂时不支持编辑飞机票，或者需要扩展 ticketService.updateFlightTicket
        // await ticketService.updateFlightTicket(formData.id, backendData);
     } else {
        await ticketService.createFlightTicket(backendData);
@@ -718,6 +513,104 @@ const handleFlightModalSave = async (formData: FlightTicketFormData) => {
     console.error('Save flight ticket error:', err);
   } finally {
     saving.value = false;
+  }
+};
+
+const openPaperTicketModal = (ticket: TicketFrontend) => {
+  currentPaperTicket.value = ticket;
+  const isHighSpeed = ['G', 'D', 'C'].includes(ticket.trainCode.charAt(0).toUpperCase());
+  isPaperModalOpen.value = true;
+};
+
+const exportPaperTicket = async (ticket: TicketFrontend) => {
+  // 使用隐藏的导出专用组件
+  if (!exportTicketRef.value) return;
+  
+  try {
+    exportTicketRef.value.exporting = true;
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const element = exportTicketRef.value.wrapper;
+    if (!element) throw new Error('未找到票据元素');
+    
+    const dataUrl = await toPng(element, {
+      quality: 1,
+      pixelRatio: 2,
+      backgroundColor: '#fff',
+      width: 856,
+      height: 540,
+    });
+    
+    const link = document.createElement('a');
+    link.download = `火车票_${ticket.from}_${ticket.to}_${ticket.trainCode}_${ticket.date}.png`;
+    link.href = dataUrl;
+    link.click();
+    
+    ElMessage.success('导出成功');
+  } catch (err) {
+    console.error('Export error:', err);
+    ElMessage.error('导出失败');
+  } finally {
+    if (exportTicketRef.value) {
+      exportTicketRef.value.exporting = false;
+    }
+  }
+};
+
+const batchExportPaperTickets = async () => {
+  if (selectedTickets.value.length === 0) return;
+  
+  const ticketsToExport = frontendTickets.value.filter(t => 
+    selectedTickets.value.includes(t.id) && t.type === 'train'
+  );
+  
+  if (ticketsToExport.length === 0) {
+    ElMessage.warning('选中的票据中没有火车票');
+    return;
+  }
+  
+  isBatchExporting.value = true;
+  exportProgress.value = 0;
+  
+  try {
+    for (let i = 0; i < ticketsToExport.length; i++) {
+      const ticket = ticketsToExport[i];
+      currentPaperTicket.value = ticket;
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      if (exportTicketRef.value) {
+        exportTicketRef.value.exporting = true;
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const element = exportTicketRef.value.wrapper;
+        if (element) {
+          const dataUrl = await toPng(element, {
+            quality: 0.9,
+            pixelRatio: 2,
+            backgroundColor: '#fff',
+            width: 856,
+            height: 540,
+          });
+          
+          const link = document.createElement('a');
+          link.download = `火车票_${ticket.from}_${ticket.to}_${ticket.trainCode}_${ticket.date}.png`;
+          link.href = dataUrl;
+          link.click();
+        }
+        exportTicketRef.value.exporting = false;
+      }
+      
+      exportProgress.value = Math.round(((i + 1) / ticketsToExport.length) * 100);
+    }
+    
+    ElMessage.success(`批量导出完成，共 ${ticketsToExport.length} 张`);
+  } catch (err) {
+    console.error('Batch export error:', err);
+    ElMessage.error('批量导出失败');
+  } finally {
+    isBatchExporting.value = false;
+    currentPaperTicket.value = null;
   }
 };
 
@@ -735,13 +628,9 @@ const handleModalSave = async (formData: TicketFormData) => {
     
     if (isEditing.value && formData.id) {
       await ticketService.updateTicket(formData.id, backendData);
-      // 更新本地数据
-      // const updatedTicket = { ...backendData, id: formData.id };
-      // ticketStore.updateLocalTicket(updatedTicket as any); // 类型可能需要适配
     } else {
       await ticketService.createTicket(backendData);
     }
-    // 简单起见，保存后强制刷新，确保数据一致性
     await fetchTickets(true);
     closeModal();
     ElMessage.success(isEditing.value ? '更新成功' : '新增成功');
@@ -762,7 +651,6 @@ const toggleSelect = (id: number | string) => {
 };
 
 const confirmDelete = async (id: number | string) => {
-  // 查找票据类型
   const ticket = frontendTickets.value.find(t => t.id === id);
   if (!ticket) return;
 
@@ -787,7 +675,6 @@ const batchDelete = async () => {
   if (selectedTickets.value.length === 0) return;
   if (confirm(`确定删除选中的 ${selectedTickets.value.length} 张车票吗？删除后不可恢复`)) {
     try {
-      // 区分类型进行删除
       const promises = selectedTickets.value.map(id => {
          const ticket = frontendTickets.value.find(t => t.id === id);
          if (ticket && ticket.type === 'flight') {
@@ -799,9 +686,6 @@ const batchDelete = async () => {
       
       await Promise.all(promises);
       
-      // 前端乐观更新
-      // 注意：这里需要调用 store 的方法来更新数据，或者重新 fetch
-      // 简单起见，我们更新 store 中的 tickets
       ticketStore.removeLocalTickets(selectedTickets.value);
       selectedTickets.value = [];
       ElMessage.success('批量删除成功');

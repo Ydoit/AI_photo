@@ -46,7 +46,7 @@
         <button 
           v-if="isSearchExpanded && searchText"
           @click="clearSearch"
-          class="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          class="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 dark:text-gray-200 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
         >
           <X class="w-3 h-3" />
         </button>
@@ -77,14 +77,14 @@
             class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-sm border-b last:border-0 border-gray-100 dark:border-gray-700 flex items-center gap-2"
           >
             <!-- Icons for different types -->
-            <component :is="getIcon(item.type)" class="w-4 h-4 text-gray-500" />
+            <component :is="getIcon(item.type)" class="w-4 h-4 text-gray-500 dark:text-gray-400" />
             
             <div class="flex-1 min-w-0">
                <div class="flex items-center justify-between">
                  <span class="text-gray-800 dark:text-gray-200 font-medium truncate">
                    {{ item.type === 'ocr' ? item.label : item.value }}
                  </span>
-                 <span class="text-xs text-gray-500 ml-2 whitespace-nowrap bg-gray-100 dark:bg-gray-600 px-1.5 py-0.5 rounded">{{ getLabel(item.type) }}</span>
+                 <span class="text-xs text-gray-500 dark:text-gray-400 ml-2 whitespace-nowrap bg-gray-100 dark:bg-gray-600 px-1.5 py-0.5 rounded">{{ getLabel(item.type) }}</span>
                </div>
             </div>
           </div>

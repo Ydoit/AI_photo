@@ -66,6 +66,14 @@
         </div>
 
         <div class="flex gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity translate-y-0 md:translate-y-2 group-hover:translate-y-0">
+          <button 
+            v-if="ticket.type === 'train'"
+            @click.stop="handleViewPaper" 
+            class="p-2 text-orange-600 bg-orange-50 dark:bg-slate-700 dark:text-orange-400 rounded-md hover:bg-orange-500 hover:text-white dark:hover:bg-orange-600 dark:hover:text-white transition-colors"
+            title="查看仿真纸质车票"
+          >
+            <TicketIcon class="w-4 h-4" />
+          </button>
           <button @click.stop="handleEdit" class="p-2 text-primary-600 bg-primary-50 dark:bg-slate-700 dark:text-primary-400 rounded-md hover:bg-primary-500 hover:text-white dark:hover:bg-primary-600 dark:hover:text-white transition-colors">
             <Pencil class="w-4 h-4" />
           </button>
@@ -83,7 +91,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import { MoveRight, Clock, Route, Pencil, Trash2, Check, Plane } from 'lucide-vue-next';
+import { MoveRight, Clock, Route, Pencil, Trash2, Check, Plane, Ticket as TicketIcon } from 'lucide-vue-next';
 
 const props = defineProps({
   // 车票数据
@@ -106,7 +114,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['toggle-select', 'edit', 'delete']);
+const emit = defineEmits(['toggle-select', 'edit', 'delete', 'view-paper']);
 
 // 计算属性：当前车票是否被选中
 const isSelected = computed(() => {
@@ -136,6 +144,11 @@ const handleEdit = () => {
 // 处理删除
 const handleDelete = () => {
   emit('delete', props.ticket.id);
+};
+
+// 处理查看纸质票
+const handleViewPaper = () => {
+  emit('view-paper', props.ticket);
 };
 </script>
 
