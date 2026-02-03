@@ -173,7 +173,7 @@
                   v-for="type in sortOptions"
                   :key="type.value"
                   @click="changeSortType(type.value)"
-                  :class="['px-3 py-1 text-xs font-medium rounded transition-all', sortType === type.value ? 'bg-white dark:bg-slate-600 text-primary-600 dark:text-primary-400 shadow-sm' : 'text-slate-500 dark:text-slate-700 hover:text-slate-700 dark:hover:text-slate-800']"
+                  :class="['px-3 py-1 text-xs font-medium rounded transition-all dark:bg-gray-800', sortType === type.value ? 'bg-white dark:bg-slate-600 text-primary-600 dark:text-primary-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-100']"
                 >
                   {{ type.label }}
                 </button>
@@ -184,7 +184,7 @@
               <div class="bg-slate-100 dark:bg-slate-700 p-1 rounded-md flex gap-1">
                 <button 
                   @click="fetchTickets(true)"
-                  class="p-1.5 rounded transition-all text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm"
+                  class="p-1.5 rounded transition-all text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-600 hover:shadow-sm dark:bg-gray-800"
                   title="刷新数据"
                   :disabled="loading"
                 >
@@ -193,14 +193,14 @@
                 <div class="w-px bg-slate-300 dark:bg-slate-600 my-1 mx-0.5"></div>
                 <button 
                   @click="viewMode = 'timeline'"
-                  :class="['p-1.5 rounded transition-all', viewMode === 'timeline' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-slate-500 hover:text-slate-600 dark:hover:text-slate-300']"
+                  :class="['p-1.5 rounded transition-all dark:bg-gray-800', viewMode === 'timeline' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-slate-500 hover:text-slate-600 dark:hover:text-slate-300']"
                   title="时间轴视图"
                 >
                   <ListTree class="w-4 h-4" />
                 </button>
                 <button 
                   @click="viewMode = 'grid'"
-                  :class="['p-1.5 rounded transition-all', viewMode === 'grid' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-slate-500 hover:text-slate-600 dark:hover:text-slate-300']"
+                  :class="['p-1.5 rounded transition-all dark:bg-gray-800', viewMode === 'grid' ? 'bg-white dark:bg-slate-600 shadow-sm text-primary-600 dark:text-primary-400' : 'text-slate-500 hover:text-slate-600 dark:hover:text-slate-300']"
                   title="卡片视图"
                 >
                   <LayoutGrid class="w-4 h-4" />
@@ -212,7 +212,7 @@
               <button 
                 :disabled="selectedTickets.length === 0 || loading"
                 @click="batchDelete"
-                :class="['flex items-center gap-2 text-sm px-4 py-2 rounded-md transition-colors', selectedTickets.length > 0 ? 'text-red-600 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50' : 'text-slate-300 dark:text-slate-600 bg-slate-50 dark:bg-slate-700 cursor-not-allowed']"
+                :class="['flex items-center gap-2 text-sm px-4 py-2 rounded-md transition-colors', selectedTickets.length > 0 ? 'text-red-600 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50' : 'text-slate-300 dark:text-slate-400 bg-slate-50 dark:bg-slate-700 cursor-not-allowed']"
               >
                 <Trash2 class="w-4 h-4" />
                 <span class="hidden sm:inline">删除选中</span>

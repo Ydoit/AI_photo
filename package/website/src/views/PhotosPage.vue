@@ -40,8 +40,8 @@
                     <div class="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
                       <button v-for="size in ['sm', 'md', 'lg']" :key="size"
                         @click="viewSize = size as any"
-                        class="flex-1 p-1.5 rounded text-center transition-colors"
-                        :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-primary-500': viewSize === size, 'text-gray-500': viewSize !== size }"
+                        class="flex-1 p-1.5 rounded text-center transition-colors dark:bg-gray-800"
+                        :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-primary-500': viewSize === size, 'text-gray-700 dark:text-gray-300': viewSize !== size }"
                       >
                         <Grid3x3 v-if="size === 'sm'" class="w-4 h-4 mx-auto" />
                         <Grid2x2 v-if="size === 'md'" class="w-4 h-4 mx-auto" />
@@ -56,7 +56,7 @@
                     <div class="grid grid-cols-1 gap-1">
                        <button
                         @click="layoutMode = 'waterfall'"
-                        class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-sm"
+                        class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-sm dark:bg-gray-800"
                         :class="{ 'bg-primary-50 dark:bg-primary-900/20 text-primary-600': layoutMode === 'waterfall', 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300': layoutMode !== 'waterfall' }"
                       >
                         <LayoutDashboard class="w-4 h-4" />
@@ -64,7 +64,7 @@
                       </button>
                       <button
                         @click="layoutMode = 'grid'"
-                        class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-sm"
+                        class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-sm dark:bg-gray-800"
                         :class="{ 'bg-primary-50 dark:bg-primary-900/20 text-primary-600': layoutMode === 'grid', 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300': layoutMode !== 'grid' }"
                       >
                         <LayoutGrid class="w-4 h-4" />

@@ -39,7 +39,7 @@
             v-for="opt in filterOptions"
             :key="opt.value"
             @click="filterStatus = opt.value as any"
-            :class="['px-3 py-1 rounded-md text-xs font-medium transition-all', filterStatus === opt.value ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
+            :class="['px-3 py-1 rounded-md text-xs font-medium transition-all dark:bg-gray-700', filterStatus === opt.value ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700']"
           >
             {{ opt.label }}
           </button>
