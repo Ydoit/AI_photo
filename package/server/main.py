@@ -32,6 +32,7 @@ from app.db.session import engine, SessionLocal
 from app.api import user, album, settings, index, media, stats, photo, tasks, annual_report, system
 from app.core.logger import setup_logging
 from app.worker import run_worker
+from app.core.config_manager import VERSION
 worker_process = None
 
 @asynccontextmanager
@@ -62,7 +63,7 @@ async def lifespan(app: FastAPI):
     if log_listener:
         log_listener.stop()
 
-app = FastAPI(title="TrailSnap - 足迹相册", lifespan=lifespan)
+app = FastAPI(title="TrailSnap - 足迹相册", lifespan=lifespan, version=VERSION)
 
 # Initialize logging listener
 log_listener = None
