@@ -141,7 +141,7 @@ const validTypes = ['student', 'discount', 'child', 'elder', 'military', 'disabl
 
 <script setup lang="ts">
 
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import type { TicketFrontend } from '@/types/ticket'
 import { pinyin } from 'pinyin-pro'
 
@@ -167,7 +167,9 @@ function updateScale() {
   }
 }
 onMounted(() => {
-  updateScale()
+  nextTick(() => {
+    updateScale()
+  })
   window.addEventListener('resize', updateScale)
 })
 onUnmounted(() => {
