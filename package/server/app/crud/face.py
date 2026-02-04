@@ -156,10 +156,10 @@ def get_identities_with_details(
     min_photos: int = 0,
     photo_id: Optional[UUID] = None
 ) -> List[FaceIdentitySchema]:
-    # 1. 子查询：统计每个人脸身份的人脸数（按photo_id筛选）
+    # 1. 子查询：统计每个人脸身份的人脸数（按photo_id筛选并去重）
     face_counts_subq = db.query(
         Face.face_identity_id,
-        func.count(Face.id).label("count")
+        func.count(func.distinct(Face.photo_id)).label("count")
     ).filter(
         Face.is_deleted == False,
         Face.face_identity_id.isnot(None)  # 修正：非空判断

@@ -65,7 +65,8 @@
           </div>
         </div>
 
-        <div class="flex gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity translate-y-0 md:translate-y-2 group-hover:translate-y-0">
+        <!-- Desktop Buttons -->
+        <div class="hidden md:flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
           <button 
             v-if="ticket.type === 'train'"
             @click.stop="handleViewPaper" 
@@ -81,6 +82,37 @@
             <Trash2 class="w-4 h-4" />
           </button>
         </div>
+
+        <!-- Mobile Dropdown -->
+        <div class="md:hidden" @click.stop>
+          <el-dropdown trigger="click" @command="handleCommand">
+            <button class="p-2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 bg-slate-50 dark:bg-slate-700 rounded-md">
+              <MoreHorizontal class="w-5 h-5" />
+            </button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item v-if="ticket.type === 'train'" command="viewPaper">
+                  <div class="flex items-center gap-2">
+                    <TicketIcon class="w-4 h-4" />
+                    <span>查看仿真车票</span>
+                  </div>
+                </el-dropdown-item>
+                <el-dropdown-item command="edit">
+                  <div class="flex items-center gap-2">
+                    <Pencil class="w-4 h-4" />
+                    <span>编辑</span>
+                  </div>
+                </el-dropdown-item>
+                <el-dropdown-item command="delete">
+                  <div class="flex items-center gap-2 text-red-500">
+                    <Trash2 class="w-4 h-4" />
+                    <span>删除</span>
+                  </div>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
       </div>
     </div>
     <div v-if="ticket.comments" class="bg-slate-50 dark:bg-slate-700/30 px-5 py-2 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700">
@@ -91,7 +123,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import { MoveRight, Clock, Route, Pencil, Trash2, Check, Plane, Ticket as TicketIcon } from 'lucide-vue-next';
+import { MoveRight, Clock, Route, Pencil, Trash2, Check, Plane, Ticket as TicketIcon, MoreHorizontal } from 'lucide-vue-next';
 
 const props = defineProps({
   // 车票数据
@@ -149,6 +181,21 @@ const handleDelete = () => {
 // 处理查看纸质票
 const handleViewPaper = () => {
   emit('view-paper', props.ticket);
+};
+
+// 处理下拉菜单命令
+const handleCommand = (command) => {
+  switch (command) {
+    case 'viewPaper':
+      handleViewPaper();
+      break;
+    case 'edit':
+      handleEdit();
+      break;
+    case 'delete':
+      handleDelete();
+      break;
+  }
 };
 </script>
 
