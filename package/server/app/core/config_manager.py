@@ -36,7 +36,7 @@ class MapSettings(BaseModel):
     api_keys: List[str] = Field(default=[], description="Map API Key")
 
 class AppSettings(BaseModel):
-    version: str = "0.2.2"
+    version: str = "0.2.3"
     ai: AISettings = Field(default_factory=AISettings)
     storage: StorageSettings = Field(default_factory=StorageSettings)
     image: ImageSettings = Field(default_factory=ImageSettings)
@@ -169,4 +169,4 @@ class ConfigManager:
 
 # Global instance
 config_manager = ConfigManager()
-VERSION = "0.2.2"
+VERSION = "0.2.3"
