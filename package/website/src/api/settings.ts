@@ -83,6 +83,10 @@ export const settingsApi = {
   async deleteMapData(filename: string) {
     const { data } = await api.delete(`/api/settings/map/files/${filename}`)
     return data
+  },
+  async applyFilter() {
+    const { data } = await api.post('/api/settings/filter/apply')
+    return data
   }
 }
 

@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, or_
 import os
 import tempfile
 import json
+import re
+import logging
 from app.dependencies import get_db
 from app.core.config_manager import config_manager
 from app.db.models.photo import Photo
@@ -13,6 +15,7 @@ from app.service.storage import delete_thumbnails, update_storage_root_cache, _g
 from app.service.indexer import rebuild_index as service_rebuild_index, status as index_status
 from app.db.models.index_log import IndexLog
 from app.service.task_manager import TaskManager
+from app.db.session import SessionLocal
 # Import reverse_geocoder from the local package
 # Assuming package/server is in sys.path or accessible
 try:
@@ -122,6 +125,87 @@ def update_settings(payload: dict):
     if root:
         update_storage_root_cache(root)
     return {"status": "success", "config": config_manager.get_all()}
+
+def apply_filter_task_bg():
+    db = SessionLocal()
+    try:
+        logging.info("Starting filter application task...")
+        filter_config = config_manager.config.filter
+        if not filter_config.enable:
+            logging.info("Filter disabled, skipping.")
+            return
+
+        deleted_count = 0
+        
+        # 1. SQL-based filtering (Size and Dimensions)
+        filters = []
+        if filter_config.min_size_kb > 0:
+            min_bytes = filter_config.min_size_kb * 1024
+            filters.append(Photo.size < min_bytes)
+            
+        if filter_config.min_width > 0:
+            filters.append(Photo.width < filter_config.min_width)
+            
+        if filter_config.min_height > 0:
+            filters.append(Photo.height < filter_config.min_height)
+            
+        if filters:
+             photos_to_delete = db.query(Photo).filter(or_(*filters)).all()
+             for p in photos_to_delete:
+                 delete_thumbnails(p.id)
+                 db.delete(p)
+                 db.add(IndexLog(action='deleted', file_path=p.file_path, photo_id=p.id))
+                 deleted_count += 1
+             db.commit()
+             
+        # 2. Regex-based filtering (Filename)
+        patterns = filter_config.filename_patterns
+        if patterns:
+            # Compile all valid patterns
+            compiled_patterns = []
+            for pattern in patterns:
+                try:
+                    if pattern:
+                        compiled_patterns.append(re.compile(pattern))
+                except re.error:
+                    logging.error(f"Invalid regex pattern: {pattern}")
+            
+            if compiled_patterns:
+                # Fetch all remaining photos to check filename
+                # To avoid memory issues, we can iterate or fetch in chunks. 
+                # For now, fetching id and file_path is lightweight enough for moderate libraries.
+                all_photos = db.query(Photo.id, Photo.file_path).all()
+                
+                for pid, path in all_photos:
+                    basename = os.path.basename(path)
+                    matched = False
+                    for cp in compiled_patterns:
+                        if cp.search(basename):
+                            matched = True
+                            break
+                    
+                    if matched:
+                        # Re-fetch to delete (ensure it still exists)
+                        p = db.query(Photo).get(pid)
+                        if p:
+                            delete_thumbnails(p.id)
+                            db.delete(p)
+                            db.add(IndexLog(action='deleted', file_path=p.file_path, photo_id=p.id))
+                            deleted_count += 1
+                db.commit()
+
+        logging.info(f"Filter applied. Deleted {deleted_count} files.")
+        
+    except Exception as e:
+        logging.error(f"Error applying filter: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+@router.post('/filter/apply')
+def apply_filter(background_tasks: BackgroundTasks):
+    background_tasks.add_task(apply_filter_task_bg)
+    return {"status": "started", "message": "Filter application started in background"}
 
 @router.get('/export')
 def export_settings():

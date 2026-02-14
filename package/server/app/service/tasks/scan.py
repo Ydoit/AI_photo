@@ -1,8 +1,9 @@
 import asyncio
 import logging
 import os
+import re
 import concurrent.futures
-from typing import Set
+from typing import Set, Optional, Dict
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -13,16 +14,39 @@ from app.service import storage
 from app.core.config_manager import config_manager
 from app.service.live_photo import live_photo_service
 
-def scan_directory_recursive(path: str, exts: Set[str]) -> Set[str]:
+def scan_directory_recursive(path: str, exts: Set[str], filter_settings: Optional[Dict] = None) -> Set[str]:
     found = set()
     try:
         with os.scandir(path) as it:
             for entry in it:
                 if entry.is_file():
                     if os.path.splitext(entry.name)[1].lower() in exts:
+                        # Apply filters
+                        if filter_settings and filter_settings.get('enable'):
+                            # Filename patterns
+                            patterns = filter_settings.get('filename_patterns', [])
+                            should_skip = False
+                            for pattern in patterns:
+                                if not pattern:
+                                    continue
+                                try:
+                                    if re.search(pattern, entry.name):
+                                        should_skip = True
+                                        break
+                                except re.error:
+                                    pass # Ignore invalid regex
+                            
+                            if should_skip:
+                                continue
+                            
+                            # File size
+                            min_size = filter_settings.get('min_size_kb', 0) * 1024
+                            if min_size > 0 and entry.stat().st_size < min_size:
+                                continue
+
                         found.add(entry.path)
                 elif entry.is_dir():
-                    found.update(scan_directory_recursive(entry.path, exts))
+                    found.update(scan_directory_recursive(entry.path, exts, filter_settings))
     except OSError:
         pass
     return found
@@ -39,6 +63,10 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
     EXTS = {'.png', '.jpg', '.jpeg', '.webp', '.tiff', '.gif', '.mp4', '.mov', '.avi', '.heic'}
     loop = asyncio.get_running_loop()
     logging.info(f"Scanning roots: {scan_roots}")
+    
+    # Get filter settings
+    filter_config = config_manager.config.filter.model_dump()
+    
     def parallel_scan_wrapper():
         found_files = set()
         work_items = []
@@ -55,7 +83,7 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
                 pass
         work_items = list(set(work_items))
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = {executor.submit(scan_directory_recursive, item, EXTS): item for item in work_items}
+            futures = {executor.submit(scan_directory_recursive, item, EXTS, filter_config): item for item in work_items}
             for future in concurrent.futures.as_completed(futures):
                 found_files.update(future.result())
         return found_files

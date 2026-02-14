@@ -1,41 +1,104 @@
 <template>
   <div class="p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
       <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">外部图库管理</h2>
-      <p class="text-sm text-gray-500 mb-4 dark:text-gray-400">
-        添加外部文件夹路径，系统将扫描这些文件夹中的图片（只读模式）。
-        <br>外部文件夹中的图片不会被移动或修改，生成的缩略图将存储在主目录中。
-      </p>
       
-      <div class="mb-4 flex flex-col sm:flex-row gap-2">
-        <el-input v-model="newDir" placeholder="输入外部文件夹绝对路径" class="w-full sm:max-w-[400px]" />
-        <el-button type="primary" @click="addDir" class="w-full sm:w-auto">添加目录</el-button>
-      </div>
+      <el-tabs v-model="activeTab" class="demo-tabs">
+        <el-tab-pane label="目录管理" name="directories">
+            <p class="text-sm text-gray-500 mb-4 dark:text-gray-400">
+                添加外部文件夹路径，系统将扫描这些文件夹中的图片（只读模式）。
+                <br>外部文件夹中的图片不会被移动或修改，生成的缩略图将存储在主目录中。
+            </p>
+            
+            <div class="mb-4 flex flex-col sm:flex-row gap-2">
+                <el-input v-model="newDir" placeholder="输入外部文件夹绝对路径" class="w-full sm:max-w-[400px]" />
+                <el-button type="primary" @click="addDir" class="w-full sm:w-auto">添加目录</el-button>
+            </div>
 
-      <el-table :data="directories" style="width: 100%" border>
-        <el-table-column prop="path" label="目录路径" />
-        <el-table-column label="操作" width="180">
-          <template #default="{ row }">
-            <el-button type="primary" size="small" @click="scanDir(row.path)">扫描</el-button>
-            <el-button type="danger" size="small" @click="removeDir(row.path)">移除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+            <el-table :data="directories" style="width: 100%" border>
+                <el-table-column prop="path" label="目录路径" />
+                <el-table-column label="操作" width="180">
+                <template #default="{ row }">
+                    <el-button type="primary" size="small" @click="scanDir(row.path)">扫描</el-button>
+                    <el-button type="danger" size="small" @click="removeDir(row.path)">移除</el-button>
+                </template>
+                </el-table-column>
+            </el-table>
+        </el-tab-pane>
+
+        <el-tab-pane label="图片文件过滤" name="filter">
+            <p class="text-sm text-gray-500 mb-4 dark:text-gray-400">
+                配置扫描和索引时的过滤规则。符合过滤条件的文件将不会被添加到数据库。
+                <br>点击“应用过滤”将从数据库中移除符合当前规则的现有文件（不会删除源文件）。
+            </p>
+            
+            <el-form label-position="top" class="max-w-lg">
+                <el-form-item label="启用过滤">
+                    <el-switch v-model="filterConfig.enable" @change="saveSettings" />
+                </el-form-item>
+                
+                <div v-if="filterConfig.enable">
+                    <el-form-item label="最小文件大小 (KB)">
+                         <el-input-number v-model="filterConfig.min_size_kb" :min="0" @change="saveSettings" />
+                         <div class="text-xs text-gray-400 mt-1 dark:text-gray-500">小于此大小的文件将被过滤</div>
+                    </el-form-item>
+                    
+                    <el-form-item label="最小图片宽度 (像素)">
+                         <el-input-number v-model="filterConfig.min_width" :min="0" @change="saveSettings" />
+                         <div class="text-xs text-gray-400 mt-1 dark:text-gray-500">宽度小于此值将被过滤</div>
+                    </el-form-item>
+                    
+                    <el-form-item label="最小图片高度 (像素)">
+                         <el-input-number v-model="filterConfig.min_height" :min="0" @change="saveSettings" />
+                         <div class="text-xs text-gray-400 mt-1 dark:text-gray-500">高度小于此值将被过滤</div>
+                    </el-form-item>
+                    
+                    <el-form-item label="文件名过滤规则 (Regex)">
+                         <div v-for="(pattern, index) in filterConfig.filename_patterns" :key="index" class="flex gap-2 mb-2">
+                             <el-input v-model="filterConfig.filename_patterns[index]" placeholder="例如: ^tmp_.*" @change="saveSettings" />
+                             <el-button type="danger" :icon="Delete" circle @click="removePattern(index)" />
+                         </div>
+                         <el-button type="primary" plain size="small" @click="addPattern">添加规则</el-button>
+                         <div class="text-xs text-gray-400 mt-1 dark:text-gray-500">符合任一正则表达式的文件名将被过滤</div>
+                    </el-form-item>
+                    
+                    <div class="mt-6">
+                        <el-button type="danger" @click="applyFilter">应用过滤到现有数据</el-button>
+                    </div>
+                </div>
+            </el-form>
+        </el-tab-pane>
+      </el-tabs>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import { settingsApi } from '@/api/settings'
 import { tasksApi } from '@/api/tasks'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Delete } from '@element-plus/icons-vue'
 
+const activeTab = ref('directories')
 const directories = ref<{path: string}[]>([])
 const newDir = ref('')
+
+const filterConfig = reactive({
+    enable: false,
+    min_size_kb: 0,
+    min_width: 0,
+    min_height: 0,
+    filename_patterns: [] as string[]
+})
 
 const loadData = async () => {
     try {
         const res = await settingsApi.getDirectories()
         directories.value = res.external.map((d: string) => ({ path: d }))
+        
+        const settings = await settingsApi.getSettings()
+        if (settings.filter) {
+            Object.assign(filterConfig, settings.filter)
+        }
     } catch (e) {
         console.error(e)
     }
@@ -75,6 +138,38 @@ const removeDir = async (path: string) => {
         await loadData()
     } catch (e) {
         if (e !== 'cancel') ElMessage.error('移除失败')
+    }
+}
+
+const addPattern = () => {
+    filterConfig.filename_patterns.push('')
+}
+
+const removePattern = (index: number) => {
+    filterConfig.filename_patterns.splice(index, 1)
+    saveSettings()
+}
+
+const saveSettings = async () => {
+    try {
+        await settingsApi.updateSettings({ filter: filterConfig })
+        ElMessage.success('设置已保存')
+    } catch (e) {
+        ElMessage.error('保存设置失败')
+    }
+}
+
+const applyFilter = async () => {
+    try {
+        await ElMessageBox.confirm('确定要对现有数据应用过滤规则吗？符合条件的文件将从数据库中移除（不会删除源文件）。这可能需要一些时间。', '确认操作', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+        })
+        await settingsApi.applyFilter()
+        ElMessage.success('已触发过滤操作，请稍候查看结果')
+    } catch (e) {
+        if (e !== 'cancel') ElMessage.error('操作失败')
     }
 }
 

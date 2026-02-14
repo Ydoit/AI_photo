@@ -31,6 +31,13 @@ class ImageSettings(BaseModel):
     preview_size: int = Field(default=1440, description="Preview long edge size")
     # Add other image settings here
 
+class FilterSettings(BaseModel):
+    enable: bool = Field(default=False, description="Enable file filtering")
+    min_size_kb: int = Field(default=0, description="Minimum file size in KB")
+    min_width: int = Field(default=0, description="Minimum image width")
+    min_height: int = Field(default=0, description="Minimum image height")
+    filename_patterns: List[str] = Field(default=[], description="List of regex patterns to filter out files")
+
 class MapSettings(BaseModel):
     provider: str = Field(default="tianditu", description="Map provider (tianditu, amap, baidu)")
     api_keys: List[str] = Field(default=[], description="Map API Key")
@@ -40,6 +47,7 @@ class AppSettings(BaseModel):
     ai: AISettings = Field(default_factory=AISettings)
     storage: StorageSettings = Field(default_factory=StorageSettings)
     image: ImageSettings = Field(default_factory=ImageSettings)
+    filter: FilterSettings = Field(default_factory=FilterSettings)
     task: TaskSettings = Field(default_factory=TaskSettings)
     map: MapSettings = Field(default_factory=MapSettings)
 

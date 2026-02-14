@@ -103,6 +103,14 @@ async def handle_process_basic(task_manager, task: Task, db: Session):
     if not result['success']:
         raise Exception(result.get('error', 'Unknown error'))
 
+    # Check resolution filter
+    filter_config = config_manager.config.filter
+    if filter_config.enable:
+        if filter_config.min_width > 0 and result['width'] < filter_config.min_width:
+             return {'status': 'skipped', 'reason': 'filtered_by_width'}
+        if filter_config.min_height > 0 and result['height'] < filter_config.min_height:
+             return {'status': 'skipped', 'reason': 'filtered_by_height'}
+
     # Construct PhotoCreate data for bulk insert in TaskManager
     meta = result['meta']
     ext = os.path.splitext(result['file_name'])[1]
