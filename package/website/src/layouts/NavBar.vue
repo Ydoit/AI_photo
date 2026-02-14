@@ -1,6 +1,6 @@
 <template>
-  <header class="header bg-light-bg dark:bg-gray-900 transition-colors duration-300">
-    <div class="logo-wrapper destop-only">
+  <header class="header z-[10000] transition-colors duration-300 absolute top-0 left-0 right-0">
+    <div nav-bg class="logo-wrapper destop-only">
       <img src="@/assets/logo.svg" alt="Logo" class="logo" />
       <h1 class="site-title text-gray-800 dark:text-gray-100">行影集</h1>
     </div>
@@ -325,10 +325,9 @@ onClickOutside(moreMenuRef, () => {
 
 
 .header {
-  position: sticky;
+  /* position: sticky; */
   width: 100vw;
   top: 0;
-  z-index: 100;
   display: flex;
   flex-direction: column;
   justify-content: center;

@@ -20,7 +20,7 @@
     </div>
 
     <!-- Content Area -->
-    <div class="flex-1 overflow-auto p-4 md:p-8 h-screen">
+    <div class="flex-1 overflow-auto p-4 md:p-8 h-screen max-w-5xl md:mx-auto">
       <UserManagement v-if="activeTab === 'user'" />
       <TaskManagement v-if="activeTab === 'tasks'" />
       <BasicSettings v-if="activeTab === 'basic'" />

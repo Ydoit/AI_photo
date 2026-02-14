@@ -16,9 +16,13 @@
       </div>
     </div>
     <!-- Storage Settings -->
-    <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
-      <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">存储配置</h2>
-      <el-form :model="storageForm" label-position="top" class="max-w-3xl">
+    <el-collapse v-model="activeNames" class="mb-8 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 overflow-hidden">
+      <el-collapse-item name="storage">
+        <template #title>
+           <h2 class="text-lg font-semibold dark:text-white px-6">存储配置</h2>
+        </template>
+        <div class="px-6 pb-6">
+          <el-form :model="storageForm" label-position="top" class="max-w-3xl">
         <el-form-item label="图片存储根目录">
           <div class="flex flex-col sm:flex-row gap-2 w-full">
             <el-input v-model="storageForm.photo_storage_path" placeholder="例如 C:/TrailSnap/uploads" />
@@ -37,13 +41,19 @@
              <div v-if="storageForm.external_directories.length === 0" class="text-gray-400 text-sm">暂无挂载目录 (请通过管理工具配置)</div>
            </div>
         </el-form-item>
-      </el-form>
-    </div>
+          </el-form>
+        </div>
+      </el-collapse-item>
+    </el-collapse>
 
     <!-- Map Settings -->
-    <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
-      <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">地图配置</h2>
-      <el-form label-position="top" class="max-w-3xl">
+    <el-collapse v-model="activeNames" class="mb-8 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 overflow-hidden">
+      <el-collapse-item name="map">
+        <template #title>
+           <h2 class="text-lg font-semibold dark:text-white px-6">地图配置</h2>
+        </template>
+        <div class="px-6 pb-6">
+          <el-form label-position="top" class="max-w-3xl">
         <el-form-item label="地图提供商">
           <el-select v-model="mapForm.provider" placeholder="选择地图提供商" class="w-full sm:w-auto">
              <el-option label="天地图 (Tianditu)" value="tianditu" />
@@ -143,12 +153,18 @@
            </div>
         </div>
       </div>
-    </div>
+        </div>
+      </el-collapse-item>
+    </el-collapse>
 
     <!-- AI Settings -->
-    <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
-      <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">AI 相关配置</h2>
-      <el-form label-position="top" class="max-w-3xl">
+    <el-collapse v-model="activeNames" class="mb-8 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 overflow-hidden">
+      <el-collapse-item name="ai">
+        <template #title>
+           <h2 class="text-lg font-semibold dark:text-white px-6">AI 相关配置</h2>
+        </template>
+        <div class="px-6 pb-6">
+          <el-form label-position="top" class="max-w-3xl">
         <el-form-item label="AI API 地址">
           <el-input v-model="aiForm.ai_api_url" placeholder="http://localhost:8001" />
         </el-form-item>
@@ -208,13 +224,19 @@
         <el-form-item>
           <el-button type="primary" @click="saveAISettings">保存 AI 配置</el-button>
         </el-form-item>
-      </el-form>
-    </div>
+          </el-form>
+        </div>
+      </el-collapse-item>
+    </el-collapse>
 
     <!-- Image Settings -->
-    <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
-      <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">图片配置</h2>
-      <el-form label-position="top" class="max-w-3xl">
+    <el-collapse v-model="activeNames" class="mb-8 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 overflow-hidden">
+      <el-collapse-item name="image">
+        <template #title>
+           <h2 class="text-lg font-semibold dark:text-white px-6">图片配置</h2>
+        </template>
+        <div class="px-6 pb-6">
+          <el-form label-position="top" class="max-w-3xl">
         <el-form-item label="缩略图大小">
           <el-select v-model="imageForm.thumbnail_size" placeholder="选择缩略图大小" class="w-full sm:w-auto">
              <el-option label="250px" :value="250" />
@@ -245,13 +267,19 @@
         <el-form-item>
           <el-button type="primary" @click="saveImageSettings">保存图片配置</el-button>
         </el-form-item>
-      </el-form>
-    </div>
+          </el-form>
+        </div>
+      </el-collapse-item>
+    </el-collapse>
 
     <!-- Index Maintenance -->
-    <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
-      <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">索引维护</h2>
-      <el-form label-position="top" class="max-w-3xl">
+    <el-collapse v-model="activeNames" class="mb-8 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 overflow-hidden">
+      <el-collapse-item name="index">
+        <template #title>
+           <h2 class="text-lg font-semibold dark:text-white px-6">索引维护</h2>
+        </template>
+        <div class="px-6 pb-6">
+          <el-form label-position="top" class="max-w-3xl">
         <el-form-item label="重建索引">
           <el-button type="danger" @click="rebuildIndex" :disabled="indexStatus.running">立即重建索引</el-button>
           <div class="mt-4 w-full" v-if="indexStatus.running || indexStatus.progress > 0">
@@ -278,13 +306,19 @@
               <div v-if="logs.length===0" class="text-gray-600 italic">暂无日志</div>
            </div>
         </el-form-item>
-      </el-form>
-    </div>
+          </el-form>
+        </div>
+      </el-collapse-item>
+    </el-collapse>
 
     <!-- Appearance Settings -->
-    <div class="mb-8 p-6 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
-      <h2 class="text-lg font-semibold mb-4 border-b pb-2 dark:text-white">外观设置</h2>
-      <div class="space-y-6 max-w-3xl">
+    <el-collapse v-model="activeNames" class="mb-8 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 overflow-hidden">
+      <el-collapse-item name="appearance">
+        <template #title>
+           <h2 class="text-lg font-semibold dark:text-white px-6">外观设置</h2>
+        </template>
+        <div class="px-6 pb-6">
+          <div class="space-y-6 max-w-3xl">
 
         <div>
           <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">显示模式</h3>
@@ -326,8 +360,10 @@
           </div>
         </div>
 
-      </div>
-    </div>
+          </div>
+        </div>
+      </el-collapse-item>
+    </el-collapse>
   </div>
 </template>
 
@@ -345,6 +381,8 @@ const {
   setMode,
   setTheme
 } = injectTheme();
+
+const activeNames = ref([])
 
 const storageForm = ref({ 
   photo_storage_path: '',
