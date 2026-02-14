@@ -1,5 +1,5 @@
 <template>
-  <div class="container mx-auto px-4 py-6 min-h-screen">
+  <div class="mx-auto px-4 py-6">
     <!-- Header -->
     <div class="flex items-center justify-between mb-8">
       <h1 class="text-2xl font-bold text-gray-800 dark:text-white">我的相册</h1>

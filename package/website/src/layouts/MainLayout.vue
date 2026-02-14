@@ -3,11 +3,11 @@
   <div 
     :class="[isDarkMode ? 'dark' : '']" 
     :style="themeStyle"
-    class="min-h-screen font-sans transition-colors duration-300 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200"
+    class="h-screen font-sans transition-colors duration-300 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200"
   >
     <!-- 顶部导航（原 App.vue 中的 NavBar） -->
     <NavBar />
-    <div class="container-main dark:bg-gray-900 mt-14 dark:from-gray-900 dark:to-gray-800 min-h-screen">
+    <div class="w-full dark:bg-gray-900 pt-14 h-screen box-border dark:from-gray-900 dark:to-gray-800">
       <!-- 页面内容挂载点：所有子页面渲染在这里 -->
       <transition name="fade-slide" mode="out-in">
         <router-view />
@@ -35,10 +35,7 @@ const {
 </script>
 
 <style scoped>
-.container-main {
-  max-width: 100vw;
-  width: 100%;
-}
+
 /* 页面过渡动画（原 App.vue 中的样式） */
 .fade-slide-enter-active {
   transition: opacity 0.5s ease, transform 0.5s ease;

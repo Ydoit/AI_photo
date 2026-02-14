@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col md:flex-row h-full bg-gray-50 dark:bg-gray-900 min-h-screen">
+  <div class="flex flex-col md:flex-row h-full bg-gray-50 dark:bg-gray-900">
     <!-- Sidebar -->
     <div class="w-full md:w-64 bg-white dark:bg-gray-800 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-700 flex-shrink-0">
       <div class="p-4 md:p-6">
@@ -20,7 +20,7 @@
     </div>
 
     <!-- Content Area -->
-    <div class="flex-1 overflow-auto p-4 md:p-8 h-screen max-w-5xl md:mx-auto">
+    <div class="flex-1 overflow-auto p-4 md:p-8 max-w-5xl mx-auto">
       <UserManagement v-if="activeTab === 'user'" />
       <TaskManagement v-if="activeTab === 'tasks'" />
       <BasicSettings v-if="activeTab === 'basic'" />
