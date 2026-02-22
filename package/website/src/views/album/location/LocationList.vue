@@ -1,5 +1,5 @@
 <template>
-  <div :class="['container mx-auto location-list min-h-screen flex flex-col h-screen relative py-6', (viewMode === 'map') ? 'p-0' : 'px-6']">
+  <div :class="['container mx-auto location-list flex flex-col relative py-6', (viewMode != 'grid') ? 'p-0 h-screen' : 'px-6']">
     <!-- Header -->
     <div :class="['flex sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0 z-50 transition-all duration-300', (viewMode === 'map') ? 'absolute top-0 left-0 right-0 p-4 pointer-events-none' : 'mb-6']">
       <div class="flex flex-col gap-3 pointer-events-auto">
@@ -33,6 +33,37 @@
           <span class="hidden sm:inline">新增景区</span>
         </button>
 
+        <!-- Year Filter -->
+        <div class="hidden md:flex bg-gray-200 dark:bg-gray-800 p-0 md:p-1 rounded-lg relative" ref="yearMenuRef">
+           <button
+             @click="showYearMenu = !showYearMenu"
+             class="px-3 py-1.5 rounded-md text-sm font-medium bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white flex items-center gap-1.5"
+           >
+             {{ selectedYear ? selectedYear + '年' : '全部年份' }}
+             <ChevronDown class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': showYearMenu }" />
+           </button>
+
+           <div
+             v-show="showYearMenu"
+             class="absolute top-full right-0 mt-2 w-32 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-[60] max-h-60 overflow-y-auto"
+           >
+             <button
+               @click="selectYear(null); showYearMenu = false"
+               :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors dark:bg-gray-800', !selectedYear ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
+             >
+               全部年份
+             </button>
+             <button
+               v-for="year in availableYears"
+               :key="year"
+               @click="selectYear(year); showYearMenu = false"
+               :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors dark:bg-gray-800', selectedYear === year ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
+             >
+               {{ year }}年
+             </button>
+           </div>
+        </div>
+
         <!-- Filter Toggle (Only for Scene Level) -->
         <div v-if="level === 'scene'" class="bg-gray-200 dark:bg-gray-800 p-1 rounded-lg hidden md:flex">
           <button
@@ -59,29 +90,62 @@
           <!-- Mobile Dropdown Menu -->
           <div
             v-show="showLevelMenu"
-            class="md:hidden absolute top-full left-0 mt-2 w-32 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-[60]"
+            class="md:hidden absolute top-full left-0 mt-2 w-40 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-[60] flex flex-col max-h-[80vh]"
           >
-            <button
-              v-for="opt in levelOptions"
-              :key="opt.value"
-              @click="changeLevel(opt.value as any); showLevelMenu = false"
-              :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors dark:bg-gray-800', level === opt.value ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
-            >
-              {{ opt.label }}
-            </button>
-            <!-- Mobile Filter Options -->
-            <template v-if="level === 'scene'">
-              <div class="h-px bg-gray-200 dark:bg-gray-700 my-1"></div>
+            <!-- Level Options -->
+            <div class="py-1">
               <button
-                v-for="opt in filterOptions"
-                :key="'m-' + opt.value"
-                @click="filterStatus = opt.value as any; showLevelMenu = false"
-                :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:bg-gray-800 transition-colors', filterStatus === opt.value ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
+                v-for="opt in levelOptions"
+                :key="opt.value"
+                @click="changeLevel(opt.value as any); showLevelMenu = false"
+                :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors dark:bg-gray-800', level === opt.value ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
               >
                 {{ opt.label }}
               </button>
+            </div>
+
+            <div class="h-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+
+            <!-- Year Options -->
+            <div class="py-1 max-h-40 overflow-y-auto">
+              <button
+                @click="selectYear(null); showLevelMenu = false"
+                :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors dark:bg-gray-800 flex items-center justify-between', !selectedYear ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
+              >
+                <div class="flex items-center gap-2">
+                  <Calendar class="w-3.5 h-3.5 opacity-70" />
+                  <span>全部年份</span>
+                </div>
+                <Check v-if="!selectedYear" class="w-3.5 h-3.5" />
+              </button>
+              <button
+                v-for="year in availableYears"
+                :key="year"
+                @click="selectYear(year); showLevelMenu = false"
+                :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors dark:bg-gray-800 flex items-center justify-between', selectedYear === year ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
+              >
+                <span>{{ year }}年</span>
+                <Check v-if="selectedYear === year" class="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <!-- Mobile Filter Options -->
+            <template v-if="level === 'scene'">
+              <div class="h-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+              <div class="py-1">
+                <button
+                  v-for="opt in filterOptions"
+                  :key="'m-' + opt.value"
+                  @click="filterStatus = opt.value as any; showLevelMenu = false"
+                  :class="['w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 dark:bg-gray-800 transition-colors', filterStatus === opt.value ? 'text-primary-500 font-medium' : 'text-gray-700 dark:text-gray-200']"
+                >
+                  {{ opt.label }}
+                </button>
+              </div>
             </template>
-            <div class="h-px bg-gray-200 dark:bg-gray-700 my-1"></div>
+
+            <div class="h-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+            
             <button
                v-show="viewMode !== 'grid'"
                @click="level = 'photo-map'; showLevelMenu = false"
@@ -157,12 +221,13 @@
       v-show="viewMode === 'map' && level !== 'photo-map' && level !== 'scene'"
       :level="level"
       :view-mode="viewMode"
+      :year="selectedYear"
       @click-location="goToLocation"
       @change-level="(level: string, viewState?: { zoom: number; center: number[] }) => changeLevel(level as any, viewState)"
     />
 
     <!-- Photo Map View -->
-    <LocationMap v-if="viewMode === 'map' && (level === 'photo-map' || level === 'scene')" :filter-status="filterStatus" class="flex-1 overflow-hidden bg-white dark:bg-gray-900 shadow-sm" />
+    <LocationMap v-if="viewMode === 'map' && (level === 'photo-map' || level === 'scene')" :filter-status="filterStatus" :year="selectedYear" class="flex-1 overflow-hidden bg-white dark:bg-gray-900 shadow-sm" />
 
     <!-- Grid View -->
     <LocationListView
@@ -186,7 +251,7 @@ import { storeToRefs } from 'pinia'
 import { useLocationStore } from '@/stores/locationStore'
 import { locationService } from '@/api/location'
 import type { Location, LocationStatistics, Scene } from '@/types/location'
-import { ArrowLeft, LayoutGrid, Map, Images, Plus, ChevronDown } from 'lucide-vue-next'
+import { ArrowLeft, LayoutGrid, Map, Images, Plus, ChevronDown, Calendar, Check } from 'lucide-vue-next'
 import { onClickOutside } from '@vueuse/core'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import LocationMap from './LocationMap.vue'
@@ -204,6 +269,10 @@ const showAddScene = ref(false)
 const editingScene = ref<Scene | null>(null)
 const showLevelMenu = ref(false)
 const levelMenuRef = ref<HTMLElement | null>(null)
+const showYearMenu = ref(false)
+const yearMenuRef = ref<HTMLElement | null>(null)
+const selectedYear = ref<number | null>(null)
+const availableYears = ref<number[]>([])
 
 const filterOptions = [
   { label: '全部', value: 'all' },
@@ -230,6 +299,10 @@ onClickOutside(levelMenuRef, () => {
   showLevelMenu.value = false
 })
 
+onClickOutside(yearMenuRef, () => {
+  showYearMenu.value = false
+})
+
 const levelOptions = [
   { label: '区县', value: 'district' },
   { label: '城市', value: 'city' },
@@ -238,9 +311,18 @@ const levelOptions = [
 ]
 
 const currentLevelLabel = computed(() => {
-  if (level.value === 'photo-map') return '照片'
-  const option = levelOptions.find(opt => opt.value === level.value)
-  return option ? option.label : '区县'
+  let label = '区县'
+  if (level.value === 'photo-map') {
+    label = '照片'
+  } else {
+    const option = levelOptions.find(opt => opt.value === level.value)
+    if (option) label = option.label
+  }
+  
+  if (selectedYear.value) {
+    return `${label} · ${selectedYear.value}`
+  }
+  return label
 })
 
 const unlockPercentage = computed(() => {
@@ -257,11 +339,11 @@ const fetchLocations = async () => {
     statistics.value = await locationService.getStatistics()
 
     if (level.value === 'photo-map') {
-      locationsRaw.value = await locationService.getLocations('city')
+      locationsRaw.value = await locationService.getLocations('city', 0, 10000, selectedYear.value)
       return
     }
     
-    if (level.value === 'scene') {
+    if (level.value === 'scene' && !selectedYear.value) {
       const scenes = await locationService.getScenesList(0, 1000)
       // Map Scene to Location-like structure for the grid view
       locationsRaw.value = scenes.map(s => ({
@@ -269,14 +351,34 @@ const fetchLocations = async () => {
         count: s.photo_count || 0,
         level: 'scene' as const
       })) as any[]
+    } else if (level.value === 'scene' && selectedYear.value) {
+      const scenes = await locationService.getScenesList(0, 1000, selectedYear.value)
+      locationsRaw.value = scenes.map(s => ({
+        ...s,
+        count: s.photo_count || 0,
+        level: 'scene' as const
+      })) as any[]
     } else {
-      locationsRaw.value = await locationService.getLocations(level.value)
+      locationsRaw.value = await locationService.getLocations(level.value, 0, 10000, selectedYear.value)
     }
   } catch (e) {
     console.error(e)
   } finally {
     loading.value = false
   }
+}
+
+const fetchYears = async () => {
+  try {
+    availableYears.value = await locationService.getYears()
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+const selectYear = (year: number | null) => {
+  selectedYear.value = year
+  fetchLocations()
 }
 
 const changeLevel = (newLevel: 'city' | 'province' | 'district' | 'scene', viewState?: { zoom: number, center: number[] }) => {
@@ -290,7 +392,7 @@ const goToLocation = (name: string) => {
   router.push({
     name: 'LocationDetail',
     params: { name: name },
-    query: { level: level.value }
+    query: { level: level.value, year: selectedYear.value }
   })
 }
 
@@ -343,6 +445,7 @@ watch(viewMode, (newMode) => {
 })
 
 onMounted(() => {
+  fetchYears()
   fetchLocations()
 })
 </script>

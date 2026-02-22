@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, extract
 from app.db.models.scene import Scene
 from app.db.models.photo_metadata import PhotoMetadata
 from app.db.models.photo import Photo
@@ -77,13 +77,19 @@ def create_scene(db: Session, scene: SceneCreate):
     
     return db_scene
 
-def get_scenes(db: Session, skip: int = 0, limit: int = 100):
-    results = db.query(
+def get_scenes(db: Session, skip: int = 0, limit: int = 100, year: int = None):
+    query = db.query(
         Scene,
         func.count(PhotoMetadata.photo_id).label("photo_count")
     ).outerjoin(
         PhotoMetadata, Scene.id == PhotoMetadata.scene_id
-    ).group_by(
+    )
+
+    if year:
+        query = query.outerjoin(Photo, PhotoMetadata.photo_id == Photo.id)\
+                     .filter(extract('year', Photo.photo_time) == year)
+
+    results = query.group_by(
         Scene.id
     ).order_by(
         desc("photo_count")
@@ -100,7 +106,12 @@ def get_scenes(db: Session, skip: int = 0, limit: int = 100):
         PhotoMetadata, Photo.id == PhotoMetadata.photo_id
     ).filter(
         PhotoMetadata.scene_id.in_(scene_ids)
-    ).distinct(
+    )
+
+    if year:
+        cover_query = cover_query.filter(extract('year', Photo.photo_time) == year)
+
+    cover_query = cover_query.distinct(
         PhotoMetadata.scene_id
     ).order_by(
         PhotoMetadata.scene_id,

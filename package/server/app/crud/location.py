@@ -1,10 +1,18 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, extract
 from app.db.models.photo import Photo
 from app.db.models.photo_metadata import PhotoMetadata
 from app.db.models.scene import Scene
 
-def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 100):
+def get_location_years(db: Session):
+    years = db.query(extract('year', Photo.photo_time))\
+        .filter(Photo.photo_time.isnot(None))\
+        .distinct()\
+        .order_by(desc(extract('year', Photo.photo_time)))\
+        .all()
+    return [int(y[0]) for y in years if y[0] is not None]
+
+def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 100, year: int = None):
     is_scene = False
     if level == 'city':
         group_col = PhotoMetadata.city
@@ -50,6 +58,9 @@ def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 
             group_col != ''
         )
 
+    if year:
+        query = query.filter(extract('year', Photo.photo_time) == year)
+
     if is_scene:
         query = query.group_by(Scene.name, Scene.id, Scene.is_custom)
     else:
@@ -78,6 +89,9 @@ def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 
     
     if is_scene:
         cover_query = cover_query.join(Scene, PhotoMetadata.scene_id == Scene.id)
+
+    if year:
+        cover_query = cover_query.filter(extract('year', Photo.photo_time) == year)
 
     covers = cover_query.filter(
         group_col.in_(names)
@@ -113,7 +127,7 @@ def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 
         
     return locations
 
-def get_location_photos(db: Session, name: str, level: str = 'city', skip: int = 0, limit: int = 50):
+def get_location_photos(db: Session, name: str, level: str = 'city', skip: int = 0, limit: int = 50, year: int = None):
     if level == 'city':
         col = PhotoMetadata.city
         query = db.query(Photo).join(PhotoMetadata, Photo.id == PhotoMetadata.photo_id)
@@ -130,28 +144,35 @@ def get_location_photos(db: Session, name: str, level: str = 'city', skip: int =
     else:
         return []
         
+    if year:
+        query = query.filter(extract('year', Photo.photo_time) == year)
+
     return query.filter(
         col == name
     ).order_by(
         desc(Photo.photo_time)
     ).offset(skip).limit(limit).all()
 
-def get_map_markers(db: Session):
-    results = db.query(
+def get_map_markers(db: Session, year: int = None):
+    query = db.query(
         Photo.id,
         PhotoMetadata.latitude,
         PhotoMetadata.longitude
     ).join(PhotoMetadata, Photo.id == PhotoMetadata.photo_id)\
      .filter(PhotoMetadata.latitude.isnot(None))\
-     .filter(PhotoMetadata.longitude.isnot(None))\
-     .all()
+     .filter(PhotoMetadata.longitude.isnot(None))
+     
+    if year:
+        query = query.filter(extract('year', Photo.photo_time) == year)
+
+    results = query.all()
      
     return [
         {"id": str(r[0]), "lat": float(r[1]), "lng": float(r[2])}
         for r in results
     ]
 
-def get_location_distribution(db: Session, level: str = 'city'):
+def get_location_distribution(db: Session, level: str = 'city', year: int = None):
     is_scene = False
     if level == 'city':
         group_col = PhotoMetadata.city
@@ -175,6 +196,9 @@ def get_location_distribution(db: Session, level: str = 'city'):
 
     if is_scene:
         query = query.join(Scene, PhotoMetadata.scene_id == Scene.id)
+
+    if year:
+        query = query.filter(extract('year', Photo.photo_time) == year)
 
     results = query.filter(
         group_col.is_not(None),

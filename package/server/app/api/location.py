@@ -11,9 +11,17 @@ from app.crud import scene as scene_crud
 
 router = APIRouter()
 
+@router.get("/years", response_model=List[int], summary="获取所有年份")
+def get_years(db: Session = Depends(get_db)):
+    """
+    获取所有照片的拍摄年份。
+    """
+    return crud.get_location_years(db)
+
 @router.get("", response_model=List[schemas.Location], summary="获取位置列表")
 def get_locations(
     level: str = Query('city', regex='^(city|province|district|scene)$', description="分组级别：city 或 province 或 district 或 scene"),
+    year: int = Query(None, description="年份筛选"),
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
@@ -21,17 +29,18 @@ def get_locations(
     """
     获取按城市或省份分组的位置列表，包含每个位置的封面照片和照片数量。
     """
-    return crud.get_locations(db, level, skip, limit)
+    return crud.get_locations(db, level, skip, limit, year)
 
 @router.get("/distribution", response_model=List[schemas.LocationBase], summary="获取位置分布数据")
 def get_location_distribution(
     level: str = Query('city', regex='^(city|province|district|scene)$', description="分组级别：city 或 province 或 district 或 scene"),
+    year: int = Query(None, description="年份筛选"),
     db: Session = Depends(get_db)
 ):
     """
     获取所有位置的分布数据（仅包含名称和数量），用于地图展示。
     """
-    return crud.get_location_distribution(db, level)
+    return crud.get_location_distribution(db, level, year)
 
 @router.get("/statistics", response_model=schemas.LocationStatistics, summary="获取位置统计数据")
 def get_location_statistics(db: Session = Depends(get_db)):
@@ -41,11 +50,14 @@ def get_location_statistics(db: Session = Depends(get_db)):
     return crud.get_location_statistics(db)
 
 @router.get("/markers", response_model=List[schemas.MapMarker], summary="获取地图标记点")
-def get_map_markers(db: Session = Depends(get_db)):
+def get_map_markers(
+    year: int = Query(None, description="年份筛选"),
+    db: Session = Depends(get_db)
+):
     """
     获取所有包含GPS信息的照片标记点。
     """
-    return crud.get_map_markers(db)
+    return crud.get_map_markers(db, year)
 
 @router.post("/scenes", response_model=scene_schemas.Scene, summary="创建景区")
 def create_scene(
@@ -61,12 +73,13 @@ def create_scene(
 def get_scenes_list(
     skip: int = 0,
     limit: int = 100,
+    year: int = Query(None, description="年份筛选"),
     db: Session = Depends(get_db)
 ):
     """
     获取所有景区详细信息（包含多边形坐标）。
     """
-    return scene_crud.get_scenes(db, skip, limit)
+    return scene_crud.get_scenes(db, skip, limit, year)
 
 @router.get("/scenes/{scene_id}", response_model=scene_schemas.Scene, summary="获取景区详情")
 def get_scene_details(
@@ -115,6 +128,7 @@ def delete_scene(
 def get_location_photos(
     name: str = Path(..., description="位置名称"),
     level: str = Query('city', regex='^(city|province|district|scene)$', description="分组级别：city 或 province 或 district 或 scene"),
+    year: int = Query(None, description="年份筛选"),
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db)
@@ -122,4 +136,4 @@ def get_location_photos(
     """
     获取指定位置（城市或省份）的照片列表。
     """
-    return crud.get_location_photos(db, name, level, skip, limit)
+    return crud.get_location_photos(db, name, level, skip, limit, year)

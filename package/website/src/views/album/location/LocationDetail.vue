@@ -27,6 +27,8 @@ const router = useRouter()
 const locationStore = useLocationStore()
 const name = route.params.name as string
 const level = (route.query.level as 'city' | 'province' | 'district' | 'scene') || 'city'
+const yearQuery = route.query.year ? parseInt(route.query.year as string) : undefined
+const year = (yearQuery !== undefined && !isNaN(yearQuery)) ? yearQuery : undefined
 
 const loading = ref(false)
 const photos = ref<AlbumImage[]>([])
@@ -83,7 +85,7 @@ const fetchAllPhotos = async () => {
       while (hasNext) {
         // Encode name to ensure special characters (like / or ?) don't break the path
         const safeName = encodeURIComponent(name)
-        const rawPhotos = await locationService.getLocationPhotos(safeName, level, skip.value, limit)
+        const rawPhotos = await locationService.getLocationPhotos(safeName, level, skip.value, limit, year)
 
         const newPhotos = rawPhotos.map(mapPhotoToImage)
 
@@ -116,7 +118,7 @@ const loadMore = async () => {
     const limit = 100
     // Encode name to ensure special characters (like / or ?) don't break the path
     const safeName = encodeURIComponent(name)
-    const rawPhotos = await locationService.getLocationPhotos(safeName, level, skip.value, limit)
+    const rawPhotos = await locationService.getLocationPhotos(safeName, level, skip.value, limit, year)
 
     const newPhotos = rawPhotos.map(mapPhotoToImage)
 

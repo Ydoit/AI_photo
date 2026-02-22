@@ -10,9 +10,14 @@ const api = axios.create({
 });
 
 export const locationService = {
-  async getLocations(level: 'city' | 'province' | 'district' | 'scene' = 'city', skip: number = 0, limit: number = 100) {
+  async getYears() {
+    const { data } = await api.get<number[]>('/api/locations/years');
+    return data;
+  },
+
+  async getLocations(level: 'city' | 'province' | 'district' | 'scene' = 'city', skip: number = 0, limit: number = 100, year?: number | null) {
     const { data } = await api.get<Location[]>('/api/locations', {
-      params: { level, skip, limit }
+      params: { level, skip, limit, year: year || undefined }
     });
     return data;
   },
@@ -22,22 +27,24 @@ export const locationService = {
     return data;
   },
 
-  async getDistribution(level: 'city' | 'province' | 'district' | 'scene' = 'city') {
+  async getDistribution(level: 'city' | 'province' | 'district' | 'scene' = 'city', year?: number | null) {
     const { data } = await api.get<{name: string, count: number, level: string}[]>('/api/locations/distribution', {
-      params: { level }
+      params: { level, year: year || undefined }
     });
     return data;
   },
   
-  async getLocationPhotos(name: string, level: 'city' | 'province' | 'district' | 'scene' = 'city', skip: number = 0, limit: number = 50) {
+  async getLocationPhotos(name: string, level: 'city' | 'province' | 'district' | 'scene' = 'city', skip: number = 0, limit: number = 50, year?: number | null) {
     const { data } = await api.get<Photo[]>(`/api/locations/${name}/photos`, {
-      params: { level, skip, limit }
+      params: { level, skip, limit, year: year || undefined }
     });
     return data;
   },
 
-  async getMapMarkers() {
-    const { data } = await api.get<{id: string, lat: number, lng: number}[]>('/api/locations/markers');
+  async getMapMarkers(year?: number | null) {
+    const { data } = await api.get<{id: string, lat: number, lng: number}[]>('/api/locations/markers', {
+      params: { year: year || undefined }
+    });
     return data;
   },
 
@@ -56,9 +63,9 @@ export const locationService = {
     return data;
   },
 
-  async getScenesList(skip: number = 0, limit: number = 100) {
+  async getScenesList(skip: number = 0, limit: number = 100, year?: number | null) {
     const { data } = await api.get<Scene[]>('/api/locations/scenes/list', {
-      params: { skip, limit }
+      params: { skip, limit, year: year || undefined }
     });
     return data;
   },
