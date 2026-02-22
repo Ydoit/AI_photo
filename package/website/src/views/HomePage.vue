@@ -1,10 +1,10 @@
 <template>
-  <div class="container mx-auto bg-white dark:bg-black">
+  <div class="container mx-auto py-6">
     <!-- Navbar -->
-    <div class="sticky top-0 z-20 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 h-14 flex items-center justify-between px-4 transition-opacity duration-300">
+    <div class="sticky top-0 z-20 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 h-14 flex items-center justify-between px-4 transition-opacity duration-300">
       <h1 class="text-lg font-bold text-[#333] dark:text-white">相册概览</h1>
       <div class="flex items-center space-x-4">
-        <button class="text-[#666] dark:text-gray-300 hover:text-[#4A90E2] transition-colors" @click="$router.push('/settings')">
+        <button class="text-[#666] dark:text-gray-300 dark:bg-gray-800 hover:text-[#4A90E2] transition-colors" @click="$router.push('/settings')">
           <i class="mgc_settings_4_line text-2xl"></i>
         </button>
       </div>

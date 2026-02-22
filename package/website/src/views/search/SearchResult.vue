@@ -5,7 +5,7 @@
       <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
         <button 
           @click="router.back()" 
-          class="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          class="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:bg-gray-900 dark:hover:bg-gray-800 transition-colors"
         >
           <ArrowLeft class="w-5 h-5 text-gray-600 dark:text-gray-300" />
         </button>

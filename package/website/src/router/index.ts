@@ -17,8 +17,8 @@ const LocationList = () => import('@/views/album/location/LocationList.vue');
 const LocationDetail = () => import('@/views/album/location/LocationDetail.vue');
 const ClassificationList = () => import('@/views/album/intelligent-classification/ClassificationList.vue');
 const ClassificationDetail = () => import('@/views/album/intelligent-classification/ClassificationDetail.vue');
-const SearchResult = () => import('@/views/SearchResult.vue');
-const MobileSearch = () => import('@/views/MobileSearch.vue');
+const SearchResult = () => import('@/views/search/SearchResult.vue');
+const MobileSearch = () => import('@/views/search/MobileSearch.vue');
 
 const NotFound = () => import('@/views/NotFound.vue');
 
