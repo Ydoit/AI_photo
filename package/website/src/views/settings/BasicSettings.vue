@@ -169,13 +169,17 @@
           <el-input v-model="aiForm.ai_api_url" placeholder="http://localhost:8001" />
         </el-form-item>
 
-        <div class="my-4 pt-2 border-t border-gray-100">
-            <h3 class="text-sm font-medium text-gray-600 mb-3 flex items-center">
-              语言大模型配置 (Language LLM)
-              <el-tooltip content="用于自然语言处理、搜索增强等任务" placement="top">
-                <Info class="w-4 h-4 ml-1 text-gray-400 cursor-help" />
-              </el-tooltip>
-            </h3>
+        <el-collapse v-model="aiActiveNames" class="my-4 border-none">
+          <!-- Language LLM -->
+          <el-collapse-item name="llm">
+            <template #title>
+              <div class="flex items-center w-full">
+                <span class="text-sm font-medium text-gray-600 dark:text-gray-300 mr-2">语言大模型配置 (Language LLM)</span>
+                <el-tooltip content="用于自然语言处理、搜索增强等任务" placement="top">
+                  <Info class="w-4 h-4 text-gray-400 cursor-help" />
+                </el-tooltip>
+              </div>
+            </template>
             <div class="bg-blue-50 dark:bg-gray-700 p-3 rounded mb-3 text-xs text-blue-600 dark:text-blue-300">
               配置用于文本理解和生成的语言模型。与视觉模型分开配置，以便使用不同的提供商或模型。
             </div>
@@ -188,15 +192,18 @@
             <el-form-item label="Model Name">
                 <el-input v-model="aiForm.llm_settings.model_name" placeholder="gpt-3.5-turbo" />
             </el-form-item>
-        </div>
-        
-        <div class="my-4 pt-2 border-t border-gray-100">
-            <h3 class="text-sm font-medium text-gray-600 mb-3 flex items-center">
-              视觉大模型配置 (Visual LLM)
-              <el-tooltip content="用于图片内容理解、标签生成等视觉任务" placement="top">
-                <Info class="w-4 h-4 ml-1 text-gray-400 cursor-help" />
-              </el-tooltip>
-            </h3>
+          </el-collapse-item>
+
+          <!-- Visual LLM -->
+          <el-collapse-item name="vl">
+            <template #title>
+              <div class="flex items-center w-full">
+                <span class="text-sm font-medium text-gray-600 dark:text-gray-300 mr-2">视觉大模型配置 (Visual LLM)</span>
+                <el-tooltip content="用于图片内容理解、标签生成等视觉任务" placement="top">
+                  <Info class="w-4 h-4 text-gray-400 cursor-help" />
+                </el-tooltip>
+              </div>
+            </template>
             <el-form-item label="Base URL">
                 <el-input v-model="aiForm.llm_vl_settings.base_url" placeholder="https://api.openai.com/v1" />
             </el-form-item>
@@ -206,9 +213,13 @@
             <el-form-item label="Model Name">
                 <el-input v-model="aiForm.llm_vl_settings.model_name" placeholder="gpt-4-vision-preview" />
             </el-form-item>
-        </div>
-        <div class="my-4 pt-2 border-t border-gray-100">
-            <h3 class="text-sm font-medium text-gray-600 mb-3">人脸识别配置</h3>
+          </el-collapse-item>
+
+          <!-- Face Recognition -->
+          <el-collapse-item name="face">
+            <template #title>
+              <span class="text-sm font-medium text-gray-600 dark:text-gray-300">人脸识别配置</span>
+            </template>
             <el-form-item label="识别阈值">
               <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full">
                 <el-slider v-model="aiForm.face_recognition_threshold" :min="0" :max="1" :step="0.05" class="w-full sm:w-64" show-input />
@@ -219,7 +230,8 @@
               <el-input-number v-model="aiForm.face_recognition_min_photos" :min="1" />
               <span class="text-sm text-gray-500 ml-2">形成人物聚类所需的最少照片数量 (默认 5)</span>
             </el-form-item>
-        </div>
+          </el-collapse-item>
+        </el-collapse>
         
         <el-form-item>
           <el-button type="primary" @click="saveAISettings">保存 AI 配置</el-button>
@@ -383,6 +395,7 @@ const {
 } = injectTheme();
 
 const activeNames = ref([])
+const aiActiveNames = ref([])
 
 const storageForm = ref({ 
   photo_storage_path: '',

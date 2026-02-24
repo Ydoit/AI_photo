@@ -7,7 +7,7 @@
   >
     <!-- 顶部导航（原 App.vue 中的 NavBar） -->
     <NavBar />
-    <div class="w-full dark:bg-gray-900 pt-14 box-border dark:from-gray-900 dark:to-gray-800">
+    <div class="w-full bg-slate-50 dark:bg-gray-900 pt-14 box-border dark:from-gray-900 dark:to-gray-800">
       <!-- 页面内容挂载点：所有子页面渲染在这里 -->
       <transition name="fade-slide" mode="out-in">
         <router-view />
