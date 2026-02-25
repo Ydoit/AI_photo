@@ -71,7 +71,7 @@
             <!-- Actions -->
             <div class="flex justify-center lg:justify-start gap-5">
               <button class="px-8 py-3 rounded-lg bg-primary text-white font-bold hover:bg-primary-dark hover:scale-105 transition-all shadow-lg hover:shadow-xl" @click="goLink(lang === 'zh-CN' ? '/docs/guide/install' : '/en/docs/guide/install')">{{ t.hero.download }}</button>
-              <button class="px-8 py-3 rounded-lg border border-gray-300 dark:border-gray-600 text-neutral-dark dark:text-gray-200 hover:bg-white dark:hover:bg-slate-700 hover:border-gray-400 transition-all" @click="goLink(lang === 'zh-CN' ? '/docs/guide/user' : '/en/docs/guide/user')">{{ t.hero.details }}</button>
+              <button class="px-8 py-3 rounded-lg border border-gray-300 dark:border-gray-600 text-neutral-dark dark:text-gray-200 hover:bg-white dark:hover:bg-slate-700 hover:border-gray-400 transition-all" @click="goLink(lang === 'zh-CN' ? '/docs/guide/overview' : '/en/docs/guide/overview')">{{ t.hero.details }}</button>
             </div>
           </div>
 
@@ -215,9 +215,8 @@
           <div class="lg:w-[60%] flex items-center justify-center">
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-float p-4 w-full max-w-xl aspect-[4/3] flex items-center justify-center border border-gray-100 dark:border-slate-700 relative overflow-hidden group">
               <div class="text-center">
-                <div class="text-6xl mb-4">{{ overviewFeatures[activeFeatureIndex].icon }}</div>
-                <h3 class="text-2xl font-bold text-neutral-dark dark:text-white">{{ overviewFeatures[activeFeatureIndex].title }}{{ t.overview.demoSuffix }}</h3>
-                <p class="text-gray-400 mt-2">{{ t.overview.demoPlaceholder }}</p>
+                <!-- <div class="text-6xl mb-4">{{ overviewFeatures[activeFeatureIndex].icon }}</div> -->
+                <img :src="overviewFeatures[activeFeatureIndex].image" alt="Feature Image" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110">
               </div>
               
               <!-- Hover Arrows (Mock) -->
@@ -536,18 +535,18 @@ const features = computed(() => featuresList[lang.value as keyof typeof features
 
 const overviewFeaturesList = {
   'zh-CN': [
-    { title: '智能相册', icon: '📸', items: ['精准人脸识别归类', '场景/物体智能标签', '自定义条件（智能）相册'] },
-    { title: 'AI能力', icon: '🤖', items: ['一句话生成游记', 'Vlog智能剪辑', '照片智能精修'] },
-    { title: '行程票据', icon: '🎫', items: ['票据自动识别录入', '国内5A景区位置识别', '多票据统一管理'] },
-    { title: '数据可视化', icon: '📊', items: ['足迹地图点亮', '出行里程统计', '城市打卡记录'] },
-    { title: '年度报告', icon: '📅', items: ['年度出行总结', '专属回忆生成', '分享朋友圈'] }
+    { title: '智能相册', icon: '📸', items: ['精准人脸识别归类', '场景/物体智能标签', '自定义条件（智能）相册'], image: '/images/classification.jpeg' },
+    { title: 'AI能力', icon: '🤖', items: ['一句话生成游记', 'Vlog智能剪辑', '照片智能精修'], image: '/images/timeline.png' },
+    { title: '行程票据', icon: '🎫', items: ['票据自动识别录入', '国内5A景区位置识别', '多票据统一管理'], image: '/images/map.png' },
+    { title: '数据可视化', icon: '📊', items: ['足迹地图点亮', '出行里程统计', '城市打卡记录'], image: '/images/map-province.png' },
+    { title: '年度报告', icon: '📅', items: ['年度出行总结', '专属回忆生成', '分享朋友圈'], image: '/images/report.png' }
   ],
   'en-US': [
-    { title: 'Smart Album', icon: '📸', items: ['Precise Face Clustering', 'Scene/Object Smart Tags', 'Custom Smart Albums'] },
-    { title: 'AI Capabilities', icon: '🤖', items: ['One-sentence Diary', 'Smart Vlog Editing', 'Smart Photo Retouching'] },
-    { title: 'Itinerary & Tickets', icon: '🎫', items: ['Auto Ticket Recognition', '5A Scenic Spot Location', 'Unified Ticket Mgmt'] },
-    { title: 'Data Visualization', icon: '📊', items: ['Footprint Map Lighting', 'Travel Mileage Stats', 'City Check-in Records'] },
-    { title: 'Annual Report', icon: '📅', items: ['Annual Travel Summary', 'Exclusive Memory Gen', 'Share to Moments'] }
+    { title: 'Smart Album', icon: '📸', items: ['Precise Face Clustering', 'Scene/Object Smart Tags', 'Custom Smart Albums'], image: '/images/classification.jpeg' },
+    { title: 'AI Capabilities', icon: '🤖', items: ['One-sentence Diary', 'Smart Vlog Editing', 'Smart Photo Retouching'], image: '/images/timeline.png' },
+    { title: 'Itinerary & Tickets', icon: '🎫', items: ['Auto Ticket Recognition', '5A Scenic Spot Location', 'Unified Ticket Mgmt'], image: '/images/ticket.jpeg' },
+    { title: 'Data Visualization', icon: '📊', items: ['Footprint Map Lighting', 'Travel Mileage Stats', 'City Check-in Records'], image: '/images/map-province.png' },
+    { title: 'Annual Report', icon: '📅', items: ['Annual Travel Summary', 'Exclusive Memory Gen', 'Share to Moments'], image: '/images/report.png' }
   ]
 }
 
