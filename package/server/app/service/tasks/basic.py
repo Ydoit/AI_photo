@@ -5,6 +5,9 @@ import json
 from uuid import UUID, uuid4
 from PIL import Image
 from pillow_heif import register_heif_opener
+
+from app.core.config_manager import config_manager
+
 # Register HEIF opener to enable HEIC/HEIF support in Pillow
 register_heif_opener()
 from sqlalchemy.orm import Session
