@@ -156,3 +156,21 @@ export interface FaceIdentity {
   cover_photo: CoverPhotoInfo | null
   cover: Photo | null
 }
+
+export interface FilterOptions {
+  years: number[];
+  cities: string[];
+  makes: string[];
+  models: string[];
+  image_types: string[];
+  file_types: string[];
+}
+
+export interface FilterState {
+  years: number[];
+  cities: string[];
+  makes: string[];
+  models: string[];
+  image_types: string[];
+  file_types: string[];
+}

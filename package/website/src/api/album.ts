@@ -1,11 +1,24 @@
 import axios from 'axios';
-import type { ApiAlbum, Album, CreateAlbumDto, Photo, PhotoMetadata, TimelineStats, PhotoGroup } from '@/types/album';
+import type { ApiAlbum, Album, CreateAlbumDto, Photo, PhotoMetadata, TimelineStats, PhotoGroup, FilterOptions } from '@/types/album';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000, // Default timeout 30s
+  paramsSerializer: (params) => {
+    const p = new URLSearchParams();
+    for (const key in params) {
+        const val = params[key];
+        if (val === undefined || val === null) continue;
+        if (Array.isArray(val)) {
+            val.forEach(v => p.append(key, v));
+        } else {
+            p.append(key, val);
+        }
+    }
+    return p.toString();
+  }
 });
 
 export const albumService = {
@@ -35,15 +48,20 @@ export const albumService = {
   },
 
   // Stats
-  async getTimelineStats(albumId?: string) {
+  async getTimelineStats(albumId?: string, filters?: any) {
     const { data } = await api.get<TimelineStats>('/api/stats/timeline', {
-      params: { album_id: albumId }
+      params: { album_id: albumId, ...filters }
     });
     return data;
   },
 
+  async getFilterOptions() {
+      const { data } = await api.get<FilterOptions>('/api/stats/filters');
+      return data;
+  },
+
   // Photos
-  async getAllPhotos(skip: number = 0, limit: number = 100, filters?: { start_time?: string, end_time?: string, city?: string, tag?: string}) {
+  async getAllPhotos(skip: number = 0, limit: number = 100, filters?: any) {
     const { data } = await api.get<Photo[]>('/api/photos', {
       params: { skip, limit, ...filters }
     });

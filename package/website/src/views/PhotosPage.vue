@@ -3,13 +3,19 @@
     <!-- Toolbar & Header -->
     <div class="sticky top-[60px] z-30 pointer-events-none">
       <div class="flex md:flex-row items-center justify-between gap-4 max-w-7xl mx-auto px-4 py-3 pointer-events-auto">
-        <!-- Default Title -->
-        <!-- <div class="flex items-center gap-2 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
-          <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight">照片</h1>
-          <span class="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">{{ photoStore.timelineStats?.total_photos || images.length }}</span>
-        </div> -->
         <!-- Controls -->
         <div class="flex items-center gap-2 ml-auto animate-in fade-in slide-in-from-right-4 duration-300">
+          <!-- Filter Button -->
+          <button 
+            ref="filterButtonRef"
+            @click="showFilterPanel = !showFilterPanel"
+            class="p-2 text-gray-700 dark:text-gray-200 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md hover:bg-white dark:hover:bg-gray-900 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50 transition-all"
+            :class="{ 'bg-primary-50 text-primary-500 border-primary-200': showFilterPanel }"
+            title="筛选"
+          >
+            <Filter class="w-5 h-5" />
+          </button>
+
           <!-- View Options Menu -->
           <div class="relative">
             <button 
@@ -96,6 +102,24 @@
 
         </div>
       </div>
+
+      <!-- Filter Panel (Absolute Overlay) -->
+      <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="transform -translate-y-2 opacity-0"
+        enter-to-class="transform translate-y-0 opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="transform translate-y-0 opacity-100"
+        leave-to-class="transform -translate-y-2 opacity-0"
+      >
+          <div v-if="showFilterPanel" class="absolute left-0 right-0 top-full mt-2 pointer-events-none px-4">
+            <div class="max-w-7xl mx-auto flex justify-end">
+              <div ref="filterPanelRef" class="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden w-full max-w-md pointer-events-auto">
+                 <FilterPanel />
+              </div>
+            </div>
+          </div>
+      </Transition>
     </div>
 
     <!-- Timeline Navigation Sidebar (Right Sticky) -->
@@ -210,7 +234,7 @@ import { usePhotoStore } from '@/stores/photoStore'
 import type { AlbumImage } from '@/types/album'
 import {
   X, Maximize, Grid3x3, Grid2x2, LayoutDashboard, LayoutGrid, LayoutList,
-  UploadCloud, CheckSquare, FolderInput, Folder, Settings2, Loader2, Check
+  UploadCloud, CheckSquare, FolderInput, Folder, Settings2, Loader2, Check, Filter
 } from 'lucide-vue-next'
 import { onClickOutside } from '@vueuse/core'
 import AlbumTimeline from '@/components/AlbumTimeline.vue'
@@ -219,6 +243,7 @@ import MultiFileUpload from '@/components/MultiFileUpload.vue'
 import PhotoGallery from '@/components/PhotoGallery.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import ParticleExplosion from '@/components/ParticleExplosion.vue'
+import FilterPanel from '@/components/FilterPanel.vue'
 import { format } from 'date-fns'
 import { ElMessage } from 'element-plus'
 
@@ -234,7 +259,10 @@ const activeDate = ref('')
 const showUploadModal = ref(false)
 const lightboxImage = ref<AlbumImage | null>(null)
 const showViewOptions = ref(false)
+const showFilterPanel = ref(false)
 const viewOptionsRef = ref<HTMLElement | null>(null)
+const filterButtonRef = ref<HTMLElement | null>(null)
+const filterPanelRef = ref<HTMLElement | null>(null)
 
 // Animation State
 const loadingAlbumId = ref<string | null>(null)
@@ -243,6 +271,12 @@ const errorAlbumId = ref<string | null>(null)
 
 onClickOutside(viewOptionsRef, () => {
   showViewOptions.value = false
+})
+
+onClickOutside(filterPanelRef, () => {
+  showFilterPanel.value = false
+}, {
+  ignore: [filterButtonRef]
 })
 
 // Batch Actions State
@@ -391,6 +425,7 @@ const handlePhotoUpdate = (event: { id: string, location?: string, tags?: string
 onMounted(() => {
   photoStore.resetAll()
   // Initial Load
+  photoStore.fetchAvailableFilters()
   store.fetchAlbums()
   photoStore.fetchTimelineStats()
   photoStore.loadPhotos(true)

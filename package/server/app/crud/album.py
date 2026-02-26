@@ -17,7 +17,7 @@ from app.schemas import photo as photo_schemas
 from app.schemas.metadata import PhotoMetadataUpdate,PhotoMetadataCreate
 from app.service import storage
 from app.crud import face as crud_face
-from app.db.models.photo import FileType
+from app.db.models.photo import FileType, ImageType
 from app.utils.exif import extract_metadata
 
 # Album CRUD
@@ -228,15 +228,55 @@ def get_photos_by_time(db: Session, skip: int = 0, limit: int = 100, start_time:
         return query.offset(skip).all()
     return query.offset(skip).limit(limit).all()
 
-def get_all_photos(
+def get_filter_options(db: Session):
+    # Years
+    years = db.query(func.extract('year', Photo.photo_time)).distinct().order_by(func.extract('year', Photo.photo_time).desc()).all()
+    years = [int(y[0]) for y in years if y[0] is not None]
+
+    # Cities
+    cities = db.query(PhotoMetadata.city).distinct().filter(PhotoMetadata.city.isnot(None)).order_by(PhotoMetadata.city).all()
+    cities = [c[0] for c in cities if c[0]]
+
+    # Makes
+    makes = db.query(PhotoMetadata.make).distinct().filter(PhotoMetadata.make.isnot(None)).order_by(PhotoMetadata.make).all()
+    makes = [m[0] for m in makes if m[0]]
+
+    # Models
+    models = db.query(PhotoMetadata.model).distinct().filter(PhotoMetadata.model.isnot(None)).order_by(PhotoMetadata.model).all()
+    models = [m[0] for m in models if m[0]]
+
+    # Image Types
+    image_types = [t.value for t in ImageType]
+    
+    # File Types
+    file_types = [t.value for t in FileType]
+
+    return {
+        "years": years,
+        "cities": cities,
+        "makes": makes,
+        "models": models,
+        "image_types": image_types,
+        "file_types": file_types
+    }
+
+def _build_photo_filter_query(
     db: Session,
-    skip: int = 0,
-    limit: int = 100,
     start_time: Optional[datetime] = None,
     end_time: Optional[datetime] = None,
+    years: Optional[List[int]] = None,
     city: Optional[str] = None,
+    cities: Optional[List[str]] = None,
     province: Optional[str] = None,
     country: Optional[str] = None,
+    make: Optional[str] = None,
+    makes: Optional[List[str]] = None,
+    model: Optional[str] = None,
+    models: Optional[List[str]] = None,
+    image_type: Optional[str] = None,
+    image_types: Optional[List[str]] = None,
+    file_type: Optional[str] = None,
+    file_types: Optional[List[str]] = None,
     tag: Optional[str] = None,
     album_id: Optional[UUID] = None,
     face_id: Optional[UUID] = None,
@@ -265,6 +305,22 @@ def get_all_photos(
             end_time = datetime.max
         photo_query = photo_query.filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)
 
+    # Years Filter
+    if years:
+        photo_query = photo_query.filter(func.extract('year', Photo.photo_time).in_(years))
+
+    # Image Types Filter
+    if image_types:
+        photo_query = photo_query.filter(Photo.image_type.in_(image_types))
+    elif image_type:
+        photo_query = photo_query.filter(Photo.image_type == image_type)
+
+    # File Types Filter
+    if file_types:
+        photo_query = photo_query.filter(Photo.file_type.in_(file_types))
+    elif file_type:
+        photo_query = photo_query.filter(Photo.file_type == file_type)
+
     # 如果指定 album_id，先过滤出该相册下的 photo_id
     if album_id is not None:
         photo_query = photo_query.join(Photo.albums).filter(Album.id == album_id)
@@ -281,7 +337,15 @@ def get_all_photos(
     if tag is not None and tag.strip():
         photo_query = photo_query.join(Photo.tags).filter(PhotoTag.tag_name.ilike(f"%{tag.strip()}%"))
 
-    if city or province or country or lat_min or lat_max or lng_min or lng_max or radius or center_lat or center_lng:
+    has_metadata_filters = (
+        (city and city.strip()) or cities or
+        province or country or
+        (make and make.strip()) or makes or
+        (model and model.strip()) or models or
+        lat_min or lat_max or lng_min or lng_max or radius or center_lat or center_lng
+    )
+
+    if has_metadata_filters:
         # 得到候选 photo_id 子查询
         photo_subquery = photo_query.subquery()
 
@@ -289,17 +353,30 @@ def get_all_photos(
         query = (
             db.query(Photo)
             .join(photo_subquery, Photo.id == photo_subquery.c.id)
-            .options(joinedload(Photo.albums))
             .outerjoin(PhotoMetadata)
         )
 
         # 地理位置与标签过滤（PhotoMetadata 表）
-        if city is not None and city.strip():
+        if cities:
+            query = query.filter(PhotoMetadata.city.in_(cities))
+        elif city is not None and city.strip():
             query = query.filter(PhotoMetadata.city.ilike(f"%{city.strip()}%"))
+        
         if province:
             query = query.filter(PhotoMetadata.province.ilike(f"%{province.strip()}%"))
         if country:
             query = query.filter(PhotoMetadata.country.ilike(f"%{country.strip()}%"))
+
+        # Camera Make/Model Filters
+        if makes:
+            query = query.filter(PhotoMetadata.make.in_(makes))
+        elif make and make.strip():
+            query = query.filter(PhotoMetadata.make.ilike(f"%{make.strip()}%"))
+        
+        if models:
+            query = query.filter(PhotoMetadata.model.in_(models))
+        elif model and model.strip():
+            query = query.filter(PhotoMetadata.model.ilike(f"%{model.strip()}%"))
 
         if lat_min is not None:
             query = query.filter(PhotoMetadata.latitude >= lat_min)
@@ -319,6 +396,8 @@ def get_all_photos(
                 func.sin(func.radians(center_lat))
             )
             query = query.filter(distance_expr <= radius)
+        
+        return query
     else:
         # 得到候选 photo_id 子查询
         photo_subquery = photo_query.subquery()
@@ -328,9 +407,143 @@ def get_all_photos(
             db.query(Photo)
             .join(photo_subquery, Photo.id == photo_subquery.c.id)
         )
+        return query
+
+def get_all_photos(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    years: Optional[List[int]] = None,
+    city: Optional[str] = None,
+    cities: Optional[List[str]] = None,
+    province: Optional[str] = None,
+    country: Optional[str] = None,
+    make: Optional[str] = None,
+    makes: Optional[List[str]] = None,
+    model: Optional[str] = None,
+    models: Optional[List[str]] = None,
+    image_type: Optional[str] = None,
+    image_types: Optional[List[str]] = None,
+    file_type: Optional[str] = None,
+    file_types: Optional[List[str]] = None,
+    tag: Optional[str] = None,
+    album_id: Optional[UUID] = None,
+    face_id: Optional[UUID] = None,
+    tag_id: Optional[UUID] = None,
+    lat_min: Optional[float] = None,
+    lat_max: Optional[float] = None,
+    lng_min: Optional[float] = None,
+    lng_max: Optional[float] = None,
+    radius: Optional[float] = None,
+    center_lat: Optional[float] = None,
+    center_lng: Optional[float] = None,
+    ids: Optional[List[UUID]] = None
+):
+    query = _build_photo_filter_query(
+        db, start_time, end_time, years, city, cities, province, country,
+        make, makes, model, models, image_type, image_types, file_type, file_types,
+        tag, album_id, face_id, tag_id, lat_min, lat_max, lng_min, lng_max,
+        radius, center_lat, center_lng, ids
+    )
+
+    # Optimization for user albums / eager load albums
+    query = query.options(joinedload(Photo.albums))
+
     # 按拍摄时间倒序
     query = query.order_by(Photo.photo_time.desc())
     return query.offset(skip).limit(limit).all()
+
+def get_timeline_stats(
+    db: Session,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+    years: Optional[List[int]] = None,
+    city: Optional[str] = None,
+    cities: Optional[List[str]] = None,
+    province: Optional[str] = None,
+    country: Optional[str] = None,
+    make: Optional[str] = None,
+    makes: Optional[List[str]] = None,
+    model: Optional[str] = None,
+    models: Optional[List[str]] = None,
+    image_type: Optional[str] = None,
+    image_types: Optional[List[str]] = None,
+    file_type: Optional[str] = None,
+    file_types: Optional[List[str]] = None,
+    tag: Optional[str] = None,
+    album_id: Optional[UUID] = None,
+    face_id: Optional[UUID] = None,
+    tag_id: Optional[UUID] = None,
+    lat_min: Optional[float] = None,
+    lat_max: Optional[float] = None,
+    lng_min: Optional[float] = None,
+    lng_max: Optional[float] = None,
+    radius: Optional[float] = None,
+    center_lat: Optional[float] = None,
+    center_lng: Optional[float] = None,
+    ids: Optional[List[UUID]] = None
+):
+    query = _build_photo_filter_query(
+        db, start_time, end_time, years, city, cities, province, country,
+        make, makes, model, models, image_type, image_types, file_type, file_types,
+        tag, album_id, face_id, tag_id, lat_min, lat_max, lng_min, lng_max,
+        radius, center_lat, center_lng, ids
+    )
+    
+    # 总数
+    total = query.count()
+
+    if total == 0:
+        return {
+            'total_photos': 0,
+            'time_range': None,
+            'timeline': []
+        }
+
+    # 按年-月-日分组
+    # 使用 extract 保证跨数据库兼容性
+    timeline_query = query.with_entities(
+        func.extract('year', Photo.photo_time).label('year'),
+        func.extract('month', Photo.photo_time).label('month'),
+        func.extract('day', Photo.photo_time).label('day'),
+        func.count(Photo.id).label('count')
+    ).group_by(
+        func.extract('year', Photo.photo_time),
+        func.extract('month', Photo.photo_time),
+        func.extract('day', Photo.photo_time)
+    ).order_by(
+        func.extract('year', Photo.photo_time).desc(),
+        func.extract('month', Photo.photo_time).desc(),
+        func.extract('day', Photo.photo_time).desc()
+    ).all()
+
+    timeline = []
+    min_time = None
+    max_time = None
+    for y, m, d, c in timeline_query:
+        if y is not None and m is not None and d is not None:
+            timeline.append({
+                'year': int(y),
+                'month': int(m),
+                'day': int(d),
+                'count': c
+            })
+            dt = datetime(int(y), int(m), int(d))
+            if min_time is None or dt < min_time:
+                min_time = dt
+            if max_time is None or dt > max_time:
+                max_time = dt
+
+    return {
+        'total_photos': total,
+        'time_range': {
+            'start': min_time.isoformat() if min_time else None,
+            'end': max_time.isoformat() if max_time else None
+        },
+        'timeline': timeline
+    }
 
 def get_photo(db: Session, photo_id: UUID):
     return db.query(Photo).filter(Photo.id == photo_id).first()

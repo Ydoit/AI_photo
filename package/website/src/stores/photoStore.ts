@@ -5,7 +5,7 @@ import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import { albumService } from '@/api/album'
 import searchService, { type TextSearchRequest } from '@/api/search'
-import type { Photo, TimelineStats, AlbumImage, TimelineItem } from '@/types/album'
+import type { Photo, TimelineStats, AlbumImage, TimelineItem, FilterOptions, FilterState } from '@/types/album'
 
 // --- 缓存工具 ---
 const CACHE_PREFIX = 'trailsnap:';
@@ -119,6 +119,15 @@ export const photoStoreSetup = () => {
   const isSearchMode = ref(false)
   const currentContext = ref<{ type: 'all' | 'album' | 'search', id?: string }>({ type: 'all' })
   const timelineStats = ref<TimelineStats>()
+  const availableFilters = ref<FilterOptions | null>(null);
+  const selectedFilters = reactive<FilterState>({
+      years: [],
+      cities: [],
+      makes: [],
+      models: [],
+      image_types: [],
+      file_types: []
+  });
 
   // --- 辅助函数 ---
   const mapPhotoToImage = (photo: Photo): AlbumImage => {
@@ -165,9 +174,28 @@ export const photoStoreSetup = () => {
   }
 
   // --- 动作 ---
+  const fetchAvailableFilters = async () => {
+      try {
+          availableFilters.value = await albumService.getFilterOptions();
+      } catch (e) {
+          console.error("Failed to fetch filter options", e);
+      }
+  }
+
+  const cleanFilters = () => {
+      const filters = { ...selectedFilters } as any;
+      for (const key in filters) {
+          if (Array.isArray(filters[key]) && filters[key].length === 0) {
+              delete filters[key];
+          }
+      }
+      return filters;
+  }
+
   const fetchTimelineStats = async (albumId?: string) => {
     try {
-      const stats = await albumService.getTimelineStats(albumId)
+      const filters = cleanFilters();
+      const stats = await albumService.getTimelineStats(albumId, filters)
       timelineStats.value = stats
     } catch (e) {
       console.error("获取时间轴统计失败", e)
@@ -274,7 +302,8 @@ export const photoStoreSetup = () => {
 
         const filters = {
             start_time: formatDate(startDate),
-            end_time: formatDate(endDate)
+            end_time: formatDate(endDate),
+            ...cleanFilters()
         };
         
         const count = offsetInfo.count;
@@ -390,6 +419,9 @@ export const photoStoreSetup = () => {
     currentContext,
     timelineStats,
     photoOffsetMap,
+    availableFilters,
+    selectedFilters,
+    fetchAvailableFilters,
     fetchTimelineStats,
     loadPhotos,
     loadAlbumPhotos,
