@@ -35,60 +35,60 @@
              </button>
 
              <!-- Secondary Menu Dropdown -->
-             <Transition
-               enter-active-class="transition duration-200 ease-out"
-               enter-from-class="transform scale-95 opacity-0"
-               enter-to-class="transform scale-100 opacity-100"
-               leave-active-class="transition duration-75 ease-in"
-               leave-from-class="transform scale-100 opacity-100"
-               leave-to-class="transform scale-95 opacity-0"
-             >
-               <div v-if="showViewOptions"
-                    ref="viewOptionsRef"
-                    class="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 p-2 z-50 origin-top-right"
-               >
-                 <div class="space-y-3 p-1">
-                   <!-- View Size -->
-                   <div class="space-y-2">
-                     <p class="text-xs font-medium text-gray-500 px-1">图片大小</p>
-                     <div class="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-                       <button v-for="size in ['sm', 'md', 'lg']" :key="size"
-                         @click="viewSize = size as any"
-                         class="flex-1 p-1.5 rounded text-center transition-colors"
-                         :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-primary-500': viewSize === size, 'text-gray-500': viewSize !== size }"
-                       >
-                         <Grid3x3 v-if="size === 'sm'" class="w-4 h-4 mx-auto" />
-                         <Grid2x2 v-if="size === 'md'" class="w-4 h-4 mx-auto" />
-                         <Maximize v-if="size === 'lg'" class="w-4 h-4 mx-auto" />
-                       </button>
-                     </div>
-                   </div>
+            <Transition
+              enter-active-class="transition duration-200 ease-out"
+              enter-from-class="transform scale-95 opacity-0"
+              enter-to-class="transform scale-100 opacity-100"
+              leave-active-class="transition duration-75 ease-in"
+              leave-from-class="transform scale-100 opacity-100"
+              leave-to-class="transform scale-95 opacity-0"
+            >
+              <div v-if="showViewOptions" 
+                   ref="viewOptionsRef"
+                   class="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 p-2 z-50 origin-top-right"
+              >
+                <div class="space-y-3 p-1">
+                  <!-- View Size -->
+                  <div class="space-y-2">
+                    <p class="text-xs font-medium text-gray-500 px-1">图片大小</p>
+                    <div class="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                      <button v-for="size in ['sm', 'md', 'lg']" :key="size"
+                        @click="viewSize = size as any"
+                        class="flex-1 p-1.5 rounded text-center transition-colors dark:bg-gray-800"
+                        :class="{ 'bg-white dark:bg-gray-700 shadow-sm text-primary-500': viewSize === size, 'text-gray-700 dark:text-gray-300': viewSize !== size }"
+                      >
+                        <Grid3x3 v-if="size === 'sm'" class="w-4 h-4 mx-auto" />
+                        <Grid2x2 v-if="size === 'md'" class="w-4 h-4 mx-auto" />
+                        <Maximize v-if="size === 'lg'" class="w-4 h-4 mx-auto" />
+                      </button>
+                    </div>
+                  </div>
 
-                   <!-- Layout Mode -->
-                   <div class="space-y-2">
-                     <p class="text-xs font-medium text-gray-500 px-1">布局模式</p>
-                     <div class="grid grid-cols-1 gap-1">
-                        <button
+                  <!-- Layout Mode -->
+                  <div class="space-y-2">
+                    <p class="text-xs font-medium text-gray-500 px-1">布局模式</p>
+                    <div class="grid grid-cols-1 gap-1">
+                       <button
                         @click="layoutMode = 'waterfall'"
-                        class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-sm"
+                        class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-sm dark:bg-gray-800"
                         :class="{ 'bg-primary-50 dark:bg-primary-900/20 text-primary-600': layoutMode === 'waterfall', 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300': layoutMode !== 'waterfall' }"
                       >
                         <LayoutDashboard class="w-4 h-4" />
                         <span>瀑布流</span>
                       </button>
-                       <button
-                         @click="layoutMode = 'grid'"
-                         class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-sm"
-                         :class="{ 'bg-primary-50 dark:bg-primary-900/20 text-primary-600': layoutMode === 'grid', 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300': layoutMode !== 'grid' }"
-                       >
-                         <LayoutGrid class="w-4 h-4" />
-                         <span>正方形</span>
-                       </button>
-                     </div>
-                   </div>
-                 </div>
-               </div>
-             </Transition>
+                      <button
+                        @click="layoutMode = 'grid'"
+                        class="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors text-sm dark:bg-gray-800"
+                        :class="{ 'bg-primary-50 dark:bg-primary-900/20 text-primary-600': layoutMode === 'grid', 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300': layoutMode !== 'grid' }"
+                      >
+                        <LayoutGrid class="w-4 h-4" />
+                        <span>正方形</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Transition>
            </div>
 
           <!-- Batch Select -->
