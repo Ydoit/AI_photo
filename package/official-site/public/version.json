@@ -13,5 +13,10 @@
         "version": "0.2.2",
         "update_info": "- 支持显示并导出纸质车票样式（蓝票、红票）<br>- 新增天地图瓦片缓存减少网络请求次数<br>- 优化位置相册地图渲染<br>- 修复元数据重建任务资源释放异常的问题<br>- 优化部分Ui显示",
         "download_url": "https://trailsnap.cn"
+    },
+    {
+        "version": "0.2.3",
+        "update_info": "- 新增图片文件过滤功能<br>- 位置相册新增按年份筛选功能<br>- 修复人物相册下一张照片显示顺序混乱的问题<br>- 优化页面布局和Ui",
+        "download_url": "https://trailsnap.cn"
     }
 ]

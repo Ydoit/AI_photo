@@ -2,36 +2,36 @@ version = 1
 revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
-    "python_full_version >= '3.13' and sys_platform == 'darwin' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-cu128'",
-    "python_full_version < '3.13' and sys_platform == 'darwin' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-cu128'",
-    "(python_full_version >= '3.13' and platform_machine == 'aarch64' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (python_full_version >= '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')",
-    "python_full_version < '3.13' and platform_machine == 'aarch64' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-cu128'",
-    "python_full_version >= '3.13' and sys_platform == 'win32' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-cu128'",
-    "python_full_version < '3.13' and sys_platform == 'win32' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-cu128'",
-    "(python_full_version >= '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (python_full_version >= '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')",
-    "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')",
-    "python_full_version >= '3.13' and python_full_version < '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-cu128'",
-    "python_full_version < '3.13' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-cu128'",
-    "python_full_version >= '3.13' and sys_platform == 'darwin' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-cu128'",
-    "python_full_version < '3.13' and sys_platform == 'darwin' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-cu128'",
-    "python_full_version >= '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-cu128'",
-    "python_full_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-cu128'",
-    "python_full_version >= '3.13' and sys_platform == 'win32' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-cu128'",
-    "python_full_version < '3.13' and sys_platform == 'win32' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-cu128'",
-    "(python_full_version >= '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (python_full_version >= '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')",
-    "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')",
-    "python_full_version >= '3.13' and sys_platform == 'darwin' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128'",
-    "python_full_version < '3.13' and sys_platform == 'darwin' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128'",
-    "python_full_version >= '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128'",
-    "python_full_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128'",
-    "python_full_version >= '3.13' and sys_platform == 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128'",
-    "python_full_version < '3.13' and sys_platform == 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128'",
-    "(python_full_version >= '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (python_full_version >= '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')",
-    "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')",
+    "python_full_version >= '3.13' and sys_platform == 'darwin' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-gpu'",
+    "python_full_version < '3.13' and sys_platform == 'darwin' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-gpu'",
+    "(python_full_version >= '3.13' and platform_machine == 'aarch64' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (python_full_version >= '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')",
+    "python_full_version < '3.13' and platform_machine == 'aarch64' and platform_python_implementation != 'CPython' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-gpu'",
+    "python_full_version >= '3.13' and sys_platform == 'win32' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-gpu'",
+    "python_full_version < '3.13' and sys_platform == 'win32' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-gpu'",
+    "(python_full_version >= '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (python_full_version >= '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')",
+    "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')",
+    "python_full_version >= '3.13' and python_full_version < '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-gpu'",
+    "python_full_version < '3.13' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra == 'extra-7-project-gpu'",
+    "python_full_version >= '3.13' and sys_platform == 'darwin' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-gpu'",
+    "python_full_version < '3.13' and sys_platform == 'darwin' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-gpu'",
+    "python_full_version >= '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-gpu'",
+    "python_full_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-gpu'",
+    "python_full_version >= '3.13' and sys_platform == 'win32' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-gpu'",
+    "python_full_version < '3.13' and sys_platform == 'win32' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-gpu'",
+    "(python_full_version >= '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (python_full_version >= '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')",
+    "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')",
+    "python_full_version >= '3.13' and sys_platform == 'darwin' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu'",
+    "python_full_version < '3.13' and sys_platform == 'darwin' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu'",
+    "python_full_version >= '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu'",
+    "python_full_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu'",
+    "python_full_version >= '3.13' and sys_platform == 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu'",
+    "python_full_version < '3.13' and sys_platform == 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu'",
+    "(python_full_version >= '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (python_full_version >= '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')",
+    "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')",
 ]
 conflicts = [[
     { package = "project", extra = "cpu" },
-    { package = "project", extra = "cu128" },
+    { package = "project", extra = "gpu" },
 ]]
 
 [[package]]
@@ -96,7 +96,7 @@ version = "4.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "idna" },
-    { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/16/ce/8a777047513153587e5434fd752e89334ac33e379aa3497db860eeb60377/anyio-4.12.0.tar.gz", hash = "sha256:73c693b567b0c55130c104d0b43a9baf3aa6a31fc6110116509f27bf75e21ec0", size = 228266, upload-time = "2025-11-28T23:37:38.911Z" }
 wheels = [
@@ -174,7 +174,7 @@ name = "click"
 version = "8.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
+    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/3d/fa/656b739db8587d7b5dfa22e22ed02566950fbfbcdc20311993483657a5c0/click-8.3.1.tar.gz", hash = "sha256:12ff4785d337a1bb490bb7e9c2b1ee5da3112e94a8622f26a6c77f5d2fc6842a", size = 295065, upload-time = "2025-11-15T20:45:42.706Z" }
 wheels = [
@@ -207,7 +207,7 @@ name = "colorlog"
 version = "6.10.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
+    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a2/61/f083b5ac52e505dfc1c624eafbf8c7589a0d7f32daa398d2e7590efa5fda/colorlog-6.10.1.tar.gz", hash = "sha256:eb4ae5cb65fe7fec7773c2306061a8e63e02efc2c72eba9d27b0fa23c94f1321", size = 17162, upload-time = "2025-10-16T16:14:11.978Z" }
 wheels = [
@@ -1012,7 +1012,7 @@ resolution-markers = [
     "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
-    { name = "nvidia-cublas-cu12", version = "12.4.5.8", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
+    { name = "nvidia-cublas-cu12", version = "12.4.5.8", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9f/fd/713452cd72343f682b1c7b9321e23829f00b842ceaedcda96e742ea0b0b3/nvidia_cudnn_cu12-9.1.0.70-py3-none-manylinux2014_x86_64.whl", hash = "sha256:165764f44ef8c61fcdfdfdbe769d687e06374059fbb388b6c89ecb0e28793a6f", size = 664752741, upload-time = "2024-04-22T15:24:15.253Z" },
@@ -1021,7 +1021,7 @@ wheels = [
 
 [[package]]
 name = "nvidia-cudnn-cu12"
-version = "9.10.2.31"
+version = "9.10.2.21"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "(python_full_version >= '3.13' and platform_machine == 'aarch64' and platform_python_implementation != 'CPython' and sys_platform == 'linux') or (python_full_version >= '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux')",
@@ -1032,7 +1032,7 @@ resolution-markers = [
     "python_full_version < '3.13' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
 ]
 dependencies = [
-    { name = "nvidia-cublas-cu12", version = "12.8.4.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-7-project-cu128'" },
+    { name = "nvidia-cublas-cu12", version = "12.8.4.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-7-project-gpu'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fa/41/e79269ce215c857c935fd86bcfe91a451a584dfc27f1e068f568b9ad1ab7/nvidia_cudnn_cu12-9.10.2.21-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:c9132cc3f8958447b4910a1720036d9eff5928cc3179b0a51fb6d167c6cc87d8", size = 705026878, upload-time = "2025-06-06T21:52:51.348Z" },
@@ -1049,7 +1049,7 @@ resolution-markers = [
     "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7a/8a/0e728f749baca3fbeffad762738276e5df60851958be7783af121a7221e7/nvidia_cufft_cu12-11.2.1.3-py3-none-manylinux2014_aarch64.whl", hash = "sha256:5dad8008fc7f92f5ddfa2101430917ce2ffacd86824914c82e28990ad7f00399", size = 211422548, upload-time = "2024-06-18T19:33:39.396Z" },
@@ -1070,7 +1070,7 @@ resolution-markers = [
     "python_full_version < '3.13' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
 ]
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", version = "12.8.93", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-7-project-cu128'" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.8.93", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-7-project-gpu'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/60/bc/7771846d3a0272026c416fbb7e5f4c1f146d6d80704534d0b187dd6f4800/nvidia_cufft_cu12-11.3.3.83-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:848ef7224d6305cdb2a4df928759dca7b1201874787083b6e7550dd6765ce69a", size = 193109211, upload-time = "2025-03-07T01:44:56.873Z" },
@@ -1128,9 +1128,9 @@ resolution-markers = [
     "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
-    { name = "nvidia-cublas-cu12", version = "12.4.5.8", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cusparse-cu12", version = "12.3.1.170", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-nvjitlink-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
+    { name = "nvidia-cublas-cu12", version = "12.4.5.8", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cusparse-cu12", version = "12.3.1.170", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/46/6b/a5c33cf16af09166845345275c34ad2190944bcc6026797a39f8e0a282e0/nvidia_cusolver_cu12-11.6.1.9-py3-none-manylinux2014_aarch64.whl", hash = "sha256:d338f155f174f90724bbde3758b7ac375a70ce8e706d70b018dd3375545fc84e", size = 127634111, upload-time = "2024-06-18T19:35:01.793Z" },
@@ -1151,9 +1151,9 @@ resolution-markers = [
     "python_full_version < '3.13' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
 ]
 dependencies = [
-    { name = "nvidia-cublas-cu12", version = "12.8.4.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-7-project-cu128'" },
-    { name = "nvidia-cusparse-cu12", version = "12.5.8.93", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-7-project-cu128'" },
-    { name = "nvidia-nvjitlink-cu12", version = "12.8.93", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-7-project-cu128'" },
+    { name = "nvidia-cublas-cu12", version = "12.8.4.1", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-7-project-gpu'" },
+    { name = "nvidia-cusparse-cu12", version = "12.5.8.93", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-7-project-gpu'" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.8.93", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-7-project-gpu'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/32/f7cd6ce8a7690544d084ea21c26e910a97e077c9b7f07bf5de623ee19981/nvidia_cusolver_cu12-11.7.3.90-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:db9ed69dbef9715071232caa9b69c52ac7de3a95773c2db65bdba85916e4e5c0", size = 267229841, upload-time = "2025-03-07T01:46:54.356Z" },
@@ -1170,7 +1170,7 @@ resolution-markers = [
     "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/96/a9/c0d2f83a53d40a4a41be14cea6a0bf9e668ffcf8b004bd65633f433050c0/nvidia_cusparse_cu12-12.3.1.170-py3-none-manylinux2014_aarch64.whl", hash = "sha256:9d32f62896231ebe0480efd8a7f702e143c98cfaa0e8a76df3386c1ba2b54df3", size = 207381987, upload-time = "2024-06-18T19:35:32.989Z" },
@@ -1191,7 +1191,7 @@ resolution-markers = [
     "python_full_version < '3.13' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
 ]
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", version = "12.8.93", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-7-project-cu128'" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.8.93", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-7-project-gpu'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bc/f7/cd777c4109681367721b00a106f491e0d0d15cfa1fd59672ce580ce42a97/nvidia_cusparse_cu12-12.5.8.93-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:9b6c161cb130be1a07a27ea6923df8141f3c295852f4b260c65f18f3e0a091dc", size = 288117129, upload-time = "2025-03-07T01:47:40.407Z" },
@@ -1591,18 +1591,18 @@ dependencies = [
 cpu = [
     { name = "onnxruntime" },
     { name = "sentence-transformers" },
-    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torchvision", version = "0.21.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torchvision", version = "0.21.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-7-project-cpu') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torchvision", version = "0.21.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torchvision", version = "0.21.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-7-project-cpu') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
     { name = "transformers" },
 ]
-cu128 = [
+gpu = [
     { name = "onnxruntime-gpu" },
     { name = "sentence-transformers" },
     { name = "torch", version = "2.9.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" } },
-    { name = "torchvision", version = "0.24.1", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "(python_full_version < '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (python_full_version >= '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torchvision", version = "0.24.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "(python_full_version >= '3.15' and extra == 'extra-7-project-cu128') or (python_full_version < '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cu128') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-cu128') or (sys_platform != 'linux' and extra == 'extra-7-project-cu128')" },
+    { name = "torchvision", version = "0.24.1", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "(python_full_version < '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (python_full_version >= '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torchvision", version = "0.24.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "(python_full_version >= '3.15' and extra == 'extra-7-project-gpu') or (python_full_version < '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-gpu') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-gpu') or (sys_platform != 'linux' and extra == 'extra-7-project-gpu')" },
     { name = "transformers" },
 ]
 
@@ -1613,7 +1613,7 @@ requires-dist = [
     { name = "modelscope", specifier = ">=1.33.0" },
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "onnxruntime", marker = "extra == 'cpu'", specifier = ">=1.17.0" },
-    { name = "onnxruntime-gpu", marker = "extra == 'cu128'", specifier = ">=1.17.0" },
+    { name = "onnxruntime-gpu", marker = "extra == 'gpu'", specifier = ">=1.17.0" },
     { name = "opencv-python-headless", specifier = ">=4.9.0" },
     { name = "pillow", specifier = ">=12.0.0" },
     { name = "pydantic", specifier = ">=2.6.0" },
@@ -1621,17 +1621,17 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "rapidocr", specifier = ">=3.0.0" },
     { name = "sentence-transformers", marker = "extra == 'cpu'", specifier = "==5.2.0" },
-    { name = "sentence-transformers", marker = "extra == 'cu128'", specifier = "==5.2.0" },
+    { name = "sentence-transformers", marker = "extra == 'gpu'", specifier = "==5.2.0" },
     { name = "torch", marker = "extra == 'cpu'", specifier = "~=2.6.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "project", extra = "cpu" } },
-    { name = "torch", marker = "extra == 'cu128'", specifier = "==2.9.1", index = "https://download.pytorch.org/whl/cu128", conflict = { package = "project", extra = "cu128" } },
+    { name = "torch", marker = "extra == 'gpu'", specifier = "==2.9.1", index = "https://download.pytorch.org/whl/cu128", conflict = { package = "project", extra = "gpu" } },
     { name = "torchvision", marker = "extra == 'cpu'", specifier = "~=0.21.0", index = "https://download.pytorch.org/whl/cpu", conflict = { package = "project", extra = "cpu" } },
-    { name = "torchvision", marker = "extra == 'cu128'", specifier = "==0.24.1", index = "https://download.pytorch.org/whl/cu128", conflict = { package = "project", extra = "cu128" } },
+    { name = "torchvision", marker = "extra == 'gpu'", specifier = "==0.24.1", index = "https://download.pytorch.org/whl/cu128", conflict = { package = "project", extra = "gpu" } },
     { name = "transformers", marker = "extra == 'cpu'", specifier = ">=4.37.0" },
-    { name = "transformers", marker = "extra == 'cu128'", specifier = ">=4.37.0" },
+    { name = "transformers", marker = "extra == 'gpu'", specifier = ">=4.37.0" },
     { name = "ultralytics", specifier = ">=8.3.243" },
     { name = "uvicorn", specifier = ">=0.27.0" },
 ]
-provides-extras = ["cpu", "cu128"]
+provides-extras = ["cpu", "gpu"]
 
 [[package]]
 name = "protobuf"
@@ -2207,9 +2207,9 @@ dependencies = [
     { name = "huggingface-hub" },
     { name = "scikit-learn" },
     { name = "scipy" },
-    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torch", version = "2.9.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "extra == 'extra-7-project-cu128'" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torch", version = "2.9.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "extra == 'extra-7-project-gpu'" },
     { name = "tqdm" },
     { name = "transformers" },
     { name = "typing-extensions" },
@@ -2372,7 +2372,7 @@ version = "0.50.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
-    { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ba/b8/73a0e6a6e079a9d9cfa64113d771e421640b6f679a52eeb9b32f72d871a1/starlette-0.50.0.tar.gz", hash = "sha256:a2a17b22203254bcbc2e1f926d2d55f3f9497f769416b3190768befe598fa3ca", size = 2646985, upload-time = "2025-11-01T15:25:27.516Z" }
 wheels = [
@@ -2434,7 +2434,7 @@ resolution-markers = [
     "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
-    { name = "mpmath", marker = "extra == 'extra-7-project-cpu' or extra != 'extra-7-project-cu128'" },
+    { name = "mpmath", marker = "extra == 'extra-7-project-cpu' or extra != 'extra-7-project-gpu'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ca/99/5a5b6f19ff9f083671ddf7b9632028436167cd3d33e11015754e41b249a4/sympy-1.13.1.tar.gz", hash = "sha256:9cebf7e04ff162015ce31c9c6c9144daa34a93bd082f54fd8f12deca4f47515f", size = 7533040, upload-time = "2024-07-19T09:26:51.238Z" }
 wheels = [
@@ -2458,7 +2458,7 @@ resolution-markers = [
     "python_full_version < '3.13' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
 ]
 dependencies = [
-    { name = "mpmath", marker = "extra == 'extra-7-project-cu128'" },
+    { name = "mpmath", marker = "extra == 'extra-7-project-gpu'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/83/d3/803453b36afefb7c2bb238361cd4ae6125a569b4db67cd9e79846ba2d68c/sympy-1.14.0.tar.gz", hash = "sha256:d3d3fe8df1e5a0b42f0e7bdf50541697dbe7d23746e894990c030e2b05e72517", size = 7793921, upload-time = "2025-04-27T18:05:01.611Z" }
 wheels = [
@@ -2520,13 +2520,13 @@ resolution-markers = [
     "python_full_version < '3.13' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "filelock", marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "fsspec", marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "jinja2", marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "networkx", marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "setuptools", marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "sympy", version = "1.13.1", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "typing-extensions", marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
+    { name = "filelock", marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "fsspec", marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "jinja2", marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "networkx", marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "setuptools", marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "sympy", version = "1.13.1", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "typing-extensions", marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
 ]
 wheels = [
     { url = "https://download.pytorch.org/whl/cpu/torch-2.6.0-cp312-none-macosx_11_0_arm64.whl", hash = "sha256:9a610afe216a85a8b9bc9f8365ed561535c93e804c2a317ef7fabcc5deda0989" },
@@ -2548,27 +2548,27 @@ resolution-markers = [
     "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
-    { name = "filelock", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')" },
-    { name = "fsspec", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')" },
-    { name = "jinja2", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')" },
-    { name = "networkx", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')" },
-    { name = "nvidia-cublas-cu12", version = "12.4.5.8", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cuda-cupti-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cuda-nvrtc-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cuda-runtime-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cudnn-cu12", version = "9.1.0.70", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cufft-cu12", version = "11.2.1.3", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-curand-cu12", version = "10.3.5.147", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cusolver-cu12", version = "11.6.1.9", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cusparse-cu12", version = "12.3.1.170", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cusparselt-cu12", version = "0.6.2", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-nccl-cu12", version = "2.21.5", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-nvjitlink-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-nvtx-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "setuptools", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')" },
-    { name = "sympy", version = "1.13.1", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')" },
-    { name = "triton", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "typing-extensions", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')" },
+    { name = "filelock", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')" },
+    { name = "fsspec", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')" },
+    { name = "jinja2", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')" },
+    { name = "networkx", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')" },
+    { name = "nvidia-cublas-cu12", version = "12.4.5.8", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cuda-cupti-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cuda-nvrtc-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cuda-runtime-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cudnn-cu12", version = "9.1.0.70", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cufft-cu12", version = "11.2.1.3", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-curand-cu12", version = "10.3.5.147", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cusolver-cu12", version = "11.6.1.9", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cusparse-cu12", version = "12.3.1.170", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cusparselt-cu12", version = "0.6.2", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-nccl-cu12", version = "2.21.5", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-nvtx-cu12", version = "12.4.127", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "setuptools", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')" },
+    { name = "sympy", version = "1.13.1", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')" },
+    { name = "triton", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux' and extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "typing-extensions", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e5/35/0c52d708144c2deb595cd22819a609f78fdd699b95ff6f0ebcd456e3c7c1/torch-2.6.0-cp312-cp312-manylinux1_x86_64.whl", hash = "sha256:2bb8987f3bb1ef2675897034402373ddfc8f5ef0e156e2d8cfc47cacafdda4a9", size = 766624563, upload-time = "2025-01-29T16:23:19.084Z" },
@@ -2594,13 +2594,13 @@ resolution-markers = [
     "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
-    { name = "filelock", marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "fsspec", marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "jinja2", marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "networkx", marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "setuptools", marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "sympy", version = "1.13.1", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "typing-extensions", marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
+    { name = "filelock", marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "fsspec", marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "jinja2", marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "networkx", marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "setuptools", marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "sympy", version = "1.13.1", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "typing-extensions", marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
 ]
 wheels = [
     { url = "https://download.pytorch.org/whl/cpu/torch-2.6.0%2Bcpu-cp312-cp312-linux_x86_64.whl", hash = "sha256:59e78aa0c690f70734e42670036d6b541930b8eabbaa18d94e090abf14cc4d91" },
@@ -2630,46 +2630,46 @@ resolution-markers = [
     "python_full_version < '3.13' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
 ]
 dependencies = [
-    { name = "filelock", marker = "extra == 'extra-7-project-cu128'" },
-    { name = "fsspec", marker = "extra == 'extra-7-project-cu128'" },
-    { name = "jinja2", marker = "extra == 'extra-7-project-cu128'" },
-    { name = "networkx", marker = "extra == 'extra-7-project-cu128'" },
-    { name = "nvidia-cublas-cu12", version = "12.8.4.1", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cuda-cupti-cu12", version = "12.8.90", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cuda-nvrtc-cu12", version = "12.8.93", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cuda-runtime-cu12", version = "12.8.90", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cudnn-cu12", version = "9.10.2.21", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cufft-cu12", version = "11.3.3.83", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cufile-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-curand-cu12", version = "10.3.9.90", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cusolver-cu12", version = "11.7.3.90", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cusparse-cu12", version = "12.5.8.93", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-cusparselt-cu12", version = "0.7.1", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-nccl-cu12", version = "2.27.5", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-nvjitlink-cu12", version = "12.8.93", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-nvshmem-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "nvidia-nvtx-cu12", version = "12.8.90", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "setuptools", marker = "extra == 'extra-7-project-cu128'" },
-    { name = "sympy", version = "1.14.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-7-project-cu128'" },
-    { name = "triton", version = "3.5.1", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "typing-extensions", marker = "extra == 'extra-7-project-cu128'" },
+    { name = "filelock", marker = "extra == 'extra-7-project-gpu'" },
+    { name = "fsspec", marker = "extra == 'extra-7-project-gpu'" },
+    { name = "jinja2", marker = "extra == 'extra-7-project-gpu'" },
+    { name = "networkx", marker = "extra == 'extra-7-project-gpu'" },
+    { name = "nvidia-cublas-cu12", version = "12.8.4.1", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cuda-cupti-cu12", version = "12.8.90", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cuda-nvrtc-cu12", version = "12.8.93", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cuda-runtime-cu12", version = "12.8.90", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cudnn-cu12", version = "9.10.2.21", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cufft-cu12", version = "11.3.3.83", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cufile-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-curand-cu12", version = "10.3.9.90", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cusolver-cu12", version = "11.7.3.90", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cusparse-cu12", version = "12.5.8.93", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-cusparselt-cu12", version = "0.7.1", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-nccl-cu12", version = "2.27.5", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-nvjitlink-cu12", version = "12.8.93", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-nvshmem-cu12", marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "nvidia-nvtx-cu12", version = "12.8.90", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "setuptools", marker = "extra == 'extra-7-project-gpu'" },
+    { name = "sympy", version = "1.14.0", source = { registry = "https://pypi.org/simple" }, marker = "extra == 'extra-7-project-gpu'" },
+    { name = "triton", version = "3.5.1", source = { registry = "https://pypi.org/simple" }, marker = "(sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "typing-extensions", marker = "extra == 'extra-7-project-gpu'" },
 ]
 wheels = [
-    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp312-cp312-manylinux_2_28_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp312-cp312-manylinux_2_28_x86_64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp312-cp312-win_amd64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp313-cp313-manylinux_2_28_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp313-cp313-manylinux_2_28_x86_64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp313-cp313-win_amd64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp313-cp313t-manylinux_2_28_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp313-cp313t-manylinux_2_28_x86_64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp313-cp313t-win_amd64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp314-cp314-manylinux_2_28_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp314-cp314-manylinux_2_28_x86_64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp314-cp314-win_amd64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp314-cp314t-manylinux_2_28_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp314-cp314t-manylinux_2_28_x86_64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp314-cp314t-win_amd64.whl" },
+    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:1176f250311fa95cc3bca8077af323e0d73ea385ba266e096af82e7e2b91f256" },
+    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:7cb4018f4ce68b61fd3ef87dc1c4ca520731c7b5b200e360ad47b612d7844063" },
+    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp312-cp312-win_amd64.whl", hash = "sha256:3a01f0b64c10a82d444d9fd06b3e8c567b1158b76b2764b8f51bfd8f535064b0" },
+    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:0b80b7555dcd0a75b7b06016991f01281a0bb078cf28fa2d1dfb949fad2fbd07" },
+    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:63381a109a569b280ed3319da89d3afe5cf9ab5c879936382a212affb5c90552" },
+    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp313-cp313-win_amd64.whl", hash = "sha256:ad9183864acdd99fc5143d7ca9d3d2e7ddfc9a9600ff43217825d4e5e9855ccc" },
+    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp313-cp313t-manylinux_2_28_aarch64.whl", hash = "sha256:2314521c74d76e513c53bb72c0ce3511ef0295ff657a432790df6c207e5d7962" },
+    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp313-cp313t-manylinux_2_28_x86_64.whl", hash = "sha256:4454a4faca31af81566e3a4208f10f20b8a6d9cfe42791b0ca7ff134326468fc" },
+    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp313-cp313t-win_amd64.whl", hash = "sha256:24420e430e77136f7079354134b34e7ba9d87e539f5ac84c33b08e5c13412ebe" },
+    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp314-cp314-manylinux_2_28_aarch64.whl", hash = "sha256:32c036296c557f19a1537ce981c40533650097114e1720a321a39a3b08d9df56" },
+    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:7788d3d03d939cf00f93ac0da5ab520846f66411e339cfbf519a806e8facf519" },
+    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp314-cp314-win_amd64.whl", hash = "sha256:7bcd40cbffac475b478d6ce812f03da84e9a4894956efb89c3b7bcca5dbd4f91" },
+    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp314-cp314t-manylinux_2_28_aarch64.whl", hash = "sha256:e88c78e5b08ae9303aa15da43b68b44287ecbec16d898d9fad6998832fe626a5" },
+    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:7d8769bdf3200ca16a92f14df404c3370171ac3732996528a8973d753eac562f" },
+    { url = "https://download.pytorch.org/whl/cu128/torch-2.9.1%2Bcu128-cp314-cp314t-win_amd64.whl", hash = "sha256:0c784b600959ec70ee01cb23e8bc870a0e0475af30378ff5e39f4abed8b7c1cc" },
 ]
 
 [[package]]
@@ -2683,10 +2683,10 @@ resolution-markers = [
     "python_full_version < '3.13' and platform_machine == 'aarch64' and sys_platform == 'linux'",
 ]
 dependencies = [
-    { name = "numpy", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "pillow", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
+    { name = "numpy", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "pillow", marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
 ]
 wheels = [
     { url = "https://download.pytorch.org/whl/cpu/torchvision-0.21.0-cp312-cp312-linux_aarch64.whl", hash = "sha256:5083a5b1fec2351bf5ea9900a741d54086db75baec4b1d21e39451e00977f1b1" },
@@ -2710,9 +2710,9 @@ resolution-markers = [
     "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
-    { name = "numpy", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')" },
-    { name = "pillow", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')" },
-    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')" },
+    { name = "numpy", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')" },
+    { name = "pillow", marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/52/5b/76ca113a853b19c7b1da761f8a72cb6429b3bd0bf932537d8df4657f47c3/torchvision-0.21.0-1-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:ffa2a16499508fe6798323e455f312c7c55f2a88901c9a7c0fb1efa86cf7e327", size = 2329878, upload-time = "2025-03-18T17:25:50.039Z" },
@@ -2738,9 +2738,9 @@ resolution-markers = [
     "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
-    { name = "numpy", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-7-project-cpu') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "pillow", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-7-project-cpu') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-7-project-cpu') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
+    { name = "numpy", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-7-project-cpu') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "pillow", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-7-project-cpu') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-7-project-cpu') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
 ]
 wheels = [
     { url = "https://download.pytorch.org/whl/cpu/torchvision-0.21.0%2Bcpu-cp312-cp312-linux_x86_64.whl", hash = "sha256:d6874431e678ba107b60a83f255c33f3755f06bad587b1b919aa514ec325dcd8" },
@@ -2758,16 +2758,16 @@ resolution-markers = [
     "python_full_version < '3.13' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux'",
 ]
 dependencies = [
-    { name = "numpy", marker = "(python_full_version < '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (python_full_version >= '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "pillow", marker = "(python_full_version < '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (python_full_version >= '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torch", version = "2.9.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "(python_full_version < '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (python_full_version >= '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
+    { name = "numpy", marker = "(python_full_version < '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (python_full_version >= '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "pillow", marker = "(python_full_version < '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (python_full_version >= '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torch", version = "2.9.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "(python_full_version < '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (python_full_version >= '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
 ]
 wheels = [
-    { url = "https://download.pytorch.org/whl/cu128/torchvision-0.24.1-cp312-cp312-manylinux_2_28_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torchvision-0.24.1-cp313-cp313-manylinux_2_28_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torchvision-0.24.1-cp313-cp313t-manylinux_2_28_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torchvision-0.24.1-cp314-cp314-manylinux_2_28_aarch64.whl" },
-    { url = "https://download.pytorch.org/whl/cu128/torchvision-0.24.1-cp314-cp314t-manylinux_2_28_aarch64.whl" },
+    { url = "https://download.pytorch.org/whl/cu128/torchvision-0.24.1-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:bd33a7cc32122bc92919f95ea0e7bf73588e71be0ca2c5cad8fb7eebd333e8dd" },
+    { url = "https://download.pytorch.org/whl/cu128/torchvision-0.24.1-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:7695d95e4e4c25fe1af3b880ffcd2dbcaa43cce7fd7edbe0157305b837c1dcf8" },
+    { url = "https://download.pytorch.org/whl/cu128/torchvision-0.24.1-cp313-cp313t-manylinux_2_28_aarch64.whl", hash = "sha256:9db0306f8eec7dc11745044c78dc49a80b84cc0935e36575677cdc2bce9be23c" },
+    { url = "https://download.pytorch.org/whl/cu128/torchvision-0.24.1-cp314-cp314-manylinux_2_28_aarch64.whl", hash = "sha256:68c8c884e7730146b7915d863526e8f32194532629ecc64da865242d35f417c0" },
+    { url = "https://download.pytorch.org/whl/cu128/torchvision-0.24.1-cp314-cp314t-manylinux_2_28_aarch64.whl", hash = "sha256:932dcfe6718f1306b6844477939d18c9102e678cdaffc13da9c3a1841d57ddde" },
 ]
 
 [[package]]
@@ -2785,9 +2785,9 @@ resolution-markers = [
     "(python_full_version < '3.13' and platform_machine != 'aarch64' and sys_platform == 'linux') or (python_full_version < '3.13' and sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')",
 ]
 dependencies = [
-    { name = "numpy", marker = "(python_full_version >= '3.15' and extra == 'extra-7-project-cu128') or (python_full_version < '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cu128') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-cu128') or (sys_platform != 'linux' and extra == 'extra-7-project-cu128')" },
-    { name = "pillow", marker = "(python_full_version >= '3.15' and extra == 'extra-7-project-cu128') or (python_full_version < '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cu128') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-cu128') or (sys_platform != 'linux' and extra == 'extra-7-project-cu128')" },
-    { name = "torch", version = "2.9.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "(python_full_version >= '3.15' and extra == 'extra-7-project-cu128') or (python_full_version < '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cu128') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-cu128') or (sys_platform != 'linux' and extra == 'extra-7-project-cu128')" },
+    { name = "numpy", marker = "(python_full_version >= '3.15' and extra == 'extra-7-project-gpu') or (python_full_version < '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-gpu') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-gpu') or (sys_platform != 'linux' and extra == 'extra-7-project-gpu')" },
+    { name = "pillow", marker = "(python_full_version >= '3.15' and extra == 'extra-7-project-gpu') or (python_full_version < '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-gpu') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-gpu') or (sys_platform != 'linux' and extra == 'extra-7-project-gpu')" },
+    { name = "torch", version = "2.9.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "(python_full_version >= '3.15' and extra == 'extra-7-project-gpu') or (python_full_version < '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-gpu') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-gpu') or (sys_platform != 'linux' and extra == 'extra-7-project-gpu')" },
 ]
 wheels = [
     { url = "https://download.pytorch.org/whl/cu128/torchvision-0.24.1%2Bcu128-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:cf84eae1d2d12a7d261a7496eca00dd927b71792011b1e84d4162c950eb3201d" },
@@ -2807,7 +2807,7 @@ name = "tqdm"
 version = "4.67.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
+    { name = "colorama", marker = "sys_platform == 'win32' or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e4ab51796dd745cdba7ed47ad142a9f4a1eb8e0c744d/tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2", size = 169737, upload-time = "2024-11-24T20:12:22.481Z" }
 wheels = [
@@ -2908,15 +2908,15 @@ dependencies = [
     { name = "pyyaml" },
     { name = "requests" },
     { name = "scipy" },
-    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')" },
-    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torch", version = "2.9.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "extra == 'extra-7-project-cu128'" },
-    { name = "torchvision", version = "0.21.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torchvision", version = "0.21.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')" },
-    { name = "torchvision", version = "0.21.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-7-project-cpu') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torchvision", version = "0.24.1", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "(python_full_version < '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-7-project-cu128') or (python_full_version >= '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torchvision", version = "0.24.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "(python_full_version >= '3.15' and extra == 'extra-7-project-cu128') or (python_full_version < '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cu128') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-cu128') or (sys_platform != 'linux' and extra == 'extra-7-project-cu128')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')" },
+    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torch", version = "2.9.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "extra == 'extra-7-project-gpu'" },
+    { name = "torchvision", version = "0.21.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine == 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torchvision", version = "0.21.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')" },
+    { name = "torchvision", version = "0.21.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(platform_machine != 'aarch64' and sys_platform == 'linux' and extra == 'extra-7-project-cpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and extra == 'extra-7-project-cpu') or (sys_platform == 'darwin' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (sys_platform == 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torchvision", version = "0.24.1", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "(python_full_version < '3.15' and platform_machine == 'aarch64' and platform_python_implementation == 'CPython' and sys_platform == 'linux' and extra == 'extra-7-project-gpu') or (python_full_version >= '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (sys_platform != 'linux' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torchvision", version = "0.24.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "(python_full_version >= '3.15' and extra == 'extra-7-project-gpu') or (python_full_version < '3.15' and extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (platform_machine != 'aarch64' and extra == 'extra-7-project-gpu') or (platform_python_implementation != 'CPython' and extra == 'extra-7-project-gpu') or (sys_platform != 'linux' and extra == 'extra-7-project-gpu')" },
     { name = "ultralytics-thop" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/fa/0e/f3ad6895024d149304241bf184592b4d718b66f9de80bcd68b66b2e50307/ultralytics-8.3.243.tar.gz", hash = "sha256:db35212c508ddf506f2f7eeaa8d1dd9755d70f531665c1180ca8936167c00410", size = 987190, upload-time = "2025-12-30T02:35:37.703Z" }
@@ -2930,10 +2930,10 @@ version = "2.0.18"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
-    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-cu128')" },
-    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-cu128')" },
-    { name = "torch", version = "2.9.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "extra == 'extra-7-project-cu128'" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform == 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torch", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "(extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu') or (extra != 'extra-7-project-cpu' and extra != 'extra-7-project-gpu')" },
+    { name = "torch", version = "2.6.0+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "(sys_platform != 'darwin' and extra == 'extra-7-project-cpu') or (extra == 'extra-7-project-cpu' and extra == 'extra-7-project-gpu')" },
+    { name = "torch", version = "2.9.1+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "extra == 'extra-7-project-gpu'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1f/63/21a32e1facfeee245dbdfb7b4669faf7a36ff7c00b50987932bdab126f4b/ultralytics_thop-2.0.18.tar.gz", hash = "sha256:21103bcd39cc9928477dc3d9374561749b66a1781b35f46256c8d8c4ac01d9cf", size = 34557, upload-time = "2025-10-29T16:58:13.526Z" }
 wheels = [
