@@ -40,6 +40,8 @@ jobs:
 
       - name: Determine image tags
         id: set-tags
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             BASE_TAG=${GITHUB_REF#refs/tags/v}
@@ -47,6 +49,10 @@ jobs:
           else
             BASE_TAG=${GITHUB_REF#refs/heads/}
             EXTRA_TAGS=""
+          fi
+          
+          if [[ "$COMMIT_MSG" == *"-latest"* ]]; then
+            EXTRA_TAGS="latest"
           fi
           
           # Append suffix from matrix

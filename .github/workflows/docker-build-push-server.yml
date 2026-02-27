@@ -29,6 +29,8 @@ jobs:
 
       - name: Determine image tags
         id: set-tags
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             BASE_TAG=${GITHUB_REF#refs/tags/v}
@@ -37,6 +39,11 @@ jobs:
             BASE_TAG=${GITHUB_REF#refs/heads/}
             EXTRA_TAGS=""
           fi
+          
+          if [[ "$COMMIT_MSG" == *"-latest"* ]]; then
+            EXTRA_TAGS="latest"
+          fi
+          
           echo "BASE_TAG=$BASE_TAG" >> $GITHUB_ENV
           echo "EXTRA_TAGS=$EXTRA_TAGS" >> $GITHUB_ENV
           echo "DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}" >> $GITHUB_ENV

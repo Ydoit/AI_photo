@@ -35,7 +35,6 @@ TrailSnap 的 AI 微服务模块，负责处理所有计算机视觉相关的任
    ```bash
    uv sync --extra gpu
    ```
-   *(注意：GPU 版本需要系统已安装对应的 CUDA 驱动)*
 
 ## 运行
 
