@@ -154,14 +154,14 @@ def get_identities_with_details(
     skip: int = 0,
     limit: int = 20,
     min_photos: int = 0,
-    photo_id: Optional[UUID] = None
+    photo_id: Optional[UUID] = None,
+    visibility_types: Optional[List[str]] = None
 ) -> List[FaceIdentitySchema]:
     # 1. 子查询：统计每个人脸身份的人脸数（按photo_id筛选并去重）
     face_counts_subq = db.query(
         Face.face_identity_id,
         func.count(func.distinct(Face.photo_id)).label("count")
     ).filter(
-        Face.is_deleted == False,
         Face.face_identity_id.isnot(None)  # 修正：非空判断
     )
     # 仅当photo_id有值时，添加photo_id筛选
@@ -182,10 +182,25 @@ def get_identities_with_details(
     ).outerjoin(
         Photo, Face.photo_id == Photo.id
     ).filter(
-        FaceIdentity.is_deleted == False,
         # 核心修正：筛选「统计数>min_photos」（SQL层过滤，提升性能）
         func.coalesce(face_counts_subq.c.count, 0) > min_photos
     )
+
+    # 2.1 筛选逻辑
+    if visibility_types:
+        conditions = []
+        if 'named' in visibility_types:
+            conditions.append(sa.and_(FaceIdentity.is_hidden == False, FaceIdentity.identity_name != '未命名'))
+        if 'unnamed' in visibility_types:
+            conditions.append(sa.and_(FaceIdentity.is_hidden == False, FaceIdentity.identity_name == '未命名'))
+        if 'hidden' in visibility_types:
+            conditions.append(FaceIdentity.is_hidden == True)
+
+        if conditions:
+            query = query.filter(sa.or_(*conditions))
+        else:
+            # 如果提供了空列表，则不返回任何结果
+            query = query.filter(sa.false())
 
     # 3. 仅当photo_id有值时：筛选「该身份在该photo_id下有人脸」
     if photo_id:
@@ -198,7 +213,7 @@ def get_identities_with_details(
         # query = query.filter(FaceIdentity.id.in_(photo_identity_ids))
 
     # 4. 排序+分页
-    query = query.order_by(face_counts_subq.c.count.desc()).offset(skip).limit(limit)
+    query = query.order_by(FaceIdentity.is_hidden.asc(), face_counts_subq.c.count.desc()).offset(skip).limit(limit)
 
     results = []
     p_size = config_manager.config.image.preview_size
@@ -224,6 +239,7 @@ def get_identities_with_details(
             face_count=count,
             cover_photo=cover,
             cover=photo,
+            is_hidden=identity.is_hidden,
             create_time=identity.create_time,
             update_time=identity.update_time
         ))

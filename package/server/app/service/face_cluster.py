@@ -23,10 +23,10 @@ class FaceClusterService:
         self.db = db
         # Initialize from config
         self.SIMILARITY_THRESHOLD = config_manager.config.ai.face_recognition_threshold
-        self.DISTANCE_THRESHOLD = 1.0 - self.SIMILARITY_THRESHOLD
+        self.DISTANCE_THRESHOLD = config_manager.config.ai.face_cluster_threshold
         self.DBSCAN_EPS = self.DISTANCE_THRESHOLD
-        self.DBSCAN_MIN_SAMPLES = 1
-        self.CLUSTER_MERGE_THRESHOLD = self.DISTANCE_THRESHOLD
+        self.DBSCAN_MIN_SAMPLES = 3
+        self.CLUSTER_MERGE_THRESHOLD = self.DISTANCE_THRESHOLD + 0.08
         self.MIN_CLUSTER_SIZE_FOR_IDENTITY = config_manager.config.ai.face_recognition_min_photos
 
     @staticmethod
@@ -81,7 +81,7 @@ class FaceClusterService:
             if dist < self.DISTANCE_THRESHOLD:
                 # 分配到已有Identity
                 best_match_id = nearest_face.face_identity_id
-                
+
                 # 使用 update_face 更新
                 update_data = schemas.FaceUpdate(
                     face_identity_id=best_match_id,
@@ -106,6 +106,67 @@ class FaceClusterService:
             logger.error(f"分配Identity异常：{str(e)}", exc_info=True)
             raise
 
+    def rescan_identity(self, identity_id: uuid.UUID) -> int:
+        """
+        重新扫描指定人物的人脸：
+        1. 计算当前人物的人脸中心向量
+        2. 查找未分配的人脸中与中心向量距离小于阈值的人脸
+        3. 将符合条件的人脸关联到该人物
+        :return: 关联的人脸数量
+        """
+        try:
+            # 1. 获取人物关联的人脸
+            assigned_faces = self.db.query(Face).filter(
+                Face.face_identity_id == identity_id,
+                Face.is_deleted == False,
+                Face.face_feature.isnot(None)
+            ).all()
+
+            if not assigned_faces:
+                return 0
+
+            # 2. 计算中心向量
+            embeddings = []
+            for face in assigned_faces:
+                embeddings.append(self.normalize_embedding(face.face_feature))
+
+            if not embeddings:
+                return 0
+
+            center = np.mean(embeddings, axis=0)
+            center = self.normalize_embedding(center)
+
+            # 3. 查找未分配的人脸
+            # 这里先获取一部分候选（按距离排序），再精确过滤
+            candidates = self.db.query(Face).filter(
+                Face.face_identity_id == None,
+                Face.is_deleted == False,
+                Face.face_feature.isnot(None)
+            ).order_by(
+                Face.face_feature.cosine_distance(center)
+            ).all()
+
+            count = 0
+            for face in candidates:
+                face_emb = self.normalize_embedding(face.face_feature)
+                dist = 1.0 - np.dot(center, face_emb)
+
+                if dist < self.DISTANCE_THRESHOLD:
+                    # 关联到该人物
+                    update_data = schemas.FaceUpdate(
+                        face_identity_id=identity_id,
+                        recognize_confidence=float(1.0 - dist)
+                    )
+                    crud_face.update_face(self.db, face.id, update_data)
+                    count += 1
+
+            return count
+
+        except Exception as e:
+            logger.error(f"重新扫描人物 {identity_id} 失败：{str(e)}", exc_info=True)
+            # 不抛出异常，以免影响 API 返回
+            return 0
+
     def process_unassigned_faces(self):
         """
         批量处理未分配的人脸（DBSCAN聚类）
@@ -127,7 +188,7 @@ class FaceClusterService:
                 Face.face_identity_id == None,
                 Face.is_deleted == False,
                 Face.face_feature.isnot(None)
-            ).limit(1000).all()  # 限制数量，避免全表扫描
+            ).all()
 
             face_count = len(unassigned_faces)
             if face_count < self.DBSCAN_MIN_SAMPLES:

@@ -8,16 +8,57 @@
         <h1 class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">人物</h1>
       </div>
 
-      <div class="flex items-center gap-3">
-        <button 
-          v-if="isMergeMode"
-          @click="confirmMerge"
-          :disabled="selectedIds.length < 2"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 shadow-sm"
+      <div class="flex items-center gap-3 flex-wrap justify-end">
+        <el-popover
+          v-if="!isMergeMode" 
+          placement="bottom-end"
+          :width="200"
+          trigger="click"
         >
-          <MergeIcon class="w-4 h-4" />
-          <span class="text-sm font-medium">合并所选 ({{ selectedIds.length }})</span>
-        </button>
+          <template #reference>
+            <button class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+              <FilterIcon class="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            </button>
+          </template>
+          
+          <div class="flex flex-col gap-2">
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 px-1">筛选显示</div>
+            <el-checkbox-group v-model="filterOptions" @change="handleFilterChange" class="flex flex-col gap-2">
+              <el-checkbox label="named">已添加姓名</el-checkbox>
+              <el-checkbox label="unnamed">未添加姓名</el-checkbox>
+              <el-checkbox label="hidden">隐藏人物</el-checkbox>
+            </el-checkbox-group>
+          </div>
+        </el-popover>
+
+        <template v-if="isMergeMode">
+          <button 
+            @click="confirmMerge"
+            :disabled="selectedIds.length < 2"
+            class="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-1.5 shadow-sm text-sm"
+          >
+            <MergeIcon class="w-4 h-4" />
+            <span>合并 ({{ selectedIds.length }})</span>
+          </button>
+          
+          <button 
+            @click="handleBulkHide"
+            :disabled="selectedIds.length === 0"
+            class="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 transition-all flex items-center gap-1.5 shadow-sm text-sm border border-gray-200 dark:border-gray-700"
+          >
+            <EyeOffIcon class="w-4 h-4" />
+            <span>隐藏</span>
+          </button>
+
+          <button 
+            @click="handleBulkShow"
+            :disabled="selectedIds.length === 0"
+            class="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 transition-all flex items-center gap-1.5 shadow-sm text-sm border border-gray-200 dark:border-gray-700"
+          >
+            <EyeIcon class="w-4 h-4" />
+            <span>显示</span>
+          </button>
+        </template>
         
         <button 
           @click="toggleMergeMode"
@@ -29,7 +70,7 @@
           ]"
         >
           <CheckSquareIcon class="w-4 h-4" />
-          <span>{{ isMergeMode ? '取消选择' : '批量管理' }}</span>
+          <span>{{ isMergeMode ? '取消' : '批量' }}</span>
         </button>
       </div>
     </div>
@@ -54,6 +95,7 @@
         v-for="person in identities"
         :key="person.id"
         class="group flex flex-col items-center cursor-pointer transition-transform active:scale-95"
+        :class="{ 'opacity-60': person.is_hidden }"
         @click="handleCardClick(person)"
       >
         <div
@@ -61,7 +103,7 @@
           :class="[
             selectedIds.includes(person.id)
               ? 'border-blue-500 ring-4 ring-blue-500/20'
-              : 'border-transparent group-hover:border-gray-300 dark:group-hover:border-gray-600'
+              : (person.is_hidden ? 'border-dashed border-gray-400' : 'border-transparent group-hover:border-gray-300 dark:group-hover:border-gray-600')
           ]"
         >
           <img
@@ -73,6 +115,10 @@
           />
           <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
             <UserIcon class="w-1/2 h-1/2" />
+          </div>
+
+          <div v-if="person.is_hidden && !isMergeMode" class="absolute inset-0 flex items-center justify-center bg-black/10">
+             <EyeOffIcon class="w-8 h-8 text-white drop-shadow-md opacity-80" />
           </div>
 
           <div v-if="isMergeMode" class="absolute inset-0 bg-blue-500/10 flex items-center justify-center transition-opacity">
@@ -98,7 +144,9 @@
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="rename">编辑人物信息</el-dropdown-item>
-                  <el-dropdown-item command="delete" divided class="text-red-500">删除人物</el-dropdown-item>
+                  <el-dropdown-item command="rescan">重新扫描人脸</el-dropdown-item>
+                  <el-dropdown-item v-if="person.is_hidden" command="show">显示人物</el-dropdown-item>
+                  <el-dropdown-item v-else command="hide" divided class="text-orange-500">隐藏人物</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -130,7 +178,11 @@ import {
   CheckSquare as CheckSquareIcon,
   Check as CheckIcon,
   Merge as MergeIcon,
-  ArrowLeft
+  ArrowLeft,
+  Eye as EyeIcon,
+  EyeOff as EyeOffIcon,
+  RefreshCw as RefreshCwIcon,
+  Filter as FilterIcon
 } from 'lucide-vue-next'
 import IdentityEditDialog from '@/components/IdentityEditDialog.vue'
 
@@ -140,18 +192,36 @@ const identities = ref<FaceIdentity[]>([])
 const isMergeMode = ref(false)
 const selectedIds = ref<string[]>([])
 
+// Filter
+const filterOptions = ref<string[]>(['named', 'unnamed'])
+try {
+  const saved = localStorage.getItem('people_filter')
+  if (saved) {
+    filterOptions.value = JSON.parse(saved)
+  }
+} catch (e) {
+  console.error('Failed to load filter options', e)
+}
+
 const editDialogVisible = ref(false)
 const currentEditingIdentity = ref<FaceIdentity | null>(null)
 
 const fetchIdentities = async () => {
   loading.value = true
   try {
-    identities.value = await faceApi.listIdentities(1, 100)
+    identities.value = await faceApi.listIdentities(1, 100, filterOptions.value)
+    console.log(filterOptions.value)
   } catch (e) {
+    console.error(e)
     ElMessage.error('获取人物列表失败')
   } finally {
     loading.value = false
   }
+}
+
+const handleFilterChange = () => {
+  localStorage.setItem('people_filter', JSON.stringify(filterOptions.value))
+  fetchIdentities()
 }
 
 /**
@@ -219,15 +289,36 @@ const handleCommand = (cmd: string, person: FaceIdentity) => {
   if (cmd === 'rename') {
     currentEditingIdentity.value = person
     editDialogVisible.value = true
-  } else if (cmd === 'delete') {
-    ElMessageBox.confirm('确定要删除这个人物吗？', '提示', { type: 'warning' }).then(async () => {
+  } else if (cmd === 'hide') {
+    ElMessageBox.confirm('确定要隐藏这个人物吗？隐藏后将不再显示在列表中，除非在筛选中选中“隐藏”。', '提示', { type: 'warning' }).then(async () => {
       try {
-        await faceApi.deleteIdentity(person.id)
-        ElMessage.success('删除成功')
+        await faceApi.updateIdentity(person.id, { is_hidden: true })
+        ElMessage.success('隐藏成功')
         fetchIdentities()
       } catch (e) {
-        ElMessage.error('删除失败')
+        ElMessage.error('隐藏失败')
       }
+    })
+  } else if (cmd === 'show') {
+    try {
+      faceApi.updateIdentity(person.id, { is_hidden: false }).then(() => {
+        ElMessage.success('显示成功')
+        fetchIdentities()
+      })
+    } catch (e) {
+      ElMessage.error('显示失败')
+    }
+  } else if (cmd === 'rescan') {
+    ElMessage.info('正在重新扫描...')
+    faceApi.rescanIdentity(person.id).then((res: any) => {
+      if (res.status === 'success') {
+        ElMessage.success(`重新扫描完成，关联了 ${res.count} 张人脸`)
+        fetchIdentities()
+      } else {
+        ElMessage.error('重新扫描失败')
+      }
+    }).catch(() => {
+      ElMessage.error('重新扫描失败')
     })
   }
 }
@@ -240,6 +331,38 @@ const handleEditSaved = async () => {
     fetchIdentities()
   } catch (e) {
     ElMessage.error('重命名失败')
+  }
+}
+
+const handleBulkHide = async () => {
+  if (selectedIds.value.length === 0) return
+  try {
+    await ElMessageBox.confirm(`确定要隐藏这 ${selectedIds.value.length} 个人物吗？`, '隐藏确认', { type: 'warning' })
+    for (const id of selectedIds.value) {
+      await faceApi.updateIdentity(id, { is_hidden: true })
+    }
+    ElMessage.success('隐藏成功')
+    isMergeMode.value = false
+    selectedIds.value = []
+    fetchIdentities()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('隐藏失败')
+  }
+}
+
+const handleBulkShow = async () => {
+  if (selectedIds.value.length === 0) return
+  try {
+    await ElMessageBox.confirm(`确定要显示这 ${selectedIds.value.length} 个人物吗？`, '显示确认', { type: 'info' })
+    for (const id of selectedIds.value) {
+      await faceApi.updateIdentity(id, { is_hidden: false })
+    }
+    ElMessage.success('显示成功')
+    isMergeMode.value = false
+    selectedIds.value = []
+    fetchIdentities()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('显示失败')
   }
 }
 

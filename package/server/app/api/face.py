@@ -13,6 +13,8 @@ from app.schemas.face import FaceIdentitySchema, RemovePhotosRequest, SetCoverRe
 
 router = APIRouter()
 
+from app.service.face_cluster import FaceClusterService
+
 @router.put("/identities/{id}", summary="更新人物信息", description="修改人物的显示名称、描述和标签")
 def update_identity(
     id: UUID = Path(..., description="人物ID"),
@@ -24,7 +26,7 @@ def update_identity(
     """
     if not crud_face.get_identity(db, id):
         raise HTTPException(status_code=404, detail="Identity not found")
-        
+
     updated_identity = crud_face.update_identity(db, id, payload)
     return updated_identity
 
@@ -32,6 +34,7 @@ def update_identity(
 def list_identities(
     page: int = Query(1, ge=1, description="页码"),
     limit: int = Query(20, ge=1, le=10000, description="每页数量"),
+    types: List[str] = Query(["named", "unnamed"], alias="types[]" , description="人物类型筛选：named, unnamed, hidden"),
     db: Session = Depends(get_db)
 ):
     """
@@ -39,12 +42,13 @@ def list_identities(
     """
     offset = (page - 1) * limit
     min_photos = config_manager.config.ai.face_recognition_min_photos
-
+    print(types)
     return crud_face.get_identities_with_details(
         db,
         skip=offset,
         limit=limit,
-        min_photos=min_photos
+        min_photos=min_photos,
+        visibility_types=types
     )
 
 
@@ -120,3 +124,18 @@ def merge_identities(
          raise HTTPException(status_code=400, detail="Merge failed")
     
     return {"status": "success"}
+
+@router.post("/identities/{id}/rescan", summary="重新扫描人物人脸", description="根据当前人物的人脸中心，重新扫描未分配的人脸并尝试关联")
+def rescan_identity(
+    id: UUID = Path(..., description="人物ID"),
+    db: Session = Depends(get_db)
+):
+    """
+    重新扫描人物人脸，将符合条件的人脸关联到该人物。
+    """
+    if not crud_face.get_identity(db, id):
+        raise HTTPException(status_code=404, detail="Identity not found")
+        
+    service = FaceClusterService(db)
+    count = service.rescan_identity(id)
+    return {"status": "success", "count": count}

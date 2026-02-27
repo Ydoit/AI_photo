@@ -22,6 +22,7 @@ class FaceIdentity(Base):
     create_time = Column(DateTime, default=datetime.now)
     update_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     is_deleted = Column(Boolean, default=False)
+    is_hidden = Column(Boolean, default=False)
 
     # Relationships
     faces = relationship("Face", back_populates="identity", foreign_keys="Face.face_identity_id")
@@ -31,7 +32,7 @@ class Face(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     photo_id = Column(UUID(as_uuid=True), ForeignKey("photos.id", ondelete="CASCADE"), nullable=False)
-    face_identity_id = Column(UUID(as_uuid=True), ForeignKey("face_identities.id"), nullable=True)
+    face_identity_id = Column(UUID(as_uuid=True), ForeignKey("face_identities.id", ondelete="SET NULL"), nullable=True)
     face_feature = Column(VECTOR(512))  # Human face feature vector
     face_rect = Column(JSON)     # 人脸检测框 [x1, y1, x2, y2]
     face_confidence = Column(DECIMAL(5, 4))

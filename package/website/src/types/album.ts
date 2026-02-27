@@ -155,6 +155,7 @@ export interface FaceIdentity {
   face_count: number
   cover_photo: CoverPhotoInfo | null
   cover: Photo | null
+  is_hidden?: boolean
 }
 
 export interface FilterOptions {

@@ -31,6 +31,7 @@ class FaceIdentityCreate(FaceIdentityBase):
 
 class FaceIdentityUpdate(FaceIdentityBase):
     default_face_id: Optional[int] = None
+    is_hidden: Optional[bool] = None
 
 class CoverPhotoInfo(BaseModel):
     photo_id: UUID = Field(..., description="封面照片ID")
@@ -47,6 +48,9 @@ class FaceIdentitySchema(BaseModel):
     face_count: Optional[int] = Field(0, description="照片数量")
     cover_photo: Optional[CoverPhotoInfo] = Field(None, description="封面照片信息")
     cover: Optional[Photo] = Field(None, description="封面照片")
+    is_hidden: Optional[bool] = Field(False, description="是否隐藏")
+    create_time: Optional[datetime] = None
+    update_time: Optional[datetime] = None
 
     class Config:
         from_attributes = True

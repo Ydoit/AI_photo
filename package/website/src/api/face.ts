@@ -5,9 +5,9 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 const api = axios.create({ baseURL: API_BASE_URL })
 
 export const faceApi = {
-  async listIdentities(page = 1, limit = 20) {
+  async listIdentities(page = 1, limit = 20, types?: string[]) {
     const { data } = await api.get<FaceIdentity[]>('/api/faces/identities', {
-      params: { page, limit }
+      params: { page, limit, types }
     })
     return data
   },
@@ -26,9 +26,14 @@ export const faceApi = {
     return data
   },
 
-  async updateIdentity(id: string, data: { identity_name?: string; description?: string; tags?: string[] }) {
+  async updateIdentity(id: string, data: { identity_name?: string; description?: string; tags?: string[]; is_hidden?: boolean }) {
     const { data: res } = await api.put<FaceIdentity>(`/api/faces/identities/${id}`, data)
     return res
+  },
+
+  async rescanIdentity(id: string) {
+    const { data } = await api.post(`/api/faces/identities/${id}/rescan`)
+    return data
   },
 
   async mergeIdentities(targetId: string, sourceIds: string[]) {

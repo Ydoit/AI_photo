@@ -109,6 +109,8 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                     count = 0
                     has_unassigned = False
                     for face_data in faces:
+                        if face_data.get('det_score') < config_manager.config.ai.face_recognition_threshold:
+                            continue
                         face = Face(
                             photo_id=photo.id,
                             face_feature=face_data.get('embedding'),
