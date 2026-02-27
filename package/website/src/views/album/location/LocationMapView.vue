@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 relative overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+  <div class="flex-1 relative overflow-hidden shadow-sm">
      <div ref="mapContainer" class="w-full h-full"></div>
      
      <!-- Map Controls Overlay -->

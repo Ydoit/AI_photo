@@ -1,7 +1,7 @@
 <template>
-  <div :class="['container mx-auto location-list flex flex-col relative py-6', (viewMode != 'grid') ? 'p-0 h-screen' : 'px-6']">
+  <div :class="['location-list flex flex-col relative py-6', (viewMode != 'grid') ? 'p-0 h-screen' : 'px-6 container mx-auto']">
     <!-- Header -->
-    <div :class="['flex sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0 z-50 transition-all duration-300', (viewMode === 'map') ? 'absolute top-0 left-0 right-0 p-4 pointer-events-none' : 'mb-6']">
+    <div :class="['container mx-auto flex sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0 z-50 transition-all duration-300', (viewMode === 'map' && isMobile) ? 'absolute top-0 left-0 right-0 p-4 pointer-events-none' : 'mb-6']">
       <div class="flex flex-col gap-3 pointer-events-auto">
         <div class="flex items-center gap-3 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
           <button @click="router.back()" class="p-0 md:p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors bg-white dark:bg-gray-900">
@@ -227,7 +227,7 @@
     />
 
     <!-- Photo Map View -->
-    <LocationMap v-if="viewMode === 'map' && (level === 'photo-map' || level === 'scene')" :filter-status="filterStatus" :year="selectedYear" class="flex-1 overflow-hidden bg-white dark:bg-gray-900 shadow-sm" />
+    <LocationMap v-if="viewMode === 'map' && (level === 'photo-map' || level === 'scene')" :filter-status="filterStatus" :year="selectedYear" class="flex-1 overflow-hidden shadow-sm" />
 
     <!-- Grid View -->
     <LocationListView
@@ -279,6 +279,10 @@ const filterOptions = [
   { label: '已打卡', value: 'checked' },
   { label: '未打卡', value: 'unchecked' }
 ]
+
+const isMobile = computed(() => {
+  return window.innerWidth <= 768
+})
 
 const locations = computed(() => {
   if (level.value !== 'scene' || filterStatus.value === 'all') {
