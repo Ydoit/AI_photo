@@ -64,3 +64,6 @@ class RemovePhotosRequest(BaseModel):
 
 class SetCoverRequest(BaseModel):
     photo_id: UUID = Field(..., description="设置为封面的照片ID")
+
+class AddPhotosToIdentityRequest(BaseModel):
+    photo_ids: List[UUID] = Field(..., description="要添加的照片ID列表")

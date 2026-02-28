@@ -9,11 +9,146 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from uuid import UUID
 
-from app.schemas.face import FaceIdentitySchema, RemovePhotosRequest, SetCoverRequest, MergeRequest
+from app.schemas.face import FaceIdentitySchema, RemovePhotosRequest, SetCoverRequest, MergeRequest, FaceIdentityCreate, AddPhotosToIdentityRequest
+from app.service.tasks.face import process_single_photo
+from app.db.models.photo import Photo
+from app.db.models.face import Face
+import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 from app.service.face_cluster import FaceClusterService
+
+@router.post("/identities", response_model=FaceIdentitySchema, summary="创建新人物", description="创建一个新的人物记录")
+def create_identity(
+    payload: FaceIdentityCreate = Body(..., description="人物信息"),
+    db: Session = Depends(get_db)
+):
+    """
+    创建新人物。
+    """
+    return crud_face.create_identity(db, payload)
+
+@router.post("/identities/{id}/add-photos", summary="添加照片到人物", description="将选中的照片添加到指定人物相册中")
+async def add_photos_to_identity(
+    id: UUID = Path(..., description="人物ID"),
+    payload: AddPhotosToIdentityRequest = Body(..., description="要添加的照片列表"),
+    db: Session = Depends(get_db)
+):
+    """
+    将选中的照片添加到人物相册中。
+    1. 如果照片中包含人脸，则选择与人物相似度最高的人脸进行关联。
+    2. 如果照片中不包含人脸，则触发AI识别人脸。
+       - 如果识别到人脸，则添加到人物相册中。
+       - 如果没有识别到人脸，则创建一个新的人脸记录并与人物关联（特征值为空，置信度为1）。
+    """
+    identity = crud_face.get_identity(db, id)
+    if not identity:
+        raise HTTPException(status_code=404, detail="Identity not found")
+    
+    count = 0
+    
+    # 1. 计算当前人物的特征中心（如果有已关联的人脸）
+    assigned_faces = db.query(Face).filter(
+        Face.face_identity_id == id,
+        Face.is_deleted == False,
+        Face.face_feature.isnot(None)
+    ).all()
+    
+    identity_center = None
+    if assigned_faces:
+        embeddings = [np.array(f.face_feature) for f in assigned_faces]
+        if embeddings:
+            identity_center = np.mean(embeddings, axis=0)
+            norm = np.linalg.norm(identity_center)
+            if norm > 0:
+                identity_center = identity_center / norm
+            
+    for photo_id in payload.photo_ids:
+        photo = db.query(Photo).get(photo_id)
+        if not photo:
+            continue
+            
+        # 2. 检查该照片是否已有人脸
+        faces = db.query(Face).filter(Face.photo_id == photo_id, Face.is_deleted == False).all()
+        
+        if not faces:
+            # 3. 如果没有人脸，触发AI识别
+            try:
+                # process_single_photo 是异步的，会更新数据库
+                # 传入 None 作为 task_manager，因为这里不需要创建新任务
+                await process_single_photo(None, photo, db)
+                
+                # 重新查询人脸
+                faces = db.query(Face).filter(Face.photo_id == photo_id, Face.is_deleted == False).all()
+            except Exception as e:
+                logger.error(f"Failed to process photo {photo_id}: {e}")
+                # AI处理失败，视为无人脸，继续下面的逻辑创建默认人脸
+                pass
+        
+        if faces:
+            # 4. 如果有人脸（原有或AI识别出），选择最佳匹配
+            best_face = None
+            if identity_center is not None:
+                # 找余弦距离最近的
+                min_dist = 2.0
+                for face in faces:
+                    if face.face_feature is None:
+                        continue
+                    # 确保向量维度一致
+                    feat = np.array(face.face_feature)
+                    norm = np.linalg.norm(feat)
+                    if norm > 0:
+                        feat = feat / norm
+                        dist = 1.0 - np.dot(identity_center, feat)
+                        if dist < min_dist:
+                            min_dist = dist
+                            best_face = face
+            
+            if not best_face:
+                # 如果没有中心向量或无法计算距离，选择面积最大的人脸
+                max_area = -1
+                for face in faces:
+                    area = 0
+                    if face.face_rect and len(face.face_rect) == 4:
+                        w = face.face_rect[2] - face.face_rect[0]
+                        h = face.face_rect[3] - face.face_rect[1]
+                        area = w * h
+                    
+                    if area > max_area:
+                        max_area = area
+                        best_face = face
+                        
+                # 如果还是没有（例如face_rect为空），选第一个
+                if not best_face and faces:
+                    best_face = faces[0]
+            
+            if best_face:
+                # 关联到人物
+                best_face.face_identity_id = id
+                # 可以选择设置 recognize_confidence，这里设为 1.0 表示手动确认
+                best_face.recognize_confidence = 1.0
+                db.add(best_face)
+                count += 1
+                
+        else:
+            # 5. 如果仍然没有人脸（AI未识别到），创建默认人脸
+            dummy_face = Face(
+                photo_id=photo_id,
+                face_identity_id=id,
+                face_feature=None,
+                face_rect=None,
+                face_confidence=1.0,
+                recognize_confidence=1.0
+            )
+            db.add(dummy_face)
+            count += 1
+            
+    db.commit()
+    return {"status": "success", "count": count}
 
 @router.put("/identities/{id}", summary="更新人物信息", description="修改人物的显示名称、描述和标签")
 def update_identity(

@@ -1,7 +1,7 @@
 <template>
-  <div class="container mx-auto people-list py-6">
-    <div class="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <div class="flex items-center gap-3 w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
+  <div class="container mx-auto people-list px-6 py-6">
+    <div class="mb-8 flex flex-row justify-between items-start sm:items-center gap-4">
+      <div class="flex items-center gap-3 w-full w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
         <button @click="router.back()" class="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors bg-white dark:bg-gray-900">
               <ArrowLeft class="w-5 h-5 text-gray-600 dark:text-gray-300" />
         </button>
@@ -106,16 +106,7 @@
               : (person.is_hidden ? 'border-dashed border-gray-400' : 'border-transparent group-hover:border-gray-300 dark:group-hover:border-gray-600')
           ]"
         >
-          <img
-            v-if="person.cover_photo"
-            :src="getPhotoUrl(person.cover_photo.photo_id)"
-            class="absolute max-w-none transition-transform duration-500 group-hover:scale-110"
-            :style="getFaceCropStyle(person.cover_photo)"
-            loading="lazy"
-          />
-          <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
-            <UserIcon class="w-1/2 h-1/2" />
-          </div>
+          <PersonAvatar :person="person" class="w-full h-full" />
 
           <div v-if="person.is_hidden && !isMergeMode" class="absolute inset-0 flex items-center justify-center bg-black/10">
              <EyeOffIcon class="w-8 h-8 text-white drop-shadow-md opacity-80" />
@@ -185,6 +176,8 @@ import {
   Filter as FilterIcon
 } from 'lucide-vue-next'
 import IdentityEditDialog from '@/components/IdentityEditDialog.vue'
+import PersonAvatar from '@/components/PersonAvatar.vue'
+
 
 const router = useRouter()
 const loading = ref(true)
@@ -222,49 +215,6 @@ const fetchIdentities = async () => {
 const handleFilterChange = () => {
   localStorage.setItem('people_filter', JSON.stringify(filterOptions.value))
   fetchIdentities()
-}
-
-/**
- * 核心算法：计算人脸裁切样式
- * 原理：通过 absolute 定位和百分比控制，使人脸区域充满圆形容器
- */
-const getFaceCropStyle = (cover: CoverPhotoInfo) => {
-  if (!cover.face_rect || !cover.width || !cover.height) {
-    return {}
-  }
-
-  // face_rect: [x1, y1, x2, y2]
-  const [x1, y1, x2, y2] = cover.face_rect
-  const faceW = x2 - x1
-  const faceH = y2 - y1
-
-  // 1. 确定裁切基准（取人脸宽高的最大值，并增加 60% 的留白防止太挤）
-  const cropSize = Math.max(faceW, faceH) * 1.6
-
-  // 2. 计算缩放比例：容器宽度 / 裁切目标在原图中的宽度
-  // 这里直接用百分比：(原图宽 / 裁切宽) * 100%
-  const widthPct = (cover.width / cropSize) * 100
-  const heightPct = (cover.height / cropSize) * 100
-
-  // 3. 计算人脸中心点坐标（百分比）
-  const centerX = (x1 + x2) / 2
-  const centerY = (y1 + y2) / 2
-  const leftPct = (centerX / cover.width) * 100
-  const topPct = (centerY / cover.height) * 100
-
-  return {
-    width: `${widthPct.toFixed(2)}%`,
-    height: `${heightPct.toFixed(2)}%`,
-    left: '50%',
-    top: '50%',
-    // 将图片中心移动到容器中心，再根据人脸中心点进行偏移
-    transform: `translate(-${leftPct.toFixed(2)}%, -${topPct.toFixed(2)}%)`,
-  }
-}
-
-const getPhotoUrl = (photoId: string) => {
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-  return `${API_BASE_URL}/api/medias/${photoId}/thumbnail?size=medium`
 }
 
 const toggleMergeMode = () => {

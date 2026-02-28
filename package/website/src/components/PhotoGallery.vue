@@ -103,10 +103,32 @@
               <Trash2 v-if="deleteLabel.includes('删除')" class="w-5 h-5" />
               <FolderMinus v-else class="w-5 h-5" />
             </button>
+
+            <!-- More Actions -->
+            <el-dropdown trigger="click" placement="top-end">
+              <button class="bg-transparent p-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+                <MoreHorizontal class="w-5 h-5" />
+              </button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item @click="openPersonSelector">
+                    <div class="flex items-center gap-2">
+                      <UserPlus class="w-4 h-4" />
+                      <span>添加到人物</span>
+                    </div>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </div>
         </div>
       </div>
     </transition>
+
+    <PersonSelector 
+      v-model:visible="showPersonSelector"
+      @select="handlePersonSelected"
+    />
     <!-- Virtual Scroll Container -->
     <div :style="{ height: totalHeight + 'px', position: 'relative' }">
       <div
@@ -271,13 +293,15 @@ import {
   ref, computed, watch, onMounted, onUnmounted, nextTick, toRef, reactive
 } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { CalendarDays, PlayCircle, Image as ImageIcon, MapPin, Check, X, Download, Trash2, FolderMinus, Loader2, PlaySquare, Play, PlayIcon, PlayCircleIcon, Plus, FolderPlus, PhoneOutgoingIcon, PictureInPicture, CloverIcon, ImageMinusIcon, ImagePlusIcon, RefreshCcw, Aperture } from 'lucide-vue-next'
+import { CalendarDays, PlayCircle, Image as ImageIcon, MapPin, Check, X, Download, Trash2, FolderMinus, Loader2, PlaySquare, Play, PlayIcon, PlayCircleIcon, Plus, FolderPlus, PhoneOutgoingIcon, PictureInPicture, CloverIcon, ImageMinusIcon, ImagePlusIcon, RefreshCcw, Aperture, MoreHorizontal, UserPlus } from 'lucide-vue-next'
 import { format } from 'date-fns'
 import { useAlbumStore } from '@/stores/albumStore'
 import { usePhotoStore } from '@/stores/photoStore'
 import type { TimelineStats, AlbumImage } from '@/types/album'
 import { useVirtualLayout, type MonthBlock, type DayBlock } from '@/composables/useVirtualLayout'
 import { useWindowScroll, useScroll, useDebounceFn } from '@vueuse/core'
+import PersonSelector from './PersonSelector.vue'
+import { faceApi } from '@/api/face'
 
 // Props
 interface Props {
@@ -680,6 +704,26 @@ const toggleSelectAll = () => {
         isSelectionMode.value = true
         emit('selection-change', Array.from(localSelectedIds))
     }
+}
+
+const handlePersonSelected = async (person: any) => {
+  if (localSelectedIds.size === 0) return
+  
+  try {
+    const ids = Array.from(localSelectedIds)
+    const res = await faceApi.addPhotosToIdentity(person.id, ids)
+    ElMessage.success(`成功添加 ${res.count} 张照片到 ${person.identity_name}`)
+    exitSelectionMode()
+  } catch (e: any) {
+    console.error(e)
+    ElMessage.error('添加失败')
+  }
+}
+
+const showPersonSelector = ref(false)
+
+const openPersonSelector = () => {
+  showPersonSelector.value = true
 }
 
 const handleDelete = () => {

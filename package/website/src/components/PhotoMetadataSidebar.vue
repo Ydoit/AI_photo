@@ -132,21 +132,7 @@
             <div class="flex flex-wrap gap-2">
                 <span v-if="(!metadata.faces_identities || metadata.faces_identities.length === 0)" class="text-sm text-gray-400 italic">无人脸信息</span>
                 <a target="_blank" :href="`/people/${face.id}`" v-for="(face, idx) in metadata.faces_identities" :key="idx" class="text-gray-600 dark:text-gray-300 rounded-full text-xs flex flex-col items-center transition-colors">
-                    <div
-                    class="relative w-12 aspect-square rounded-full overflow-hidden border-2 transition-all duration-300 bg-gray-100 dark:bg-gray-800"
-                    :class="['border-transparent group-hover:border-gray-300 dark:group-hover:border-gray-600']"
-                    >
-                        <img
-                            v-if="face.cover_photo"
-                            :src="getPhotoUrl(face.cover_photo.photo_id)"
-                            class="absolute max-w-none transition-transform duration-500 group-hover:scale-110"
-                            :style="getFaceCropStyle(face.cover_photo)"
-                            loading="lazy"
-                        />
-                        <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
-                            <UserIcon class="w-1/2 h-1/2" />
-                        </div>
-                    </div>
+                    <PersonAvatar :person="face" />
                     <span class="font-medium">{{ face.identity_name || 'Unknown' }}</span>
                 </a>
             </div>
@@ -235,6 +221,7 @@ import {
 } from 'lucide-vue-next'
 import { format } from 'date-fns'
 import { albumService } from '@/api/album'
+import PersonAvatar from '@/components/PersonAvatar.vue'
 import type { PhotoMetadata, AlbumImage, CoverPhotoInfo, Tag } from '@/types/album'
 import { ElMessageBox, ElMessage } from 'element-plus'
 

@@ -56,5 +56,17 @@ export const faceApi = {
       photo_id: photoId
     })
     return data
+  },
+
+  async createIdentity(data: { identity_name: string; description?: string }) {
+    const { data: res } = await api.post<FaceIdentity>('/api/faces/identities', data)
+    return res
+  },
+
+  async addPhotosToIdentity(id: string, photoIds: string[]) {
+    const { data } = await api.post(`/api/faces/identities/${id}/add-photos`, {
+      photo_ids: photoIds
+    })
+    return data
   }
 }
