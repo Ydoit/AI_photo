@@ -14,7 +14,7 @@
         prefix-icon="Search"
       />
 
-      <div class="h-[300px] overflow-y-auto border rounded-md p-2" v-loading="loading">
+      <div class="h-[300px] overflow-y-auto border rounded-md p-2" v-loading="loading || submitting">
         <div v-if="filteredPeople.length === 0 && !searchQuery" class="text-gray-400 text-center py-4">
           暂无人物数据
         </div>
@@ -58,6 +58,7 @@ import type { PhotoMetadata, AlbumImage, CoverPhotoInfo, Tag } from '@/types/alb
 
 const props = defineProps<{
   visible: boolean
+  submitting?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -106,7 +107,6 @@ watch(() => props.visible, (val) => {
 
 const selectPerson = (person: FaceIdentity) => {
   emit('select', person)
-  emit('update:visible', false)
 }
 
 const createPerson = async () => {
@@ -117,7 +117,6 @@ const createPerson = async () => {
       identity_name: searchQuery.value
     })
     emit('select', newPerson)
-    emit('update:visible', false)
   } catch (e) {
     console.error(e)
   } finally {

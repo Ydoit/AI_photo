@@ -180,7 +180,6 @@
     />
 
     <!-- Album Select Modal -->
-    <!-- Album Select Modal -->
     <AlbumSelector
       v-model:visible="showAlbumSelectModal"
       :photo-ids="tempSelectedIds"

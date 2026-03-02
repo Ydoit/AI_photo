@@ -127,6 +127,7 @@
 
     <PersonSelector 
       v-model:visible="showPersonSelector"
+      :submitting="isAddingPerson"
       @select="handlePersonSelected"
     />
     <!-- Virtual Scroll Container -->
@@ -341,6 +342,7 @@ const localSelectedIds = reactive(new Set<string>())
 
 const isDownloading = ref(false)
 const downloadProgress = ref(0)
+const isAddingPerson = ref(false)
 
 const photoStore = usePhotoStore()
 const store = computed(() => props.store || photoStore)
@@ -709,14 +711,18 @@ const toggleSelectAll = () => {
 const handlePersonSelected = async (person: any) => {
   if (localSelectedIds.size === 0) return
   
+  isAddingPerson.value = true
   try {
     const ids = Array.from(localSelectedIds)
     const res = await faceApi.addPhotosToIdentity(person.id, ids)
     ElMessage.success(`成功添加 ${res.count} 张照片到 ${person.identity_name}`)
+    showPersonSelector.value = false
     exitSelectionMode()
   } catch (e: any) {
     console.error(e)
     ElMessage.error('添加失败')
+  } finally {
+    isAddingPerson.value = false
   }
 }
 
