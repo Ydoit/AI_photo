@@ -1,11 +1,13 @@
 <template>
-  <div class="p-6">
-    <div class="mb-6 flex justify-between items-center">
-      <h2 class="text-2xl font-bold text-gray-800 dark:text-white">用户管理</h2>
-      <el-button type="danger" @click="handleLogout">退出登录</el-button>
+  <div class="p-4 md:p-6">
+    <div class="mb-4 md:mb-6 flex justify-between items-center">
+      <h2 class="text-xl md:text-2xl font-bold text-gray-800 dark:text-white">用户管理</h2>
+      <el-button type="danger" @click="handleLogout" class="hidden md:inline-flex">退出登录</el-button>
+      <el-button type="danger" size="small" @click="handleLogout" class="md:hidden">退出</el-button>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+    <!-- Desktop View -->
+    <div class="hidden md:block bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
       <el-table :data="users" style="width: 100%" v-loading="loading">
         <el-table-column prop="username" label="用户名" />
         <el-table-column prop="email" label="邮箱" />
@@ -29,6 +31,7 @@
               v-if="currentUser?.id !== row.id"
               title="确定删除该用户吗？这将删除其所有相册和照片数据（保留原文件）。"
               @confirm="handleDelete(row)"
+              width="250"
             >
               <template #reference>
                 <el-button type="danger" link>删除</el-button>
@@ -38,6 +41,46 @@
           </template>
         </el-table-column>
       </el-table>
+    </div>
+
+    <!-- Mobile View -->
+    <div class="md:hidden space-y-4" v-loading="loading">
+      <div v-if="users.length === 0 && !loading" class="text-center text-gray-500 py-8">
+        暂无用户数据
+      </div>
+      <div v-for="user in users" :key="user.id" class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+        <div class="flex justify-between items-start mb-3">
+          <div>
+            <div class="font-bold text-gray-800 dark:text-white text-lg">{{ user.username }}</div>
+            <div class="text-sm text-gray-500 mt-1">{{ user.email }}</div>
+          </div>
+          <el-tag :type="user.is_superuser ? 'danger' : 'info'" size="small">
+            {{ user.is_superuser ? '管理员' : '普通用户' }}
+          </el-tag>
+        </div>
+        
+        <div class="flex justify-between items-center pt-3 border-t dark:border-gray-700">
+          <div class="flex items-center gap-2">
+             <span class="text-sm text-gray-500">状态:</span>
+             <el-tag :type="user.is_active ? 'success' : 'danger'" size="small">
+              {{ user.is_active ? '正常' : '禁用' }}
+             </el-tag>
+          </div>
+          
+          <div v-if="currentUser?.id !== user.id">
+            <el-popconfirm
+              title="确定删除该用户吗？"
+              @confirm="handleDelete(user)"
+              width="200"
+            >
+              <template #reference>
+                <el-button type="danger" size="small" plain>删除</el-button>
+              </template>
+            </el-popconfirm>
+          </div>
+          <span v-else class="text-gray-400 text-xs">当前用户</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>

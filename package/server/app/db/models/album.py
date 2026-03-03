@@ -38,7 +38,7 @@ class Album(Base):
     query_embedding = Column(Vector(512), nullable=True)
     num_photos = Column(Integer, default=0)
     threshold = Column(Float, default=0.25, nullable=True)
-    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
 
     # M:N relationship with Photo
     photos = relationship("Photo", secondary="album_photos", back_populates="albums")

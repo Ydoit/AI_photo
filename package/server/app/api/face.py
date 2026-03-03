@@ -13,6 +13,7 @@ from app.schemas.face import FaceIdentitySchema, RemovePhotosRequest, SetCoverRe
 from app.service.tasks.face import process_single_photo
 from app.db.models.photo import Photo
 from app.db.models.face import Face
+
 import numpy as np
 import logging
 
@@ -25,7 +26,8 @@ from app.service.face_cluster import FaceClusterService
 @router.post("/identities", response_model=FaceIdentitySchema, summary="创建新人物", description="创建一个新的人物记录")
 def create_identity(
     payload: FaceIdentityCreate = Body(..., description="人物信息"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(deps.get_current_user)
 ):
     """
     创建新人物。
@@ -36,7 +38,8 @@ def create_identity(
 async def add_photos_to_identity(
     id: UUID = Path(..., description="人物ID"),
     payload: AddPhotosToIdentityRequest = Body(..., description="要添加的照片列表"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(deps.get_current_user)
 ):
     """
     将选中的照片添加到人物相册中。
@@ -154,7 +157,8 @@ async def add_photos_to_identity(
 def update_identity(
     id: UUID = Path(..., description="人物ID"),
     payload: schemas.FaceIdentityUpdate = Body(..., description="人物更新信息"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(deps.get_current_user)
 ):
     """
     更新人物信息（名称、描述、标签）。
@@ -170,7 +174,8 @@ def list_identities(
     page: int = Query(1, ge=1, description="页码"),
     limit: int = Query(20, ge=1, le=10000, description="每页数量"),
     types: List[str] = Query(["named", "unnamed"], alias="types[]" , description="人物类型筛选：named, unnamed, hidden"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(deps.get_current_user)
 ):
     """
     获取人物列表，包含每个人的封面照片和照片总数。
@@ -192,7 +197,8 @@ def get_identity_photos(
     id: UUID = Path(..., description="人物ID"),
     page: int = Query(1, ge=1, description="页码"),
     limit: int = Query(50, ge=1, description="每页数量"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(deps.get_current_user)
 ):
     """
     获取指定人物关联的所有照片列表。
@@ -203,7 +209,8 @@ def get_identity_photos(
 @router.delete("/identities/{id}", summary="删除人物", description="软删除指定人物，但保留其关联的照片（解除关联）")
 def delete_identity(
     id: UUID = Path(..., description="人物ID"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(deps.get_current_user)
 ):
     """
     删除人物。
@@ -218,7 +225,8 @@ def delete_identity(
 def remove_photos_from_identity(
     id: UUID = Path(..., description="人物ID"),
     payload: RemovePhotosRequest = Body(..., description="要移除的照片列表"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(deps.get_current_user)
 ):
     """
     批量从人物中移除照片。
@@ -233,7 +241,8 @@ def remove_photos_from_identity(
 def set_identity_cover(
     id: UUID = Path(..., description="人物ID"),
     payload: SetCoverRequest = Body(..., description="封面设置请求"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(deps.get_current_user)
 ):
     """
     设置人物的封面照片。
@@ -250,7 +259,8 @@ def set_identity_cover(
 @router.post("/identities/merge", summary="合并人物", description="将多个源人物合并到一个目标人物中")
 def merge_identities(
     payload: MergeRequest = Body(..., description="合并请求"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(deps.get_current_user)
 ):
     """
     合并人物。
@@ -263,7 +273,8 @@ def merge_identities(
 @router.post("/identities/{id}/rescan", summary="重新扫描人物人脸", description="根据当前人物的人脸中心，重新扫描未分配的人脸并尝试关联")
 def rescan_identity(
     id: UUID = Path(..., description="人物ID"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: schemas.User = Depends(deps.get_current_user)
 ):
     """
     重新扫描人物人脸，将符合条件的人脸关联到该人物。

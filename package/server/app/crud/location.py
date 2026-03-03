@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from uuid import UUID
-from sqlalchemy import func, desc, extract
+from sqlalchemy import func, desc, extract, case
 from app.db.models.photo import Photo
 from app.db.models.photo_metadata import PhotoMetadata
 from app.db.models.scene import Scene
@@ -213,14 +213,22 @@ def get_location_distribution(db: Session, owner_id: UUID, level: str = 'city', 
     return [{"name": r[0], "count": r[1], "level": level} for r in results]
 
 def get_location_statistics(db: Session, owner_id: UUID):
-    province_count = db.query(func.count(func.distinct(PhotoMetadata.province))).filter(PhotoMetadata.province != '', PhotoMetadata.province.is_not(None), Photo.owner_id == owner_id).scalar()
-    city_count = db.query(func.count(func.distinct(PhotoMetadata.city))).filter(PhotoMetadata.city != '', PhotoMetadata.city.is_not(None), Photo.owner_id == owner_id).scalar()
-    district_count = db.query(func.count(func.distinct(PhotoMetadata.district))).filter(PhotoMetadata.district != '', PhotoMetadata.district.is_not(None)).scalar()
-    country_count = db.query(func.count(func.distinct(PhotoMetadata.country))).filter(PhotoMetadata.country != '', PhotoMetadata.country.is_not(None)).scalar()
+    # Filter photos by owner_id first
+    subq = db.query(Photo.id).filter(Photo.owner_id == owner_id).subquery()
+    
+    # Query stats using the subquery
+    result = db.query(
+        func.count(func.distinct(case((PhotoMetadata.province != '', PhotoMetadata.province), else_=None))),
+        func.count(func.distinct(case((PhotoMetadata.city != '', PhotoMetadata.city), else_=None))),
+        func.count(func.distinct(case((PhotoMetadata.district != '', PhotoMetadata.district), else_=None))),
+        func.count(func.distinct(case((PhotoMetadata.country != '', PhotoMetadata.country), else_=None)))
+    ).join(
+        subq, PhotoMetadata.photo_id == subq.c.id
+    ).first()
     
     return {
-        "province_count": province_count,
-        "city_count": city_count,
-        "district_count": district_count,
-        "country_count": country_count
+        "province_count": result[0] or 0,
+        "city_count": result[1] or 0,
+        "district_count": result[2] or 0,
+        "country_count": result[3] or 0
     }

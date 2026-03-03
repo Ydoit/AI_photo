@@ -33,11 +33,11 @@ def login_access_token(
         user_obj = crud_user.get_by_username_or_email(db, identifier=form_data.username)
         if user_obj and user_obj.lockout_until and user_obj.lockout_until > datetime.utcnow():
              raise HTTPException(status_code=403, detail="Account locked due to too many failed login attempts.")
-        
+
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     elif not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
-        
+
     access_token_expires = timedelta(minutes=config_manager.config.security.access_token_expire_minutes)
     return {
         "access_token": security.create_access_token(
@@ -71,7 +71,7 @@ def register_user(
     # Check if this is the first user
     if db.query(crud_user.User).count() == 0:
         user_in.is_superuser = True
-        
+
     user = crud_user.create(db, user=user_in)
     return user
 
@@ -86,10 +86,10 @@ def check_password_reset_user(
     user = crud_user.get_by_username_or_email(db, identifier=payload.username_or_email)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     if not user.security_question:
         raise HTTPException(status_code=400, detail="User has no security question set")
-        
+
     return {"security_question": user.security_question}
 
 @router.post("/reset-password", response_model=UserResponse)
@@ -103,9 +103,9 @@ def confirm_password_reset(
     user = crud_user.get_by_username_or_email(db, identifier=payload.username_or_email)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-        
+
     if not crud_user.verify_security_answer(user, payload.security_answer):
         raise HTTPException(status_code=400, detail="Incorrect security answer")
-        
+
     user = crud_user.reset_password(db, user, payload.new_password)
     return user

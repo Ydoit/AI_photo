@@ -110,14 +110,8 @@ def get_tags_with_stats(db: Session, owner_id: UUID, skip: int = 0, limit: int =
     result = []
     for tag, count in tags_with_count:
         # Get latest photo for cover
-        cover_relation = db.query(PhotoTagRelation).filter(
-            PhotoTagRelation.tag_id == tag.id,
-            PhotoTagRelation.is_deleted == False
-        ).order_by(desc(PhotoTagRelation.created_at)).first()
-
         cover = None
-        if cover_relation:
-            cover = db.query(Photo).filter(Photo.id == cover_relation.photo_id).first()
+        cover = db.query(Photo).filter(Photo.owner_id == owner_id).join(PhotoTagRelation, Photo.id == PhotoTagRelation.photo_id).filter(PhotoTagRelation.tag_id == tag.id).first()
 
         result.append(schemas.TagStats(
             id=tag.id,

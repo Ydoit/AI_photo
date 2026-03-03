@@ -55,15 +55,15 @@ def delete_user(
     """
     if not current_user.is_superuser and current_user.id != user_id:
         raise HTTPException(status_code=403, detail="The user doesn't have enough privileges")
-    
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-        
+
     # Delete associated data (Albums, Photos) - Only DB records
     db.query(Photo).filter(Photo.owner_id == user_id).delete()
     db.query(Album).filter(Album.owner_id == user_id).delete()
-    
+
     db.delete(user)
     db.commit()
     return user

@@ -81,7 +81,8 @@ service.interceptors.response.use(
         case 401:
           errorMsg = '登录已过期，请重新登录';
           const userStore = useUserStore();
-          userStore.logout(); // Store handle clearing token and redirect
+          // Directly reset state without calling logout API to avoid loops
+          userStore.resetState(); 
           break;
         case 403:
           errorMsg = '暂无权限访问';

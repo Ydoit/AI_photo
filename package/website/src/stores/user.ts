@@ -45,11 +45,20 @@ export const useUserStore = defineStore('user', () => {
     }
   };
 
-  const logout = async () => {
-    await authService.logout();
+  const resetState = () => {
     setToken(null);
     userInfo.value = null;
     router.push('/login');
+  };
+
+  const logout = async () => {
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.warn('Logout API failed, forcing local logout', error);
+    } finally {
+      resetState();
+    }
   };
 
   return {
@@ -57,6 +66,7 @@ export const useUserStore = defineStore('user', () => {
     userInfo,
     login,
     logout,
+    resetState,
     getUserInfo
   };
 });
