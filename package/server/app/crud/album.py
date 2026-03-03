@@ -107,7 +107,7 @@ def _update_album_photo_count(db: Session, album_id: UUID):
         db.add(album)
         db.commit()
 
-def get_album(db: Session, album_id: UUID, user_id: Optional[int] = None):
+def get_album(db: Session, album_id: UUID, user_id: UUID = None):
     query = db.query(Album).options(joinedload(Album.cover)).filter(Album.id == album_id)
     if user_id is not None:
         query = query.filter(Album.owner_id == user_id)
@@ -116,13 +116,13 @@ def get_album(db: Session, album_id: UUID, user_id: Optional[int] = None):
 def get_albums_by_photo_id(db: Session, photo_id: UUID):
     return db.query(Album).join(Album.photos).filter(Photo.id == photo_id).all()
 
-def get_albums(db: Session, skip: int = 0, limit: int = 100, user_id: Optional[int] = None):
+def get_albums(db: Session, skip: int = 0, limit: int = 100, user_id: UUID = None):
     query = db.query(Album).options(joinedload(Album.cover))
     if user_id is not None:
         query = query.filter(Album.owner_id == user_id)
     return query.offset(skip).limit(limit).all()
 
-def create_album(db: Session, album: album_schemas.AlbumCreate, query_embedding: Optional[List[float]] = None, user_id: Optional[int] = None):
+def create_album(db: Session, album: album_schemas.AlbumCreate, query_embedding: Optional[List[float]] = None, user_id: UUID = None):
     db_album = Album(
         name=album.name, 
         description=album.description,
@@ -166,7 +166,7 @@ def update_album(db: Session, album_id: UUID, album: album_schemas.AlbumCreate, 
     return db_album
 
 
-def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id: Optional[UUID], photo_id: UUID, user_id: Optional[int] = None):
+def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id: Optional[UUID], photo_id: UUID, user_id: UUID = None):
     # Determine file type
     ext = os.path.splitext(file_name)[1]
     file_type = FileType.image
@@ -196,7 +196,7 @@ def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id:
 
 
 # Photo CRUD
-def get_photos(db: Session, album_id: UUID, skip: int = 0, limit: int = 100, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None, user_id: Optional[int] = None):
+def get_photos(db: Session, album_id: UUID, skip: int = 0, limit: int = 100, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None, user_id: UUID = None):
     # Retrieve album details first
     album = get_album(db, album_id, user_id)
     if not album:
@@ -227,8 +227,8 @@ def get_photos(db: Session, album_id: UUID, skip: int = 0, limit: int = 100, sta
         return query.offset(skip).all()
     return query.offset(skip).limit(limit).all()
 
-def get_photos_by_time(db: Session, skip: int = 0, limit: int = 100, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None):
-    query = db.query(Photo)
+def get_photos_by_time(db: Session, owner_id: UUID, skip: int = 0, limit: int = 100, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None):
+    query = db.query(Photo).filter(Photo.owner_id == owner_id)
     if start_time:
         query = query.filter(Photo.photo_time >= start_time)
     if end_time:
@@ -240,21 +240,21 @@ def get_photos_by_time(db: Session, skip: int = 0, limit: int = 100, start_time:
         return query.offset(skip).all()
     return query.offset(skip).limit(limit).all()
 
-def get_filter_options(db: Session):
+def get_filter_options(db: Session, user_id: UUID):
     # Years
-    years = db.query(func.extract('year', Photo.photo_time)).distinct().order_by(func.extract('year', Photo.photo_time).desc()).all()
+    years = db.query(func.extract('year', Photo.photo_time)).distinct().filter(Photo.owner_id == user_id).order_by(func.extract('year', Photo.photo_time).desc()).all()
     years = [int(y[0]) for y in years if y[0] is not None]
 
     # Cities
-    cities = db.query(PhotoMetadata.city).distinct().filter(PhotoMetadata.city.isnot(None)).order_by(PhotoMetadata.city).all()
+    cities = db.query(PhotoMetadata.city).distinct().filter(PhotoMetadata.city.isnot(None), Photo.owner_id == user_id).order_by(PhotoMetadata.city).all()
     cities = [c[0] for c in cities if c[0]]
 
     # Makes
-    makes = db.query(PhotoMetadata.make).distinct().filter(PhotoMetadata.make.isnot(None)).order_by(PhotoMetadata.make).all()
+    makes = db.query(PhotoMetadata.make).distinct().filter(PhotoMetadata.make.isnot(None), Photo.owner_id == user_id).order_by(PhotoMetadata.make).all()
     makes = [m[0] for m in makes if m[0]]
 
     # Models
-    models = db.query(PhotoMetadata.model).distinct().filter(PhotoMetadata.model.isnot(None)).order_by(PhotoMetadata.model).all()
+    models = db.query(PhotoMetadata.model).distinct().filter(PhotoMetadata.model.isnot(None), Photo.owner_id == user_id).order_by(PhotoMetadata.model).all()
     models = [m[0] for m in models if m[0]]
 
     # Image Types
@@ -301,7 +301,7 @@ def _build_photo_filter_query(
     center_lat: Optional[float] = None,
     center_lng: Optional[float] = None,
     ids: Optional[List[UUID]] = None,
-    user_id: Optional[int] = None
+    user_id: UUID = None
 ):
     # 先筛选 Photo，减少后续连表的数据量
     photo_query = db.query(Photo.id)
@@ -456,7 +456,7 @@ def get_all_photos(
     center_lat: Optional[float] = None,
     center_lng: Optional[float] = None,
     ids: Optional[List[UUID]] = None,
-    user_id: Optional[int] = None
+    user_id: UUID = None
 ):
     query = _build_photo_filter_query(
         db, start_time, end_time, years, city, cities, province, country,
@@ -501,7 +501,7 @@ def get_timeline_stats(
     center_lat: Optional[float] = None,
     center_lng: Optional[float] = None,
     ids: Optional[List[UUID]] = None,
-    user_id: Optional[int] = None
+    user_id: UUID = None
 ):
     query = _build_photo_filter_query(
         db, start_time, end_time, years, city, cities, province, country,
@@ -566,7 +566,7 @@ def get_timeline_stats(
 def get_photo(db: Session, photo_id: UUID):
     return db.query(Photo).filter(Photo.id == photo_id).first()
 
-def create_photo(db: Session, photo: photo_schemas.PhotoCreate, album_id: Optional[UUID], file_path: str, photo_id: Optional[UUID] = None, user_id: Optional[int] = None):
+def create_photo(db: Session, photo: photo_schemas.PhotoCreate, album_id: Optional[UUID], file_path: str, photo_id: Optional[UUID] = None, user_id: UUID = None):
     db_photo = Photo(
         id=photo_id,
         file_path=file_path,
@@ -595,7 +595,7 @@ def create_photo(db: Session, photo: photo_schemas.PhotoCreate, album_id: Option
 
     return db_photo
 
-def update_photo(db: Session, photo_id: UUID, photo_update: photo_schemas.PhotoUpdate, user_id: Optional[int] = None):
+def update_photo(db: Session, photo_id: UUID, photo_update: photo_schemas.PhotoUpdate, user_id: UUID = None):
     db_photo = get_photo(db, photo_id)
     if db_photo:
         if user_id is not None and db_photo.owner_id != user_id:
@@ -609,7 +609,7 @@ def update_photo(db: Session, photo_id: UUID, photo_update: photo_schemas.PhotoU
         db.refresh(db_photo)
     return db_photo
 
-def delete_photo(db: Session, photo_id: UUID, user_id: Optional[int] = None):
+def delete_photo(db: Session, photo_id: UUID, user_id: UUID = None):
     db_photo = get_photo(db, photo_id)
     if db_photo:
         if user_id is not None and db_photo.owner_id != user_id:
@@ -622,13 +622,13 @@ def delete_photo(db: Session, photo_id: UUID, user_id: Optional[int] = None):
             _update_album_photo_count(db, album_id)
     return db_photo
 
-def get_photos_by_ids(db: Session, photo_ids: List[UUID], user_id: Optional[int] = None):
+def get_photos_by_ids(db: Session, photo_ids: List[UUID], user_id: UUID = None):
     query = db.query(Photo).filter(Photo.id.in_(photo_ids))
     if user_id is not None:
         query = query.filter(Photo.owner_id == user_id)
     return query.all()
 
-def batch_update_album_association(db: Session, photo_ids: List[UUID], album_id: UUID, action: str, user_id: Optional[int] = None):
+def batch_update_album_association(db: Session, photo_ids: List[UUID], album_id: UUID, action: str, user_id: UUID = None):
     """
     批量更新照片与相册的关联关系，支持添加、移除或删除操作。
     优化点：
@@ -692,7 +692,7 @@ def batch_update_album_association(db: Session, photo_ids: List[UUID], album_id:
 
     return count
 
-def batch_delete_photos_db(db: Session, photo_ids: List[UUID], user_id: Optional[int] = None):
+def batch_delete_photos_db(db: Session, photo_ids: List[UUID], user_id: UUID = None):
     # Get photos with albums to know which albums to update
     query = db.query(Photo).options(joinedload(Photo.albums), joinedload(Photo.faces)).filter(Photo.id.in_(photo_ids))
     if user_id is not None:
@@ -720,13 +720,13 @@ def batch_delete_photos_db(db: Session, photo_ids: List[UUID], user_id: Optional
     return count
 
 # Metadata CRUD
-def get_photo_metadata(db: Session, photo_id: UUID, user_id: Optional[int] = None):
+def get_photo_metadata(db: Session, photo_id: UUID, user_id: UUID = None):
     query = db.query(PhotoMetadata).join(Photo).filter(PhotoMetadata.photo_id == photo_id)
     if user_id is not None:
         query = query.filter(Photo.owner_id == user_id)
     return query.first()
 
-def update_photo_metadata(db: Session, photo_id: UUID, metadata: PhotoMetadataUpdate, user_id: Optional[int] = None):
+def update_photo_metadata(db: Session, photo_id: UUID, metadata: PhotoMetadataUpdate, user_id: UUID = None):
     db_metadata = get_photo_metadata(db, photo_id, user_id)
     if not db_metadata:
         # Check if photo exists and owned by user before creating metadata

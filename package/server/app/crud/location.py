@@ -1,18 +1,19 @@
 from sqlalchemy.orm import Session
+from uuid import UUID
 from sqlalchemy import func, desc, extract
 from app.db.models.photo import Photo
 from app.db.models.photo_metadata import PhotoMetadata
 from app.db.models.scene import Scene
 
-def get_location_years(db: Session):
+def get_location_years(db: Session, owner_id: UUID):
     years = db.query(extract('year', Photo.photo_time))\
-        .filter(Photo.photo_time.isnot(None))\
+        .filter(Photo.photo_time.isnot(None), Photo.owner_id == owner_id)\
         .distinct()\
         .order_by(desc(extract('year', Photo.photo_time)))\
         .all()
     return [int(y[0]) for y in years if y[0] is not None]
 
-def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 100, year: int = None):
+def get_locations(db: Session, owner_id: UUID, level: str = 'city', skip: int = 0, limit: int = 100, year: int = None):
     is_scene = False
     if level == 'city':
         group_col = PhotoMetadata.city
@@ -33,7 +34,7 @@ def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 
             Scene.id,
             Scene.is_custom,
             func.count(Photo.id).label('count')
-        ).outerjoin(
+        ).filter(Photo.owner_id == owner_id).outerjoin(
             PhotoMetadata, Scene.id == PhotoMetadata.scene_id
         ).outerjoin(
             Photo, Photo.id == PhotoMetadata.photo_id
@@ -42,7 +43,7 @@ def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 
         query = db.query(
             group_col,
             func.count(Photo.id).label('count')
-        ).join(
+        ).filter(Photo.owner_id == owner_id).join(
             PhotoMetadata, Photo.id == PhotoMetadata.photo_id
         )
 
@@ -83,10 +84,10 @@ def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 
     cover_query = db.query(
         Photo,
         group_col
-    ).join(
+    ).filter(Photo.owner_id == owner_id).join(
         PhotoMetadata, Photo.id == PhotoMetadata.photo_id
     )
-    
+
     if is_scene:
         cover_query = cover_query.join(Scene, PhotoMetadata.scene_id == Scene.id)
 
@@ -127,19 +128,20 @@ def get_locations(db: Session, level: str = 'city', skip: int = 0, limit: int = 
         
     return locations
 
-def get_location_photos(db: Session, name: str, level: str = 'city', skip: int = 0, limit: int = 50, year: int = None):
+def get_location_photos(db: Session, owner_id: UUID, name: str, level: str = 'city', skip: int = 0, limit: int = 50, year: int = None):
+    query = db.query(Photo).filter(Photo.owner_id == owner_id)
     if level == 'city':
         col = PhotoMetadata.city
-        query = db.query(Photo).join(PhotoMetadata, Photo.id == PhotoMetadata.photo_id)
+        query = query.join(PhotoMetadata, Photo.id == PhotoMetadata.photo_id)
     elif level == 'province':
         col = PhotoMetadata.province
-        query = db.query(Photo).join(PhotoMetadata, Photo.id == PhotoMetadata.photo_id)
+        query = query.join(PhotoMetadata, Photo.id == PhotoMetadata.photo_id)
     elif level == 'district':
         col = PhotoMetadata.district
-        query = db.query(Photo).join(PhotoMetadata, Photo.id == PhotoMetadata.photo_id)
+        query = query.join(PhotoMetadata, Photo.id == PhotoMetadata.photo_id)
     elif level == 'scene':
         col = Scene.name
-        query = db.query(Photo).join(PhotoMetadata, Photo.id == PhotoMetadata.photo_id)\
+        query = query.join(PhotoMetadata, Photo.id == PhotoMetadata.photo_id)\
                   .join(Scene, PhotoMetadata.scene_id == Scene.id)
     else:
         return []
@@ -153,14 +155,15 @@ def get_location_photos(db: Session, name: str, level: str = 'city', skip: int =
         desc(Photo.photo_time)
     ).offset(skip).limit(limit).all()
 
-def get_map_markers(db: Session, year: int = None):
+def get_map_markers(db: Session, owner_id: UUID, year: int = None):
     query = db.query(
         Photo.id,
         PhotoMetadata.latitude,
         PhotoMetadata.longitude
     ).join(PhotoMetadata, Photo.id == PhotoMetadata.photo_id)\
      .filter(PhotoMetadata.latitude.isnot(None))\
-     .filter(PhotoMetadata.longitude.isnot(None))
+     .filter(PhotoMetadata.longitude.isnot(None))\
+     .filter(Photo.owner_id == owner_id)
      
     if year:
         query = query.filter(extract('year', Photo.photo_time) == year)
@@ -172,7 +175,7 @@ def get_map_markers(db: Session, year: int = None):
         for r in results
     ]
 
-def get_location_distribution(db: Session, level: str = 'city', year: int = None):
+def get_location_distribution(db: Session, owner_id: UUID, level: str = 'city', year: int = None):
     is_scene = False
     if level == 'city':
         group_col = PhotoMetadata.city
@@ -190,7 +193,7 @@ def get_location_distribution(db: Session, level: str = 'city', year: int = None
     query = db.query(
         group_col.label('name'),
         func.count(Photo.id).label('count')
-    ).join(
+    ).filter(Photo.owner_id == owner_id).join(
         PhotoMetadata, Photo.id == PhotoMetadata.photo_id
     )
 
@@ -209,9 +212,9 @@ def get_location_distribution(db: Session, level: str = 'city', year: int = None
     
     return [{"name": r[0], "count": r[1], "level": level} for r in results]
 
-def get_location_statistics(db: Session):
-    province_count = db.query(func.count(func.distinct(PhotoMetadata.province))).filter(PhotoMetadata.province != '', PhotoMetadata.province.is_not(None)).scalar()
-    city_count = db.query(func.count(func.distinct(PhotoMetadata.city))).filter(PhotoMetadata.city != '', PhotoMetadata.city.is_not(None)).scalar()
+def get_location_statistics(db: Session, owner_id: UUID):
+    province_count = db.query(func.count(func.distinct(PhotoMetadata.province))).filter(PhotoMetadata.province != '', PhotoMetadata.province.is_not(None), Photo.owner_id == owner_id).scalar()
+    city_count = db.query(func.count(func.distinct(PhotoMetadata.city))).filter(PhotoMetadata.city != '', PhotoMetadata.city.is_not(None), Photo.owner_id == owner_id).scalar()
     district_count = db.query(func.count(func.distinct(PhotoMetadata.district))).filter(PhotoMetadata.district != '', PhotoMetadata.district.is_not(None)).scalar()
     country_count = db.query(func.count(func.distinct(PhotoMetadata.country))).filter(PhotoMetadata.country != '', PhotoMetadata.country.is_not(None)).scalar()
     

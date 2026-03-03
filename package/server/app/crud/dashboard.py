@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract, desc
 from datetime import datetime, date
@@ -10,14 +12,14 @@ from app.schemas.dashboard import (
     DashboardTimeChartItem, DashboardResponse
 )
 
-def get_dashboard_stats(db: Session) -> DashboardResponse:
+def get_dashboard_stats(db: Session, owner_id: UUID) -> DashboardResponse:
     # 1. Card Stats
-    total_media = db.query(Photo).count()
+    total_media = db.query(Photo).filter(Photo.owner_id == owner_id).count()
     
     today_start = datetime.combine(date.today(), datetime.min.time())
-    today_new = db.query(Photo).filter(Photo.upload_time >= today_start).count()
+    today_new = db.query(Photo).filter(Photo.upload_time >= today_start, Photo.owner_id == owner_id).count()
     
-    total_size_bytes = db.query(func.sum(Photo.size)).scalar() or 0
+    total_size_bytes = db.query(func.sum(Photo.size)).filter(Photo.owner_id== owner_id).scalar() or 0
     # Convert bytes to GB
     storage_gb = total_size_bytes / (1024 * 1024 * 1024)
     storage_used = f"{storage_gb:.1f}GB"

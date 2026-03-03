@@ -60,7 +60,7 @@ def read_album(album_id: UUID, db: Session = Depends(get_db), current_user: User
 
     # Check if cover is set (relationship or ID)
     if db_album.cover_id is None:
-        photos = crud.get_photos(db, album_id, user_id=current_user.id)
+        photos = crud.get_photos(db, current_user.id, user_id=current_user.id)
         if photos:
             earliest = min(photos, key=lambda p: p.photo_time or p.upload_time)
             try:

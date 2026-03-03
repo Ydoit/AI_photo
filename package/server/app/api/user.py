@@ -23,7 +23,7 @@ def read_users(
     Retrieve users.
     """
     if not current_user.is_superuser:
-        raise HTTPException(status_code=403, detail="The user doesn't have enough privileges")
+        return [current_user]
     users = db.query(User).offset(skip).limit(limit).all()
     return users
 

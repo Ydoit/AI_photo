@@ -8,15 +8,17 @@ from app.crud import location as crud
 from app.schemas import photo as photo_schemas
 from app.schemas import scene as scene_schemas
 from app.crud import scene as scene_crud
+from app.api import deps
+from app.db.models import User
 
 router = APIRouter()
 
 @router.get("/years", response_model=List[int], summary="获取所有年份")
-def get_years(db: Session = Depends(get_db)):
+def get_years(db: Session = Depends(get_db), current_user: User = Depends(deps.get_current_user)):
     """
     获取所有照片的拍摄年份。
     """
-    return crud.get_location_years(db)
+    return crud.get_location_years(db, current_user.id)
 
 @router.get("", response_model=List[schemas.Location], summary="获取位置列表")
 def get_locations(
@@ -24,40 +26,43 @@ def get_locations(
     year: int = Query(None, description="年份筛选"),
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     获取按城市或省份分组的位置列表，包含每个位置的封面照片和照片数量。
     """
-    return crud.get_locations(db, level, skip, limit, year)
+    return crud.get_locations(db, current_user.id, level, skip, limit, year)
 
 @router.get("/distribution", response_model=List[schemas.LocationBase], summary="获取位置分布数据")
 def get_location_distribution(
     level: str = Query('city', regex='^(city|province|district|scene)$', description="分组级别：city 或 province 或 district 或 scene"),
     year: int = Query(None, description="年份筛选"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     获取所有位置的分布数据（仅包含名称和数量），用于地图展示。
     """
-    return crud.get_location_distribution(db, level, year)
+    return crud.get_location_distribution(db, current_user.id, level, year)
 
 @router.get("/statistics", response_model=schemas.LocationStatistics, summary="获取位置统计数据")
-def get_location_statistics(db: Session = Depends(get_db)):
+def get_location_statistics(db: Session = Depends(get_db), current_user: User = Depends(deps.get_current_user)):
     """
     获取位置统计数据（省份、城市、区县数量等）。
     """
-    return crud.get_location_statistics(db)
+    return crud.get_location_statistics(db, current_user.id)
 
 @router.get("/markers", response_model=List[schemas.MapMarker], summary="获取地图标记点")
 def get_map_markers(
     year: int = Query(None, description="年份筛选"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     获取所有包含GPS信息的照片标记点。
     """
-    return crud.get_map_markers(db, year)
+    return crud.get_map_markers(db, current_user.id, year)
 
 @router.post("/scenes", response_model=scene_schemas.Scene, summary="创建景区")
 def create_scene(
@@ -131,9 +136,10 @@ def get_location_photos(
     year: int = Query(None, description="年份筛选"),
     skip: int = 0,
     limit: int = 50,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     获取指定位置（城市或省份）的照片列表。
     """
-    return crud.get_location_photos(db, name, level, skip, limit, year)
+    return crud.get_location_photos(db, current_user.id, name, level, skip, limit, year)
