@@ -43,6 +43,11 @@ class MapSettings(BaseModel):
     provider: str = Field(default="tianditu", description="Map provider (tianditu, amap, baidu)")
     api_keys: List[str] = Field(default=[], description="Map API Key")
 
+class SecuritySettings(BaseModel):
+    secret_key: str = Field(default="09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7", description="Secret key for JWT")
+    algorithm: str = Field(default="HS256", description="JWT algorithm")
+    access_token_expire_minutes: int = Field(default=30, description="Access token expiration in minutes")
+
 class AppSettings(BaseModel):
     version: str = "0.2.4"
     ai: AISettings = Field(default_factory=AISettings)
@@ -51,6 +56,7 @@ class AppSettings(BaseModel):
     filter: FilterSettings = Field(default_factory=FilterSettings)
     task: TaskSettings = Field(default_factory=TaskSettings)
     map: MapSettings = Field(default_factory=MapSettings)
+    security: SecuritySettings = Field(default_factory=SecuritySettings)
 
     class Config:
         arbitrary_types_allowed = True

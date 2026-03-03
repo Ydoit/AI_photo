@@ -29,6 +29,8 @@ from app.schemas import tag as tag_schemas
 from app.service import storage
 from app.service.task_manager import TaskManager
 from app.db.models.task import TaskType
+from app.api.deps import get_current_user
+from app.db.models.user import User
 import uuid
 import os
 import shutil
@@ -68,7 +70,8 @@ def read_all_photos(
         center_lat: Optional[float] = None,
         center_lng: Optional[float] = None,
         ids: Optional[List[UUID]] = Query(None),
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
 ):
     st_time = time.time()
     photos = crud_album.get_all_photos(
@@ -81,7 +84,7 @@ def read_all_photos(
         face_id=face_id, tag_id=tag_id,
         lat_min=lat_min, lat_max=lat_max, lng_min=lng_min, lng_max=lng_max,
         radius=radius, center_lat=center_lat, center_lng=center_lng,
-        ids=ids
+        ids=ids, user_id=current_user.id
     )
     logging.info(f"read_all_photos time: {time.time() - st_time}")
     return photos
@@ -90,7 +93,8 @@ def read_all_photos(
 @router.post("/batch/create")
 def batch_create_photos(
     batch_data: schemas.BatchPhotoCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     # Convert schema to dict list expected by crud
     photos_data = []
@@ -101,7 +105,7 @@ def batch_create_photos(
             'photo_id': item.photo_id,
         })
     try:
-        count = crud_album.batch_create_photos(db, photos_data)
+        count = crud_album.batch_create_photos(db, photos_data, user_id=current_user.id)
         return {"message": f"Successfully created {count} photos"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -110,7 +114,8 @@ def batch_create_photos(
 @router.post("/batch")
 def batch_update_photos(
         batch_data: schemas.BatchPhotoUpdate,
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
 ):
     if batch_data.action in ['add_to_album', 'remove_from_album']:
 
@@ -119,20 +124,20 @@ def batch_update_photos(
 
         if batch_data.action == 'add_to_album':
             # Verify album exists
-            db_album = crud_album.get_album(db, album_id=batch_data.album_id)
+            db_album = crud_album.get_album(db, album_id=batch_data.album_id, user_id=current_user.id)
             if not db_album:
                 raise HTTPException(status_code=404, detail="Target album not found")
 
-        count = crud_album.batch_update_album_association(db, batch_data.photo_ids, batch_data.album_id, batch_data.action)
+        count = crud_album.batch_update_album_association(db, batch_data.photo_ids, batch_data.album_id, batch_data.action, user_id=current_user.id)
         return {"message": f"Successfully updated {count} photos"}
 
     elif batch_data.action == 'delete':
         # Get photos to delete files
-        photos = crud_album.get_photos_by_ids(db, batch_data.photo_ids)
+        photos = crud_album.get_photos_by_ids(db, batch_data.photo_ids, user_id=current_user.id)
         for photo in photos:
             storage.delete_file(photo.file_path, photo.id, db)
 
-        crud_album.batch_delete_photos_db(db, batch_data.photo_ids)
+        crud_album.batch_delete_photos_db(db, batch_data.photo_ids, user_id=current_user.id)
         return {"message": "Photos deleted successfully"}
 
     else:
@@ -142,20 +147,21 @@ def batch_update_photos(
 @router.delete("/batch")
 def batch_delete_photos(
     batch_data: schemas.BatchPhotoDelete,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     # Get photos to delete files
-    photos = crud_album.get_photos_by_ids(db, batch_data.photo_ids)
+    photos = crud_album.get_photos_by_ids(db, batch_data.photo_ids, user_id=current_user.id)
     for photo in photos:
         storage.delete_file(photo.file_path, photo.id, db)
 
-    count = crud_album.batch_delete_photos_db(db, batch_data.photo_ids)
+    count = crud_album.batch_delete_photos_db(db, batch_data.photo_ids, user_id=current_user.id)
     return {"message": f"Successfully deleted {count} photos"}
 
 
 @router.delete("/{photo_id}", response_model=schemas.Photo)
-def delete_photo_global(photo_id: UUID, db: Session = Depends(get_db)):
-    db_photo = crud_album.delete_photo(db, photo_id=photo_id)
+def delete_photo_global(photo_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db_photo = crud_album.delete_photo(db, photo_id=photo_id, user_id=current_user.id)
     if not db_photo:
         raise HTTPException(status_code=404, detail="Photo not found")
 
@@ -166,8 +172,8 @@ def delete_photo_global(photo_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.put("/{photo_id}", response_model=schemas.Photo)
-def update_photo(photo_id: UUID, photo: schemas.PhotoUpdate, db: Session = Depends(get_db)):
-    db_photo = crud_album.update_photo(db, photo_id, photo)
+def update_photo(photo_id: UUID, photo: schemas.PhotoUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db_photo = crud_album.update_photo(db, photo_id, photo, user_id=current_user.id)
     if not db_photo:
         raise HTTPException(status_code=404, detail="Photo not found")
     return db_photo
@@ -176,21 +182,21 @@ def update_photo(photo_id: UUID, photo: schemas.PhotoUpdate, db: Session = Depen
 # Metadata Endpoints
 
 @router.get("/{photo_id}/metadata", response_model=PhotoMetadata)
-def get_photo_metadata(photo_id: UUID, db: Session = Depends(get_db)):
-    db_metadata = crud_album.get_photo_metadata(db, photo_id=photo_id)
-    
+def get_photo_metadata(photo_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db_metadata = crud_album.get_photo_metadata(db, photo_id=photo_id, user_id=current_user.id)
+
     if not db_metadata:
         raise HTTPException(status_code=404, detail="Metadata not found")
-        
+
     albums = crud_album.get_albums_by_photo_id(db, photo_id=photo_id)
     faces_identities = crud_face.get_identities_with_details(db, photo_id=photo_id)
     tags = crud_tag.get_photo_tags(db, photo_id=photo_id)
-    
+
     photo_metadata = PhotoMetadata.model_validate(db_metadata)
     photo_metadata.albums = albums
     photo_metadata.faces_identities = faces_identities
     photo_metadata.tags = tags
-    
+
     return photo_metadata
 
 
@@ -198,9 +204,13 @@ def get_photo_metadata(photo_id: UUID, db: Session = Depends(get_db)):
 def update_photo_metadata(
         photo_id: UUID,
         metadata: PhotoMetadataUpdate,
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
 ):
-    return crud_album.update_photo_metadata(db, photo_id=photo_id, metadata=metadata)
+    result = crud_album.update_photo_metadata(db, photo_id=photo_id, metadata=metadata, user_id=current_user.id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Photo not found or access denied")
+    return result
 
 
 # Tag Endpoints

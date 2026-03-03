@@ -19,6 +19,8 @@ from app.crud import face as crud_face
 
 from app.schemas import photo as schemas
 from app.service.task_manager import TaskManager
+from app.api.deps import get_current_user
+from app.db.models.user import User
 
 router = APIRouter()
 
@@ -203,11 +205,12 @@ def add_tasks(db: Session, photo_id: UUID, file_path: str):
 async def upload_photo_generic(
         album_id: Optional[UUID] = Form(None),
         file: UploadFile = File(...),
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
 ):
     if album_id:
         # Verify album exists
-        db_album = crud_album.get_album(db, album_id=album_id)
+        db_album = crud_album.get_album(db, album_id=album_id, user_id=current_user.id)
         if not db_album:
             raise HTTPException(status_code=404, detail="Album not found")
 
@@ -215,10 +218,10 @@ async def upload_photo_generic(
     photo_id = uuid.uuid4()
 
     # Save file
-    file_path = storage.save_upload_file(file, photo_id, db)
+    file_path = storage.save_upload_file(file, photo_id)
 
     # Create and Save
-    photo = save_and_create_photo(db, file_path, file.filename, album_id, photo_id)
+    photo = save_and_create_photo(db, file_path, file.filename, album_id, photo_id, user_id=current_user.id)
 
     # Add tasks
     add_tasks(db, photo_id, file_path)
@@ -256,11 +259,12 @@ def finish_upload_generic(
         upload_id: UUID = Form(...),
         file_name: str = Form(...),
         album_id: Optional[UUID] = Form(None),
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
 ):
     if album_id:
         # Verify album exists
-        db_album = crud_album.get_album(db, album_id=album_id)
+        db_album = crud_album.get_album(db, album_id=album_id, user_id=current_user.id)
         if not db_album:
             raise HTTPException(status_code=404, detail="Album not found")
 
@@ -288,13 +292,13 @@ def finish_upload_generic(
                 outfile.write(infile.read())
     with open(os.path.join("uploads", "chunks", str(upload_id), "merged"), "rb") as merged:
         _Tmp.file = merged
-        final_path = storage.save_upload_file(_Tmp, photo_id, db)
+        final_path = storage.save_upload_file(_Tmp, photo_id)
 
     # Clean up chunks
     shutil.rmtree(chunk_dir)
 
     # Create and Save
-    photo = save_and_create_photo(db, final_path, file_name, album_id, photo_id)
+    photo = save_and_create_photo(db, final_path, file_name, album_id, photo_id, user_id=current_user.id)
 
     # Add tasks
     add_tasks(db, photo_id, final_path)

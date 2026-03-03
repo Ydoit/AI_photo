@@ -1,71 +1,65 @@
 // src/services/ticketService.ts
-import axios from 'axios';
+import request from '@/utils/request';
 import type { TicketBackend, TicketQueryParams, FlightTicketBackend } from '@/types/ticket';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
-});
 
 export const ticketService = {
   // 获取列表
   async getTickets(params: TicketQueryParams) {
-    const { data } = await api.get<{ items: TicketBackend[], total: number }>('/api/train-ticket', { params });
+    const data = await request.get<{ items: TicketBackend[], total: number }>('/api/train-ticket', { params });
     return data;
   },
 
   // 创建
   async createTicket(data: Partial<TicketBackend>) {
-    const { data: res } = await api.post<TicketBackend>('/api/train-ticket', data);
+    const res = await request.post<TicketBackend>('/api/train-ticket', data);
     return res;
   },
 
   // 获取飞机票列表
   async getFlightTickets(params: TicketQueryParams) {
-    const { data } = await api.get<{ items: FlightTicketBackend[], total: number }>('/api/flight-ticket', { params });
+    const data = await request.get<{ items: FlightTicketBackend[], total: number }>('/api/flight-ticket', { params });
     // 标记类型
-    data.items.forEach(item => item.type = 'flight');
-    return data;
+    data.data.items.forEach(item => item.type = 'flight');
+    return data.data;
   },
 
   // 创建飞机票
   async createFlightTicket(data: Partial<FlightTicketBackend>) {
-    const { data: res } = await api.post<FlightTicketBackend>('/api/flight-ticket', data);
-    res.type = 'flight';
-    return res;
+    const res = await request.post<FlightTicketBackend>('/api/flight-ticket', data);
+    res.data.type = 'flight';
+    return res.data;
   },
 
   // 更新飞机票
   async updateFlightTicket(id: string, data: Partial<FlightTicketBackend>) {
-    const { data: res } = await api.put<FlightTicketBackend>(`/api/flight-ticket/${id}`, data);
-    res.type = 'flight';
-    return res;
+    const res = await request.put<FlightTicketBackend>(`/api/flight-ticket/${id}`, data);
+    res.data.type = 'flight';
+    return res.data;
   },
 
   // 删除飞机票
   async deleteFlightTicket(id: string) {
-    await api.delete(`/api/flight-ticket/${id}`);
+    await request.delete(`/api/flight-ticket/${id}`);
     return true;
   },
 
   // 更新
   async updateTicket(id: number | string, data: Partial<TicketBackend>) {
-    const { data: res } = await api.put<TicketBackend>(`/api/train-ticket/${id}`, data);
-    return res;
+    const res = await request.put<TicketBackend>(`/api/train-ticket/${id}`, data);
+    res.data.type = 'train';
+    return res.data;
   },
 
   // 删除
   async deleteTicket(id: number | string) {
-    await api.delete(`/api/train-ticket/${id}`);
+    await request.delete(`/api/train-ticket/${id}`);
     return true;
   },
 
   // 批量删除 (前端循环调用或后端支持批量接口)
   async batchDeleteTickets(ids: (number | string)[]) {
     // 假设后端没有批量接口，使用 Promise.all
-    const promises = ids.map(id => api.delete(`/api/train-ticket/${id}`));
+    const promises = ids.map(id => request.delete(`/api/train-ticket/${id}`));
     await Promise.all(promises);
     return true;
   },
@@ -74,7 +68,7 @@ export const ticketService = {
   async recognizeTicket(file: File) {
     const formData = new FormData();
     formData.append('file', file);
-    const { data } = await api.post('/api/train-ticket/recognize', formData, {
+    const data = await request.post('/api/train-ticket/recognize', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -84,13 +78,15 @@ export const ticketService = {
 
   // 导出数据
   async exportTickets(format: 'json' | 'csv' = 'json') {
-    const response = await api.get(`/api/train-ticket/export`, {
+    const response = await request.get(`/api/train-ticket/export`, {
       params: { format },
       responseType: 'blob'
     });
+    // response is the blob data directly because of request interceptor logic on 'blob'
     
     // 创建下载链接
-    const url = window.URL.createObjectURL(new Blob([response.data]));
+// src/services/ticketService.ts
+    const url = window.URL.createObjectURL(response.data);
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `tickets_export_${new Date().getTime()}.${format}`);
@@ -98,16 +94,4 @@ export const ticketService = {
     link.click();
     document.body.removeChild(link);
   },
-
-  // 导入数据
-  async importTickets(file: File) {
-    const formData = new FormData();
-    formData.append('file', file);
-    const { data } = await api.post('/api/train-ticket/import', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    return data;
-  }
 };

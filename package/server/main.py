@@ -26,10 +26,13 @@ if not os.path.exists('./data'):
     os.mkdir('./data')
 load_dotenv('./data/.env')
 
-from app.api import user, train_ticket, flight_ticket, album, index, settings, face, ocr, location, search, classification, system
+from app.api import (
+    user, train_ticket, flight_ticket, album, index, settings, face, ocr, 
+    location, search, classification, system, media, stats, photo, tasks, 
+    annual_report, auth, deps
+)
 from railway.api import router as railway_router
 from app.db.session import engine, SessionLocal
-from app.api import user, album, settings, index, media, stats, photo, tasks, annual_report, system
 from app.core.logger import setup_logging
 from app.worker import run_worker
 from app.core.config_manager import VERSION
@@ -141,6 +144,7 @@ app.add_middleware(
 def root():
     return {"message": "Image Manager Backend Ready"}
 
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(user.router, prefix="/users", tags=["Users"])
 app.include_router(train_ticket.router, prefix="/train-ticket", tags=["train-ticket"])
 app.include_router(flight_ticket.router, prefix="/flight-ticket", tags=["flight-ticket"])

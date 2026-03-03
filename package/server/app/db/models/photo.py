@@ -35,6 +35,7 @@ class Photo(Base):
     image_type = Column(Enum(ImageType))  # Screenshot, Camera, Other
     # Task Status Tracking: {"thumbnail": true, "metadata": true, "face": false}
     processed_tasks = Column(JSON, default={})
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
 
     # Relationships
     albums = relationship("Album", secondary="album_photos", back_populates="photos")

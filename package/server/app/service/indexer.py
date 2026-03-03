@@ -12,12 +12,16 @@ status = {
     'message': 'Idle'
 }
 
-def rebuild_index(db: Session):
+def rebuild_index(db: Session, user_id: str = None):
     if status['running']:
         return
 
     # Submit task
-    TaskManager.get_instance().add_task(db, TaskType.SCAN_FOLDER, {}, priority=10)
+    payload = {}
+    if user_id:
+        payload['user_id'] = user_id
+        
+    TaskManager.get_instance().add_task(db, TaskType.SCAN_FOLDER, payload, priority=10)
 
     # Update status to indicate start
     status['running'] = True

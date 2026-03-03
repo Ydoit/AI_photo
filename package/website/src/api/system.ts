@@ -1,7 +1,4 @@
-import axios from 'axios'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-const api = axios.create({ baseURL: API_BASE_URL })
+import request from '@/utils/request';
 
 export interface UpdateCheckResult {
   current_version: string
@@ -14,11 +11,11 @@ export interface UpdateCheckResult {
 
 export const systemApi = {
   async getVersion(): Promise<{version: string}> {
-    const { data } = await api.get('/api/system/version')
-    return data
+    const data = await request.get<{version: string}>('/api/system/version')
+    return data.data
   },
   async checkUpdate(): Promise<UpdateCheckResult> {
-    const { data } = await api.get('/api/system/update-check')
-    return data
+    const data = await request.get<UpdateCheckResult>('/api/system/update-check')
+    return data.data
   }
 }

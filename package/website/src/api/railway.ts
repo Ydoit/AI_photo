@@ -1,12 +1,5 @@
-import axios from 'axios';
+import request from '@/utils/request';
 import type { BaseResponse } from '@/types/railway';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
-});
 
 export interface TicketItem {
   id?: string;
@@ -40,7 +33,8 @@ export const railwayService = {
    * 批量计算车票里程和时长
    */
   async getBatchStats(items: TicketItem[]) {
-    const { data } = await api.post<BaseResponse<TicketStats[]>>('/api/railway/stats/batch', { items });
+    // request interceptor handles unwrapping of BaseResponse
+    const data = await request.post<TicketStats[]>('/api/railway/stats/batch', { items });
     return data;
   },
 
@@ -48,7 +42,7 @@ export const railwayService = {
    * 获取所有站点信息
    */
   async getStations(params?: { page?: number; page_size?: number; keyword?: string }) {
-    const { data } = await api.get<BaseResponse<StationListResponse>>('/api/railway/stations', { params });
+    const data = await request.get<StationListResponse>('/api/railway/stations', { params });
     return data;
   }
 };

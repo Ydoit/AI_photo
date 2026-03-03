@@ -54,6 +54,7 @@ def scan_directory_recursive(path: str, exts: Set[str], filter_settings: Optiona
 async def handle_scan_folder(task_manager, task: Task, db: Session):
     task_manager.scan_status['message'] = "Scanning folders..."
     scan_roots = task.payload.get('scan_roots')
+    user_id = task.payload.get('user_id')
     if not scan_roots:
             root = storage._get_storage_root()
             primary_uploads = os.path.join(root, 'uploads')
@@ -63,10 +64,10 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
     EXTS = {'.png', '.jpg', '.jpeg', '.webp', '.tiff', '.gif', '.mp4', '.mov', '.avi', '.heic'}
     loop = asyncio.get_running_loop()
     logging.info(f"Scanning roots: {scan_roots}")
-    
+
     # Get filter settings
     filter_config = config_manager.config.filter.model_dump()
-    
+
     def parallel_scan_wrapper():
         found_files = set()
         work_items = []
@@ -196,7 +197,8 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
                 payload={
                     'file_path': image_path,
                     'live_photo_video_path': final_video_path,
-                    'is_live_photo': True
+                    'is_live_photo': True,
+                    'user_id': user_id
                 },
                 priority=10,
                 status=TaskStatus.PENDING
@@ -210,7 +212,7 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
             if fp not in processed_paths:
                 new_tasks.append(Task(
                     type=TaskType.PROCESS_BASIC,
-                    payload={'file_path': fp},
+                    payload={'file_path': fp, 'user_id': user_id},
                     priority=10,
                     status=TaskStatus.PENDING
                 ))

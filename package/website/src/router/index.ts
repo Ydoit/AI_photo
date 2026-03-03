@@ -57,6 +57,28 @@ const routes: RouteRecordRaw[] = [
     meta: { layout: 'blank', title: '年度回忆录' },
   },
 
+  // 登录页面（使用空白布局）
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/login/index.vue'),
+    meta: { layout: 'blank', title: '登录' },
+  },
+
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('@/views/login/Register.vue'),
+    meta: { layout: 'blank', title: '注册' },
+  },
+
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: () => import('@/views/login/ForgotPassword.vue'),
+    meta: { layout: 'blank', title: '找回密码' },
+  },
+
   // 404 页面（使用空白布局）
   {
     path: '/:pathMatch(.*)*', // 匹配所有未定义路由
@@ -75,10 +97,29 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 });
 
+import { useUserStore } from '@/stores/user';
+
 // 可选：路由守卫 - 动态设置页面标题
-router.beforeEach((to) => {
+router.beforeEach((to, from, next) => {
   if (to.meta.title) {
     document.title = to.meta.title as string;
+  }
+
+  const userStore = useUserStore();
+  const whiteList = ['/login', '/register', '/forgot-password', '/404'];
+
+  if (userStore.token) {
+    if (to.path === '/login') {
+      next({ path: '/' });
+    } else {
+      next();
+    }
+  } else {
+    if (whiteList.includes(to.path) || to.path.startsWith('/annual-report')) { // Allow annual report for now or specific public pages
+      next();
+    } else {
+      next(`/login?redirect=${to.fullPath}`);
+    }
   }
 });
 

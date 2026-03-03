@@ -1,72 +1,67 @@
-import axios from 'axios'
-import type { FaceIdentity } from '@/types/album'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-const api = axios.create({ baseURL: API_BASE_URL })
+import request from '@/utils/request';
+import type { FaceIdentity } from '@/types/album';
 
 export const faceApi = {
   async listIdentities(page = 1, limit = 20, types?: string[]) {
-    const { data } = await api.get<FaceIdentity[]>('/api/faces/identities', {
+    const data = await request.get<FaceIdentity[]>('/api/faces/identities', {
       params: { page, limit, types }
-    })
-    return data
+    });
+    return data;
   },
 
   async getIdentityPhotos(id: string, page = 1, limit = 50) {
-    // Return photos structure
-    // We might need to define Photo interface if not available, or reuse existing
-    const { data } = await api.get<any[]>(`/api/faces/identities/${id}/photos`, {
+    const data = await request.get<any[]>(`/api/faces/identities/${id}/photos`, {
       params: { page, limit }
-    })
-    return data
+    });
+    return data;
   },
 
   async deleteIdentity(id: string) {
-    const { data } = await api.delete(`/api/faces/identities/${id}`)
-    return data
+    const data = await request.delete(`/api/faces/identities/${id}`);
+    return data;
   },
 
   async updateIdentity(id: string, data: { identity_name?: string; description?: string; tags?: string[]; is_hidden?: boolean }) {
-    const { data: res } = await api.put<FaceIdentity>(`/api/faces/identities/${id}`, data)
-    return res
+    const res = await request.put<FaceIdentity>(`/api/faces/identities/${id}`, data);
+    return res;
   },
 
   async rescanIdentity(id: string) {
-    const { data } = await api.post(`/api/faces/identities/${id}/rescan`)
-    return data
+    const data = await request.post(`/api/faces/identities/${id}/rescan`);
+    return data;
   },
 
   async mergeIdentities(targetId: string, sourceIds: string[]) {
-    const { data } = await api.post('/api/faces/identities/merge', {
+    const data = await request.post('/api/faces/identities/merge', {
       target_id: targetId,
       source_ids: sourceIds
-    })
-    return data
+    });
+    return data;
   },
 
   async removePhotos(identityId: string, photoIds: string[]) {
-    const { data } = await api.post(`/api/faces/identities/${identityId}/remove-photos`, {
+    const data = await request.post(`/api/faces/identities/${identityId}/remove-photos`, {
       photo_ids: photoIds
-    })
-    return data
+    });
+    return data;
   },
 
   async setCover(identityId: string, photoId: string) {
-    const { data } = await api.put(`/api/faces/identities/${identityId}/cover`, {
+    const data = await request.put(`/api/faces/identities/${identityId}/cover`, {
       photo_id: photoId
-    })
-    return data
+    });
+    return data;
   },
 
   async createIdentity(data: { identity_name: string; description?: string }) {
-    const { data: res } = await api.post<FaceIdentity>('/api/faces/identities', data)
-    return res
+    const res = await request.post<FaceIdentity>('/api/faces/identities', data);
+    return res;
   },
 
   async addPhotosToIdentity(id: string, photoIds: string[]) {
-    const { data } = await api.post(`/api/faces/identities/${id}/add-photos`, {
+    const data = await request.post(`/api/faces/identities/${id}/add-photos`, {
       photo_ids: photoIds
-    })
-    return data
+    });
+    return data;
   }
-}
+};

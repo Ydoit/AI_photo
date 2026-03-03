@@ -88,6 +88,7 @@ async def handle_process_basic(task_manager, task: Task, db: Session):
     file_path = task.payload.get('file_path')
     live_photo_video_path = task.payload.get('live_photo_video_path')
     is_live_photo = task.payload.get('is_live_photo', False)
+    user_id = task.payload.get('user_id')
     if not file_path or not os.path.exists(file_path):
         return {'status': 'skipped', 'reason': 'file not found'}
 
@@ -144,7 +145,8 @@ async def handle_process_basic(task_manager, task: Task, db: Session):
             'photo': photo_create,
             'metadata': metadata_create,
             'photo_id': photo_id,
-            'file_path': file_path
+            'file_path': file_path,
+            'user_id': user_id
         }
     }
 

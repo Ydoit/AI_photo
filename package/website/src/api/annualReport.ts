@@ -14,19 +14,16 @@ import type {
   TransportAnalysisMetrics
 } from '@/types/annualReport';
 import type { Photo } from '@/types/album';
-import axios from 'axios'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-const api = axios.create({ baseURL: API_BASE_URL })
+import request from '@/utils/request';
 
 export async function getReportExpenses(startTime: string, endTime: string): Promise<ExpenseMetrics> {
-  const { data } = await api.get<ExpenseMetrics>('/api/annual-report/expenses', {
+  const data = await request.get<ExpenseMetrics>('/api/annual-report/expenses', {
     params: {
         start_time: startTime,
         end_time: endTime
     }
   });
-  return data
+  return data.data;
 }
 
 export async function getReportExpenseDetails(startTime: string, endTime: string): Promise<TicketDetail[]> {
@@ -35,13 +32,13 @@ export async function getReportExpenseDetails(startTime: string, endTime: string
   
   for (let i = 0; i <= retries; i++) {
     try {
-      const { data } = await api.get<TicketDetail[]>('/api/annual-report/expenses/details', {
+      const data = await request.get<TicketDetail[]>('/api/annual-report/expenses/details', {
         params: {
             start_time: startTime,
             end_time: endTime
         }
       });
-      return data;
+      return data.data;
     } catch (error) {
       lastError = error;
       if (i < retries) {
@@ -55,91 +52,103 @@ export async function getReportExpenseDetails(startTime: string, endTime: string
 }
 
 export async function getReportSummary(startTime: string, endTime: string): Promise<{user: UserInfo, time: TimeMetrics}> {
-  const { data } = await api.get<{user: UserInfo, time: TimeMetrics}>('/api/annual-report/summary', {
+  const data = await request.get<{user: UserInfo, time: TimeMetrics}>('/api/annual-report/summary', {
     params: {
         start_time: startTime,
         end_time: endTime
     }
   });
-  return data
+  return data.data;
 }
 
 export async function getReportMemory(startTime: string, endTime: string): Promise<MemoryMetrics> {
-  const { data } = await api.get<MemoryMetrics>('/api/annual-report/memory', {
+  const data = await request.get<MemoryMetrics>('/api/annual-report/memory', {
     params: {
         start_time: startTime,
         end_time: endTime
     }
   });
-  return data
+  return data.data;
 }
 
 export async function getReportLocation(startTime: string, endTime: string): Promise<LocationMetrics> {
-  const { data } = await api.get<LocationMetrics>('/api/annual-report/location', {
+  const data = await request.get<LocationMetrics>('/api/annual-report/location', {
     params: {
         start_time: startTime,
         end_time: endTime
     }
   });
-  return data
+  return data.data;
 }
 
 export async function getReportSeason(startTime: string, endTime: string): Promise<SeasonMetrics> {
-  const { data } = await api.get<SeasonMetrics>('/api/annual-report/season', {
+  const data = await request.get<SeasonMetrics>('/api/annual-report/season', {
     params: {
         start_time: startTime,
         end_time: endTime
     }
   });
-  return data
+  return data.data;
 }
 
 export async function getReportEmotion(startTime: string, endTime: string): Promise<EmotionMetrics> {
-  const { data } = await api.get<EmotionMetrics>('/api/annual-report/emotion', {
+  const data = await request.get<EmotionMetrics>('/api/annual-report/emotion', {
     params: {
         start_time: startTime,
         end_time: endTime
     }
   });
-  return data
+  return data.data;
 }
 
 export async function getReportEasterEgg(startTime: string, endTime: string): Promise<EasterEgg> {
-  const { data } = await api.get<EasterEgg>('/api/annual-report/easter-egg', {
+  const data = await request.get<EasterEgg>('/api/annual-report/easter-egg', {
     params: {
         start_time: startTime,
         end_time: endTime
     }
   });
-  return data
-}
-
-export async function getAnnualReportPhotos(startTime: string, endTime: string): Promise<Record<number, Photo[]>> {
-  const { data } = await api.get<Record<number, Photo[]>>('/api/annual-report/photos', {
-    params: {
-        start_time: startTime,
-        end_time: endTime
-    }
-  });
-  return data
+  return data.data;
 }
 
 export async function getReportTravelBehavior(startTime: string, endTime: string): Promise<TravelBehaviorMetrics> {
-  const { data } = await api.get<TravelBehaviorMetrics>('/api/annual-report/travel-behavior', {
+  const data = await request.get<TravelBehaviorMetrics>('/api/annual-report/travel-behavior', {
     params: {
         start_time: startTime,
         end_time: endTime
     }
   });
-  return data
+  return data.data;
+}
+
+export async function getReportComprehensive(startTime: string, endTime: string): Promise<ComprehensiveMetrics> {
+  const data = await request.get<ComprehensiveMetrics>('/api/annual-report/comprehensive', {
+    params: {
+        start_time: startTime,
+        end_time: endTime
+    }
+  });
+  return data.data;
 }
 
 export async function getReportTransportAnalysis(startTime: string, endTime: string): Promise<TransportAnalysisMetrics> {
-  const { data } = await api.get<TransportAnalysisMetrics>('/api/annual-report/transport-analysis', {
-    params: {
-        start_time: startTime,
-        end_time: endTime
-    }
-  });
-  return data
+    const data = await request.get<TransportAnalysisMetrics>('/api/annual-report/transport-analysis', {
+        params: {
+            start_time: startTime,
+            end_time: endTime
+        }
+    });
+    return data.data;
+}
+
+export async function checkReportAvailability(year: number): Promise<{available: boolean, reason?: string}> {
+    const data = await request.get<{available: boolean, reason?: string}>('/api/annual-report/check', {
+        params: { year }
+    });
+    return data.data;
+}
+
+export async function generateReport(year: number): Promise<{success: boolean, message: string}> {
+    const data = await request.post<{success: boolean, message: string}>('/api/annual-report/generate', { year });
+    return data.data;
 }

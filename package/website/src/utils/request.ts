@@ -6,18 +6,30 @@ import axios, {
   AxiosRequestHeaders // 导入请求头类型
 } from 'axios';
 import { ElMessage } from 'element-plus';
-import { useRouter } from 'vue-router';
+import router from '@/router';
+import { useUserStore } from '@/stores/user';
 
 // 创建 Axios 实例（类型不变）
 const service: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '',
-  timeout: 5000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
   },
+  paramsSerializer: (params) => {
+    const p = new URLSearchParams();
+    for (const key in params) {
+        const val = params[key];
+        if (val === undefined || val === null) continue;
+        if (Array.isArray(val)) {
+            val.forEach(v => p.append(key, v));
+        } else {
+            p.append(key, val);
+        }
+    }
+    return p.toString();
+  }
 });
-
-const router = useRouter();
 
 // ------------------- 修正请求拦截器（核心修改）-------------------
 service.interceptors.request.use(
@@ -29,10 +41,10 @@ service.interceptors.request.use(
     // 或用可选链 + 空值合并（更安全）：
     // config.headers = config.headers ?? {}; // 若 headers 为 undefined，初始化为空对象
 
-    // 添加 Token（安全赋值）
-    const token = localStorage.getItem('user_token');
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
+    // 添加 Token（从 Store 获取）
+    const userStore = useUserStore();
+    if (userStore.token) {
+      headers.Authorization = `Bearer ${userStore.token}`;
     }
 
     // 添加自定义请求头（同样处理可选性）
@@ -50,11 +62,17 @@ service.interceptors.request.use(
 service.interceptors.response.use(
   (response: AxiosResponse) => {
     const res = response.data;
-    if (res.code !== 200) {
-      ElMessage.error(res.message || '接口请求失败');
-      return Promise.reject(res);
+    // 兼容后端直接返回数据（无 code 字段）或标准结构（有 code 字段）
+    // 如果是标准结构 { code, message, data }
+    if (res && typeof res === 'object' && 'code' in res) {
+      if (res.code !== 200) {
+        ElMessage.error(res.message || '接口请求失败');
+        return Promise.reject(res);
+      }
+      return res.data;
     }
-    return res.data;
+    // 如果没有 code 字段，假设是直接返回数据（如 login 接口）
+    return res;
   },
   (error: AxiosError) => {
     let errorMsg = '网络异常，请重试';
@@ -62,8 +80,8 @@ service.interceptors.response.use(
       switch (error.response.status) {
         case 401:
           errorMsg = '登录已过期，请重新登录';
-          localStorage.removeItem('user_token');
-          router.push('/login');
+          const userStore = useUserStore();
+          userStore.logout(); // Store handle clearing token and redirect
           break;
         case 403:
           errorMsg = '暂无权限访问';

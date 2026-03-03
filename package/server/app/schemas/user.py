@@ -1,24 +1,53 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+from typing import Optional
+from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel, EmailStr
 
-"""
-@Time        : 2025/5/10 22:33 
-@Author      : SiYuan 
-@Email       : sixyuan044@gmail.com 
-@File        : server-user.py 
-@Description : 
-"""
+# Shared properties
+class UserBase(BaseModel):
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None
+    is_active: Optional[bool] = True
+    is_superuser: bool = False
 
-from pydantic import BaseModel
-
-class UserCreate(BaseModel):
+# Properties to receive via API on creation
+class UserCreate(UserBase):
     username: str
-    email: str
+    email: EmailStr
+    password: str
+    security_question: Optional[str] = None
+    security_answer: Optional[str] = None
 
-class UserRead(BaseModel):
-    id: int
-    username: str
-    email: str
+# Properties to receive via API on update
+class UserUpdate(UserBase):
+    password: Optional[str] = None
+    security_question: Optional[str] = None
+    security_answer: Optional[str] = None
+
+# Properties shared by models stored in DB
+class UserInDBBase(UserBase):
+    id: UUID
+    failed_login_attempts: int
+    last_failed_login: Optional[datetime] = None
+    lockout_until: Optional[datetime] = None
+    security_question: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+# Additional properties to return via API
+class UserResponse(UserInDBBase):
+    pass
+
+# Password Reset Schemas
+class PasswordResetCheck(BaseModel):
+    username_or_email: str
+
+class PasswordResetCheckResponse(BaseModel):
+    security_question: Optional[str] = None
+    # If no question set, maybe return error or specific status
+
+class PasswordResetConfirm(BaseModel):
+    username_or_email: str
+    security_answer: str
+    new_password: str

@@ -3,12 +3,14 @@ from sqlalchemy.orm import Session
 from app.dependencies import get_db
 from app.service import indexer
 from app.db.models.index_log import IndexLog
+from app.api.deps import get_current_user
+from app.db.models.user import User
 
 router = APIRouter()
 
 @router.post('/rebuild')
-def rebuild(db: Session = Depends(get_db)):
-    indexer.rebuild_index(db)
+def rebuild(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    indexer.rebuild_index(db, user_id=str(current_user.id))
     return {'started': True}
 
 from app.service.task_manager import TaskManager

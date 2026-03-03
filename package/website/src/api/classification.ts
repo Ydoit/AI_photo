@@ -1,12 +1,5 @@
-import axios from 'axios';
+import request from '@/utils/request';
 import type { Photo } from '@/types/album';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-});
 
 export interface TagStats {
   id: string
@@ -17,16 +10,33 @@ export interface TagStats {
 
 export const classificationService = {
   async getTags(skip: number = 0, limit: number = 100) {
-    const { data } = await api.get<TagStats[]>('/api/tags', {
+    const data = await request.get<TagStats[]>('/api/tags', {
       params: { skip, limit }
     });
     return data;
   },
   
   async getTagPhotos(name: string, skip: number = 0, limit: number = 50) {
-    const { data } = await api.get<Photo[]>(`/api/tags/${encodeURIComponent(name)}/photos`, {
+    const data = await request.get<Photo[]>(`/api/tags/${encodeURIComponent(name)}/photos`, {
       params: { skip, limit }
     });
     return data;
+  },
+
+  async deleteTag(tagName: string) {
+      await request.delete(`/api/tags/${tagName}`);
+  },
+
+  async renameTag(oldName: string, newName: string) {
+      const data = await request.put(`/api/tags/${oldName}`, { new_name: newName });
+      return data;
+  },
+
+  async mergeTags(targetName: string, sourceNames: string[]) {
+      const data = await request.post('/api/tags/merge', {
+          target_name: targetName,
+          source_names: sourceNames
+      });
+      return data;
   }
 };

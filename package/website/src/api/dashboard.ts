@@ -1,11 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 5000, // Default timeout 5s
-});
+import request from '@/utils/request';
 
 export interface DashboardCard {
   total_media: number;
@@ -64,7 +57,7 @@ export interface DashboardResponse {
 
 export const dashboardApi = {
   async getOverview() {
-    const { data } = await api.get<DashboardResponse>('/api/stats/dashboard');
+    const data = await request.get<DashboardResponse>('/api/stats/dashboard');
     return data;
   }
 };

@@ -1,0 +1,107 @@
+import request from '@/utils/request';
+
+export interface LoginParams {
+  username?: string;
+  password?: string;
+}
+
+export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+}
+
+export interface UserInfo {
+  id: number;
+  username: string;
+  email: string;
+  is_active: boolean;
+  is_superuser: boolean;
+  failed_login_attempts?: number;
+  last_failed_login?: string;
+  lockout_until?: string;
+}
+
+export interface RegisterParams {
+  username: string;
+  email: string;
+  password: string;
+  security_question: string;
+  security_answer: string;
+}
+
+export interface ResetCheckParams {
+  username_or_email: string;
+}
+
+export interface ResetCheckResponse {
+  security_question: string;
+}
+
+export interface ResetConfirmParams {
+  username_or_email: string;
+  security_answer: string;
+  new_password: string;
+}
+
+export const authService = {
+  async login(data: LoginParams) {
+    // API requires x-www-form-urlencoded
+    const formData = new URLSearchParams();
+    if (data.username) formData.append('username', data.username);
+    if (data.password) formData.append('password', data.password);
+
+    const res = await request<LoginResponse>({
+      url: '/api/auth/login', // Adjusted from /api/v1/auth/login based on backend structure
+      method: 'post',
+      data: formData,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+    // Cast to LoginResponse because interceptor unwraps the response
+    return res as unknown as LoginResponse;
+  },
+
+  async getUserInfo() {
+    const res = await request<UserInfo>({
+      url: '/api/users/me', // Adjusted from /api/v1/users/me based on backend structure
+      method: 'get'
+    });
+    // Cast to UserInfo because interceptor unwraps the response
+    return res as unknown as UserInfo;
+  },
+  
+  async register(data: RegisterParams) {
+    const res = await request({
+      url: '/api/auth/register',
+      method: 'post',
+      data
+    });
+    return res;
+  },
+
+  async checkResetUser(data: ResetCheckParams) {
+    const res = await request<ResetCheckResponse>({
+      url: '/api/auth/check-reset-user',
+      method: 'post',
+      data
+    });
+    return res as unknown as ResetCheckResponse;
+  },
+
+  async resetPassword(data: ResetConfirmParams) {
+    const res = await request({
+      url: '/api/auth/reset-password',
+      method: 'post',
+      data
+    });
+    return res;
+  },
+
+  logout() {
+    // If there is a backend logout endpoint, call it here.
+    // For JWT, usually client-side removal is enough, but some backends might blacklist tokens.
+    // Assuming client-side only for now as no logout endpoint was seen in auth.py.
+    return Promise.resolve();
+  }
+};

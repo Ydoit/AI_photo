@@ -9,13 +9,24 @@
 @Description : 
 """
 
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, String, Boolean, DateTime, Integer
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 from app.db.base import Base
 
 
 class User(Base):
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    is_active = Column(Boolean, default=True)
+    is_superuser = Column(Boolean, default=False)
+    failed_login_attempts = Column(Integer, default=0)
+    last_failed_login = Column(DateTime, nullable=True)
+    lockout_until = Column(DateTime, nullable=True)
+
+    # Password Reset Security Question
+    security_question = Column(String, nullable=True)
+    security_answer_hash = Column(String, nullable=True)

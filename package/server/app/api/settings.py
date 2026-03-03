@@ -8,6 +8,8 @@ import json
 import re
 import logging
 from app.dependencies import get_db
+from app.api.deps import get_current_user
+from app.db.models.user import User
 from app.core.config_manager import config_manager
 from app.db.models.photo import Photo
 from app.db.models.task import TaskType
@@ -47,7 +49,11 @@ def get_directories(db: Session = Depends(get_db)):
     return {'primary': primary, 'external': external}
 
 @router.post('/directories')
-def add_directory(payload: dict, db: Session = Depends(get_db)):
+def add_directory(
+    payload: dict, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     path = payload.get('path').strip()
     if not path or not isinstance(path, str):
         raise HTTPException(status_code=400, detail='invalid path')
@@ -59,11 +65,15 @@ def add_directory(payload: dict, db: Session = Depends(get_db)):
     current.append(path)
     config_manager.save()
     # Trigger scan to update index
-    TaskManager.get_instance().add_task(db, TaskType.SCAN_FOLDER, {'scan_roots': current})
+    TaskManager.get_instance().add_task(db, TaskType.SCAN_FOLDER, {'scan_roots': current, 'user_id': str(current_user.id)})
     return {'primary': get_storage_root(), 'external': current}
 
 @router.delete('/directories')
-def remove_directory(payload: dict, db: Session = Depends(get_db)):
+def remove_directory(
+    payload: dict, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     path = payload.get('path')
     if not path:
         raise HTTPException(status_code=400, detail='path required')

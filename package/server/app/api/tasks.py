@@ -1,5 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Body, Query
 from sqlalchemy.orm import Session
+
+from app.api.deps import get_current_user
+from app.db.models import User
 from app.dependencies import get_db
 from app.db.models.task import Task, TaskStatus, TaskType
 from typing import List, Optional, Dict, Any
@@ -122,7 +125,7 @@ def get_task(task_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=TaskSchema, summary="创建新任务")
-def create_task(task_in: TaskCreate, db: Session = Depends(get_db)):
+def create_task(task_in: TaskCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     创建一个新任务。
     - type：任务类型，需为系统支持的 TaskType 枚举值。
@@ -130,6 +133,7 @@ def create_task(task_in: TaskCreate, db: Session = Depends(get_db)):
     若 type 非法则返回 400。
     """
     # Validate type
+    task_in.payload['user_id'] = str(current_user.id)  # Ensure user_id is included in payload
     try:
         task_type = TaskType(task_in.type)
     except ValueError:

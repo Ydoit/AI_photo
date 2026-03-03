@@ -1,77 +1,70 @@
-import axios from 'axios';
+import request from '@/utils/request';
 import type { Location, Scene, SceneCreate, SceneUpdate, LocationStatistics } from '@/types/location';
 import type { Photo } from '@/types/album';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000,
-});
-
 export const locationService = {
   async getYears() {
-    const { data } = await api.get<number[]>('/api/locations/years');
+    const data = await request.get<number[]>('/api/locations/years');
     return data;
   },
 
   async getLocations(level: 'city' | 'province' | 'district' | 'scene' = 'city', skip: number = 0, limit: number = 100, year?: number | null) {
-    const { data } = await api.get<Location[]>('/api/locations', {
+    const data = await request.get<Location[]>('/api/locations', {
       params: { level, skip, limit, year: year || undefined }
     });
     return data;
   },
 
   async getStatistics() {
-    const { data } = await api.get<LocationStatistics>('/api/locations/statistics');
+    const data = await request.get<LocationStatistics>('/api/locations/statistics');
     return data;
   },
 
   async getDistribution(level: 'city' | 'province' | 'district' | 'scene' = 'city', year?: number | null) {
-    const { data } = await api.get<{name: string, count: number, level: string}[]>('/api/locations/distribution', {
+    const data = await request.get<{name: string, count: number, level: string}[]>('/api/locations/distribution', {
       params: { level, year: year || undefined }
     });
     return data;
   },
   
   async getLocationPhotos(name: string, level: 'city' | 'province' | 'district' | 'scene' = 'city', skip: number = 0, limit: number = 50, year?: number | null) {
-    const { data } = await api.get<Photo[]>(`/api/locations/${name}/photos`, {
+    const data = await request.get<Photo[]>(`/api/locations/${name}/photos`, {
       params: { level, skip, limit, year: year || undefined }
     });
     return data;
   },
 
   async getMapMarkers(year?: number | null) {
-    const { data } = await api.get<{id: string, lat: number, lng: number}[]>('/api/locations/markers', {
+    const data = await request.get<{id: string, lat: number, lng: number}[]>('/api/locations/markers', {
       params: { year: year || undefined }
     });
     return data;
   },
 
   async getScene(id: string) {
-    const { data } = await api.get<Scene>(`/api/locations/scenes/${id}`);
+    const data = await request.get<Scene>(`/api/locations/scenes/${id}`);
     return data;
   },
 
   async createScene(scene: SceneCreate) {
-    const { data } = await api.post<Scene>('/api/locations/scenes', scene);
+    const data = await request.post<Scene>('/api/locations/scenes', scene);
     return data;
   },
 
   async updateScene(id: string, scene: SceneUpdate) {
-    const { data } = await api.put<Scene>(`/api/locations/scenes/${id}`, scene);
+    const data = await request.put<Scene>(`/api/locations/scenes/${id}`, scene);
     return data;
   },
 
   async getScenesList(skip: number = 0, limit: number = 100, year?: number | null) {
-    const { data } = await api.get<Scene[]>('/api/locations/scenes/list', {
+    const data = await request.get<Scene[]>('/api/locations/scenes/list', {
       params: { skip, limit, year: year || undefined }
     });
     return data;
   },
 
   async deleteScene(id: string) {
-    const { data } = await api.delete(`/api/locations/scenes/${id}`);
+    const data = await request.delete(`/api/locations/scenes/${id}`);
     return data;
   }
 };

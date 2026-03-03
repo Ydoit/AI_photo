@@ -1,0 +1,111 @@
+from datetime import timedelta, datetime
+from typing import Any
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
+from app.crud import user as crud_user
+from app.schemas.user import (
+    UserCreate, 
+    UserResponse, 
+    PasswordResetCheck, 
+    PasswordResetCheckResponse,
+    PasswordResetConfirm
+)
+from app.schemas.token import Token
+from app.core import security
+from app.core.config_manager import config_manager
+from app.dependencies import get_db
+
+router = APIRouter()
+
+@router.post("/login", response_model=Token)
+def login_access_token(
+    db: Session = Depends(get_db), form_data: OAuth2PasswordRequestForm = Depends()
+) -> Any:
+    """
+    OAuth2 compatible token login, get an access token for future requests
+    """
+    user = crud_user.authenticate(
+        db, email=form_data.username, password=form_data.password
+    )
+    if not user:
+        # Check if user exists to provide more specific error (lockout vs invalid creds)
+        user_obj = crud_user.get_by_username_or_email(db, identifier=form_data.username)
+        if user_obj and user_obj.lockout_until and user_obj.lockout_until > datetime.utcnow():
+             raise HTTPException(status_code=403, detail="Account locked due to too many failed login attempts.")
+        
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+    elif not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+        
+    access_token_expires = timedelta(minutes=config_manager.config.security.access_token_expire_minutes)
+    return {
+        "access_token": security.create_access_token(
+            {"sub": str(user.id)}, expires_delta=access_token_expires
+        ),
+        "token_type": "bearer",
+    }
+
+@router.post("/register", response_model=UserResponse)
+def register_user(
+    *,
+    db: Session = Depends(get_db),
+    user_in: UserCreate,
+) -> Any:
+    """
+    Create new user.
+    """
+    user = crud_user.get_by_email(db, email=user_in.email)
+    if user:
+        raise HTTPException(
+            status_code=400,
+            detail="The user with this email already exists in the system.",
+        )
+    user = crud_user.get_by_username(db, username=user_in.username)
+    if user:
+         raise HTTPException(
+            status_code=400,
+            detail="The user with this username already exists in the system.",
+        )
+
+    # Check if this is the first user
+    if db.query(crud_user.User).count() == 0:
+        user_in.is_superuser = True
+        
+    user = crud_user.create(db, user=user_in)
+    return user
+
+@router.post("/check-reset-user", response_model=PasswordResetCheckResponse)
+def check_password_reset_user(
+    payload: PasswordResetCheck,
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Check if user exists and return security question.
+    """
+    user = crud_user.get_by_username_or_email(db, identifier=payload.username_or_email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not user.security_question:
+        raise HTTPException(status_code=400, detail="User has no security question set")
+        
+    return {"security_question": user.security_question}
+
+@router.post("/reset-password", response_model=UserResponse)
+def confirm_password_reset(
+    payload: PasswordResetConfirm,
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Verify security answer and reset password.
+    """
+    user = crud_user.get_by_username_or_email(db, identifier=payload.username_or_email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if not crud_user.verify_security_answer(user, payload.security_answer):
+        raise HTTPException(status_code=400, detail="Incorrect security answer")
+        
+    user = crud_user.reset_password(db, user, payload.new_password)
+    return user

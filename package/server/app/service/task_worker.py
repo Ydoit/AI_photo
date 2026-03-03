@@ -459,7 +459,7 @@ class TaskWorker:
         db = SessionLocal()
         try:
             # 1. Prepare batch photo inserts
-            photos_to_create = []
+            photos_to_create = {} # user_id -> list of data
             index_logs = []
 
             # Map of temp photo_id to file_path for task chaining
@@ -474,7 +474,12 @@ class TaskWorker:
                     res = item['result']
                     if 'photo_create_data' in res:
                         data = res['photo_create_data']
-                        photos_to_create.append(data)
+                        user_id = data.get('user_id')
+
+                        if user_id not in photos_to_create:
+                            photos_to_create[user_id] = []
+                        photos_to_create[user_id].append(data)
+
                         index_logs.append(IndexLog(action='added', file_path=data['file_path'], photo_id=data['photo_id']))
 
                         # Store for chaining
@@ -491,7 +496,8 @@ class TaskWorker:
 
             # Batch insert photos
             if photos_to_create:
-                album_crud.batch_create_photos(db, photos_to_create)
+                for uid, photos in photos_to_create.items():
+                    album_crud.batch_create_photos(db, photos, user_id=uid)
                 db.add_all(index_logs)
 
                 # Now chain subsequent tasks for newly created photos

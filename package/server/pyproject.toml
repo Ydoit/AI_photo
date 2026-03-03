@@ -25,6 +25,10 @@ dependencies = [
     "scikit-learn>=1.7.2",
     "sqlalchemy>=2.0.44",
     "uvicorn>=0.38.0",
+    "python-jose[cryptography]>=3.3.0",
+    "pydantic[email]>=2.0.0",
+    "bcrypt==4.0.1",
+    "passlib==1.7.4",
 ]
 [tool.uv]
 index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"

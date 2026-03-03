@@ -1,7 +1,4 @@
-import axios from 'axios'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-const api = axios.create({ baseURL: API_BASE_URL })
+import request from '@/utils/request';
 
 export interface Task {
   id: string
@@ -20,27 +17,27 @@ export interface Task {
 export const tasksApi = {
   async listTasks(status?: string, type?: string, limit = 50) {
     const params: any = { status, type, limit }
-    const { data } = await api.get<Task[]>('/api/tasks/', { params })
+    const data = await request.get<Task[]>('/api/tasks/', { params })
     return data
   },
 
   async getTask(taskId: string) {
-    const { data } = await api.get<Task>(`/api/tasks/${taskId}`)
+    const data = await request.get<Task>(`/api/tasks/${taskId}`)
     return data
   },
 
   async createTask(type: string, payload: any = {}) {
-    const { data } = await api.post<Task>('/api/tasks/', { type, payload })
+    const data = await request.post<Task>('/api/tasks/', { type, payload })
     return data
   },
 
   async cancelTask(taskId: string) {
-    const { data } = await api.post<Task>(`/api/tasks/${taskId}/cancel`)
+    const data = await request.post<Task>(`/api/tasks/${taskId}/cancel`)
     return data
   },
 
   async retryTask(taskId: string) {
-    const { data } = await api.post<Task>(`/api/tasks/${taskId}/retry`)
+    const data = await request.post<Task>(`/api/tasks/${taskId}/retry`)
     return data
   },
 
@@ -49,9 +46,8 @@ export const tasksApi = {
     if (types && types.length > 0) {
         params.types = types
     }
-    const { data } = await api.post<{ message: string, count: number }>('/api/tasks/retry-all-failed', null, {
-        params,
-        paramsSerializer: { indexes: null }
+    const data = await request.post<{ message: string, count: number }>('/api/tasks/retry-all-failed', null, {
+        params
     })
     return data
   },
@@ -61,40 +57,39 @@ export const tasksApi = {
     if (types && types.length > 0) {
         params.types = types
     }
-    const { data } = await api.delete<{ message: string, count: number }>('/api/tasks/failed', {
-        params,
-        paramsSerializer: { indexes: null }
+    const data = await request.delete<{ message: string, count: number }>('/api/tasks/failed', {
+        params
     })
     return data
   },
 
   async getTaskStats() {
-    const { data } = await api.get<{ failed_process_tasks: number }>('/api/tasks/stats')
+    const data = await request.get<{ failed_process_tasks: number }>('/api/tasks/stats')
     return data
   },
 
   async getGroupedStatus() {
-    const { data } = await api.get<any[]>('/api/tasks/grouped-status')
+    const data = await request.get<any[]>('/api/tasks/grouped-status')
     return data
   },
 
   async pauseCategory(category: string) {
-    const { data } = await api.post(`/api/tasks/categories/${category}/pause`)
+    const data = await request.post(`/api/tasks/categories/${category}/pause`)
     return data
   },
 
   async resumeCategory(category: string) {
-    const { data } = await api.post(`/api/tasks/categories/${category}/resume`)
+    const data = await request.post(`/api/tasks/categories/${category}/resume`)
     return data
   },
 
   async toggleFastMode(enabled: boolean) {
-    const { data } = await api.post('/api/tasks/fast-mode', { enabled })
+    const data = await request.post('/api/tasks/fast-mode', { enabled })
     return data
   },
 
   async getGlobalStatus() {
-      const { data } = await api.get('/api/tasks/status')
+      const data = await request.get('/api/tasks/status')
       return data
   }
 }

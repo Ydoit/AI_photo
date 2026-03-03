@@ -1,12 +1,5 @@
-import axios from 'axios';
+import request from '@/utils/request';
 import type { Photo } from '@/types/album';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 60000,
-});
 
 export interface SearchResult {
   photo: Photo;
@@ -32,7 +25,9 @@ const searchService = {
    * Search photos by text
    */
   async searchByText(data: TextSearchRequest) {
-    const { data: res } = await api.post<SearchResult[]>('/api/search/text', data);
+    const res = await request.post<SearchResult[]>('/api/search/text', data, {
+      timeout: 60000
+    });
     return res;
   },
 
@@ -40,8 +35,9 @@ const searchService = {
    * Get search suggestions
    */
   async getSuggestions(q: string) {
-    const { data: res } = await api.get<SearchSuggestion[]>('/api/search/suggestions', {
-      params: { q }
+    const res = await request.get<SearchSuggestion[]>('/api/search/suggestions', {
+      params: { q },
+      timeout: 60000
     });
     return res;
   },
@@ -55,10 +51,11 @@ const searchService = {
     formData.append('limit', limit.toString());
     formData.append('threshold', threshold.toString());
 
-    const { data: res } = await api.post<SearchResult[]>('/api/search/image', formData, {
+    const res = await request.post<SearchResult[]>('/api/search/image', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
-      }
+      },
+      timeout: 60000
     });
     return res;
   }

@@ -1,68 +1,48 @@
-import axios from 'axios';
+import request from '@/utils/request';
 import type { ApiAlbum, Album, CreateAlbumDto, Photo, PhotoMetadata, TimelineStats, PhotoGroup, FilterOptions } from '@/types/album';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000, // Default timeout 30s
-  paramsSerializer: (params) => {
-    const p = new URLSearchParams();
-    for (const key in params) {
-        const val = params[key];
-        if (val === undefined || val === null) continue;
-        if (Array.isArray(val)) {
-            val.forEach(v => p.append(key, v));
-        } else {
-            p.append(key, val);
-        }
-    }
-    return p.toString();
-  }
-});
 
 export const albumService = {
   // Albums
   async getAlbums() {
-    const { data } = await api.get<ApiAlbum[]>('/api/albums');
+    const data = await request.get<ApiAlbum[]>('/api/albums');
     return data;
   },
   async getAlbum(id: string) {
-    const { data } = await api.get<ApiAlbum>(`/api/albums/${id}`);
+    const data = await request.get<ApiAlbum>(`/api/albums/${id}`);
     return data;
   },
   async createAlbum(album: CreateAlbumDto) {
-    const { data } = await api.post<ApiAlbum>('/api/albums', album);
+    const data = await request.post<ApiAlbum>('/api/albums', album);
     return data;
   },
   async updateAlbum(id: string, album: CreateAlbumDto) {
-    const { data } = await api.put<Album>(`/api/albums/${id}`, album);
+    const data = await request.put<Album>(`/api/albums/${id}`, album);
     return data;
   },
   async setAlbumCover(id: string, photoId: string) {
-    const { data } = await api.put<Album>(`/api/albums/${id}/cover`, { photo_id: photoId })
+    const data = await request.put<Album>(`/api/albums/${id}/cover`, { photo_id: photoId })
     return data
   },
   async deleteAlbum(id: string) {
-    await api.delete(`/api/albums/${id}`);
+    await request.delete(`/api/albums/${id}`);
   },
 
   // Stats
   async getTimelineStats(albumId?: string, filters?: any) {
-    const { data } = await api.get<TimelineStats>('/api/stats/timeline', {
+    const data = await request.get<TimelineStats>('/api/stats/timeline', {
       params: { album_id: albumId, ...filters }
     });
     return data;
   },
 
   async getFilterOptions() {
-      const { data } = await api.get<FilterOptions>('/api/stats/filters');
+      const data = await request.get<FilterOptions>('/api/stats/filters');
       return data;
   },
 
   // Photos
   async getAllPhotos(skip: number = 0, limit: number = 100, filters?: any) {
-    const { data } = await api.get<Photo[]>('/api/photos', {
+    const data = await request.get<Photo[]>('/api/photos', {
       params: { skip, limit, ...filters }
     });
     return data;
@@ -77,15 +57,9 @@ export const albumService = {
     }
     
     const results = await Promise.all(chunks.map(async chunk => {
-        const { data } = await api.get<Photo[]>('/api/photos', {
-          params: { ids: chunk },
-          paramsSerializer: params => {
-            const p = new URLSearchParams();
-            if (params.ids && Array.isArray(params.ids)) {
-                params.ids.forEach((id: string) => p.append('ids', id));
-            }
-            return p.toString();
-          }
+        // paramsSerializer is handled by default request configuration
+        const data = await request.get<Photo[]>('/api/photos', {
+          params: { ids: chunk }
         });
         return data;
     }));
@@ -93,7 +67,7 @@ export const albumService = {
   },
 
   async getPhotos(albumId: string, skip: number = 0, limit: number = 100, filters?: { start_time?: string, end_time?: string }) {
-    const { data } = await api.get<Photo[]>(`/api/albums/${albumId}/photos`, {
+    const data = await request.get<Photo[]>(`/api/albums/${albumId}/photos`, {
       params: { skip, limit, ...filters }
     });
     return data;
@@ -101,17 +75,17 @@ export const albumService = {
 
   // Remove photo from specific album (Association)
   async removePhotoFromAlbum(albumId: string, photoId: string) {
-    await api.delete(`/api/albums/${albumId}/photos/${photoId}`);
+    await request.delete(`/api/albums/${albumId}/photos/${photoId}`);
   },
 
   // Delete photo globally
   async deletePhoto(photoId: string) {
-    await api.delete(`/api/photos/${photoId}`);
+    await request.delete(`/api/photos/${photoId}`);
   },
 
   // Batch Update
   async batchUpdatePhotos(data: { photo_ids: string[], action: 'add_tags' | 'remove_tags' | 'add_to_album' | 'remove_from_album' | 'delete', album_id?: string }) {
-      const { data: res } = await api.post<{count: number}>('/api/photos/batch', data);
+      const res = await request.post<{count: number}>('/api/photos/batch', data);
       return res;
   },
 
@@ -122,7 +96,7 @@ export const albumService = {
     if (albumId) {
         formData.append('album_id', albumId);
     }
-    const { data } = await api.post<Photo>('/api/medias', formData, {
+    const data = await request.post<Photo>('/api/medias', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
     return data;
@@ -130,8 +104,8 @@ export const albumService = {
 
   // Chunk Upload
   async initUpload() {
-      const { data } = await api.post<{upload_id: string}>('/api/medias/upload/init');
-      return data.upload_id;
+      const data = await request.post<{upload_id: string}>('/api/medias/upload/init');
+      return data.data.upload_id;
   },
 
   async uploadChunk(uploadId: string, chunkIndex: number, chunk: Blob) {
@@ -139,7 +113,7 @@ export const albumService = {
       formData.append('upload_id', uploadId);
       formData.append('chunk_index', chunkIndex.toString());
       formData.append('file', chunk);
-      await api.post('/api/medias/upload/chunk', formData);
+      await request.post('/api/medias/upload/chunk', formData);
   },
 
   async finishUpload(uploadId: string, fileName: string, albumId?: string) {
@@ -149,7 +123,7 @@ export const albumService = {
       if (albumId) {
           formData.append('album_id', albumId);
       }
-      const { data } = await api.post<Photo>('/api/medias/upload/finish', formData);
+      const data = await request.post<Photo>('/api/medias/upload/finish', formData);
       return data;
   },
 
@@ -160,7 +134,7 @@ export const albumService = {
       const url = albumId 
         ? `/api/albums/${albumId}/photos/${photoId}/metadata`
         : `/api/photos/${photoId}/metadata`; // Assuming this exists or will exist
-      const { data } = await api.get<PhotoMetadata>(url);
+      const data = await request.get<PhotoMetadata>(url);
       return data;
   },
 
@@ -168,22 +142,22 @@ export const albumService = {
       const url = albumId
         ? `/api/albums/${albumId}/photos/${photoId}/metadata`
         : `/api/photos/${photoId}/metadata`;
-      const { data } = await api.put<PhotoMetadata>(url, metadata);
+      const data = await request.put<PhotoMetadata>(url, metadata);
       return data;
   },
 
   async getThumbnail(photoId: string) {
-    const { data } = await api.get<{ thumbnail: string }>(`/api/medias/${photoId}/thumbnail`);
+    const data = await request.get<{ thumbnail: string }>(`/api/medias/${photoId}/thumbnail`);
   },
 
   // Tags
   async getPhotoTags(photoId: string) {
-    const { data } = await api.get<{id: string, tag_name: string, confidence: number}[]>(`/api/photos/${photoId}/tags`);
+    const data = await request.get<{id: string, tag_name: string, confidence: number}[]>(`/api/photos/${photoId}/tags`);
     return data;
   },
 
   async addPhotoTag(photoId: string, tagName: string, confidence: number = 1.0) {
-    const { data } = await api.post<{id: string, tag_name: string, confidence: number}>(`/api/photos/${photoId}/tags`, {
+    const data = await request.post<{id: string, tag_name: string, confidence: number}>(`/api/photos/${photoId}/tags`, {
       tag_name: tagName,
       confidence
     });
@@ -191,6 +165,6 @@ export const albumService = {
   },
 
   async deletePhotoTag(photoId: string, tagId: string) {
-    await api.delete(`/api/photos/${photoId}/tags/${tagId}`);
+    await request.delete(`/api/photos/${photoId}/tags/${tagId}`);
   }
 };
