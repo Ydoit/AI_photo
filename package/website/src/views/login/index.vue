@@ -105,7 +105,7 @@ const handleLogin = async () => {
       loading.value = true;
       try {
         await userStore.login(loginForm);
-        
+
         if (rememberMe.value) {
           localStorage.setItem('remember_username', loginForm.username);
         } else {
@@ -113,7 +113,7 @@ const handleLogin = async () => {
         }
 
         ElMessage.success('登录成功');
-        
+
         // Redirect to previous page or home
         const redirect = route.query.redirect as string || '/';
         router.push(redirect);

@@ -85,21 +85,24 @@ def create_scene(db: Session, scene: SceneCreate, owner_id: Optional[UUID] = Non
     return db_scene
 
 def get_scenes(db: Session, skip: int = 0, limit: int = 100, year: int = None, owner_id: Optional[UUID] = None):
+    # Join Photo to filter by owner
+    photo_join_cond = PhotoMetadata.photo_id == Photo.id
+    if owner_id:
+        photo_join_cond = (PhotoMetadata.photo_id == Photo.id) & (Photo.owner_id == owner_id)
+
     query = db.query(
         Scene,
-        func.count(PhotoMetadata.photo_id).label("photo_count")
+        func.count(Photo.id).label("photo_count")
     ).outerjoin(
         PhotoMetadata, Scene.id == PhotoMetadata.scene_id
+    ).outerjoin(
+        Photo, photo_join_cond
     )
 
-    if owner_id:
-        query = query.filter((Scene.owner_id == owner_id) | (Scene.owner_id == None))
-    else:
-        query = query.filter(Scene.owner_id == None)
+    query = query.filter((Scene.owner_id == owner_id) | (Scene.owner_id == None))
 
     if year:
-        query = query.outerjoin(Photo, PhotoMetadata.photo_id == Photo.id)\
-                     .filter(extract('year', Photo.photo_time) == year)
+        query = query.filter(extract('year', Photo.photo_time) == year)
 
     results = query.group_by(
         Scene.id
@@ -117,6 +120,7 @@ def get_scenes(db: Session, skip: int = 0, limit: int = 100, year: int = None, o
     ).join(
         PhotoMetadata, Photo.id == PhotoMetadata.photo_id
     ).filter(
+        Photo.owner_id == owner_id,
         PhotoMetadata.scene_id.in_(scene_ids)
     )
 

@@ -59,7 +59,7 @@ export const authService = {
       }
     });
     // Cast to LoginResponse because interceptor unwraps the response
-    return res as unknown as LoginResponse;
+    return res.data as unknown as LoginResponse;
   },
 
   async getUserInfo() {
@@ -68,7 +68,7 @@ export const authService = {
       method: 'get'
     });
     // Cast to UserInfo because interceptor unwraps the response
-    return res as unknown as UserInfo;
+    return res.data as unknown as UserInfo;
   },
   
   async register(data: RegisterParams) {
@@ -77,7 +77,7 @@ export const authService = {
       method: 'post',
       data
     });
-    return res;
+    return res.data;
   },
 
   async checkResetUser(data: ResetCheckParams) {
@@ -86,7 +86,7 @@ export const authService = {
       method: 'post',
       data
     });
-    return res as unknown as ResetCheckResponse;
+    return res.data as unknown as ResetCheckResponse;
   },
 
   async resetPassword(data: ResetConfirmParams) {
@@ -95,7 +95,7 @@ export const authService = {
       method: 'post',
       data
     });
-    return res;
+    return res.data;
   },
 
   logout() {
