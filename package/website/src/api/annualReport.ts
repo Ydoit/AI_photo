@@ -141,6 +141,16 @@ export async function getReportTransportAnalysis(startTime: string, endTime: str
     return data.data;
 }
 
+export async function getAnnualReportPhotos(startTime: string, endTime: string): Promise<Record<number, Photo[]>> {
+  const { data } = await request.get<Record<number, Photo[]>>('/api/annual-report/photos', {
+    params: {
+        start_time: startTime,
+        end_time: endTime
+    }
+  });
+  return data
+}
+
 export async function checkReportAvailability(year: number): Promise<{available: boolean, reason?: string}> {
     const data = await request.get<{available: boolean, reason?: string}>('/api/annual-report/check', {
         params: { year }

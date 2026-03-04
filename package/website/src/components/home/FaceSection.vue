@@ -49,7 +49,7 @@
         </div>
         <button 
           class="text-xs text-orange-500 border border-orange-500 rounded px-2 py-0.5 whitespace-nowrap ml-2"
-          @click="$router.push('/people/unknown')"
+          @click="$router.push('/people')"
         >
           快速标注
         </button>

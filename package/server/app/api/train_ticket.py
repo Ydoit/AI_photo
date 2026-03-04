@@ -418,12 +418,11 @@ def read_tickets(
         "train_code": train_code,
         "name": name,
         "departure_station": departure_station,
-        "arrival_station": arrival_station,
-        "owner_id": current_user.id
+        "arrival_station": arrival_station
     }
 
     # 处理时间范围过滤
-    query = db.query(TrainTicket)
+    query = db.query(TrainTicket).filter(TrainTicket.owner_id == current_user.id)
     if start_datetime:
         query = query.filter(TrainTicket.datetime >= start_datetime)
     if end_datetime:

@@ -31,23 +31,23 @@ def get_dashboard_stats(db: Session, owner_id: UUID) -> DashboardResponse:
     )
 
     # 2. Face Stats
-    total_identified = db.query(FaceIdentity).filter(FaceIdentity.is_deleted == False).count()
-    
+    total_identified = db.query(FaceIdentity).filter(FaceIdentity.is_deleted == False, FaceIdentity.owner_id == owner_id).count()
+
     # Pending faces (faces without identity)
     # Assuming pending means face_identity_id is NULL
-    pending_faces_count = db.query(Face).filter(Face.face_identity_id == None, Face.is_deleted == False).count()
-    
+    pending_faces_count = db.query(Face).join(Photo, Face.photo_id == Photo.id).filter(Face.face_identity_id == None, Face.is_deleted == False, Photo.owner_id == owner_id).count()
+
     # Unidentified photos count (photos that contain at least one unidentified face)
     # This might be similar to pending_faces_count but counting distinct photos
-    unidentified_photos_count = db.query(func.count(func.distinct(Face.photo_id))).filter(Face.face_identity_id == None, Face.is_deleted == False).scalar() or 0
-
+    unidentified_photos_count = db.query(func.count(func.distinct(Face.photo_id))).join(Photo, Face.photo_id == Photo.id).filter(Face.face_identity_id == None, Face.is_deleted == False, Photo.owner_id == owner_id).scalar() or 0
+    
     # Top 3 Faces
     top_faces_query = db.query(
         FaceIdentity.id,
         FaceIdentity.identity_name,
         func.count(Face.id).label('count')
     ).join(Face, Face.face_identity_id == FaceIdentity.id)\
-    .filter(FaceIdentity.is_deleted == False, Face.is_deleted == False)\
+    .filter(FaceIdentity.is_deleted == False, Face.is_deleted == False, FaceIdentity.owner_id == owner_id)\
     .group_by(FaceIdentity.id)\
     .order_by(desc('count'))\
     .limit(3).all()
@@ -76,7 +76,7 @@ def get_dashboard_stats(db: Session, owner_id: UUID) -> DashboardResponse:
 
     # 3. Content Stats
     # Photos
-    photos_count = db.query(Photo).filter(Photo.file_type == FileType.image).count()
+    photos_count = db.query(Photo).filter(Photo.file_type == FileType.image, Photo.owner_id == owner_id).count()
     # Mock breakdown for photos
     photos_detail = ContentDetail(
         total=photos_count,
@@ -87,7 +87,7 @@ def get_dashboard_stats(db: Session, owner_id: UUID) -> DashboardResponse:
     )
 
     # Videos
-    videos_count = db.query(Photo).filter(Photo.file_type.in_([FileType.video, FileType.live_photo])).count()
+    videos_count = db.query(Photo).filter(Photo.file_type.in_([FileType.video, FileType.live_photo]), Photo.owner_id == owner_id).count()
     # Mock breakdown for videos
     videos_detail = ContentDetail(
         total=videos_count,
@@ -114,7 +114,8 @@ def get_dashboard_stats(db: Session, owner_id: UUID) -> DashboardResponse:
     year_stats = db.query(
         func.extract('year', Photo.photo_time).label('year'),
         func.count(Photo.id).label('count')
-    ).group_by(func.extract('year', Photo.photo_time))\
+    ).filter(Photo.owner_id == owner_id)\
+    .group_by(func.extract('year', Photo.photo_time))\
     .order_by(desc('year')).all()
 
     chart_data = []
@@ -145,7 +146,8 @@ def get_dashboard_stats(db: Session, owner_id: UUID) -> DashboardResponse:
         func.extract('year', Photo.photo_time).label('year'),
         func.extract('month', Photo.photo_time).label('month'),
         func.count(Photo.id).label('count')
-    ).group_by(
+    ).filter(Photo.owner_id == owner_id)\
+    .group_by(
         func.extract('year', Photo.photo_time),
         func.extract('month', Photo.photo_time)
     ).order_by(desc('count')).first()
