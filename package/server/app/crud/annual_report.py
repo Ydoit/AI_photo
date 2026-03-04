@@ -3,6 +3,7 @@ from datetime import datetime
 import random
 import math
 import logging
+from uuid import UUID
 
 from fastapi import Depends, Query, HTTPException
 from sqlalchemy.orm import Session
@@ -32,27 +33,35 @@ class ReportSummary(BaseModel):
     user: UserInfo
     time: TimeMetrics
 
-def get_date_range_filter(query, start_time: datetime, end_time: datetime):
-    return query.filter(
+def get_date_range_filter(query, start_time: datetime, end_time: datetime, user_id: Optional[UUID] = None):
+    q = query.filter(
         Photo.photo_time >= start_time,
         Photo.photo_time <= end_time
     )
+    if user_id:
+        q = q.filter(Photo.owner_id == user_id)
+    return q
 
 def get_annual_report_photos(
     start_time: datetime,
     end_time: datetime,
-    db: Session
+    db: Session,
+    user_id: Optional[UUID] = None
 ):
     # Query photos within the time range, ordered by time descending
-    photos = db.query(Photo).join(PhotoMetadata, PhotoMetadata.photo_id == Photo.id)\
+    query = db.query(Photo).join(PhotoMetadata, PhotoMetadata.photo_id == Photo.id)\
     .filter(
         Photo.photo_time >= start_time,
         Photo.photo_time <= end_time
     )\
     .filter(Photo.file_type == FileType.image)\
     .filter(Photo.image_type != ImageType.SCREENSHOT)\
-    .filter(PhotoMetadata.exif_info.isnot(None))\
-    .order_by(Photo.photo_time.desc()).all()
+    .filter(PhotoMetadata.exif_info.isnot(None))
+
+    if user_id:
+        query = query.filter(Photo.owner_id == user_id)
+
+    photos = query.order_by(Photo.photo_time.desc()).all()
 
     # Group by month
     monthly_groups: Dict[int, List[Photo]] = {}
@@ -81,12 +90,15 @@ def get_annual_report_photos(
 def get_report_expenses(
     start_time: datetime,
     end_time: datetime,
-    db: Session
+    db: Session,
+    user_id: Optional[UUID] = None
 ):
     query = db.query(TrainTicket).filter(
         TrainTicket.date_time >= start_time,
         TrainTicket.date_time <= end_time
     )
+    if user_id:
+        query = query.filter(TrainTicket.owner_id == user_id)
     
     total_count = query.count()
     
@@ -103,14 +115,18 @@ def get_report_expenses(
     
     # Monthly trend
     # Group by month
-    monthly_data = db.query(
+    base_monthly_query = db.query(
         extract('year', TrainTicket.date_time).label('year'),
         extract('month', TrainTicket.date_time).label('month'),
         func.sum(TrainTicket.price).label('amount')
     ).filter(
         TrainTicket.date_time >= start_time,
         TrainTicket.date_time <= end_time
-    ).group_by(
+    )
+    if user_id:
+        base_monthly_query = base_monthly_query.filter(TrainTicket.owner_id == user_id)
+
+    monthly_data = base_monthly_query.group_by(
         'year', 'month'
     ).order_by(
         'year', 'month'
@@ -137,17 +153,24 @@ def get_report_expenses(
         TrainTicket.date_time >= start_time_last_year,
         TrainTicket.date_time <= end_time_last_year
     )
+    if user_id:
+        query_last_year = query_last_year.filter(TrainTicket.owner_id == user_id)
+
     total_amount_last_year_result = query_last_year.with_entities(func.sum(TrainTicket.price)).scalar()
     total_amount_last_year = float(total_amount_last_year_result) if total_amount_last_year_result else 0.0
 
-    monthly_data_last_year = db.query(
+    base_monthly_last_year = db.query(
         extract('year', TrainTicket.date_time).label('year'),
         extract('month', TrainTicket.date_time).label('month'),
         func.sum(TrainTicket.price).label('amount')
     ).filter(
         TrainTicket.date_time >= start_time_last_year,
         TrainTicket.date_time <= end_time_last_year
-    ).group_by(
+    )
+    if user_id:
+        base_monthly_last_year = base_monthly_last_year.filter(TrainTicket.owner_id == user_id)
+
+    monthly_data_last_year = base_monthly_last_year.group_by(
         'year', 'month'
     ).order_by(
         'year', 'month'
@@ -174,9 +197,10 @@ def get_report_expenses(
 def get_report_summary(
     start_time: datetime,
     end_time: datetime,
-    db: Session
+    db: Session,
+    user_id: Optional[UUID] = None
 ):
-    base_query = get_date_range_filter(db.query(Photo), start_time, end_time)
+    base_query = get_date_range_filter(db.query(Photo), start_time, end_time, user_id)
     total_photos = base_query.count()
 
     # --- Time Metrics ---
@@ -213,7 +237,8 @@ def find_best_match_photo(
     start_time: datetime, 
     end_time: datetime, 
     embedding: List[float], 
-    months: Optional[List[int]] = None
+    months: Optional[List[int]] = None,
+    user_id: Optional[UUID] = None
 ) -> Optional[Photo]:
     """
     Find the best matching photo based on vector similarity.
@@ -224,6 +249,9 @@ def find_best_match_photo(
         .filter(Photo.file_type == FileType.image)\
         .filter(Photo.image_type != ImageType.SCREENSHOT)
     
+    if user_id:
+        query = query.filter(Photo.owner_id == user_id)
+
     if months:
          query = query.filter(extract('month', Photo.photo_time).in_(months))
          
@@ -235,9 +263,10 @@ def find_best_match_photo(
 def get_report_season(
     start_time: datetime,
     end_time: datetime,
-    db: Session
+    db: Session,
+    user_id: Optional[UUID] = None
 ):
-    base_query = get_date_range_filter(db.query(Photo), start_time, end_time)
+    base_query = get_date_range_filter(db.query(Photo), start_time, end_time, user_id)
 
     seasons_def = [
         ("春", [3, 4, 5], "嫩芽"),
@@ -257,7 +286,7 @@ def get_report_season(
         search_vector = SEASON_VECTORS.get(name)
         rep_photo = None
         if search_vector:
-            rep_photo = find_best_match_photo(db, start_time, end_time, search_vector, months)
+            rep_photo = find_best_match_photo(db, start_time, end_time, search_vector, months, user_id)
         
         # Fallback if no match from vector search
         if not rep_photo:
@@ -279,28 +308,39 @@ def get_report_season(
 def get_report_emotion(
     start_time: datetime,
     end_time: datetime,
-    db: Session
+    db: Session,
+    user_id: Optional[UUID] = None
 ):
-    base_query = get_date_range_filter(db.query(Photo), start_time, end_time)
+    base_query = get_date_range_filter(db.query(Photo), start_time, end_time, user_id)
     total_photos = base_query.count()
-    total_video_duration = db.query(func.sum(Photo.duration)).filter(
+    
+    video_query = db.query(func.sum(Photo.duration)).filter(
         Photo.photo_time >= start_time,
         Photo.photo_time <= end_time
-    ).scalar() or 0
+    )
+    if user_id:
+        video_query = video_query.filter(Photo.owner_id == user_id)
+    total_video_duration = video_query.scalar() or 0
 
-    total_live_photo = db.query(Photo).filter(
+    live_query = db.query(Photo).filter(
         Photo.photo_time >= start_time,
         Photo.photo_time <= end_time,
         Photo.file_type == FileType.live_photo
-    ).count()
+    )
+    if user_id:
+        live_query = live_query.filter(Photo.owner_id == user_id)
+    total_live_photo = live_query.count()
 
     # 相机拍摄的照片数量
-    total_camera_photo = db.query(Photo).filter(
+    camera_query = db.query(Photo).filter(
         Photo.photo_time >= start_time,
         Photo.photo_time <= end_time,
         Photo.file_type == FileType.image,
         Photo.image_type == ImageType.CAMERA
-    ).count()
+    )
+    if user_id:
+        camera_query = camera_query.filter(Photo.owner_id == user_id)
+    total_camera_photo = camera_query.count()
 
     return EmotionMetrics(
         livePhotos=total_live_photo,
@@ -319,10 +359,11 @@ def get_report_emotion(
 def get_report_easter_egg(
     start_time: datetime,
     end_time: datetime,
-    db: Session
+    db: Session,
+    user_id: Optional[UUID] = None
 ):
     # Use vector search
-    best_photo = find_best_match_photo(db, start_time, end_time, EASTER_EGG_VECTOR)
+    best_photo = find_best_match_photo(db, start_time, end_time, EASTER_EGG_VECTOR, user_id=user_id)
     
     best_photo_url = f"/api/medias/{best_photo.id}/thumbnail" if best_photo else f"https://picsum.photos/seed/best/400/600"
     best_photo_date = best_photo.photo_time.strftime('%Y-%m-%d') if best_photo else "2024-10-01"

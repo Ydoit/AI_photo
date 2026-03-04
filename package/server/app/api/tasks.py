@@ -139,7 +139,7 @@ def create_task(task_in: TaskCreate, db: Session = Depends(get_db), current_user
     except ValueError:
         raise HTTPException(status_code=400, detail=f"Invalid task type: {task_in.type}")
 
-    task = TaskManager.get_instance().add_task(db, task_in.type, task_in.payload)
+    task = TaskManager.get_instance().add_task(db, task_in.type, task_in.payload, owner_id=current_user.id)
     return task
 
 

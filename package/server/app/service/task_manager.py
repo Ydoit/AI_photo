@@ -210,18 +210,18 @@ class TaskManager:
         self._save_system_state('fast_mode', enabled)
         logging.info(f"Fast Mode set to {enabled} via TaskManager")
 
-    def add_task(self, db: Session, type: str, payload: dict, priority: int = 0):
+    def add_task(self, db: Session, type: str, payload: dict, priority: int = 0, owner_id: UUID = None):
         if priority == 0:
             priority = DEFAULT_PRIORITIES.get(type, 0)
 
-        task = Task(type=type, payload=payload, priority=priority)
+        task = Task(type=type, payload=payload, priority=priority, owner_id=owner_id)
         logging.info(f"Added task: {task.type} with priority {task.priority}")
         db.add(task)
         db.commit()
         db.refresh(task)
         return task
 
-    def add_tasks(self, db: Session, tasks_data: List[Dict]):
+    def add_tasks(self, db: Session, tasks_data: List[Dict], owner_id: UUID = None):
         """Batch add tasks"""
         if not tasks_data:
             return
@@ -232,11 +232,15 @@ class TaskManager:
             if priority == 0:
                 priority = DEFAULT_PRIORITIES.get(t_data['type'], 0)
 
+            # Use task specific owner_id if present, otherwise use the common owner_id
+            task_owner_id = t_data.get('owner_id', owner_id)
+
             tasks.append(Task(
                 type=t_data['type'],
                 payload=t_data.get('payload', {}),
                 priority=priority,
-                status=TaskStatus.PENDING
+                status=TaskStatus.PENDING,
+                owner_id=task_owner_id
             ))
 
         db.bulk_save_objects(tasks)

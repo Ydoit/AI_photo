@@ -64,7 +64,8 @@ async def handle_ocr_task(task_manager, task: Task, db: Session) -> Dict[str, An
                     tasks_to_create.append({
                         'type': TaskType.OCR,
                         'payload': {'photo_id': str(p.id), 'force': force},
-                        'priority': 1
+                        'priority': 1,
+                        'owner_id': p.owner_id
                     })
 
             if tasks_to_create:

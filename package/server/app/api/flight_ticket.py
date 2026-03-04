@@ -23,6 +23,8 @@ from app.schemas.flight_ticket import (
     FlightTicketUpdate
 )
 from app.dependencies import get_db
+from app.api.deps import get_current_user
+from app.db.models import User
 from app.core.config_manager import config_manager
 
 router = APIRouter()
@@ -97,10 +99,11 @@ async def recognize_ticket(
 @router.post("", response_model=FlightTicketResponse, summary="创建飞机票")
 async def create_ticket(
     ticket: FlightTicketCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """手动创建一张新的飞机票"""
-    return create_flight_ticket(db, ticket)
+    return create_flight_ticket(db, ticket, owner_id=current_user.id)
 
 @router.get("", response_model=FlightTicketListResponse, summary="获取飞机票列表")
 async def get_tickets(
@@ -108,10 +111,13 @@ async def get_tickets(
     limit: int = Query(100, ge=1, le=1000),
     flight_code: Optional[str] = Query(None, description="按航班号筛选"),
     name: Optional[str] = Query(None, description="按乘车人筛选"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """分页获取飞机票列表"""
-    filters = {}
+    filters = {
+        "owner_id": current_user.id
+    }
     if flight_code: filters['flight_code'] = flight_code
     if name: filters['name'] = name
     

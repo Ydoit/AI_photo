@@ -5,22 +5,33 @@ from app.db.models.tag import PhotoTag, PhotoTagRelation
 from app.schemas import tag as schemas
 import uuid
 
-def get_tag_by_name(db: Session, tag_name: str):
-    return db.query(PhotoTag).filter(PhotoTag.tag_name == tag_name, PhotoTag.is_deleted == False).first()
+def get_tag_by_name(db: Session, tag_name: str, owner_id: Optional[UUID] = None):
+    query = db.query(PhotoTag).filter(PhotoTag.tag_name == tag_name, PhotoTag.is_deleted == False)
+    if owner_id:
+        query = query.filter((PhotoTag.owner_id == owner_id) | (PhotoTag.owner_id == None))
+    else:
+        query = query.filter(PhotoTag.owner_id == None)
+    return query.first()
 
-def create_tag(db: Session, tag_name: str):
-    db_tag = PhotoTag(tag_name=tag_name)
+def create_tag(db: Session, tag_name: str, owner_id: Optional[UUID] = None):
+    db_tag = PhotoTag(tag_name=tag_name, owner_id=owner_id)
     db.add(db_tag)
     db.commit()
     db.refresh(db_tag)
     return db_tag
 
-def get_photo_tags(db: Session, photo_id: UUID) -> List[schemas.PhotoTagResponse]:
+def get_photo_tags(db: Session, photo_id: UUID, owner_id: Optional[UUID] = None) -> List[schemas.PhotoTagResponse]:
     # Join PhotoTagRelation and PhotoTag
-    results = db.query(PhotoTag, PhotoTagRelation.confidence)\
+    query = db.query(PhotoTag, PhotoTagRelation.confidence)\
         .join(PhotoTagRelation, PhotoTag.id == PhotoTagRelation.tag_id)\
-        .filter(PhotoTagRelation.photo_id == photo_id, PhotoTagRelation.is_deleted == False)\
-        .all()
+        .filter(PhotoTagRelation.photo_id == photo_id, PhotoTagRelation.is_deleted == False)
+
+    if owner_id:
+        query = query.filter((PhotoTag.owner_id == owner_id) | (PhotoTag.owner_id == None))
+    else:
+        query = query.filter(PhotoTag.owner_id == None)
+        
+    results = query.all()
 
     tags = []
     for tag, confidence in results:
@@ -31,11 +42,11 @@ def get_photo_tags(db: Session, photo_id: UUID) -> List[schemas.PhotoTagResponse
         ))
     return tags
 
-def add_tag_to_photo(db: Session, photo_id: UUID, tag_name: str, confidence: float = 1.0) -> schemas.PhotoTagResponse:
+def add_tag_to_photo(db: Session, photo_id: UUID, tag_name: str, confidence: float = 1.0, owner_id: Optional[UUID] = None) -> schemas.PhotoTagResponse:
     # Check if tag exists
-    tag = get_tag_by_name(db, tag_name)
+    tag = get_tag_by_name(db, tag_name, owner_id)
     if not tag:
-        tag = create_tag(db, tag_name)
+        tag = create_tag(db, tag_name, owner_id)
 
     # Check if relation exists
     relation = db.query(PhotoTagRelation).filter(

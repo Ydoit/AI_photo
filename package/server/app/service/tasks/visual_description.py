@@ -70,7 +70,8 @@ async def handle_visual_description_task(task_manager, task: Task, db: Session) 
                     tasks_to_create.append({
                         'type': TaskType.VISUAL_DESCRIPTION,
                         'payload': {'photo_id': str(p.id), 'force': force},
-                        'priority': 3
+                        'priority': 3,
+                        'owner_id': p.owner_id
                     })
 
             if tasks_to_create:

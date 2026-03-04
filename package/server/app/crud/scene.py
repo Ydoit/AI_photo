@@ -48,12 +48,18 @@ def update_scene_photos(db: Session, scene: Scene):
     min_lat = min(p[1] for p in poly_points)
     max_lat = max(p[1] for p in poly_points)
 
-    photos = db.query(PhotoMetadata).filter(
+    query = db.query(PhotoMetadata).filter(
         PhotoMetadata.latitude >= min_lat,
         PhotoMetadata.latitude <= max_lat,
         PhotoMetadata.longitude >= min_lng,
         PhotoMetadata.longitude <= max_lng
-    ).all()
+    )
+
+    # If scene is private, only include owner's photos
+    if scene.owner_id:
+        query = query.join(Photo, Photo.id == PhotoMetadata.photo_id).filter(Photo.owner_id == scene.owner_id)
+    
+    photos = query.all()
     
     updated_count = 0
     for photo in photos:
@@ -64,9 +70,10 @@ def update_scene_photos(db: Session, scene: Scene):
     if updated_count > 0:
         db.commit()
 
-def create_scene(db: Session, scene: SceneCreate):
+def create_scene(db: Session, scene: SceneCreate, owner_id: Optional[UUID] = None):
     db_scene = Scene(
         id=uuid4(),
+        owner_id=owner_id,
         **scene.model_dump()
     )
     db.add(db_scene)
@@ -77,13 +84,18 @@ def create_scene(db: Session, scene: SceneCreate):
     
     return db_scene
 
-def get_scenes(db: Session, skip: int = 0, limit: int = 100, year: int = None):
+def get_scenes(db: Session, skip: int = 0, limit: int = 100, year: int = None, owner_id: Optional[UUID] = None):
     query = db.query(
         Scene,
         func.count(PhotoMetadata.photo_id).label("photo_count")
     ).outerjoin(
         PhotoMetadata, Scene.id == PhotoMetadata.scene_id
     )
+
+    if owner_id:
+        query = query.filter((Scene.owner_id == owner_id) | (Scene.owner_id == None))
+    else:
+        query = query.filter(Scene.owner_id == None)
 
     if year:
         query = query.outerjoin(Photo, PhotoMetadata.photo_id == Photo.id)\
@@ -108,6 +120,11 @@ def get_scenes(db: Session, skip: int = 0, limit: int = 100, year: int = None):
         PhotoMetadata.scene_id.in_(scene_ids)
     )
 
+    # Filter cover photos by visibility
+    if owner_id:
+        # Filter photos that are owned by the user or are system photos (owner_id is None)
+        cover_query = cover_query.filter((Photo.owner_id == owner_id) | (Photo.owner_id == None))
+
     if year:
         cover_query = cover_query.filter(extract('year', Photo.photo_time) == year)
 
@@ -128,12 +145,19 @@ def get_scenes(db: Session, skip: int = 0, limit: int = 100, year: int = None):
         scenes.append(scene)
     return scenes
 
-def get_scene(db: Session, scene_id: UUID):
-    return db.query(Scene).filter(Scene.id == scene_id).first()
+def get_scene(db: Session, scene_id: UUID, owner_id: Optional[UUID] = None):
+    query = db.query(Scene).filter(Scene.id == scene_id)
+    if owner_id:
+        query = query.filter((Scene.owner_id == owner_id) | (Scene.owner_id == None))
+    else:
+        query = query.filter(Scene.owner_id == None)
+    return query.first()
 
-def delete_scene(db: Session, scene_id: UUID):
+def delete_scene(db: Session, scene_id: UUID, owner_id: Optional[UUID] = None):
     db_scene = db.query(Scene).filter(Scene.id == scene_id).first()
     if db_scene:
+        if db_scene.owner_id and db_scene.owner_id != owner_id:
+             raise ValueError("Permission denied")
         if not db_scene.is_custom:
             raise ValueError("Cannot delete system default scene")
             
@@ -153,10 +177,13 @@ def delete_scene(db: Session, scene_id: UUID):
         db.commit()
     return db_scene
 
-def update_scene(db: Session, scene_id: UUID, scene: SceneUpdate):
+def update_scene(db: Session, scene_id: UUID, scene: SceneUpdate, owner_id: Optional[UUID] = None):
     db_scene = db.query(Scene).filter(Scene.id == scene_id).first()
     if not db_scene:
         return None
+    
+    if db_scene.owner_id and db_scene.owner_id != owner_id:
+         raise ValueError("Permission denied")
     
     update_data = scene.model_dump(exclude_unset=True)
     for key, value in update_data.items():

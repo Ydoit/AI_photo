@@ -57,7 +57,8 @@ async def handle_recognize_face(task_manager, task: Task, db: Session) -> Dict[s
                     tasks_to_create.append({
                         'type': TaskType.RECOGNIZE_FACE,
                         'payload': {'photo_id': str(p.id), 'force': force},
-                        'priority': 2
+                        'priority': 2,
+                        'owner_id': p.owner_id
                     })
 
             if tasks_to_create:

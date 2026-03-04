@@ -29,14 +29,20 @@ def create_face(db: Session, obj_in: schemas.FaceCreate) -> Face:
     db.refresh(db_obj)
     return db_obj
 
-def get_face(db: Session, face_id: int) -> Optional[Face]:
-    return db.query(Face).filter(Face.id == face_id, Face.is_deleted == False).first()
+def get_face(db: Session, face_id: int, owner_id: Optional[UUID] = None) -> Optional[Face]:
+    query = db.query(Face).filter(Face.id == face_id, Face.is_deleted == False)
+    if owner_id:
+        query = query.join(Photo).filter(Photo.owner_id == owner_id)
+    return query.first()
 
-def get_faces(db: Session, skip: int = 0, limit: int = 100) -> List[Face]:
-    return db.query(Face).filter(Face.is_deleted == False).offset(skip).limit(limit).all()
+def get_faces(db: Session, skip: int = 0, limit: int = 100, owner_id: Optional[UUID] = None) -> List[Face]:
+    query = db.query(Face).filter(Face.is_deleted == False)
+    if owner_id:
+        query = query.join(Photo).filter(Photo.owner_id == owner_id)
+    return query.offset(skip).limit(limit).all()
 
-def update_face(db: Session, face_id: int, obj_in: schemas.FaceUpdate) -> Optional[Face]:
-    db_obj = get_face(db, face_id)
+def update_face(db: Session, face_id: int, obj_in: schemas.FaceUpdate, owner_id: Optional[UUID] = None) -> Optional[Face]:
+    db_obj = get_face(db, face_id, owner_id)
     if not db_obj:
         return None
 
@@ -52,13 +58,13 @@ def update_face(db: Session, face_id: int, obj_in: schemas.FaceUpdate) -> Option
     db.refresh(db_obj)
     return db_obj
 
-def delete_face(db: Session, face_id: int) -> Optional[Face]:
+def delete_face(db: Session, face_id: int, owner_id: Optional[UUID] = None) -> Optional[Face]:
     """
     Delete a face record.
     Fix: When deleting a face, check if it is the default face for its identity.
     If so, try to find another face to set as default.
     """
-    face = get_face(db, face_id)
+    face = get_face(db, face_id, owner_id)
     if not face:
         return None
     
@@ -68,12 +74,12 @@ def delete_face(db: Session, face_id: int) -> Optional[Face]:
     db.commit()
     return face
 
-def delete_faces(db: Session, face_ids: List[int]):
+def delete_faces(db: Session, face_ids: List[int], owner_id: Optional[UUID] = None):
     """
     Delete multiple face records.
     """
     for face_id in face_ids:
-        delete_face(db, face_id)
+        delete_face(db, face_id, owner_id)
 
 def handle_face_deletion_dependency(db: Session, face: Face):
     """
@@ -104,23 +110,30 @@ def handle_face_deletion_dependency(db: Session, face: Face):
             db.flush()
 
 # FaceIdentity Operations
-def create_identity(db: Session, obj_in: schemas.FaceIdentityCreate) -> FaceIdentity:
+def create_identity(db: Session, obj_in: schemas.FaceIdentityCreate, owner_id: UUID) -> FaceIdentity:
     db_obj = FaceIdentity(
-        identity_name=obj_in.identity_name
+        identity_name=obj_in.identity_name,
+        owner_id=owner_id
     )
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
     return db_obj
 
-def get_identity(db: Session, identity_id: UUID) -> Optional[FaceIdentity]:
-    return db.query(FaceIdentity).filter(FaceIdentity.id == identity_id, FaceIdentity.is_deleted == False).first()
+def get_identity(db: Session, identity_id: UUID, owner_id: Optional[UUID] = None) -> Optional[FaceIdentity]:
+    query = db.query(FaceIdentity).filter(FaceIdentity.id == identity_id, FaceIdentity.is_deleted == False)
+    if owner_id:
+        query = query.filter(FaceIdentity.owner_id == owner_id)
+    return query.first()
 
-def get_identities(db: Session, skip: int = 0, limit: int = 100) -> List[FaceIdentity]:
-    return db.query(FaceIdentity).filter(FaceIdentity.is_deleted == False).offset(skip).limit(limit).all()
+def get_identities(db: Session, skip: int = 0, limit: int = 100, owner_id: Optional[UUID] = None) -> List[FaceIdentity]:
+    query = db.query(FaceIdentity).filter(FaceIdentity.is_deleted == False)
+    if owner_id:
+        query = query.filter(FaceIdentity.owner_id == owner_id)
+    return query.offset(skip).limit(limit).all()
 
-def update_identity(db: Session, identity_id: UUID, obj_in: schemas.FaceIdentityUpdate) -> Optional[FaceIdentity]:
-    db_obj = get_identity(db, identity_id)
+def update_identity(db: Session, identity_id: UUID, obj_in: schemas.FaceIdentityUpdate, owner_id: Optional[UUID] = None) -> Optional[FaceIdentity]:
+    db_obj = get_identity(db, identity_id, owner_id)
     if not db_obj:
         return None
 
@@ -133,8 +146,8 @@ def update_identity(db: Session, identity_id: UUID, obj_in: schemas.FaceIdentity
     db.refresh(db_obj)
     return db_obj
 
-def delete_identity(db: Session, identity_id: UUID) -> bool:
-    identity = get_identity(db, identity_id)
+def delete_identity(db: Session, identity_id: UUID, owner_id: Optional[UUID] = None) -> bool:
+    identity = get_identity(db, identity_id, owner_id)
     if not identity:
         return False
     
@@ -155,7 +168,8 @@ def get_identities_with_details(
     limit: int = 20,
     min_photos: int = 0,
     photo_id: Optional[UUID] = None,
-    visibility_types: Optional[List[str]] = None
+    visibility_types: Optional[List[str]] = None,
+    owner_id: Optional[UUID] = None
 ) -> List[FaceIdentitySchema]:
     # 1. 子查询：统计每个人脸身份的人脸数（按photo_id筛选并去重）
     face_counts_subq = db.query(
@@ -167,6 +181,11 @@ def get_identities_with_details(
     # 仅当photo_id有值时，添加photo_id筛选
     if photo_id:
         face_counts_subq = face_counts_subq.filter(Face.photo_id == photo_id)
+    
+    # NEW: Filter by owner_id in subquery
+    if owner_id:
+        face_counts_subq = face_counts_subq.join(Photo).filter(Photo.owner_id == owner_id)
+
     face_counts_subq = face_counts_subq.group_by(Face.face_identity_id).subquery()
 
     # 2. 主查询：关联FaceIdentity + 统计数 + 默认人脸 + 照片
@@ -185,6 +204,10 @@ def get_identities_with_details(
         # 核心修正：筛选「统计数>min_photos」（SQL层过滤，提升性能）
         func.coalesce(face_counts_subq.c.count, 0) > min_photos
     )
+
+    # NEW: Filter by owner_id in main query
+    if owner_id:
+        query = query.filter(FaceIdentity.owner_id == owner_id)
 
     # 2.1 筛选逻辑
     if visibility_types:
@@ -245,21 +268,27 @@ def get_identities_with_details(
         ))
     return results
 
-def get_identity_photos(db: Session, identity_id: UUID, skip: int = 0, limit: int = 50) -> List[Photo]:
-    return db.query(Photo).distinct(Photo.id).join(Face).filter(
+def get_identity_photos(db: Session, identity_id: UUID, skip: int = 0, limit: int = 50, owner_id: Optional[UUID] = None) -> List[Photo]:
+    query = db.query(Photo).distinct(Photo.id).join(Face).filter(
         Face.face_identity_id == identity_id,
         Photo.id == Face.photo_id
-    ).order_by(desc(Photo.id)).offset(skip).limit(limit).all()
+    )
+    if owner_id:
+        query = query.filter(Photo.owner_id == owner_id)
+    return query.order_by(desc(Photo.id)).offset(skip).limit(limit).all()
 
-def remove_photos_from_identity(db: Session, identity_id: UUID, photo_ids: List[UUID]) -> int:
-    identity = get_identity(db, identity_id)
+def remove_photos_from_identity(db: Session, identity_id: UUID, photo_ids: List[UUID], owner_id: Optional[UUID] = None) -> int:
+    identity = get_identity(db, identity_id, owner_id)
     if not identity:
         return 0
     
-    faces = db.query(Face).filter(
+    query = db.query(Face).join(Photo).filter(
         Face.face_identity_id == identity_id,
         Face.photo_id.in_(photo_ids)
-    ).all()
+    )
+    if owner_id:
+        query = query.filter(Photo.owner_id == owner_id)
+    faces = query.all()
     
     for face in faces:
         handle_face_deletion_dependency(db, face)
@@ -278,15 +307,18 @@ def delete_faces_by_photo(db: Session, photo_id: UUID) -> int:
     db.commit()
     return count
 
-def set_identity_cover(db: Session, identity_id: UUID, photo_id: UUID) -> bool:
-    identity = get_identity(db, identity_id)
+def set_identity_cover(db: Session, identity_id: UUID, photo_id: UUID, owner_id: Optional[UUID] = None) -> bool:
+    identity = get_identity(db, identity_id, owner_id)
     if not identity:
         return False
         
-    face = db.query(Face).filter(
+    query = db.query(Face).join(Photo).filter(
         Face.face_identity_id == identity_id,
         Face.photo_id == photo_id
-    ).first()
+    )
+    if owner_id:
+        query = query.filter(Photo.owner_id == owner_id)
+    face = query.first()
     
     if not face:
         return False
@@ -296,8 +328,8 @@ def set_identity_cover(db: Session, identity_id: UUID, photo_id: UUID) -> bool:
     db.commit()
     return True
 
-def merge_identities(db: Session, target_id: UUID, source_ids: List[UUID]) -> bool:
-    target = get_identity(db, target_id)
+def merge_identities(db: Session, target_id: UUID, source_ids: List[UUID], owner_id: Optional[UUID] = None) -> bool:
+    target = get_identity(db, target_id, owner_id)
     if not target:
         return False
          
@@ -305,7 +337,7 @@ def merge_identities(db: Session, target_id: UUID, source_ids: List[UUID]) -> bo
         if source_id == target_id:
             continue
             
-        source = get_identity(db, source_id)
+        source = get_identity(db, source_id, owner_id)
         if not source:
             continue
             

@@ -51,6 +51,7 @@ class TrainTicket(Base):
     
     # 新增字段：关联照片ID
     photo_id = Column(String(36), nullable=True, comment="关联照片ID", index=True)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=True)
 
 class FlightTicket(Base):
     """飞机票模型"""
@@ -79,3 +80,4 @@ class FlightTicket(Base):
     
     # 新增字段：关联照片ID
     photo_id = Column(String(36), nullable=True, comment="关联照片ID", index=True)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=True)

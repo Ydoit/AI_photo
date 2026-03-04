@@ -23,6 +23,7 @@ class FaceIdentity(Base):
     update_time = Column(DateTime, default=datetime.now, onupdate=datetime.now)
     is_deleted = Column(Boolean, default=False)
     is_hidden = Column(Boolean, default=False)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=True)
 
     # Relationships
     faces = relationship("Face", back_populates="identity", foreign_keys="Face.face_identity_id")

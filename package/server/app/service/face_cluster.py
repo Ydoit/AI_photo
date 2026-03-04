@@ -48,7 +48,7 @@ class FaceClusterService:
             return emb
         return emb / norm
 
-    def assign_face_to_identity(self, face_id: int, embedding: list) -> uuid.UUID | None:
+    def assign_face_to_identity(self, face_id: int, embedding: list, owner_id: uuid.UUID = None) -> uuid.UUID | None:
         """
         优化版：利用pgvector索引查找最近邻人脸，快速分配Identity
         :param face_id: 人脸ID
@@ -60,11 +60,16 @@ class FaceClusterService:
         try:
             # 1. 利用pgvector <=> 操作符查找最近邻人脸（排除当前人脸，且必须有Identity）
             # <=> 是 cosine distance
-            nearest_face = self.db.query(Face).filter(
+            query = self.db.query(Face).join(Photo).filter(
                 Face.id != face_id,
                 Face.face_identity_id.isnot(None),
                 Face.is_deleted == False
-            ).order_by(
+            )
+            
+            if owner_id:
+                query = query.filter(Photo.owner_id == owner_id)
+                
+            nearest_face = query.order_by(
                 Face.face_feature.cosine_distance(target_emb)
             ).limit(1).first()
 
@@ -87,7 +92,7 @@ class FaceClusterService:
                     face_identity_id=best_match_id,
                     recognize_confidence=float(1.0 - dist)
                 )
-                crud_face.update_face(self.db, face_id, update_data)
+                crud_face.update_face(self.db, face_id, update_data, owner_id=owner_id)
 
                 return best_match_id
             else:
@@ -106,7 +111,7 @@ class FaceClusterService:
             logger.error(f"分配Identity异常：{str(e)}", exc_info=True)
             raise
 
-    def rescan_identity(self, identity_id: uuid.UUID) -> int:
+    def rescan_identity(self, identity_id: uuid.UUID, owner_id: uuid.UUID = None) -> int:
         """
         重新扫描指定人物的人脸：
         1. 计算当前人物的人脸中心向量
@@ -138,11 +143,16 @@ class FaceClusterService:
 
             # 3. 查找未分配的人脸
             # 这里先获取一部分候选（按距离排序），再精确过滤
-            candidates = self.db.query(Face).filter(
+            candidates_query = self.db.query(Face).join(Photo).filter(
                 Face.face_identity_id == None,
                 Face.is_deleted == False,
                 Face.face_feature.isnot(None)
-            ).order_by(
+            )
+            
+            if owner_id:
+                candidates_query = candidates_query.filter(Photo.owner_id == owner_id)
+                
+            candidates = candidates_query.order_by(
                 Face.face_feature.cosine_distance(center)
             ).all()
 
@@ -157,7 +167,7 @@ class FaceClusterService:
                         face_identity_id=identity_id,
                         recognize_confidence=float(1.0 - dist)
                     )
-                    crud_face.update_face(self.db, face.id, update_data)
+                    crud_face.update_face(self.db, face.id, update_data, owner_id=owner_id)
                     count += 1
 
             return count

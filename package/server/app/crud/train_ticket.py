@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from decimal import Decimal
 from datetime import datetime
+import uuid
 
 from app.db.models.trip import TrainTicket
 from app.schemas.train_ticket import TrainTicketCreate, TrainTicketUpdate
@@ -39,7 +40,7 @@ def get_train_tickets(
                 if isinstance(value, str):
                     # 字符串字段支持模糊查询
                     query = query.filter(getattr(TrainTicket, key).ilike(f"%{value}%"))
-                elif isinstance(value, (int, Decimal, datetime)):
+                elif isinstance(value, (int, Decimal, datetime, uuid.UUID)):
                     # 精确匹配
                     query = query.filter(getattr(TrainTicket, key) == value)
 
@@ -58,7 +59,7 @@ def get_all_train_tickets(db: Session) -> List[TrainTicket]:
 
 
 
-def create_train_ticket(db: Session, ticket: TrainTicketCreate) -> TrainTicket:
+def create_train_ticket(db: Session, ticket: TrainTicketCreate, owner_id: uuid.UUID = None) -> TrainTicket:
     """创建新的火车票"""
     db_ticket = TrainTicket(
         train_code=ticket.train_code,
@@ -76,7 +77,8 @@ def create_train_ticket(db: Session, ticket: TrainTicketCreate) -> TrainTicket:
         total_mileage=ticket.total_mileage or Decimal('0.0'),
         stop_stations=ticket.stop_stations or '[]',  # 默认空列表，后续可更新
         comments=ticket.comments,
-        photo_id=ticket.photo_id
+        photo_id=ticket.photo_id,
+        owner_id=owner_id
     )
     db.add(db_ticket)
     db.commit()

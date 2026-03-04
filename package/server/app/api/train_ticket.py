@@ -27,8 +27,10 @@ from app.crud.train_ticket import (
     get_all_train_tickets
 )
 from app.db.models.trip import TrainTicket
+from app.db.models import User
 from app.schemas.train_ticket import TrainTicketResponse, TrainTicketCreate, TrainTicketListResponse, TrainTicketUpdate
 from app.dependencies import get_db
+from app.api.deps import get_current_user
 from app.core.config_manager import config_manager
 import aiohttp
 from aiohttp import FormData
@@ -374,28 +376,13 @@ def export_tickets(
 @router.post("", response_model=TrainTicketResponse, summary="创建火车票记录")
 def create_ticket(
         ticket: TrainTicketCreate,
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
 ):
     """
     创建新的火车票记录
-
-    - **train_code**: 车次号（如G1920）
-    - **departure_station**: 出发站
-    - **arrival_station**: 到达站
-    - **datetime**: 发车时间（格式：YYYY-MM-DD HH:MM:SS）
-    - **carriage**: 车厢号（如8A、12）
-    - **seat_num**: 座位号（如12F、05下）
-    - **berth_type**: 铺位类型（上/中/下/无，默认为空）
-    - **price**: 票价（保留两位小数）
-    - **seat_type**: 座位类型（一等座/二等座/商务座等）
-    - **name**: 乘车人姓名
-    - **discount_type**: 优惠类型（学生票/儿童票/优惠票/全价票，默认全价票）
-    - **total_running_time**: 总运行时间（分钟，可选）
-    - **total_mileage**: 总里程（公里，可选）
-    - **stop_stations**: 途经站点列表（可选）
-    - **comments**: 车票备注（可选）
     """
-    return create_train_ticket(db=db, ticket=ticket)
+    return create_train_ticket(db=db, ticket=ticket, owner_id=current_user.id)
 
 
 @router.get("/{ticket_id}", response_model=TrainTicketResponse, summary="获取单张火车票")
@@ -420,21 +407,19 @@ def read_tickets(
         departure_station: Optional[str] = Query(None, description="按出发站模糊查询"),
         arrival_station: Optional[str] = Query(None, description="按到达站模糊查询"),
         start_datetime: Optional[datetime] = Query(None, description="发车时间起始（格式：YYYY-MM-DD HH:MM:SS）"),
-        end_datetime: Optional[datetime] = Query(None, description="发车时间结束（格式：YYYY-MM-DD HH:MM:SS）")
+        end_datetime: Optional[datetime] = Query(None, description="发车时间结束（格式：YYYY-MM-DD HH:MM:SS）"),
+        current_user: User = Depends(get_current_user)
 ):
     """
     获取火车票列表（支持多条件过滤和分页）
-
-    - 支持按车次号、乘车人、出发站、到达站模糊查询
-    - 支持按发车时间范围查询
-    - 支持分页（skip：跳过条数，limit：每页条数）
     """
     # 构建过滤条件
     filters: Dict[str, Any] = {
         "train_code": train_code,
         "name": name,
         "departure_station": departure_station,
-        "arrival_station": arrival_station
+        "arrival_station": arrival_station,
+        "owner_id": current_user.id
     }
 
     # 处理时间范围过滤

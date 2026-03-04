@@ -463,7 +463,7 @@ class TaskWorker:
             index_logs = []
 
             # Map of temp photo_id to file_path for task chaining
-            processed_photos = {} # photo_id -> file_path
+            processed_photos = {} # photo_id -> {path: file_path, owner_id: user_id}
 
             for item in items:
                 task_type = item['task_type']
@@ -480,10 +480,10 @@ class TaskWorker:
                             photos_to_create[user_id] = []
                         photos_to_create[user_id].append(data)
 
-                        index_logs.append(IndexLog(action='added', file_path=data['file_path'], photo_id=data['photo_id']))
+                        index_logs.append(IndexLog(action='added', file_path=data['file_path'], photo_id=data['photo_id'], owner_id=user_id))
 
                         # Store for chaining
-                        processed_photos[str(data['photo_id'])] = data['file_path']
+                        processed_photos[str(data['photo_id'])] = {'path': data['file_path'], 'owner_id': user_id}
 
                         # Update stats
                         self.scan_status['added'] += 1
@@ -501,41 +501,49 @@ class TaskWorker:
                 db.add_all(index_logs)
 
                 # Now chain subsequent tasks for newly created photos
-                for photo_id, file_path in processed_photos.items():
+                for photo_id, info in processed_photos.items():
+                    file_path = info['path']
+                    owner_id = info['owner_id']
+
                     # 1. Metadata Task (High Priority)
                     db.add(Task(
                         type=TaskType.EXTRACT_METADATA,
                         payload={'file_path': file_path, 'photo_id': photo_id},
                         priority=DEFAULT_PRIORITIES[TaskType.EXTRACT_METADATA],
-                        status=TaskStatus.PENDING
+                        status=TaskStatus.PENDING,
+                        owner_id=owner_id
                     ))
                     # 2. Face Recognition Task (Low Priority)
                     db.add(Task(
                         type=TaskType.RECOGNIZE_FACE,
                         payload={'file_path': file_path, 'photo_id': photo_id},
                         priority=DEFAULT_PRIORITIES[TaskType.RECOGNIZE_FACE],
-                        status=TaskStatus.PENDING
+                        status=TaskStatus.PENDING,
+                        owner_id=owner_id
                     ))
                     # 3. OCR Task (Low Priority)
                     db.add(Task(
                         type=TaskType.OCR,
                         payload={'file_path': file_path, 'photo_id': photo_id},
                         priority=DEFAULT_PRIORITIES[TaskType.OCR],
-                        status=TaskStatus.PENDING
+                        status=TaskStatus.PENDING,
+                        owner_id=owner_id
                     ))
                     # 4. Classification Task (Low Priority)
                     db.add(Task(
                         type=TaskType.CLASSIFY_IMAGE,
                         payload={'file_path': file_path, 'photo_id': photo_id},
                         priority=DEFAULT_PRIORITIES[TaskType.CLASSIFY_IMAGE],
-                        status=TaskStatus.PENDING
+                        status=TaskStatus.PENDING,
+                        owner_id=owner_id
                     ))
                     # 5. Ticket Recognition Task (Low Priority)
                     db.add(Task(
                         type=TaskType.RECOGNIZE_TICKET,
                         payload={'file_path': file_path, 'photo_id': photo_id},
                         priority=DEFAULT_PRIORITIES.get(TaskType.RECOGNIZE_TICKET, 2),
-                        status=TaskStatus.PENDING
+                        status=TaskStatus.PENDING,
+                        owner_id=owner_id
                     ))
 
             # Mark tasks as completed/failed in DB?
@@ -572,17 +580,17 @@ class TaskWorker:
         finally:
             db.close()
 
-    def add_task(self, db: Session, type: str, payload: dict, priority: int = 0):
+    def add_task(self, db: Session, type: str, payload: dict, priority: int = 0, owner_id: UUID = None):
         if priority == 0:
             priority = DEFAULT_PRIORITIES.get(type, 0)
 
-        task = Task(type=type, payload=payload, priority=priority)
+        task = Task(type=type, payload=payload, priority=priority, owner_id=owner_id)
         db.add(task)
         db.commit()
         db.refresh(task)
         return task
 
-    def add_tasks(self, db: Session, tasks_data: List[Dict]):
+    def add_tasks(self, db: Session, tasks_data: List[Dict], owner_id: UUID = None):
         """Batch add tasks"""
         if not tasks_data:
             return
@@ -593,11 +601,14 @@ class TaskWorker:
             if priority == 0:
                 priority = DEFAULT_PRIORITIES.get(t_data['type'], 0)
 
+            task_owner_id = t_data.get('owner_id', owner_id)
+
             tasks.append(Task(
                 type=t_data['type'],
                 payload=t_data.get('payload', {}),
                 priority=priority,
-                status=TaskStatus.PENDING
+                status=TaskStatus.PENDING,
+                owner_id=task_owner_id
             ))
 
         db.bulk_save_objects(tasks)

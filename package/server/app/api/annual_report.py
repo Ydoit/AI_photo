@@ -26,6 +26,8 @@ from app.schemas.annual_report import (
 )
 
 from app.crud import annual_report as crud_annual_report
+from app.api.deps import get_current_user
+from app.db.models.user import User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -36,10 +38,11 @@ from app.schemas.photo import Photo as PhotoSchema
 def get_report_transport_analysis(
     start_time: datetime = Query(..., description="Start Time"),
     end_time: datetime = Query(..., description="End Time"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    behavior = get_report_travel_behavior(start_time, end_time, db)
-    comprehensive = get_report_comprehensive(start_time, end_time, db)
+    behavior = get_report_travel_behavior(start_time, end_time, db, current_user)
+    comprehensive = get_report_comprehensive(start_time, end_time, db, current_user)
     return TransportAnalysisMetrics(
         behavior=behavior,
         comprehensive=comprehensive
@@ -49,29 +52,33 @@ def get_report_transport_analysis(
 def get_annual_report_photos(
     start_time: datetime = Query(..., description="Start Time"),
     end_time: datetime = Query(..., description="End Time"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    return crud_annual_report.get_annual_report_photos(start_time, end_time, db)
+    return crud_annual_report.get_annual_report_photos(start_time, end_time, db, user_id=current_user.id)
 
 
 @router.get("/expenses", response_model=ExpenseMetrics)
 def get_report_expenses(
     start_time: datetime = Query(..., description="Start Time"),
     end_time: datetime = Query(..., description="End Time"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    return crud_annual_report.get_report_expenses(start_time, end_time, db)
+    return crud_annual_report.get_report_expenses(start_time, end_time, db, user_id=current_user.id)
 
 @router.get("/expenses/details", response_model=List[TicketDetail])
 def get_report_expense_details(
     start_time: datetime = Query(..., description="Start Time"),
     end_time: datetime = Query(..., description="End Time"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     try:
         tickets = db.query(TrainTicket).filter(
             TrainTicket.date_time >= start_time,
-            TrainTicket.date_time <= end_time
+            TrainTicket.date_time <= end_time,
+            TrainTicket.owner_id == current_user.id
         ).order_by(TrainTicket.date_time.desc()).all()
         
         result = []
@@ -106,18 +113,20 @@ class ReportSummary(BaseModel):
 def get_report_summary(
     start_time: datetime = Query(..., description="Start Time"),
     end_time: datetime = Query(..., description="End Time"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    return crud_annual_report.get_report_summary(start_time, end_time, db)
+    return crud_annual_report.get_report_summary(start_time, end_time, db, user_id=current_user.id)
 
 
 @router.get("/memory", response_model=MemoryMetrics)
 def get_report_memory(
     start_time: datetime = Query(..., description="Start Time"),
     end_time: datetime = Query(..., description="End Time"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    base_query = get_date_range_filter(db.query(Photo), start_time, end_time)
+    base_query = get_date_range_filter(db.query(Photo), start_time, end_time).filter(Photo.owner_id == current_user.id)
     total_photos = base_query.count()
 
     # --- Memory Metrics ---
@@ -126,6 +135,7 @@ def get_report_memory(
         .join(PhotoTagRelation, PhotoTag.id == PhotoTagRelation.tag_id)\
         .join(Photo, Photo.id == PhotoTagRelation.photo_id)\
         .join(PhotoMetadata, PhotoMetadata.photo_id == Photo.id)\
+        .filter(Photo.owner_id == current_user.id)\
         .filter(Photo.file_type == FileType.image)\
         .filter(Photo.image_type != ImageType.SCREENSHOT)\
         .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
@@ -143,6 +153,7 @@ def get_report_memory(
     top_person = db.query(FaceIdentity.identity_name, func.count(Face.id).label('count'))\
         .join(Face, Face.face_identity_id == FaceIdentity.id)\
         .join(Photo, Photo.id == Face.photo_id)\
+        .filter(Photo.owner_id == current_user.id)\
         .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
         .group_by(FaceIdentity.identity_name)\
         .order_by(desc('count')).first()
@@ -153,6 +164,7 @@ def get_report_memory(
     # Top Location
     top_location_row = db.query(PhotoMetadata.city, func.count(Photo.id).label('count'))\
         .join(Photo, Photo.id == PhotoMetadata.photo_id)\
+        .filter(Photo.owner_id == current_user.id)\
         .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
         .filter(PhotoMetadata.city.isnot(None))\
         .group_by(PhotoMetadata.city)\
@@ -174,6 +186,7 @@ def get_report_memory(
     # Top Feature (Camera Make and Model)
     top_feature_row = db.query(PhotoMetadata.make, PhotoMetadata.model, func.count(Photo.id).label('count'))\
         .join(Photo, Photo.id == PhotoMetadata.photo_id)\
+        .filter(Photo.owner_id == current_user.id)\
         .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
         .filter(PhotoMetadata.make.isnot(None), PhotoMetadata.model.isnot(None))\
         .group_by(PhotoMetadata.make, PhotoMetadata.model)\
@@ -217,20 +230,24 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 def get_report_location(
     start_time: datetime = Query(..., description="Start Time"),
     end_time: datetime = Query(..., description="End Time"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     # --- Location Metrics ---
     lighten_province = db.query(func.count(func.distinct(PhotoMetadata.province)))\
         .join(Photo, Photo.id == PhotoMetadata.photo_id)\
+        .filter(Photo.owner_id == current_user.id)\
         .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time).scalar()
 
     lighten_city = db.query(func.count(func.distinct(PhotoMetadata.city)))\
         .join(Photo, Photo.id == PhotoMetadata.photo_id)\
+        .filter(Photo.owner_id == current_user.id)\
         .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time).scalar()
 
     # Top Cities
     top_cities_rows = db.query(PhotoMetadata.city, PhotoMetadata.province, func.count(Photo.id).label('count'))\
         .join(Photo, Photo.id == PhotoMetadata.photo_id)\
+        .filter(Photo.owner_id == current_user.id)\
         .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
         .filter(PhotoMetadata.city.isnot(None))\
         .group_by(PhotoMetadata.city, PhotoMetadata.province)\
@@ -247,6 +264,7 @@ def get_report_location(
         func.count(Photo.id)
     )\
     .join(Photo, Photo.id == PhotoMetadata.photo_id)\
+    .filter(Photo.owner_id == current_user.id)\
     .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
     .filter(PhotoMetadata.city.isnot(None))\
     .filter(PhotoMetadata.longitude.isnot(None))\
@@ -261,6 +279,7 @@ def get_report_location(
             continue
             
         cover_photo = db.query(Photo).join(PhotoMetadata)\
+            .filter(Photo.owner_id == current_user.id)\
             .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
             .filter(PhotoMetadata.city == city)\
             .first()
@@ -289,6 +308,7 @@ def get_report_location(
         func.avg(PhotoMetadata.longitude)
     )\
     .join(Photo, Photo.id == PhotoMetadata.photo_id)\
+    .filter(Photo.owner_id == current_user.id)\
     .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
     .filter(PhotoMetadata.city.isnot(None))\
     .group_by(PhotoMetadata.city)\
@@ -307,6 +327,7 @@ def get_report_location(
             func.avg(PhotoMetadata.longitude)
         )\
         .join(Photo, Photo.id == PhotoMetadata.photo_id)\
+        .filter(Photo.owner_id == current_user.id)\
         .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
         .filter(PhotoMetadata.city.isnot(None))\
         .filter(PhotoMetadata.city != curr_city_name)\
@@ -331,6 +352,7 @@ def get_report_location(
 
             # Get 10 photos from farthest city
             f_photos = db.query(Photo).join(PhotoMetadata)\
+                .filter(Photo.owner_id == current_user.id)\
                 .filter(Photo.photo_time >= start_time, Photo.photo_time <= end_time)\
                 .filter(PhotoMetadata.city == target_city_name)\
                 .limit(20).all()
@@ -352,32 +374,36 @@ def get_report_location(
 def get_report_season(
     start_time: datetime = Query(..., description="Start Time"),
     end_time: datetime = Query(..., description="End Time"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    return crud_annual_report.get_report_season(start_time, end_time, db)
+    return crud_annual_report.get_report_season(start_time, end_time, db, user_id=current_user.id)
 
 
 @router.get("/emotion", response_model=EmotionMetrics)
 def get_report_emotion(
     start_time: datetime = Query(..., description="Start Time"),
     end_time: datetime = Query(..., description="End Time"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    return crud_annual_report.get_report_emotion(start_time, end_time, db)
+    return crud_annual_report.get_report_emotion(start_time, end_time, db, user_id=current_user.id)
 
 @router.get("/easter-egg", response_model=EasterEgg)
 def get_report_easter_egg(
     start_time: datetime = Query(..., description="Start Time"),
     end_time: datetime = Query(..., description="End Time"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    return crud_annual_report.get_report_easter_egg(start_time, end_time, db)
+    return crud_annual_report.get_report_easter_egg(start_time, end_time, db, user_id=current_user.id)
 
 @router.get("/travel-behavior", response_model=TravelBehaviorMetrics)
 def get_report_travel_behavior(
     start_time: datetime = Query(..., description="Start Time"),
     end_time: datetime = Query(..., description="End Time"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     # Monthly Frequency
     monthly_data = db.query(
@@ -386,7 +412,8 @@ def get_report_travel_behavior(
         func.count(TrainTicket.id).label('count')
     ).filter(
         TrainTicket.date_time >= start_time,
-        TrainTicket.date_time <= end_time
+        TrainTicket.date_time <= end_time,
+        TrainTicket.owner_id == current_user.id
     ).group_by(
         'year', 'month'
     ).order_by(
@@ -405,7 +432,8 @@ def get_report_travel_behavior(
         func.count(TrainTicket.id).label('count')
     ).filter(
         TrainTicket.date_time >= start_time,
-        TrainTicket.date_time <= end_time
+        TrainTicket.date_time <= end_time,
+        TrainTicket.owner_id == current_user.id
     ).group_by(
         TrainTicket.departure_station,
         TrainTicket.arrival_station
@@ -424,7 +452,8 @@ def get_report_travel_behavior(
         func.count(TrainTicket.id).label('count')
     ).filter(
         TrainTicket.date_time >= start_time,
-        TrainTicket.date_time <= end_time
+        TrainTicket.date_time <= end_time,
+        TrainTicket.owner_id == current_user.id
     ).group_by(
         TrainTicket.arrival_station
     ).order_by(
@@ -439,7 +468,8 @@ def get_report_travel_behavior(
     # Trip Type Distribution
     tickets = db.query(TrainTicket).filter(
         TrainTicket.date_time >= start_time,
-        TrainTicket.date_time <= end_time
+        TrainTicket.date_time <= end_time,
+        TrainTicket.owner_id == current_user.id
     ).all()
     
     workday_count = 0
@@ -468,11 +498,13 @@ def get_report_travel_behavior(
 def get_report_comprehensive(
     start_time: datetime = Query(..., description="Start Time"),
     end_time: datetime = Query(..., description="End Time"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     query = db.query(TrainTicket).filter(
         TrainTicket.date_time >= start_time,
-        TrainTicket.date_time <= end_time
+        TrainTicket.date_time <= end_time,
+        TrainTicket.owner_id == current_user.id
     )
     
     # Total Mileage

@@ -216,17 +216,33 @@ def update_photo_metadata(
 # Tag Endpoints
 
 @router.get("/{photo_id}/tags", response_model=List[tag_schemas.PhotoTagResponse])
-def get_photo_tags(photo_id: UUID, db: Session = Depends(get_db)):
-    return crud_tag.get_photo_tags(db, photo_id)
+def get_photo_tags(photo_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return crud_tag.get_photo_tags(db, photo_id, owner_id=current_user.id)
 
 
 @router.post("/{photo_id}/tags", response_model=tag_schemas.PhotoTagResponse)
-def add_photo_tag(photo_id: UUID, tag_data: tag_schemas.PhotoTagAdd, db: Session = Depends(get_db)):
-    return crud_tag.add_tag_to_photo(db, photo_id, tag_data.tag_name, tag_data.confidence)
+def add_photo_tag(photo_id: UUID, tag_data: tag_schemas.PhotoTagAdd, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Check photo ownership? Usually yes.
+    # But current implementation didn't check. Assuming user can tag photos they can see?
+    # Or strict ownership? "Users only operate on their own."
+    # So yes, check ownership.
+    photo = crud_album.get_photo(db, photo_id)
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    if photo.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Permission denied")
+        
+    return crud_tag.add_tag_to_photo(db, photo_id, tag_data.tag_name, tag_data.confidence, owner_id=current_user.id)
 
 
 @router.delete("/{photo_id}/tags/{tag_id}")
-def delete_photo_tag(photo_id: UUID, tag_id: UUID, db: Session = Depends(get_db)):
+def delete_photo_tag(photo_id: UUID, tag_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    photo = crud_album.get_photo(db, photo_id)
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    if photo.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Permission denied")
+        
     crud_tag.remove_tag_from_photo(db, photo_id, tag_id)
     return {"message": "Tag deleted successfully"}
 

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Text, DECIMAL, JSON, DateTime, func, Boolean
+from sqlalchemy import Column, String, Integer, Text, DECIMAL, JSON, DateTime, func, Boolean, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from app.db.base import Base
 import uuid
@@ -16,4 +16,5 @@ class Scene(Base):
     radius = Column(Integer)  # meters
     polygon = Column(JSON)  # [[lat, lng], ...]
     is_custom = Column(Boolean, default=True)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

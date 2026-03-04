@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from decimal import Decimal
 from datetime import datetime
+import uuid
 
 from app.db.models.trip import FlightTicket
 from app.schemas.flight_ticket import FlightTicketCreate, FlightTicketUpdate
@@ -27,14 +28,14 @@ def get_flight_tickets(
             if hasattr(FlightTicket, key) and value is not None:
                 if isinstance(value, str):
                     query = query.filter(getattr(FlightTicket, key).ilike(f"%{value}%"))
-                elif isinstance(value, (int, Decimal, datetime)):
+                elif isinstance(value, (int, Decimal, datetime, uuid.UUID)):
                     query = query.filter(getattr(FlightTicket, key) == value)
 
     total = query.count()
     items = query.order_by(FlightTicket.date_time.desc()).offset(skip).limit(limit).all()
     return total, items
 
-def create_flight_ticket(db: Session, ticket: FlightTicketCreate) -> FlightTicket:
+def create_flight_ticket(db: Session, ticket: FlightTicketCreate, owner_id: uuid.UUID = None) -> FlightTicket:
     """创建新的飞机票"""
     db_ticket = FlightTicket(
         flight_code=ticket.flight_code,
@@ -46,7 +47,8 @@ def create_flight_ticket(db: Session, ticket: FlightTicketCreate) -> FlightTicke
         total_mileage=ticket.total_mileage or Decimal('0.0'),
         total_running_time=ticket.total_running_time or 0,
         comments=ticket.comments,
-        photo_id=ticket.photo_id
+        photo_id=ticket.photo_id,
+        owner_id=owner_id
     )
     db.add(db_ticket)
     db.commit()

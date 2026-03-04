@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Body, Query, Path
 from sqlalchemy.orm import Session
+
+from app.api import deps
 from app.dependencies import get_db
 from app.schemas import album
 from app.schemas import face as schemas
@@ -13,6 +15,7 @@ from app.schemas.face import FaceIdentitySchema, RemovePhotosRequest, SetCoverRe
 from app.service.tasks.face import process_single_photo
 from app.db.models.photo import Photo
 from app.db.models.face import Face
+from app.db.models.user import User
 
 import numpy as np
 import logging
@@ -27,19 +30,19 @@ from app.service.face_cluster import FaceClusterService
 def create_identity(
     payload: FaceIdentityCreate = Body(..., description="人物信息"),
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(deps.get_current_user)
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     创建新人物。
     """
-    return crud_face.create_identity(db, payload)
+    return crud_face.create_identity(db, payload, owner_id=current_user.id)
 
 @router.post("/identities/{id}/add-photos", summary="添加照片到人物", description="将选中的照片添加到指定人物相册中")
 async def add_photos_to_identity(
     id: UUID = Path(..., description="人物ID"),
     payload: AddPhotosToIdentityRequest = Body(..., description="要添加的照片列表"),
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(deps.get_current_user)
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     将选中的照片添加到人物相册中。
@@ -48,17 +51,18 @@ async def add_photos_to_identity(
        - 如果识别到人脸，则添加到人物相册中。
        - 如果没有识别到人脸，则创建一个新的人脸记录并与人物关联（特征值为空，置信度为1）。
     """
-    identity = crud_face.get_identity(db, id)
+    identity = crud_face.get_identity(db, id, owner_id=current_user.id)
     if not identity:
         raise HTTPException(status_code=404, detail="Identity not found")
     
     count = 0
     
     # 1. 计算当前人物的特征中心（如果有已关联的人脸）
-    assigned_faces = db.query(Face).filter(
+    assigned_faces = db.query(Face).join(Photo).filter(
         Face.face_identity_id == id,
         Face.is_deleted == False,
-        Face.face_feature.isnot(None)
+        Face.face_feature.isnot(None),
+        Photo.owner_id == current_user.id
     ).all()
     
     identity_center = None
@@ -72,7 +76,7 @@ async def add_photos_to_identity(
             
     for photo_id in payload.photo_ids:
         photo = db.query(Photo).get(photo_id)
-        if not photo:
+        if not photo or photo.owner_id != current_user.id:
             continue
             
         # 2. 检查该照片是否已有人脸
@@ -158,15 +162,15 @@ def update_identity(
     id: UUID = Path(..., description="人物ID"),
     payload: schemas.FaceIdentityUpdate = Body(..., description="人物更新信息"),
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(deps.get_current_user)
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     更新人物信息（名称、描述、标签）。
     """
-    if not crud_face.get_identity(db, id):
+    updated_identity = crud_face.update_identity(db, id, payload, owner_id=current_user.id)
+    if not updated_identity:
         raise HTTPException(status_code=404, detail="Identity not found")
 
-    updated_identity = crud_face.update_identity(db, id, payload)
     return updated_identity
 
 @router.get("/identities", response_model=List[FaceIdentitySchema], summary="获取人物列表", description="获取所有已识别的人物列表，支持分页，返回包含封面信息和照片数量的人物对象")
@@ -175,7 +179,7 @@ def list_identities(
     limit: int = Query(20, ge=1, le=10000, description="每页数量"),
     types: List[str] = Query(["named", "unnamed"], alias="types[]" , description="人物类型筛选：named, unnamed, hidden"),
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(deps.get_current_user)
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     获取人物列表，包含每个人的封面照片和照片总数。
@@ -188,7 +192,8 @@ def list_identities(
         skip=offset,
         limit=limit,
         min_photos=min_photos,
-        visibility_types=types
+        visibility_types=types,
+        owner_id=current_user.id
     )
 
 
@@ -198,25 +203,25 @@ def get_identity_photos(
     page: int = Query(1, ge=1, description="页码"),
     limit: int = Query(50, ge=1, description="每页数量"),
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(deps.get_current_user)
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     获取指定人物关联的所有照片列表。
     """
     offset = (page - 1) * limit
-    return crud_face.get_identity_photos(db, id, skip=offset, limit=limit)
+    return crud_face.get_identity_photos(db, id, skip=offset, limit=limit, owner_id=current_user.id)
 
 @router.delete("/identities/{id}", summary="删除人物", description="软删除指定人物，但保留其关联的照片（解除关联）")
 def delete_identity(
     id: UUID = Path(..., description="人物ID"),
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(deps.get_current_user)
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     删除人物。
     注意：这只是软删除人物记录，并将关联的人脸数据中的 identity_id 置为 NULL（解除关联）。
     """
-    if not crud_face.delete_identity(db, id):
+    if not crud_face.delete_identity(db, id, owner_id=current_user.id):
         raise HTTPException(status_code=404, detail="Identity not found")
     
     return {"status": "success"}
@@ -226,15 +231,15 @@ def remove_photos_from_identity(
     id: UUID = Path(..., description="人物ID"),
     payload: RemovePhotosRequest = Body(..., description="要移除的照片列表"),
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(deps.get_current_user)
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     批量从人物中移除照片。
     """
-    if not crud_face.get_identity(db, id):
+    if not crud_face.get_identity(db, id, owner_id=current_user.id):
         raise HTTPException(status_code=404, detail="Identity not found")
         
-    count = crud_face.remove_photos_from_identity(db, id, payload.photo_ids)
+    count = crud_face.remove_photos_from_identity(db, id, payload.photo_ids, owner_id=current_user.id)
     return {"status": "success", "count": count}
 
 @router.put("/identities/{id}/cover", summary="设置人物封面", description="将指定照片设为该人物的封面照片")
@@ -242,16 +247,16 @@ def set_identity_cover(
     id: UUID = Path(..., description="人物ID"),
     payload: SetCoverRequest = Body(..., description="封面设置请求"),
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(deps.get_current_user)
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     设置人物的封面照片。
     系统会自动查找该照片中属于该人物的人脸，并将其ID设为默认人脸ID。
     """
-    if not crud_face.get_identity(db, id):
+    if not crud_face.get_identity(db, id, owner_id=current_user.id):
         raise HTTPException(status_code=404, detail="Identity not found")
         
-    if not crud_face.set_identity_cover(db, id, payload.photo_id):
+    if not crud_face.set_identity_cover(db, id, payload.photo_id, owner_id=current_user.id):
         raise HTTPException(status_code=404, detail="Face not found in this photo for this identity")
         
     return {"status": "success"}
@@ -260,12 +265,12 @@ def set_identity_cover(
 def merge_identities(
     payload: MergeRequest = Body(..., description="合并请求"),
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(deps.get_current_user)
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     合并人物。
     """
-    if not crud_face.merge_identities(db, payload.target_id, payload.source_ids):
+    if not crud_face.merge_identities(db, payload.target_id, payload.source_ids, owner_id=current_user.id):
          raise HTTPException(status_code=400, detail="Merge failed")
     
     return {"status": "success"}
@@ -274,14 +279,14 @@ def merge_identities(
 def rescan_identity(
     id: UUID = Path(..., description="人物ID"),
     db: Session = Depends(get_db),
-    current_user: schemas.User = Depends(deps.get_current_user)
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     重新扫描人物人脸，将符合条件的人脸关联到该人物。
     """
-    if not crud_face.get_identity(db, id):
+    if not crud_face.get_identity(db, id, owner_id=current_user.id):
         raise HTTPException(status_code=404, detail="Identity not found")
         
     service = FaceClusterService(db)
-    count = service.rescan_identity(id)
+    count = service.rescan_identity(id, owner_id=current_user.id)
     return {"status": "success", "count": count}

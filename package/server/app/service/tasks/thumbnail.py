@@ -83,7 +83,8 @@ async def handle_rebuild_thumbnails(task_manager, task: Task, db: Session):
                 tasks_to_create.append({
                     'type': TaskType.GENERATE_THUMBNAIL,
                     'payload': {'photo_id': str(p.id)},
-                    'priority': 8
+                    'priority': 8,
+                    'owner_id': p.owner_id
                 })
         
         if tasks_to_create:

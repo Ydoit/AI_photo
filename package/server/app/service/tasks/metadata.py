@@ -271,7 +271,8 @@ async def handle_rebuild_metadata(task_manager, task: Task, db: Session):
                 tasks_to_create.append({
                     'type': TaskType.EXTRACT_METADATA,
                     'payload': {'photo_id': str(p.id), 'file_path': p.file_path}, # Pass file_path for optimization
-                    'priority': 5
+                    'priority': 5,
+                    'owner_id': p.owner_id
                 })
 
         if tasks_to_create:

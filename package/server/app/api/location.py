@@ -67,34 +67,37 @@ def get_map_markers(
 @router.post("/scenes", response_model=scene_schemas.Scene, summary="创建景区")
 def create_scene(
     scene: scene_schemas.SceneCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     创建新的景区，并自动关联范围内的照片。
     """
-    return scene_crud.create_scene(db, scene)
+    return scene_crud.create_scene(db, scene, owner_id=current_user.id)
 
 @router.get("/scenes/list", response_model=List[scene_schemas.Scene], summary="获取所有景区详情")
 def get_scenes_list(
     skip: int = 0,
     limit: int = 100,
     year: int = Query(None, description="年份筛选"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     获取所有景区详细信息（包含多边形坐标）。
     """
-    return scene_crud.get_scenes(db, skip, limit, year)
+    return scene_crud.get_scenes(db, skip, limit, year, owner_id=current_user.id)
 
 @router.get("/scenes/{scene_id}", response_model=scene_schemas.Scene, summary="获取景区详情")
 def get_scene_details(
     scene_id: UUID,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     获取指定景区的详细信息。
     """
-    scene = scene_crud.get_scene(db, scene_id)
+    scene = scene_crud.get_scene(db, scene_id, owner_id=current_user.id)
     if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
     return scene
@@ -103,26 +106,31 @@ def get_scene_details(
 def update_scene(
     scene_id: UUID,
     scene: scene_schemas.SceneUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     更新景区信息。
     """
-    db_scene = scene_crud.update_scene(db, scene_id, scene)
-    if not db_scene:
-        raise HTTPException(status_code=404, detail="Scene not found")
-    return db_scene
+    try:
+        db_scene = scene_crud.update_scene(db, scene_id, scene, owner_id=current_user.id)
+        if not db_scene:
+            raise HTTPException(status_code=404, detail="Scene not found")
+        return db_scene
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 
 @router.delete("/scenes/{scene_id}", summary="删除景区")
 def delete_scene(
     scene_id: UUID = Path(..., description="景区ID"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
     删除景区。系统默认景区不允许删除。
     """
     try:
-        scene = scene_crud.delete_scene(db, scene_id)
+        scene = scene_crud.delete_scene(db, scene_id, owner_id=current_user.id)
         if not scene:
             raise HTTPException(status_code=404, detail="Scene not found")
         return {"status": "success", "message": "Scene deleted"}

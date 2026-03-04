@@ -130,7 +130,8 @@ async def handle_ticket_task(task_manager, task: Task, db: Session) -> Dict[str,
                     tasks_to_create.append({
                         'type': TaskType.RECOGNIZE_TICKET,
                         'payload': {'photo_id': str(p.id), 'force': force},
-                        'priority': 2
+                        'priority': 2,
+                        'owner_id': p.owner_id
                     })
 
             if tasks_to_create:
@@ -244,7 +245,8 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                                         total_mileage=0,
                                         total_running_time=0,
                                         comments=f"自动识别自图片: {photo.filename}",
-                                        photo_id=str(photo.id)
+                                        photo_id=str(photo.id),
+                                        owner_id=photo.owner_id
                                     )
                                     db.add(new_ticket)
                                     db.flush()
@@ -283,7 +285,8 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                                         total_running_time=0,
                                         stop_stations="[]",
                                         comments=f"自动识别自图片: {photo.filename}",
-                                        photo_id=str(photo.id)
+                                        photo_id=str(photo.id),
+                                        owner_id=photo.owner_id
                                     )
                                     # Calculate mileage and time
                                     ticket_info = await calculate_ticket_mileage_and_time(new_ticket)

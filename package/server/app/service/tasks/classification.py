@@ -59,7 +59,8 @@ async def handle_classify_image(task_manager, task: Task, db: Session) -> Dict[s
                     tasks_to_create.append({
                         'type': TaskType.CLASSIFY_IMAGE,
                         'payload': {'photo_id': str(p.id), 'force': force},
-                        'priority': 3
+                        'priority': 3,
+                        'owner_id': p.owner_id
                     })
 
             if tasks_to_create:
