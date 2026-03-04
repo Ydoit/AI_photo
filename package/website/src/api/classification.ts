@@ -13,14 +13,14 @@ export const classificationService = {
     const data = await request.get<TagStats[]>('/api/tags', {
       params: { skip, limit }
     });
-    return data;
+    return data.data;
   },
   
   async getTagPhotos(name: string, skip: number = 0, limit: number = 50) {
     const data = await request.get<Photo[]>(`/api/tags/${encodeURIComponent(name)}/photos`, {
       params: { skip, limit }
     });
-    return data;
+    return data.data;
   },
 
   async deleteTag(tagName: string) {
@@ -29,7 +29,7 @@ export const classificationService = {
 
   async renameTag(oldName: string, newName: string) {
       const data = await request.put(`/api/tags/${oldName}`, { new_name: newName });
-      return data;
+      return data.data;
   },
 
   async mergeTags(targetName: string, sourceNames: string[]) {
@@ -37,6 +37,6 @@ export const classificationService = {
           target_name: targetName,
           source_names: sourceNames
       });
-      return data;
+      return data.data;
   }
 };

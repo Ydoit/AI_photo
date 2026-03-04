@@ -35,7 +35,7 @@ export const railwayService = {
   async getBatchStats(items: TicketItem[]) {
     // request interceptor handles unwrapping of BaseResponse
     const data = await request.post<TicketStats[]>('/api/railway/stats/batch', { items });
-    return data;
+    return data.data;
   },
 
   /**
@@ -43,6 +43,6 @@ export const railwayService = {
    */
   async getStations(params?: { page?: number; page_size?: number; keyword?: string }) {
     const data = await request.get<StationListResponse>('/api/railway/stations', { params });
-    return data;
+    return data.data;
   }
 };

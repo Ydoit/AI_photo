@@ -9,19 +9,19 @@ export interface User {
 }
 
 export const userService = {
-  async getUsers()  {
+  async getUsers(): Promise<User[]> {
     const data = await request.get<User[]>('/api/users/')
-    return data
+    return data.data
   },
 
   async getCurrentUser() {
     const data = await request.get<User>('/api/users/me')
-    return data
+    return data.data
   },
 
   async deleteUser(userId: string) {
     const data = await request.delete<User>(`/api/users/${userId}`)
-    return data
+    return data.data
   }
 }
 

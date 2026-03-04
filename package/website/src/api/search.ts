@@ -28,7 +28,7 @@ const searchService = {
     const res = await request.post<SearchResult[]>('/api/search/text', data, {
       timeout: 60000
     });
-    return res;
+    return res.data;
   },
 
   /**
@@ -39,7 +39,7 @@ const searchService = {
       params: { q },
       timeout: 60000
     });
-    return res;
+    return res.data;
   },
   
   /**
@@ -57,7 +57,7 @@ const searchService = {
       },
       timeout: 60000
     });
-    return res;
+    return res.data;
   }
 };
 

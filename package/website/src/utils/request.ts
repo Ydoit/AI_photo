@@ -72,7 +72,7 @@ service.interceptors.response.use(
       return res.data;
     }
     // 如果没有 code 字段，假设是直接返回数据（如 login 接口）
-    return res;
+    return response;
   },
   (error: AxiosError) => {
     let errorMsg = '网络异常，请重试';

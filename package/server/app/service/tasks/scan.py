@@ -234,7 +234,7 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
             for ph in photos_to_delete:
                 storage.delete_thumbnails(ph.id)
                 db.delete(ph)
-                db.add(IndexLog(action='deleted', file_path=ph.file_path, photo_id=ph.id))
+                db.add(IndexLog(action='deleted', file_path=ph.file_path, photo_id=ph.id, owner_id=user_id))
             db.commit()
             task_manager.scan_status['deleted'] += len(photos_to_delete)
 

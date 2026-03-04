@@ -58,6 +58,6 @@ export interface DashboardResponse {
 export const dashboardApi = {
   async getOverview() {
     const data = await request.get<DashboardResponse>('/api/stats/dashboard');
-    return data;
+    return data.data;
   }
 };

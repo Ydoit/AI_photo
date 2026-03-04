@@ -6,29 +6,29 @@ export const faceApi = {
     const data = await request.get<FaceIdentity[]>('/api/faces/identities', {
       params: { page, limit, types }
     });
-    return data;
+    return data.data;
   },
 
   async getIdentityPhotos(id: string, page = 1, limit = 50) {
     const data = await request.get<any[]>(`/api/faces/identities/${id}/photos`, {
       params: { page, limit }
     });
-    return data;
+    return data.data;
   },
 
   async deleteIdentity(id: string) {
     const data = await request.delete(`/api/faces/identities/${id}`);
-    return data;
+    return data.data;
   },
 
   async updateIdentity(id: string, data: { identity_name?: string; description?: string; tags?: string[]; is_hidden?: boolean }) {
     const res = await request.put<FaceIdentity>(`/api/faces/identities/${id}`, data);
-    return res;
+    return res.data;
   },
 
   async rescanIdentity(id: string) {
     const data = await request.post(`/api/faces/identities/${id}/rescan`);
-    return data;
+    return data.data;
   },
 
   async mergeIdentities(targetId: string, sourceIds: string[]) {
@@ -36,32 +36,32 @@ export const faceApi = {
       target_id: targetId,
       source_ids: sourceIds
     });
-    return data;
+    return data.data;
   },
 
   async removePhotos(identityId: string, photoIds: string[]) {
     const data = await request.post(`/api/faces/identities/${identityId}/remove-photos`, {
       photo_ids: photoIds
     });
-    return data;
+    return data.data;
   },
 
   async setCover(identityId: string, photoId: string) {
     const data = await request.put(`/api/faces/identities/${identityId}/cover`, {
       photo_id: photoId
     });
-    return data;
+    return data.data;
   },
 
   async createIdentity(data: { identity_name: string; description?: string }) {
     const res = await request.post<FaceIdentity>('/api/faces/identities', data);
-    return res;
+    return res.data;
   },
 
   async addPhotosToIdentity(id: string, photoIds: string[]) {
     const data = await request.post(`/api/faces/identities/${id}/add-photos`, {
       photo_ids: photoIds
     });
-    return data;
+    return data.data;
   }
 };

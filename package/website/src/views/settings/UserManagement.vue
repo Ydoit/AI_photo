@@ -102,8 +102,7 @@ const currentUser = computed(() => userStore.userInfo)
 const fetchUsers = async () => {
   loading.value = true
   try {
-    const response = await userService.getUsers()
-    users.value = response
+    users.value = await userService.getUsers()
   } catch (error) {
     ElMessage.error('获取用户列表失败')
   } finally {

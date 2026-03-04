@@ -18,27 +18,27 @@ export const tasksApi = {
   async listTasks(status?: string, type?: string, limit = 50) {
     const params: any = { status, type, limit }
     const data = await request.get<Task[]>('/api/tasks/', { params })
-    return data
+    return data.data
   },
 
   async getTask(taskId: string) {
     const data = await request.get<Task>(`/api/tasks/${taskId}`)
-    return data
+    return data.data
   },
 
   async createTask(type: string, payload: any = {}) {
     const data = await request.post<Task>('/api/tasks/', { type, payload })
-    return data
+    return data.data
   },
 
   async cancelTask(taskId: string) {
     const data = await request.post<Task>(`/api/tasks/${taskId}/cancel`)
-    return data
+    return data.data
   },
 
   async retryTask(taskId: string) {
     const data = await request.post<Task>(`/api/tasks/${taskId}/retry`)
-    return data
+    return data.data
   },
 
   async retryAllFailedTasks(types?: string[]) {
@@ -49,7 +49,7 @@ export const tasksApi = {
     const data = await request.post<{ message: string, count: number }>('/api/tasks/retry-all-failed', null, {
         params
     })
-    return data
+    return data.data
   },
 
   async deleteFailedTasks(types?: string[]) {
@@ -60,36 +60,36 @@ export const tasksApi = {
     const data = await request.delete<{ message: string, count: number }>('/api/tasks/failed', {
         params
     })
-    return data
+    return data.data
   },
 
   async getTaskStats() {
     const data = await request.get<{ failed_process_tasks: number }>('/api/tasks/stats')
-    return data
+    return data.data
   },
 
   async getGroupedStatus() {
     const data = await request.get<any[]>('/api/tasks/grouped-status')
-    return data
+    return data.data
   },
 
   async pauseCategory(category: string) {
     const data = await request.post(`/api/tasks/categories/${category}/pause`)
-    return data
+    return data.data
   },
 
   async resumeCategory(category: string) {
     const data = await request.post(`/api/tasks/categories/${category}/resume`)
-    return data
+    return data.data
   },
 
   async toggleFastMode(enabled: boolean) {
     const data = await request.post('/api/tasks/fast-mode', { enabled })
-    return data
+    return data.data
   },
 
   async getGlobalStatus() {
       const data = await request.get('/api/tasks/status')
-      return data
+      return data.data
   }
 }

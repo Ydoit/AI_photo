@@ -18,11 +18,11 @@ export const ocrApi = {
     const data = await request.get<OCRResponse>('/api/ocr', { 
         params: { photo_id: photoId } 
     })
-    return data
+    return data.data
   },
 
   async deleteOCR(photoId: string) {
     const data = await request.delete(`/api/ocr/${photoId}`)
-    return data
+    return data.data
   }
 }

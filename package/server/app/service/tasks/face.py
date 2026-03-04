@@ -103,7 +103,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                 if resp.status == 200:
                     result = await resp.json()
                     faces = result.get('faces', [])
-                    
+
                     # Clean up old faces
                     crud_face.delete_faces_by_photo(db, photo.id)
 
@@ -122,7 +122,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                         db.add(face)
                         # Flush to get ID
                         db.flush()
-                        
+
                         count += 1
                         if face.face_feature:
                             try:
@@ -136,7 +136,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                          # Commit faces first to ensure they exist for clustering
                          db.commit()
                          try:
-                             cluster_service.process_unassigned_faces()
+                             cluster_service.process_unassigned_faces(photo.owner_id)
                          except Exception as ce:
                              logging.error(f"Batch clustering failed: {ce}")
 

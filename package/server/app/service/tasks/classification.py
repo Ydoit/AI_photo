@@ -122,16 +122,16 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                             continue
                         tag = db.query(PhotoTag).filter(PhotoTag.tag_name == tag_name).first()
                         if not tag:
-                            tag = PhotoTag(tag_name=tag_name)
+                            tag = PhotoTag(tag_name=tag_name, type='clip')
                             db.add(tag)
                             db.flush() # get id
-                        
+
                         # Check relation
                         rel = db.query(PhotoTagRelation).filter(
                             PhotoTagRelation.photo_id == photo.id,
                             PhotoTagRelation.tag_id == tag.id
                         ).first()
-                        
+
                         if not rel:
                             rel = PhotoTagRelation(photo_id=photo.id, tag_id=tag.id, confidence=confidence)
                             db.add(rel)

@@ -177,7 +177,7 @@ class FaceClusterService:
             # 不抛出异常，以免影响 API 返回
             return 0
 
-    def process_unassigned_faces(self):
+    def process_unassigned_faces(self, owner_id: uuid.UUID = None):
         """
         批量处理未分配的人脸（DBSCAN聚类）
         """
@@ -185,9 +185,9 @@ class FaceClusterService:
         # 为了避免过多无效调用，可以先count一下? 
         # _try_create_new_cluster 内部有查询逻辑，可以直接调用，但我们需要稍微修改一下 _try_create_new_cluster
         # 让它不依赖 current_face_id
-        self._cluster_unassigned_faces()
+        self._cluster_unassigned_faces(owner_id)
 
-    def _cluster_unassigned_faces(self):
+    def _cluster_unassigned_faces(self, owner_id: uuid.UUID = None):
         """
         优化版：调整DBSCAN参数 + 簇合并逻辑，解决聚类分散问题
         对未分配的人脸做DBSCAN聚类，合并相似簇后创建新Identity
@@ -279,7 +279,7 @@ class FaceClusterService:
 
                 # 创建新Identity
                 create_identity_data = schemas.FaceIdentityCreate(identity_name="未命名")
-                new_identity = crud_face.create_identity(self.db, create_identity_data)
+                new_identity = crud_face.create_identity(self.db, create_identity_data, owner_id)
 
                 # 分配人脸到新Identity
                 first_face_id = None

@@ -735,14 +735,14 @@ def update_photo_metadata(db: Session, photo_id: UUID, metadata: PhotoMetadataUp
             return None
         if user_id is not None and photo.owner_id != user_id:
             return None
-            
+
         db_metadata = PhotoMetadata(photo_id=photo_id)
         db.add(db_metadata)
-    
+
     update_data = metadata.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_metadata, key, value)
-    
+
     db.add(db_metadata)
     db.commit()
     db.refresh(db_metadata)

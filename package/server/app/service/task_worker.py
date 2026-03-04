@@ -436,9 +436,7 @@ class TaskWorker:
                         new_payload['force'] = False
                         task.payload = new_payload
                         logging.info(f"Reset task {task.id} payload: removed force=True")
-
                     task.status = TaskStatus.PENDING
-
                 db.commit()
                 logging.info(f"Reset {processing_tasks} PROCESSING tasks to PENDING (recovered)")
 
@@ -475,20 +473,15 @@ class TaskWorker:
                     if 'photo_create_data' in res:
                         data = res['photo_create_data']
                         user_id = data.get('user_id')
-
                         if user_id not in photos_to_create:
                             photos_to_create[user_id] = []
                         photos_to_create[user_id].append(data)
-
                         index_logs.append(IndexLog(action='added', file_path=data['file_path'], photo_id=data['photo_id'], owner_id=user_id))
-
                         # Store for chaining
                         processed_photos[str(data['photo_id'])] = {'path': data['file_path'], 'owner_id': user_id}
-
                         # Update stats
                         self.scan_status['added'] += 1
                         self.scan_status['processed_files'] += 1
-                
                 elif status == TaskStatus.COMPLETED and task_type == TaskType.CLASSIFY_IMAGE:
                     if 'classified' not in self.scan_status:
                         self.scan_status['classified'] = 0

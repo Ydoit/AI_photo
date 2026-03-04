@@ -5,23 +5,23 @@ export const albumService = {
   // Albums
   async getAlbums() {
     const data = await request.get<ApiAlbum[]>('/api/albums');
-    return data;
+    return data.data;
   },
   async getAlbum(id: string) {
     const data = await request.get<ApiAlbum>(`/api/albums/${id}`);
-    return data;
+    return data.data;
   },
   async createAlbum(album: CreateAlbumDto) {
     const data = await request.post<ApiAlbum>('/api/albums', album);
-    return data;
+    return data.data;
   },
   async updateAlbum(id: string, album: CreateAlbumDto) {
-    const data = await request.put<Album>(`/api/albums/${id}`, album);
-    return data;
+    const data = await request.put<ApiAlbum>(`/api/albums/${id}`, album);
+    return data.data;
   },
   async setAlbumCover(id: string, photoId: string) {
-    const data = await request.put<Album>(`/api/albums/${id}/cover`, { photo_id: photoId })
-    return data
+    const data = await request.put<ApiAlbum>(`/api/albums/${id}/cover`, { photo_id: photoId })
+    return data.data
   },
   async deleteAlbum(id: string) {
     await request.delete(`/api/albums/${id}`);
@@ -32,12 +32,12 @@ export const albumService = {
     const data = await request.get<TimelineStats>('/api/stats/timeline', {
       params: { album_id: albumId, ...filters }
     });
-    return data;
+    return data.data;
   },
 
   async getFilterOptions() {
       const data = await request.get<FilterOptions>('/api/stats/filters');
-      return data;
+      return data.data;
   },
 
   // Photos
@@ -45,7 +45,7 @@ export const albumService = {
     const data = await request.get<Photo[]>('/api/photos', {
       params: { skip, limit, ...filters }
     });
-    return data;
+    return data.data;
   },
 
   async getPhotosByIds(ids: string[]) {
@@ -61,7 +61,7 @@ export const albumService = {
         const data = await request.get<Photo[]>('/api/photos', {
           params: { ids: chunk }
         });
-        return data;
+        return data.data;
     }));
     return results.flat();
   },
@@ -70,7 +70,7 @@ export const albumService = {
     const data = await request.get<Photo[]>(`/api/albums/${albumId}/photos`, {
       params: { skip, limit, ...filters }
     });
-    return data;
+    return data.data;
   },
 
   // Remove photo from specific album (Association)
@@ -99,7 +99,7 @@ export const albumService = {
     const data = await request.post<Photo>('/api/medias', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     });
-    return data;
+    return data.data;
   },
 
   // Chunk Upload
@@ -124,7 +124,7 @@ export const albumService = {
           formData.append('album_id', albumId);
       }
       const data = await request.post<Photo>('/api/medias/upload/finish', formData);
-      return data;
+      return data.data;
   },
 
   // Metadata
@@ -135,7 +135,7 @@ export const albumService = {
         ? `/api/albums/${albumId}/photos/${photoId}/metadata`
         : `/api/photos/${photoId}/metadata`; // Assuming this exists or will exist
       const data = await request.get<PhotoMetadata>(url);
-      return data;
+      return data.data;
   },
 
   async updateMetadata(albumId: string | undefined, photoId: string, metadata: Partial<PhotoMetadata>) {
@@ -143,7 +143,7 @@ export const albumService = {
         ? `/api/albums/${albumId}/photos/${photoId}/metadata`
         : `/api/photos/${photoId}/metadata`;
       const data = await request.put<PhotoMetadata>(url, metadata);
-      return data;
+      return data.data;
   },
 
   async getThumbnail(photoId: string) {
@@ -153,7 +153,7 @@ export const albumService = {
   // Tags
   async getPhotoTags(photoId: string) {
     const data = await request.get<{id: string, tag_name: string, confidence: number}[]>(`/api/photos/${photoId}/tags`);
-    return data;
+    return data.data;
   },
 
   async addPhotoTag(photoId: string, tagName: string, confidence: number = 1.0) {
@@ -161,7 +161,7 @@ export const albumService = {
       tag_name: tagName,
       confidence
     });
-    return data;
+    return data.data;
   },
 
   async deletePhotoTag(photoId: string, tagId: string) {

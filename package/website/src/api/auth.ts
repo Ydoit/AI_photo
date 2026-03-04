@@ -11,7 +11,7 @@ export interface LoginResponse {
 }
 
 export interface UserInfo {
-  id: number;
+  id: string;
   username: string;
   email: string;
   is_active: boolean;

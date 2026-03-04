@@ -6,7 +6,7 @@ export const ticketService = {
   // 获取列表
   async getTickets(params: TicketQueryParams) {
     const data = await request.get<{ items: TicketBackend[], total: number }>('/api/train-ticket', { params });
-    return data;
+    return data.data;
   },
 
   // 创建
@@ -73,7 +73,7 @@ export const ticketService = {
         'Content-Type': 'multipart/form-data'
       }
     });
-    return data;
+    return data.data;
   },
 
   // 导出数据
