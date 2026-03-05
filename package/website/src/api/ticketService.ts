@@ -94,4 +94,17 @@ export const ticketService = {
     link.click();
     document.body.removeChild(link);
   },
+
+  // 导入数据
+  async importTickets(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await request.post('/api/train-ticket/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return data;
+  }
 };
+

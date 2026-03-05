@@ -139,7 +139,6 @@ import { ArrowLeft, Route, MapPin, Clock } from 'lucide-vue-next';
 import { injectTheme } from '@/composables/useTheme';
 import { useTicketStore } from '@/stores/ticketStore';
 import { useStorage } from '@vueuse/core';
-import { railwayRequest } from '@/api/requestFactory';
 import { railwayService } from '@/api/railway';
 
 // 接收父组件传入的主题和模式（移除未使用的props）
@@ -734,18 +733,6 @@ async function ensureLinearDistancesForYear(year: number) {
   if (!pairs.length) {
     missingLinearDistanceCache.set(year, 0);
     return;
-  }
-  try {
-    const res = await railwayRequest<{ list: { from: string; to: string; distance_km: number | null }[]; added_total_km: number; total_km: number }>({
-      url: '/railway/distance/batch',
-      method: 'POST',
-      data: pairs
-    });
-    const list = (res.data?.list || []) as any[];
-    const sum = list.reduce((s, i) => s + (typeof i.distance_km === 'number' ? i.distance_km : 0), 0);
-    missingLinearDistanceCache.set(year, sum);
-  } catch (e) {
-    missingLinearDistanceCache.set(year, 0);
   }
 }
 

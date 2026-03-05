@@ -86,8 +86,6 @@ async def calculate_ticket_mileage_and_time(ticket: TrainTicket) -> Dict[str, An
             })
     return {'total_mileage': total_mileage, 'total_time': total_time, 'stop_stations': stop_stations}
 
-
-
 async def handle_ticket_task(task_manager, task: Task, db: Session) -> Dict[str, Any]:
     try:
         force = task.payload.get('force', False)

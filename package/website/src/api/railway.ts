@@ -34,15 +34,15 @@ export const railwayService = {
    */
   async getBatchStats(items: TicketItem[]) {
     // request interceptor handles unwrapping of BaseResponse
-    const data = await request.post<TicketStats[]>('/api/railway/stats/batch', { items });
-    return data.data;
+    const data = await request.post<{data:TicketStats[],code:number,message:string}>('/api/railway/stats/batch', { items });
+    return data.data
   },
 
   /**
    * 获取所有站点信息
    */
   async getStations(params?: { page?: number; page_size?: number; keyword?: string }) {
-    const data = await request.get<StationListResponse>('/api/railway/stations', { params });
-    return data.data;
+    const data = await request.get<{data:StationListResponse,code:number,message:string}>('/api/railway/stations', { params });
+    return data.data
   }
 };

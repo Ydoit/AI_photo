@@ -186,6 +186,10 @@ export const useTicketStore = defineStore('ticket', () => {
     return await ticketService.importTickets(file);
   }
 
+  function clearCache() {
+    statsMap.value = {};
+  }
+
   return {
     // State
     viewMode,
@@ -207,6 +211,7 @@ export const useTicketStore = defineStore('ticket', () => {
     removeLocalTickets,
     fetchAndCacheStats,
     exportTickets,
-    importTickets
+    importTickets,
+    clearCache
   };
 });

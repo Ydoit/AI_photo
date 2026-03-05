@@ -276,6 +276,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   debouncedFetchTickets.cancel?.();
+  ticketStore.clearCache();
 });
 
 // --- 计算属性 ---

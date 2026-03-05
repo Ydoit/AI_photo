@@ -29,7 +29,7 @@ const props = defineProps({
 })
 
 const getPhotoUrl = (photoId: string) => {
-  return `/api/medias/${photoId}/thumbnail`
+  return `/api/medias/${photoId}/thumbnail?size=medium`
 }
 
 /**
