@@ -3,7 +3,11 @@ import { withMermaid } from "vitepress-plugin-mermaid";
 
 export default withMermaid(defineConfig({
   base: '/',
-
+  ignoreDeadLinks: [
+    '/^http:\/\/localhost:\d+$/',
+    'http://localhost:8082',
+    // /^http:\/\/localhost:\d+$/ // 正则匹配所有 localhost:端口 形式的链接
+  ],
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }]
   ],
