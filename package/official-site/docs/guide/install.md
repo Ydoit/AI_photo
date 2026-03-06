@@ -1,17 +1,21 @@
 # 安装指南
 
-TrailSnap 支持多种部署方式，推荐使用 Docker Compose 进行快速部署。
+TrailSnap 目前仅支持docker部署，推荐使用 Docker Compose 进行快速部署。
 
 ## Docker 部署 (推荐)
 
 使用 Docker Compose 可以一键启动所有服务，包括前端、后端、数据库和 AI 服务。
 
-如果你是在 NAS（如绿联、极空间、飞牛OS）上部署，建议同时阅读：
+如果你是在 NAS（如绿联、极空间、飞牛OS）上部署，建议阅读：
 
 - [Docker 部署（通用）](/docs/guide/docker/)
 - [绿联 NAS 部署](/docs/guide/docker/ugreen)
 - [极空间部署](/docs/guide/docker/zspace)
 - [飞牛OS 部署](/docs/guide/docker/fnos)
+
+如果你没用过docker，并且用的是Windows系统，建议阅读：
+
+- [Docker 部署（Windows）](/docs/guide/docker/windows)
 
 ### 前置要求
 

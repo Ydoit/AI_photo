@@ -13,6 +13,10 @@ If you are deploying on a NAS (such as Ugreen, Zspace, Fnos), it is recommended 
 - [Zspace Deployment](/en/docs/guide/docker/zspace)
 - [Fnos Deployment](/en/docs/guide/docker/fnos)
 
+If you have never used Docker and are using Windows, it is recommended to read the following:
+
+- [Docker Deployment (Windows)](/en/docs/guide/docker/windows)
+
 ### Prerequisites
 
 - Install [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/).

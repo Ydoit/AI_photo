@@ -179,8 +179,7 @@ time="2026-03-06T17:42:03+08:00" level=warning msg="C:\\ProgramData\\TrailSnap\\
 ---
 
 # Step 4: Verify Deployment
-Open your browser and go to:
-**http://localhost:8082**
+Open your browser and go to:`http://localhost:8082`
 
 You will see the TrailSnap web interface.
 

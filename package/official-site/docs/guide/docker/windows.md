@@ -142,7 +142,7 @@ networks:
 ### 第三步：执行部署命令
 1. 打开命令提示符（`Win + R` → `cmd`），切换到`docker-compose.yml`所在的文件夹：
    ```bash
-   # 示例：如果文件在D盘的docker-project文件夹，执行
+   # 示例：如果文件在D盘的TrailSnap文件夹，执行
    cd /d D:\TrailSnap
    ```
 2. 启动服务（核心命令）：
