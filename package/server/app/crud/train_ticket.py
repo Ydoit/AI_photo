@@ -53,9 +53,12 @@ def get_train_tickets(
     return total, items
 
 
-def get_all_train_tickets(db: Session) -> List[TrainTicket]:
+def get_all_train_tickets(db: Session, owner_id: uuid.UUID = None) -> List[TrainTicket]:
     """获取所有火车票（用于导出）"""
-    return db.query(TrainTicket).order_by(TrainTicket.date_time.desc()).all()
+    query = db.query(TrainTicket).order_by(TrainTicket.date_time.desc())
+    if owner_id:
+        query = query.filter(TrainTicket.owner_id == owner_id)
+    return query.all()
 
 
 

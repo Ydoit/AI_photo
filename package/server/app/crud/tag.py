@@ -13,8 +13,8 @@ def get_tag_by_name(db: Session, tag_name: str, owner_id: Optional[UUID] = None)
         query = query.filter(PhotoTag.owner_id == None)
     return query.first()
 
-def create_tag(db: Session, tag_name: str, owner_id: Optional[UUID] = None):
-    db_tag = PhotoTag(tag_name=tag_name, owner_id=owner_id)
+def create_tag(db: Session, tag_name: str, tag_type: str = None, owner_id: Optional[UUID] = None):
+    db_tag = PhotoTag(tag_name=tag_name, type = tag_type, owner_id=owner_id)
     db.add(db_tag)
     db.commit()
     db.refresh(db_tag)
@@ -46,7 +46,7 @@ def add_tag_to_photo(db: Session, photo_id: UUID, tag_name: str, confidence: flo
     # Check if tag exists
     tag = get_tag_by_name(db, tag_name, owner_id)
     if not tag:
-        tag = create_tag(db, tag_name, owner_id)
+        tag = create_tag(db, tag_name, 'custom', owner_id)
 
     # Check if relation exists
     relation = db.query(PhotoTagRelation).filter(

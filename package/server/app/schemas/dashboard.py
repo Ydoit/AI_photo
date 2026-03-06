@@ -1,20 +1,17 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+from app.schemas.face import FaceIdentitySchema
+
+
 class DashboardCard(BaseModel):
     total_media: int
     today_new: int
     storage_used: str
 
-class DashboardFaceItem(BaseModel):
-    id: str
-    name: str
-    count: int
-    avatar_url: Optional[str] = None
-
 class DashboardFace(BaseModel):
     total_identified: int
-    top_faces: List[DashboardFaceItem]
+    top_faces: List[FaceIdentitySchema]
     pending_faces_count: int
     unidentified_photos_count: int
 

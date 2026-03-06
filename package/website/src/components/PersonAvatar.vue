@@ -24,6 +24,7 @@ import type { PhotoMetadata, AlbumImage, CoverPhotoInfo, FaceIdentity } from '@/
 const props = defineProps({
   person: {
     type: Object as () => FaceIdentity,
+    required: true,
     default: () => ({})
   }
 })

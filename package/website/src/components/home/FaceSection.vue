@@ -19,19 +19,9 @@
         class="flex flex-col items-center cursor-pointer min-w-[60px]"
         @click="$router.push(`/people/${face.id}`)"
       >
-        <div class="w-10 h-10 rounded-full overflow-hidden bg-gray-200 mb-1">
-          <img
-            v-if="face.avatar_url"
-            :src="face.avatar_url"
-            alt="avatar"
-            class="w-full h-full object-cover"
-          />
-          <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
-            👤
-          </div>
-        </div>
-        <span class="text-xs text-gray-600 dark:text-gray-400 truncate w-full text-center">{{ face.name }}</span>
-        <span class="text-[10px] text-gray-400">{{ face.count }}张</span>
+        <PersonAvatar :person="face" class="" />
+        <span class="text-xs text-gray-600 dark:text-gray-400 truncate w-full text-center">{{ face.identity_name }}</span>
+        <span class="text-[10px] text-gray-400">{{ face.face_count }}张</span>
       </div>
     </div>
 
@@ -67,6 +57,7 @@
 <script setup lang="ts">
 import { PropType } from 'vue';
 import { DashboardFace } from '@/api/dashboard';
+import PersonAvatar from '@/components/PersonAvatar.vue';
 
 defineProps({
   data: {

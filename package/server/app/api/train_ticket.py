@@ -175,7 +175,8 @@ async def recognize_ticket(
 @router.post("/import", summary="导入车票数据")
 async def import_tickets(
     file: UploadFile = File(..., description="数据文件（支持JSON/CSV）"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     导入车票数据（支持JSON和CSV格式）
@@ -275,7 +276,7 @@ async def import_tickets(
                     if "stop_stations" not in model_data or not model_data["stop_stations"]:
                         model_data["stop_stations"] = "[]"
                         
-                    new_ticket = TrainTicket(**model_data)
+                    new_ticket = TrainTicket(**model_data, owner_id=current_user.id)
                     db.add(new_ticket)
                     created_count += 1
                 
@@ -308,7 +309,8 @@ async def import_tickets(
 @router.get("/export", summary="导出车票数据")
 def export_tickets(
     format: str = Query("json", description="导出格式：json 或 csv"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     导出所有车票数据
@@ -316,7 +318,7 @@ def export_tickets(
     - **format**: 指定导出格式 (json/csv)
     - 返回相应格式的文件下载
     """
-    tickets = get_all_train_tickets(db)
+    tickets = get_all_train_tickets(db, owner_id=current_user.id)
     
     if format.lower() == "json":
         # 转换为JSON兼容格式

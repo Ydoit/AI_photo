@@ -1,4 +1,5 @@
 import request from '@/utils/request';
+import type { FaceIdentity, CoverPhotoInfo } from '@/types/album'
 
 export interface DashboardCard {
   total_media: number;
@@ -15,7 +16,7 @@ export interface DashboardFaceItem {
 
 export interface DashboardFace {
   total_identified: number;
-  top_faces: DashboardFaceItem[];
+  top_faces: FaceIdentity[];
   pending_faces_count: number;
   unidentified_photos_count: number;
 }

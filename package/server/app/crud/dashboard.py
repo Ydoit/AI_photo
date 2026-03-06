@@ -3,11 +3,13 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract, desc
 from datetime import datetime, date
+
+from app.crud.face import get_identities_with_details
 from app.db.models.photo import Photo, FileType
 from app.db.models.face import Face, FaceIdentity
 from app.db.models.tag import PhotoTag, PhotoTagRelation
 from app.schemas.dashboard import (
-    DashboardCard, DashboardFace, DashboardFaceItem, 
+    DashboardCard, DashboardFace,
     DashboardContentStats, ContentDetail, DashboardTime, 
     DashboardTimeChartItem, DashboardResponse
 )
@@ -42,30 +44,8 @@ def get_dashboard_stats(db: Session, owner_id: UUID) -> DashboardResponse:
     unidentified_photos_count = db.query(func.count(func.distinct(Face.photo_id))).join(Photo, Face.photo_id == Photo.id).filter(Face.face_identity_id == None, Face.is_deleted == False, Photo.owner_id == owner_id).scalar() or 0
     
     # Top 3 Faces
-    top_faces_query = db.query(
-        FaceIdentity.id,
-        FaceIdentity.identity_name,
-        func.count(Face.id).label('count')
-    ).join(Face, Face.face_identity_id == FaceIdentity.id)\
-    .filter(FaceIdentity.is_deleted == False, Face.is_deleted == False, FaceIdentity.owner_id == owner_id)\
-    .group_by(FaceIdentity.id)\
-    .order_by(desc('count'))\
-    .limit(3).all()
 
-    top_faces = []
-    for f_id, f_name, f_count in top_faces_query:
-        # Get a representative photo for avatar
-        # We need to join Face and Photo to get a photo_id
-        # Simple approach: query one face for this identity
-        face_sample = db.query(Face).filter(Face.face_identity_id == f_id).first()
-        avatar_url = f"/api/medias/{face_sample.photo_id}/thumbnail" if face_sample else None
-        
-        top_faces.append(DashboardFaceItem(
-            id=str(f_id),
-            name=f_name or "Unknown",
-            count=f_count,
-            avatar_url=avatar_url
-        ))
+    top_faces = get_identities_with_details(db, owner_id=owner_id, skip=0, limit=3)
 
     face_stats = DashboardFace(
         total_identified=total_identified,
