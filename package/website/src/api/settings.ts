@@ -21,16 +21,16 @@ export const settingsApi = {
     const { data } = await request.get('/api/index/logs', { params: { limit } })
     return data
   },
-  async getDirectories() {
-    const { data } = await request.get('/api/settings/directories')
+  async getDirectories(user_id?: string) {
+    const { data } = await request.get('/api/settings/directories', { params: { user_id } })
     return data
   },
-  async addDirectory(path: string) {
-    const { data } = await request.post('/api/settings/directories', { path })
+  async addDirectory(path: string, user_id?: string) {
+    const { data } = await request.post('/api/settings/directories', { path, user_id })
     return data
   },
-  async removeDirectory(path: string) {
-    const { data } = await request.delete('/api/settings/directories', { data: { path } })
+  async removeDirectory(path: string, user_id?: string) {
+    const { data } = await request.delete('/api/settings/directories', { data: { path, user_id } })
     return data
   },
   async getSettings() {

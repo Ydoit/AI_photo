@@ -49,7 +49,7 @@
           </el-button>
         </el-form-item>
 
-        <div class="text-center mt-4">
+        <div class="text-center mt-4" v-if="!hasUsers">
           <span class="text-gray-600 text-sm">还没有账号? </span>
           <router-link to="/register" class="text-blue-600 hover:underline text-sm">立即注册</router-link>
         </div>
@@ -64,6 +64,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useUserStore } from '@/stores/user';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { User, Lock } from '@element-plus/icons-vue';
+import { authService } from '@/api/auth';
 
 const router = useRouter();
 const route = useRoute();
@@ -72,6 +73,7 @@ const userStore = useUserStore();
 const loginFormRef = ref<FormInstance>();
 const loading = ref(false);
 const rememberMe = ref(false);
+const hasUsers = ref(true);
 
 const loginForm = reactive({
   username: '',
@@ -89,11 +91,18 @@ const rules = reactive<FormRules>({
   ]
 });
 
-onMounted(() => {
+onMounted(async () => {
   const savedUsername = localStorage.getItem('remember_username');
   if (savedUsername) {
     loginForm.username = savedUsername;
     rememberMe.value = true;
+  }
+  
+  try {
+    const status = await authService.getAuthStatus();
+    hasUsers.value = status.has_users;
+  } catch (error) {
+    console.error('Failed to get auth status:', error);
   }
 });
 

@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.schemas.user import UserCreate, UserResponse
-from app.crud.user import create
+from app.crud.user import create, reset_password
 from app.dependencies import get_db
 from app.api import deps
 from app.db.models.user import User
@@ -28,12 +28,55 @@ def read_users(
     return users
 
 @router.post("/", response_model=UserResponse)
-def create_new_user(user: UserCreate, db: Session = Depends(get_db)):
+def create_new_user(
+    user_in: UserCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user)
+):
     """
     Create new user.
     """
-    # TODO: Check if user exists (email/username)
-    return create(db, user)
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="The user doesn't have enough privileges")
+
+    user = db.query(User).filter(User.email == user_in.email).first()
+    if user:
+        raise HTTPException(
+            status_code=400,
+            detail="The user with this email already exists in the system.",
+        )
+    user = db.query(User).filter(User.username == user_in.username).first()
+    if user:
+         raise HTTPException(
+            status_code=400,
+            detail="The user with this username already exists in the system.",
+        )
+        
+    return create(db, user_in)
+
+@router.put("/{user_id}/password", response_model=UserResponse)
+def update_user_password(
+    user_id: UUID,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user),
+):
+    """
+    Update user password.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if not current_user.is_superuser and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="The user doesn't have enough privileges")
+        
+    password = payload.get("password")
+    if not password or len(password) < 6:
+         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+         
+    user = reset_password(db, user, password)
+    return user
 
 @router.get("/me", response_model=UserResponse)
 def read_user_me(

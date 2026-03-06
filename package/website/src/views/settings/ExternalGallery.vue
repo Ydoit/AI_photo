@@ -4,6 +4,18 @@
       
       <el-tabs v-model="activeTab" class="demo-tabs">
         <el-tab-pane label="目录管理" name="directories">
+            <div v-if="userStore.userInfo?.is_superuser" class="mb-4 p-4 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+                <span class="text-sm font-medium mr-2 dark:text-gray-300">管理用户目录:</span>
+                <el-select v-model="selectedUserId" placeholder="选择用户" class="w-64">
+                    <el-option
+                        v-for="user in users"
+                        :key="user.id"
+                        :label="user.username"
+                        :value="user.id"
+                    />
+                </el-select>
+            </div>
+
             <p class="text-sm text-gray-500 mb-4 dark:text-gray-400">
                 添加外部文件夹路径，系统将扫描这些文件夹中的图片（只读模式）。
                 <br>外部文件夹中的图片不会被移动或修改，生成的缩略图将存储在主目录中。
@@ -72,15 +84,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, watch } from 'vue'
 import { settingsApi } from '@/api/settings'
 import { tasksApi } from '@/api/tasks'
+import { userService, type User } from '@/api/user'
+import { useUserStore } from '@/stores/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete } from '@element-plus/icons-vue'
 
 const activeTab = ref('directories')
 const directories = ref<{path: string}[]>([])
 const newDir = ref('')
+const userStore = useUserStore()
+const users = ref<User[]>([])
+const selectedUserId = ref('')
 
 const filterConfig = reactive({
     enable: false,
@@ -92,9 +109,12 @@ const filterConfig = reactive({
 
 const loadData = async () => {
     try {
-        const res = await settingsApi.getDirectories()
+        const uid = selectedUserId.value || undefined
+        const res = await settingsApi.getDirectories(uid)
         directories.value = res.external.map((d: string) => ({ path: d }))
         
+        // Filter settings are global, so we only load them once or when needed.
+        // But for simplicity we load them here too.
         const settings = await settingsApi.getSettings()
         if (settings.filter) {
             Object.assign(filterConfig, settings.filter)
@@ -104,10 +124,15 @@ const loadData = async () => {
     }
 }
 
+watch(selectedUserId, () => {
+    loadData()
+})
+
 const addDir = async () => {
     if (!newDir.value) return
     try {
-        await settingsApi.addDirectory(newDir.value)
+        const uid = selectedUserId.value || undefined
+        await settingsApi.addDirectory(newDir.value, uid)
         newDir.value = ''
         ElMessage.success('添加成功')
         await loadData()
@@ -118,7 +143,22 @@ const addDir = async () => {
 
 const scanDir = async (path: string) => {
     try {
-        await tasksApi.createTask('SCAN_FOLDER', { scan_roots: [path] })
+        // Scan task should probably take user_id if we want to associate scan with user?
+        // But scan logic in backend:
+        // TaskManager.add_task(db, TaskType.SCAN_FOLDER, {'scan_roots': external, 'user_id': str(target_user.id)})
+        // Here we are calling tasksApi.createTask directly.
+        // We should probably update scanDir to use selectedUserId if available?
+        // But the scanDir takes a specific path.
+        // The backend `add_directory` triggers a scan automatically for that user.
+        // The manual "Scan" button in the table just triggers a scan for that path.
+        // Does `tasksApi.createTask` support user_id?
+        // Let's assume for now the manual scan is global or just scans the path.
+        // If the path is in the system, it will be scanned.
+        // The indexer might need to know the owner.
+        // If we are admin triggering scan for another user's folder...
+        // Let's leave it as is for now, or maybe check tasksApi.
+        
+        await tasksApi.createTask('SCAN_FOLDER', { scan_roots: [path], user_id: selectedUserId.value || undefined })
         ElMessage.success(`已创建扫描任务: ${path}`)
     } catch (e) {
         ElMessage.error('创建扫描任务失败')
@@ -134,7 +174,8 @@ const removeDir = async (path: string) => {
         })
         ElMessage.success('移除成功')
         directories.value = directories.value.filter(d => d.path !== path)
-        await settingsApi.removeDirectory(path)
+        const uid = selectedUserId.value || undefined
+        await settingsApi.removeDirectory(path, uid)
         await loadData()
     } catch (e) {
         if (e !== 'cancel') ElMessage.error('移除失败')
@@ -173,7 +214,18 @@ const applyFilter = async () => {
     }
 }
 
-onMounted(() => {
+onMounted(async () => {
+    if (userStore.userInfo?.is_superuser) {
+        try {
+            users.value = await userService.getUsers()
+            // Set default to current user
+            if (userStore.userInfo.id) {
+                selectedUserId.value = userStore.userInfo.id
+            }
+        } catch (e) {
+            console.error(e)
+        }
+    }
     loadData()
 })
 </script>

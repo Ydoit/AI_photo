@@ -14,6 +14,7 @@ from app.schemas.user import (
 from app.schemas.token import Token
 from app.core import security
 from app.core.config_manager import config_manager
+from app.core.migration import migrate_system_config
 from app.dependencies import get_db
 
 router = APIRouter()
@@ -69,10 +70,15 @@ def register_user(
         )
 
     # Check if this is the first user
-    if db.query(crud_user.User).count() == 0:
+    is_first_user = db.query(crud_user.User).count() == 0
+    if is_first_user:
         user_in.is_superuser = True
 
     user = crud_user.create(db, user=user_in)
+    
+    if is_first_user:
+        migrate_system_config(db, user)
+        
     return user
 
 @router.post("/check-reset-user", response_model=PasswordResetCheckResponse)
@@ -109,3 +115,8 @@ def confirm_password_reset(
 
     user = crud_user.reset_password(db, user, payload.new_password)
     return user
+
+@router.get("/status")
+def get_auth_status(db: Session = Depends(get_db)):
+    has_users = db.query(crud_user.User).count() > 0
+    return {"has_users": has_users}

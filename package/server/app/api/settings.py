@@ -39,13 +39,46 @@ COUNTRIES_JSON_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirna
 def get_storage_root() -> str:
     return _get_storage_root()
 
-def get_external_dirs() -> list[str]:
-    return config_manager.config.storage.external_directories
+class PathValidator:
+    @staticmethod
+    def validate(path: str) -> str:
+        path = path.strip()
+        if not path:
+            raise HTTPException(status_code=400, detail='Invalid path')
+        
+        # Prevent directory traversal
+        if '..' in path:
+             raise HTTPException(status_code=400, detail='Invalid path: traversal detected')
+             
+        if not os.path.exists(path):
+             raise HTTPException(status_code=400, detail='Path does not exist')
+             
+        if not os.path.isdir(path):
+            raise HTTPException(status_code=400, detail='Path is not a directory')
+            
+        return os.path.abspath(path)
 
 @router.get('/directories')
-def get_directories(db: Session = Depends(get_db)):
+def get_directories(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    user_id: str = None
+):
+    target_user = current_user
+    if user_id:
+        if not current_user.is_superuser:
+            # Non-admin cannot see other's directories
+            # But maybe we should just ignore user_id? 
+            # Spec says: "If provided and current_user is superuser, return that user's directories. Otherwise return current_user's."
+            # So we just ignore it if not superuser.
+            pass
+        else:
+            target_user = db.query(User).filter(User.id == user_id).first()
+            if not target_user:
+                raise HTTPException(status_code=404, detail="User not found")
+
     primary = get_storage_root()
-    external = get_external_dirs()
+    external = target_user.settings.get('external_directories', []) if target_user.settings else []
     return {'primary': primary, 'external': external}
 
 @router.post('/directories')
@@ -54,19 +87,46 @@ def add_directory(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    path = payload.get('path').strip()
-    if not path or not isinstance(path, str):
-        raise HTTPException(status_code=400, detail='invalid path')
-    if not os.path.isdir(path):
-        raise HTTPException(status_code=400, detail='not a directory')
-    current = get_external_dirs()
-    if path in current:
-        return {'primary': get_storage_root(), 'external': current}
-    current.append(path)
-    config_manager.save()
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    user_id = payload.get('user_id')
+    target_user = current_user
+    if user_id:
+        target_user = db.query(User).filter(User.id == user_id).first()
+        if not target_user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+    raw_path = payload.get('path')
+    if not raw_path or not isinstance(raw_path, str):
+         raise HTTPException(status_code=400, detail='invalid path')
+
+    path = PathValidator.validate(raw_path)
+    
+    # Update target user settings
+    if not target_user.settings:
+        target_user.settings = {}
+        
+    settings = dict(target_user.settings)
+    external = settings.get('external_directories', [])
+    
+    if path in external:
+        return {'primary': get_storage_root(), 'external': external}
+    
+    external.append(path)
+    settings['external_directories'] = external
+    target_user.settings = settings
+    
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(target_user, "settings")
+    
+    db.add(target_user)
+    db.commit()
+    db.refresh(target_user)
+
     # Trigger scan to update index
-    TaskManager.get_instance().add_task(db, TaskType.SCAN_FOLDER, {'scan_roots': current, 'user_id': str(current_user.id)})
-    return {'primary': get_storage_root(), 'external': current}
+    TaskManager.get_instance().add_task(db, TaskType.SCAN_FOLDER, {'scan_roots': external, 'user_id': str(target_user.id)})
+    return {'primary': get_storage_root(), 'external': external}
 
 @router.delete('/directories')
 def remove_directory(
@@ -74,31 +134,49 @@ def remove_directory(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    if not current_user.is_superuser:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     path = payload.get('path')
     if not path:
         raise HTTPException(status_code=400, detail='path required')
-    current = get_external_dirs()
-    if path in current:
-        current.remove(path)
-        config_manager.save()
-        # Cleanup photos belonging to this directory
-        # We need to normalize paths for comparison.
-        # Simple string matching with startswith should work if normalized.
-        # Find photos
-        photos = db.query(Photo).all() # Fetching all might be slow but safe for path matching
-        # Or use LIKE query
-        # photos = db.query(Photo).filter(Photo.file_path.like(f"{path}%")).all()
-        # Let's use Python iteration for safety with path separators
+
+    user_id = payload.get('user_id')
+    target_user = current_user
+    if user_id:
+        target_user = db.query(User).filter(User.id == user_id).first()
+        if not target_user:
+            raise HTTPException(status_code=404, detail="User not found")
+    
+    if not target_user.settings:
+        return {'primary': get_storage_root(), 'external': []}
+
+    settings = dict(target_user.settings)
+    external = settings.get('external_directories', [])
+    
+    if path in external:
+        external.remove(path)
+        settings['external_directories'] = external
+        target_user.settings = settings
+        
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(target_user, "settings")
+        db.add(target_user)
+        
+        # Cleanup photos belonging to this directory and user
         norm_path = os.path.normpath(path)
+        photos = db.query(Photo).filter(Photo.owner_id == target_user.id).all()
+        
         for p in photos:
             if os.path.normpath(p.file_path).startswith(norm_path):
                 delete_thumbnails(p.id)
                 db.delete(p)
+                db.add(IndexLog(action='deleted', file_path=p.file_path, photo_id=p.id, owner_id=target_user.id))
+        
         db.commit()
+        db.refresh(target_user)
 
-        # Trigger scan to update index
-        # TaskManager.get_instance().add_task(db, TaskType.SCAN_FOLDER, {'scan_roots': current})
-    return {'primary': get_storage_root(), 'external': current}
+    return {'primary': get_storage_root(), 'external': external}
 
 @router.get('/storage-root')
 def read_storage_root(db: Session = Depends(get_db)):
@@ -124,23 +202,72 @@ def update_storage_root(payload: dict, db: Session = Depends(get_db)):
     return {'storage_root': path}
 
 @router.get('/')
-def get_settings():
-    return config_manager.get_all()
+def get_settings(current_user: User = Depends(get_current_user)):
+    user_settings = current_user.settings if current_user.settings else {}
+    return config_manager.merge_user_settings(user_settings).model_dump()
 
 @router.put('/')
-def update_settings(payload: dict):
-    config_manager.update_all(payload)
-    # Update cache if storage_root changed
-    root = config_manager.config.storage.photo_storage_path
+def update_settings(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Ensure user settings dict exists
+    if not current_user.settings:
+        current_user.settings = {}
+    
+    # We need to work with a copy to ensure SQLAlchemy detects changes
+    user_settings = dict(current_user.settings)
+
+    # Helper to deep merge payload into user_settings
+    def deep_merge(target, source):
+        for key, value in source.items():
+            if isinstance(value, dict) and key in target and isinstance(target[key], dict):
+                deep_merge(target[key], value)
+            else:
+                target[key] = value
+        return target
+
+    # Merge payload into user settings
+    deep_merge(user_settings, payload)
+    
+    # Save back to user
+    current_user.settings = user_settings
+    
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(current_user, "settings")
+    
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+
+    # Update context for the current request (if we were using ContextVar dependency)
+    # But since this is the end of request, it matters less, unless we trigger tasks.
+    # If we trigger tasks here, we should pass the new config.
+    
+    # Check if storage root changed to update cache
+    # We need to resolve the full config to see the effective storage root
+    full_config = config_manager.merge_user_settings(user_settings)
+    root = full_config.storage.photo_storage_path
     if root:
         update_storage_root_cache(root)
-    return {"status": "success", "config": config_manager.get_all()}
 
-def apply_filter_task_bg():
+    return {"status": "success", "config": full_config.model_dump()}
+
+def apply_filter_task_bg(user_id: str = None):
     db = SessionLocal()
     try:
-        logging.info("Starting filter application task...")
-        filter_config = config_manager.config.filter
+        logging.info(f"Starting filter application task for user {user_id}...")
+        
+        user_settings = {}
+        if user_id:
+            user = db.query(User).filter(User.id == user_id).first()
+            if user and user.settings:
+                user_settings = user.settings
+        
+        merged_config = config_manager.merge_user_settings(user_settings)
+        filter_config = merged_config.filter
+
         if not filter_config.enable:
             logging.info("Filter disabled, skipping.")
             return
@@ -160,11 +287,15 @@ def apply_filter_task_bg():
             filters.append(Photo.height < filter_config.min_height)
             
         if filters:
-             photos_to_delete = db.query(Photo).filter(or_(*filters)).all()
+             query = db.query(Photo)
+             if user_id:
+                 query = query.filter(Photo.owner_id == user_id)
+             
+             photos_to_delete = query.filter(or_(*filters)).all()
              for p in photos_to_delete:
                  delete_thumbnails(p.id)
                  db.delete(p)
-                 db.add(IndexLog(action='deleted', file_path=p.file_path, photo_id=p.id))
+                 db.add(IndexLog(action='deleted', file_path=p.file_path, photo_id=p.id, owner_id=p.owner_id))
                  deleted_count += 1
              db.commit()
              
@@ -182,9 +313,11 @@ def apply_filter_task_bg():
             
             if compiled_patterns:
                 # Fetch all remaining photos to check filename
-                # To avoid memory issues, we can iterate or fetch in chunks. 
-                # For now, fetching id and file_path is lightweight enough for moderate libraries.
-                all_photos = db.query(Photo.id, Photo.file_path).all()
+                query = db.query(Photo.id, Photo.file_path)
+                if user_id:
+                    query = query.filter(Photo.owner_id == user_id)
+                
+                all_photos = query.all()
                 
                 for pid, path in all_photos:
                     basename = os.path.basename(path)
@@ -200,7 +333,7 @@ def apply_filter_task_bg():
                         if p:
                             delete_thumbnails(p.id)
                             db.delete(p)
-                            db.add(IndexLog(action='deleted', file_path=p.file_path, photo_id=p.id))
+                            db.add(IndexLog(action='deleted', file_path=p.file_path, photo_id=p.id, owner_id=p.owner_id))
                             deleted_count += 1
                 db.commit()
 
@@ -213,8 +346,11 @@ def apply_filter_task_bg():
         db.close()
 
 @router.post('/filter/apply')
-def apply_filter(background_tasks: BackgroundTasks):
-    background_tasks.add_task(apply_filter_task_bg)
+def apply_filter(
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user)
+):
+    background_tasks.add_task(apply_filter_task_bg, str(current_user.id))
     return {"status": "started", "message": "Filter application started in background"}
 
 @router.get('/export')

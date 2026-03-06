@@ -1,6 +1,7 @@
 import json
 import os
 from typing import Any, Dict, List, Optional
+from contextvars import ContextVar
 from pydantic import BaseModel, Field
 
 class LLMSettings(BaseModel):
@@ -65,6 +66,7 @@ class ConfigManager:
     _instance = None
     _config_path = "./data/config.json"
     _last_mtime = 0
+    _user_config_ctx = ContextVar("user_config", default=None)
 
     def __new__(cls):
         if cls._instance is None:
@@ -72,9 +74,29 @@ class ConfigManager:
             cls._instance._load_config()
         return cls._instance
 
+    @property
+    def config(self) -> AppSettings:
+        """Get the current configuration (user-specific if context is set, otherwise system default)."""
+        user_config = self._user_config_ctx.get()
+        return user_config if user_config else self._system_config
+
+    @config.setter
+    def config(self, value: AppSettings):
+        """Set the system configuration (only used during initialization/loading)."""
+        self._system_config = value
+
+    def set_user_context(self, user_settings: Dict[str, Any]):
+        """Set the user context for the current request/task."""
+        merged_config = self.merge_user_settings(user_settings)
+        self._user_config_ctx.set(merged_config)
+
+    def clear_user_context(self):
+        """Clear the user context."""
+        self._user_config_ctx.set(None)
+
     def _load_config(self):
         if not os.path.exists(self._config_path):
-            self.config = AppSettings()
+            self._system_config = AppSettings()
             self._save_config()
             self._last_mtime = os.path.getmtime(self._config_path) if os.path.exists(self._config_path) else 0
         else:
@@ -104,7 +126,7 @@ class ConfigManager:
                     if "face_recognition_min_photos" in data:
                         new_config.ai.face_recognition_min_photos = data["face_recognition_min_photos"]
                         
-                    self.config = new_config
+                    self._system_config = new_config
                     self._save_config()
                 else:
                     # Deep merge or direct load
@@ -121,11 +143,11 @@ class ConfigManager:
                             # or just cleanup
                             del map_data["api_key"]
 
-                    self.config = AppSettings(**data)
+                    self._system_config = AppSettings(**data)
                     
             except Exception as e:
                 print(f"Error loading config: {e}")
-                self.config = AppSettings()
+                self._system_config = AppSettings()
 
     def save(self):
         self._save_config()
@@ -146,7 +168,8 @@ class ConfigManager:
     def _save_config(self):
         try:
             with open(self._config_path, 'w', encoding='utf-8') as f:
-                f.write(self.config.model_dump_json(indent=4, ensure_ascii=False))
+                # Always save system config to disk
+                f.write(self._system_config.model_dump_json(indent=4, ensure_ascii=False))
             
             # Update mtime to prevent immediate reload
             if os.path.exists(self._config_path):
@@ -155,20 +178,20 @@ class ConfigManager:
             print(f"Error saving config: {e}")
 
     def get_all(self) -> Dict[str, Any]:
+        # Return current context config (user or system)
         return self.config.model_dump()
 
     def update_all(self, new_config: Dict[str, Any]):
-        # Update fields in existing config object
-        # For nested Pydantic models, we need to be careful. 
-        # config.dict() returns a dict, but we want to update the actual object or recreate it.
-        # Simplest way is to dump current, merge, and recreate.
+        # This method updates the *current context* config.
+        # But wait, if we are in user context, we shouldn't update self._system_config unless explicitly requested?
+        # The prompt says: "Modify config... read from DB... modify... save to DB".
+        # So this method might be less relevant if we use DB persistence directly in API.
+        # But for compatibility, let's keep it updating the SYSTEM config for now, 
+        # or make it raise an error if in user context?
+        # Actually, let's just update the system config here (legacy behavior), 
+        # but the API should handle DB updates.
         
-        current_data = self.config.model_dump()
-        
-        # Deep merge helper or just simple update?
-        # If new_config has partial nested data (e.g. only ai updated), we need deep merge.
-        # But usually the frontend sends the whole object or we can assume it does.
-        # Let's assume frontend sends matching structure.
+        current_data = self._system_config.model_dump()
         
         def deep_update(d, u):
             for k, v in u.items():
@@ -179,8 +202,32 @@ class ConfigManager:
             return d
 
         updated_data = deep_update(current_data, new_config)
-        self.config = AppSettings(**updated_data)
+        self._system_config = AppSettings(**updated_data)
         self._save_config()
+
+    def merge_user_settings(self, user_settings: Dict[str, Any]) -> AppSettings:
+        """
+        Merge system config with user settings.
+        Returns a new AppSettings object with user overrides.
+        """
+        if not user_settings:
+            return self._system_config
+
+        # Start with system config as base
+        current_data = self._system_config.model_dump()
+
+        # Deep merge user settings
+        def deep_merge(target, source):
+            for key, value in source.items():
+                if isinstance(value, dict) and key in target and isinstance(target[key], dict):
+                    deep_merge(target[key], value)
+                else:
+                    target[key] = value
+            return target
+
+        merged_data = deep_merge(current_data, user_settings)
+        
+        return AppSettings(**merged_data)
 
 # Global instance
 config_manager = ConfigManager()

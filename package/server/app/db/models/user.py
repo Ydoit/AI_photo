@@ -9,7 +9,7 @@
 @Description : 
 """
 
-from sqlalchemy import Column, String, Boolean, DateTime, Integer
+from sqlalchemy import Column, String, Boolean, DateTime, Integer, JSON
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from app.db.base import Base
@@ -30,3 +30,6 @@ class User(Base):
     # Password Reset Security Question
     security_question = Column(String, nullable=True)
     security_answer_hash = Column(String, nullable=True)
+
+    # User Settings
+    settings = Column(JSON, default={})

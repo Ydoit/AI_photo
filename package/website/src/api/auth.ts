@@ -98,6 +98,14 @@ export const authService = {
     return res.data;
   },
 
+  async getAuthStatus() {
+    const res = await request<{has_users: boolean}>({
+      url: '/api/auth/status',
+      method: 'get'
+    });
+    return res.data;
+  },
+
   logout() {
     // If there is a backend logout endpoint, call it here.
     // For JWT, usually client-side removal is enough, but some backends might blacklist tokens.

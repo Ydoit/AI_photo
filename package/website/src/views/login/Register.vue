@@ -97,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { authService } from '@/api/auth';
@@ -105,6 +105,18 @@ import { authService } from '@/api/auth';
 const router = useRouter();
 const formRef = ref<FormInstance>();
 const loading = ref(false);
+
+onMounted(async () => {
+  try {
+    const status = await authService.getAuthStatus();
+    if (status.has_users) {
+      ElMessage.warning('系统已存在用户，禁止注册。请联系管理员添加账号。');
+      router.push('/login');
+    }
+  } catch (error) {
+    console.error('Failed to get auth status:', error);
+  }
+});
 
 const form = reactive({
   username: '',

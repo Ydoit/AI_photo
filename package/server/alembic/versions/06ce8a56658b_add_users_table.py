@@ -33,6 +33,7 @@ def upgrade() -> None:
     sa.Column('lockout_until', sa.DateTime(), nullable=True),
     sa.Column('security_question', sa.String(), nullable=True),
     sa.Column('security_answer_hash', sa.String(), nullable=True),
+    sa.Column('settings', sa.JSON(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
