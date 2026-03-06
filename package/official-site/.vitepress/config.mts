@@ -35,6 +35,7 @@ export default withMermaid(defineConfig({
                   collapsed: true,
                   items: [
                     { text: '通用部署', link: '/docs/guide/docker/' },
+                    { text: 'Windows 部署', link: '/docs/guide/docker/windows' },
                     { text: '绿联 NAS', link: '/docs/guide/docker/ugreen' },
                     { text: '极空间', link: '/docs/guide/docker/zspace' },
                     { text: '飞牛OS', link: '/docs/guide/docker/fnos' }
@@ -132,6 +133,7 @@ export default withMermaid(defineConfig({
                   collapsed: true,
                   items: [
                     { text: 'Generic', link: '/en/docs/guide/docker/' },
+                    { text: 'Windows', link: '/en/docs/guide/docker/windows' },
                     { text: 'Ugreen NAS', link: '/en/docs/guide/docker/ugreen' },
                     { text: 'Zspace', link: '/en/docs/guide/docker/zspace' },
                     { text: 'Fnos', link: '/en/docs/guide/docker/fnos' }
