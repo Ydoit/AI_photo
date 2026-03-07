@@ -89,45 +89,62 @@
               @mousedown="startDrag"
               @touchstart="startTouch"
             >
-                <img
-                    ref="imageRef"
-                    :src="displayImageSrc"
-                    class="block w-full h-full object-contain pointer-events-none"
-                    draggable="false"
-                />
-                <!-- OCR Overlay -->
-                <div v-if="showOCR && ocrRecords.length > 0" class="absolute inset-0 z-10">
-                    <svg viewBox="0 0 1 1" class="w-full h-full pointer-events-none" preserveAspectRatio="none">
-                         <polygon
-                            v-for="rec in ocrRecords"
-                            :key="rec.id"
-                            :points="getPolygonPoints(rec.polygon)"
-                            class="fill-transparent stroke-primary-500 stroke-[0.002] cursor-pointer pointer-events-auto hover:fill-primary-500/20 hover:stroke-[0.004] transition-all"
-                            :class="{ 'fill-primary-500/30 stroke-[0.004]': highlightedOCR?.id === rec.id }"
-                            @click.stop="onPolygonClick(rec)"
-                         />
-                    </svg>
+                <!-- Image Wrapper for Correct Overlay Positioning -->
+                <div class="relative flex justify-center items-center max-w-full h-full">
+                    <img
+                        ref="imageRef"
+                        :src="displayImageSrc"
+                        class="block w-full h-full object-contain pointer-events-none"
+                        draggable="false"
+                    />
+                    
+                    <!-- Face Highlight Overlay -->
+                    <div 
+                        v-if="highlightedFace && faceBoxStyle"
+                        class="absolute border-2 border-yellow-400 z-20 shadow-[0_0_10px_rgba(255,215,0,0.5)] pointer-events-none"
+                        :style="faceBoxStyle"
+                    >
+                         <div class="absolute -top-8 left-0 bg-black/70 backdrop-blur-sm text-white text-xs px-2 py-1 rounded whitespace-nowrap flex items-center gap-1">
+                            <span class="font-bold">{{ highlightedFaceName }}</span>
+                            <span v-if="highlightedFaceConfidence" class="text-yellow-400">
+                                {{ highlightedFaceConfidence }}% {{ highlightedFaceRecognitionConfidence }}%
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- OCR Overlay -->
+                    <div v-if="showOCR && ocrRecords.length > 0" class="absolute inset-0 z-10">
+                        <svg viewBox="0 0 1 1" class="w-full h-full pointer-events-none" preserveAspectRatio="none">
+                            <polygon
+                                v-for="rec in ocrRecords"
+                                :key="rec.id"
+                                :points="getPolygonPoints(rec.polygon)"
+                                class="fill-transparent stroke-primary-500 stroke-[0.002] cursor-pointer pointer-events-auto hover:fill-primary-500/20 hover:stroke-[0.004] transition-all"
+                                :class="{ 'fill-primary-500/30 stroke-[0.004]': highlightedOCR?.id === rec.id }"
+                                @click.stop="onPolygonClick(rec)"
+                            />
+                        </svg>
+                    </div>
+
+                    <!-- Live Photo Video Overlay -->
+                    <video
+                        v-if="isPlayingLive"
+                        ref="liveVideoRef"
+                        :key="image.id"
+                        class="absolute inset-0 w-full h-full object-contain z-10 pointer-events-none"
+                        :style="videoStyle"
+                        autoplay
+                        playsinline
+                        x5-playsinline
+                        webkit-playsinline
+                        :loop="false"
+                        @ended="onLiveEnded"
+                        @loadedmetadata="onVideoLoaded"
+                    >
+                        <source :src="image.live_photo_video_url" type="video/mp4" />
+                    </video>
                 </div>
-                
-                <!-- Live Photo Video Overlay -->
-                <video
-                    v-if="isPlayingLive"
-                    ref="liveVideoRef"
-                    :key="image.id"
-                    class="absolute inset-0 w-full h-full object-contain z-10 pointer-events-none"
-                    :style="videoStyle"
-                    autoplay
-                    playsinline
-                    x5-playsinline
-                    webkit-playsinline
-                    :loop="false"
-                    @ended="onLiveEnded"
-                    @loadedmetadata="onVideoLoaded"
-                >
-                    <source :src="image.live_photo_video_url" type="video/mp4" />
-                </video>
             </div>
-            
             <!-- Live Photo Badge (Outside transform to keep position fixed relative to viewport or container?) 
                  Actually, usually badges are fixed on screen, not zooming with image. 
                  But here we are inside the zoomable container? No, the zoomable container is the div above.
@@ -177,6 +194,7 @@
         @close="showSidebar = false"
         @update="handleSidebarUpdate"
         @delete="handleSidebarDelete"
+        @highlight-face="handleHighlightFace"
       />
 
       <!-- OCR Panel (Separate) -->
@@ -207,7 +225,7 @@ import videojs from 'video.js'
 import 'video.js/dist/video-js.css'
 import { albumService } from '@/api/album'
 import { ocrApi, type OCRRecord } from '@/api/ocr'
-import type { PhotoMetadata, AlbumImage } from '@/types/album'
+import type { PhotoMetadata, AlbumImage, CoverPhotoInfo } from '@/types/album'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import PhotoMetadataSidebar from './PhotoMetadataSidebar.vue'
 import PhotoOCRPanel from './PhotoOCRPanel.vue'
@@ -293,6 +311,7 @@ watch(() => props.image, (newImg) => {
     translateY.value = 0
     ocrRecords.value = []
     highlightedOCR.value = null
+    highlightedFace.value = null
     videoStyle.value = {}
     
     // Auto play if live photo
@@ -473,6 +492,47 @@ const onPolygonClick = (record: OCRRecord) => {
 const onOCRRecordClick = (record: OCRRecord) => {
     highlightedOCR.value = record
 }
+
+// Face Highlight Methods
+const highlightedFace = ref<CoverPhotoInfo | null>(null)
+const highlightedFaceName = ref('')
+const highlightedFaceConfidence = ref<number | null>(null)
+const highlightedFaceRecognitionConfidence = ref<number | null>(null)
+
+const handleHighlightFace = (payload: { face: CoverPhotoInfo | null, name: string } | null) => {
+    if (!payload || !payload.face) {
+        highlightedFace.value = null
+        highlightedFaceName.value = ''
+        highlightedFaceConfidence.value = 0
+        return
+    }
+    highlightedFace.value = payload.face
+    highlightedFaceName.value = payload.name
+    
+    // Prefer recognize_confidence, fallback to face_confidence
+    const conf = payload.face.face_confidence
+    highlightedFaceConfidence.value = conf ? Math.round(conf * 100) : null
+    highlightedFaceRecognitionConfidence.value = payload.face.recognize_confidence ? Math.round(payload.face.recognize_confidence * 100) : null
+}
+
+const faceBoxStyle = computed(() => {
+    const face = highlightedFace.value
+    if (!face || !face.face_rect || !face.width || !face.height) return null
+
+    // face_rect is [x1, y1, x2, y2]
+    const [x1, y1, x2, y2] = face.face_rect
+
+    const left = (x1 / face.width) * 100
+    const top = (y1 / face.height) * 100
+    const width = (x2 - x1) / face.width * 100
+    const height = (y2 - y1) / face.height * 100
+    return {
+        left: `${left}%`,
+        top: `${top}%`,
+        width: `${width}%`,
+        height: `${height}%`
+    }
+})
 
 // Sidebar Event Handlers
 const handleSidebarUpdate = (updates: any) => {

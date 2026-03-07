@@ -38,6 +38,8 @@ class CoverPhotoInfo(BaseModel):
     width: Optional[int] = Field(None, description="照片宽度")
     height: Optional[int] = Field(None, description="照片高度")
     face_rect: Optional[List[float]] = Field(None, description="人脸位置坐标 [x1, y1, x2, y2]")
+    face_confidence: Optional[float] = Field(None, description="人脸检测置信度")
+    recognize_confidence: Optional[float] = Field(None, description="人脸聚类置信度")
 
 class FaceIdentitySchema(BaseModel):
     id: UUID = Field(..., description="人物ID")

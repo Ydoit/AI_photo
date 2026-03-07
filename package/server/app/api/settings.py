@@ -78,7 +78,7 @@ def get_directories(
                 raise HTTPException(status_code=404, detail="User not found")
 
     primary = get_storage_root()
-    external = target_user.settings.get('external_directories', []) if target_user.settings else []
+    external = target_user.settings.get('storage',{}).get('external_directories', []) if target_user.settings else []
     return {'primary': primary, 'external': external}
 
 @router.post('/directories')
@@ -126,6 +126,7 @@ def add_directory(
 
     # Trigger scan to update index
     TaskManager.get_instance().add_task(db, TaskType.SCAN_FOLDER, {'scan_roots': external, 'user_id': str(target_user.id)})
+    config_manager.set_user_context(settings)
     return {'primary': get_storage_root(), 'external': external}
 
 @router.delete('/directories')
@@ -251,7 +252,7 @@ def update_settings(
     root = full_config.storage.photo_storage_path
     if root:
         update_storage_root_cache(root)
-
+    config_manager.set_user_context(user_settings)
     return {"status": "success", "config": full_config.model_dump()}
 
 def apply_filter_task_bg(user_id: str = None):

@@ -83,7 +83,7 @@ class FaceClusterService:
             dist = 1.0 - np.dot(target_emb, nearest_emb)
 
             # 3. 判断是否匹配成功
-            if dist < self.DISTANCE_THRESHOLD:
+            if dist < config_manager.config.ai.face_cluster_threshold:
                 # 分配到已有Identity
                 best_match_id = nearest_face.face_identity_id
 
@@ -216,7 +216,7 @@ class FaceClusterService:
 
             # 3. DBSCAN聚类（宽松参数，避免拆分）
             clustering = DBSCAN(
-                eps=self.DBSCAN_EPS,
+                eps=config_manager.config.ai.face_cluster_threshold,
                 min_samples=self.DBSCAN_MIN_SAMPLES,
                 metric='cosine'
             ).fit(X)
@@ -264,7 +264,7 @@ class FaceClusterService:
 
                     # 计算簇中心的余弦距离
                     dist = 1.0 - np.dot(cluster_centers[label1], cluster_centers[label2])
-                    if dist < self.CLUSTER_MERGE_THRESHOLD:
+                    if dist < self.DISTANCE_THRESHOLD + 0.08:
                         merged_members += cluster_members[label2]
                         used_labels.add(label2)
                         logger.info(f"合并簇 {label1} 和 {label2}（中心距离={dist:.4f}）")

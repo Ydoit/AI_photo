@@ -143,7 +143,9 @@ export interface CoverPhotoInfo {
   photo_id: string
   width: number | null
   height: number | null
-  face_rect: number[] | null
+  face_rect: number[] | null,
+  face_confidence: number | null,
+  recognize_confidence: number | null,
 }
 
 export interface FaceIdentity {

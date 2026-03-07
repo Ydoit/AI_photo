@@ -131,7 +131,15 @@
             </div>
             <div class="flex flex-wrap gap-2">
                 <span v-if="(!metadata.faces_identities || metadata.faces_identities.length === 0)" class="text-sm text-gray-400 italic">无人脸信息</span>
-                <a target="_blank" :href="`/people/${face.id}`" v-for="(face, idx) in metadata.faces_identities" :key="idx" class="text-gray-600 dark:text-gray-300 rounded-full text-xs flex flex-col items-center transition-colors">
+                <a 
+                    target="_blank" 
+                    :href="`/people/${face.id}`" 
+                    v-for="(face, idx) in metadata.faces_identities" 
+                    :key="idx" 
+                    class="text-gray-600 dark:text-gray-300 rounded-full text-xs flex flex-col items-center transition-colors"
+                    @mouseenter="$emit('highlight-face', { face: face.cover_photo, name: face.identity_name })"
+                    @mouseleave="$emit('highlight-face', null)"
+                >
                     <PersonAvatar :person="face" />
                     <span class="font-medium">{{ face.identity_name || 'Unknown' }}</span>
                 </a>
@@ -233,7 +241,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
-const emit = defineEmits(['close', 'delete', 'update'])
+const emit = defineEmits(['close', 'delete', 'update', 'highlight-face'])
 
 // State
 const showExifDialog = ref(false)

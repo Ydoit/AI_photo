@@ -189,7 +189,7 @@ def get_photo_metadata(photo_id: UUID, db: Session = Depends(get_db), current_us
         raise HTTPException(status_code=404, detail="Metadata not found")
 
     albums = crud_album.get_albums_by_photo_id(db, photo_id=photo_id)
-    faces_identities = crud_face.get_identities_with_details(db, photo_id=photo_id)
+    faces_identities = crud_face.get_identities_by_photo_id(db, photo_id=photo_id)
     tags = crud_tag.get_photo_tags(db, photo_id=photo_id)
 
     photo_metadata = PhotoMetadata.model_validate(db_metadata)

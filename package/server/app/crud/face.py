@@ -1,3 +1,4 @@
+from operator import rshift
 from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.orm import Session
@@ -250,7 +251,9 @@ def get_identities_with_details(
                 photo_id=default_face.photo_id,
                 width=int(photo.width * scale),
                 height=int(photo.height * scale),
-                face_rect=default_face.face_rect
+                face_rect=default_face.face_rect,
+                face_confidence=default_face.face_confidence,
+                recognize_confidence=default_face.recognize_confidence
             )
 
         results.append(FaceIdentitySchema(
@@ -266,6 +269,60 @@ def get_identities_with_details(
             create_time=identity.create_time,
             update_time=identity.update_time
         ))
+    return results
+
+def get_identities_by_photo_id(db: Session, photo_id: UUID, owner_id: Optional[UUID] = None) -> List[FaceIdentitySchema]:
+    # Query Face, FaceIdentity, and Photo to get all faces in the photo with their identity details
+    query = db.query(Face, FaceIdentity, Photo).join(
+        FaceIdentity, Face.face_identity_id == FaceIdentity.id
+    ).join(
+        Photo, Face.photo_id == Photo.id
+    ).filter(
+        Face.photo_id == photo_id,
+        Face.is_deleted == False,
+        FaceIdentity.is_deleted == False
+    )
+
+    if owner_id:
+        query = query.filter(Photo.owner_id == owner_id)
+
+    results = []
+    p_size = config_manager.config.image.preview_size
+
+    for face, identity, photo in query.all():
+        # Calculate scale for preview size
+        scale = p_size / max(photo.width, photo.height) if max(photo.width, photo.height) > 0 else 1
+        
+        # Use current face data for cover_photo info instead of identity's default cover
+        cover_photo_info = schemas.CoverPhotoInfo(
+            photo_id=photo.id,
+            width=int(photo.width * scale),
+            height=int(photo.height * scale),
+            face_rect=face.face_rect,
+            face_confidence=face.face_confidence,
+            recognize_confidence=face.recognize_confidence
+        )
+        
+        # Get face count for this identity
+        face_count = db.query(func.count(Face.id)).filter(
+            Face.face_identity_id == identity.id,
+            Face.is_deleted == False
+        ).scalar()
+
+        results.append(FaceIdentitySchema(
+            id=identity.id,
+            identity_name=identity.identity_name,
+            default_face_id=identity.default_face_id,
+            description=identity.description,
+            tags=identity.tags,
+            face_count=face_count or 0,
+            cover_photo=cover_photo_info,
+            cover=None, 
+            is_hidden=identity.is_hidden,
+            create_time=identity.create_time,
+            update_time=identity.update_time
+        ))
+    
     return results
 
 def get_identity_photos(db: Session, identity_id: UUID, skip: int = 0, limit: int = 50, owner_id: Optional[UUID] = None) -> List[Photo]:
@@ -298,8 +355,11 @@ def remove_photos_from_identity(db: Session, identity_id: UUID, photo_ids: List[
     db.commit()
     return len(faces)
 
-def delete_faces_by_photo(db: Session, photo_id: UUID) -> int:
-    faces = db.query(Face).filter(Face.photo_id == photo_id).all()
+def delete_faces_by_photo(db: Session, photo_id: UUID, confidence_threshold: float = 1.0) -> int:
+    faces = db.query(Face).filter(
+        Face.photo_id == photo_id,
+        Face.face_confidence < confidence_threshold
+    ).all()
     count = len(faces)
     for face in faces:
         handle_face_deletion_dependency(db, face)
