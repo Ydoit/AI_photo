@@ -177,7 +177,7 @@ def update_identity(
 def list_identities(
     page: int = Query(1, ge=1, description="页码"),
     limit: int = Query(20, ge=1, le=10000, description="每页数量"),
-    types: List[str] = Query(["named", "unnamed"], alias="types[]" , description="人物类型筛选：named, unnamed, hidden"),
+    types: List[str] = Query(["named", "unnamed"], alias="types" , description="人物类型筛选：named, unnamed, hidden"),
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_user)
 ):
@@ -186,7 +186,6 @@ def list_identities(
     """
     offset = (page - 1) * limit
     min_photos = config_manager.config.ai.face_recognition_min_photos
-    print(types)
     return crud_face.get_identities_with_details(
         db,
         skip=offset,
