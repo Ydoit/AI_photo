@@ -66,9 +66,12 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
              scan_roots = user.settings.get('external_directories', []) if user.settings else []
 
         if not scan_roots and not user_id:
-            root = storage._get_storage_root()
+            root = storage._get_storage_root(str(user.id) if user else None, db)
             primary_uploads = os.path.join(root, 'uploads')
-            external_dirs = config_manager.config.storage.external_directories
+            # Fallback to empty if no user found (though user should be found or provided)
+            external_dirs = []
+            if user:
+                 external_dirs = config_manager.get_user_config(user.id, db).storage.external_directories
             scan_roots = [primary_uploads] + external_dirs
 
     if scan_roots is None:
@@ -246,7 +249,7 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
                 chunk = deleted_list[i:i+chunk_size]
                 photos_to_delete = db.query(Photo).filter(Photo.owner_id==user_id, Photo.file_path.in_(chunk)).all()
                 for ph in photos_to_delete:
-                    storage.delete_thumbnails(ph.id)
+                    storage.delete_thumbnails(user_id, ph.id)
                     db.delete(ph)
                     db.add(IndexLog(action='deleted', file_path=ph.file_path, photo_id=ph.id, owner_id=user_id))
                 db.commit()

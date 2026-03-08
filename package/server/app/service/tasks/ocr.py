@@ -90,7 +90,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
     try:
         # 1. Resolve file path
         # Prefer original file for OCR to get best quality
-        target_path = storage.get_preview_path(photo.id)
+        target_path = storage.get_preview_path(photo.owner_id, photo.id)
         if not os.path.exists(target_path):
             # Fallback to preview if original not available (unlikely for local)
             target_path = photo.file_path
@@ -116,7 +116,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
 
             # 3. Call AI Service
             # Assuming AI service has /ocr/predict endpoint
-            api_url = f"{config_manager.config.ai.ai_api_url}/ocr/predict"
+            api_url = f"{config_manager.get_user_config(photo.owner_id, db).ai.ai_api_url}/ocr/predict"
             async with session.post(
                 api_url,
                 data=form_data,

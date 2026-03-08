@@ -240,7 +240,7 @@ def get_identities_with_details(
     query = query.order_by(FaceIdentity.is_hidden.asc(), face_counts_subq.c.count.desc()).offset(skip).limit(limit)
 
     results = []
-    p_size = config_manager.config.image.preview_size
+    p_size = config_manager.get_user_config(owner_id, db).image.preview_size
 
     for identity, count, default_face, photo in query.all():
         # 无需再过滤min_photos（已在SQL层处理）
@@ -287,7 +287,7 @@ def get_identities_by_photo_id(db: Session, photo_id: UUID, owner_id: Optional[U
         query = query.filter(Photo.owner_id == owner_id)
 
     results = []
-    p_size = config_manager.config.image.preview_size
+    p_size = config_manager.get_user_config(owner_id, db).image.preview_size
 
     for face, identity, photo in query.all():
         # Calculate scale for preview size

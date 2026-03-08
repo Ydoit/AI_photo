@@ -24,10 +24,10 @@ from app.db.models.user import User
 
 router = APIRouter()
 
-def _get_thumbnail_path(photo_id: UUID, db: Session, size: str = 'small') -> str:
+def _get_thumbnail_path(user_id: UUID, photo_id: UUID, db: Session, size: str = 'small') -> str:
     compact = str(photo_id).replace('-', '')
     p1, p2 = compact[:2], compact[2:4]
-    root = _get_storage_root()
+    root = _get_storage_root(user_id, db)
     base = os.path.join(root, 'thumbnails', p1, p2)
     
     if size == 'small':
@@ -36,9 +36,9 @@ def _get_thumbnail_path(photo_id: UUID, db: Session, size: str = 'small') -> str
 
 @router.get('/{photo_id}/video')
 def get_live_photo_video(
-    photo_id: UUID, 
-    request: Request, 
-    range: str = Header(None), 
+    photo_id: UUID,
+    request: Request,
+    range: str = Header(None),
     db: Session = Depends(get_db)
 ):
     photo = db.query(Photo).filter(Photo.id == photo_id).first()
@@ -49,7 +49,7 @@ def get_live_photo_video(
     if ext in ('.jpg', 'jpeg'):
         file_path = photo.file_path[:-3] + 'mp4'
         if not os.path.exists(file_path):
-            file_path = _get_thumbnail_path(photo_id, db, 'medium')[:-4] + '.mp4'
+            file_path = _get_thumbnail_path(photo.owner_id, photo_id, db, 'medium')[:-4] + '.mp4'
     else:
         file_path = photo.file_path[:-4] + 'MOV'
     file_size = os.path.getsize(file_path)
@@ -100,18 +100,19 @@ def get_live_photo_video(
 
 @router.get('/{photo_id}/thumbnail')
 def get_thumbnail(photo_id: UUID, size: str = 'small', db: Session = Depends(get_db)):
-    path = _get_thumbnail_path(photo_id, db, size)
+    photo = db.query(Photo).filter(Photo.id == photo_id).first()
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    path = _get_thumbnail_path(photo.owner_id, photo_id, db, size)
     if not os.path.exists(path):
-        # Fallback if thumbnail not found: try to return original if it's an image?
-        # Or return 404. For now 404.
         raise HTTPException(status_code=404, detail="Thumbnail not found")
     return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=31536000"})
 
 @router.get('/{photo_id}/file')
 def get_media_file(
-    photo_id: UUID, 
-    request: Request, 
-    range: str = Header(None), 
+    photo_id: UUID,
+    request: Request,
+    range: str = Header(None),
     db: Session = Depends(get_db)
 ):
     photo = db.query(Photo).filter(Photo.id == photo_id).first()
@@ -122,7 +123,7 @@ def get_media_file(
     # Determine media type
     ext = os.path.splitext(file_path)[1].lower()
     if ext == '.heic':
-        file_path = _get_thumbnail_path(photo_id, db, 'medium')
+        file_path = _get_thumbnail_path(photo.owner_id, photo_id, db, 'medium')
     file_size = os.path.getsize(file_path)
 
     media_type = "application/octet-stream"
@@ -173,31 +174,31 @@ def get_media_file(
     # Full content
     return FileResponse(file_path, media_type=media_type, headers={"Accept-Ranges": "bytes", "Cache-Control": "public, max-age=31536000"})
 
-def add_tasks(db: Session, photo_id: UUID, file_path: str):
+def add_tasks(db: Session, user_id: UUID, photo_id: UUID, file_path: str):
     TaskManager.get_instance().add_tasks(db, [
         {
             'type': TaskType.EXTRACT_METADATA,
-            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path, 'user_id': str(user_id)}
         },
         {
             'type': TaskType.RECOGNIZE_FACE,
-            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path, 'user_id': str(user_id)}
         },
         {
             'type': TaskType.OCR,
-            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path, 'user_id': str(user_id)}
         },
         {
             'type': TaskType.RECOGNIZE_TICKET,
-            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path, 'user_id': str(user_id)}
         },
         {
             'type': TaskType.CLASSIFY_IMAGE,
-            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path, 'user_id': str(user_id)}
         },
         {
             'type': TaskType.VISUAL_DESCRIPTION,
-            'payload': {'photo_id': str(photo_id), 'file_path': file_path}
+            'payload': {'photo_id': str(photo_id), 'file_path': file_path, 'user_id': str(user_id)}
         },
     ])
 
@@ -224,7 +225,7 @@ async def upload_photo_generic(
     photo = save_and_create_photo(db, file_path, file.filename, album_id, photo_id, user_id=current_user.id)
 
     # Add tasks
-    add_tasks(db, photo_id, file_path)
+    add_tasks(db, current_user.id, photo_id, file_path)
 
     return photo
 
@@ -301,7 +302,7 @@ def finish_upload_generic(
     photo = save_and_create_photo(db, final_path, file_name, album_id, photo_id, user_id=current_user.id)
 
     # Add tasks
-    add_tasks(db, photo_id, final_path)
+    add_tasks(db, current_user.id, photo_id, final_path)
 
     return photo
 

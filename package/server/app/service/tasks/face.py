@@ -79,8 +79,8 @@ async def handle_recognize_face(task_manager, task: Task, db: Session) -> Dict[s
 
 async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[str, Any]:
     try:
-        cluster_service = FaceClusterService(db)
-        target_path = storage.get_preview_path(photo.id)
+        cluster_service = FaceClusterService(db, photo.owner_id)
+        target_path = storage.get_preview_path(photo.owner_id, photo.id)
         if not os.path.exists(target_path):
             target_path = photo.file_path
             if not target_path or not os.path.exists(target_path):
@@ -98,7 +98,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                 content_type='image/jpeg'
             )
 
-            api_url = f"{config_manager.config.ai.ai_api_url}/face/face-recognition"
+            api_url = f"{config_manager.get_user_config(photo.owner_id, db).ai.ai_api_url}/face/face-recognition"
             async with session.post(api_url, data=form_data) as resp:
                 if resp.status == 200:
                     result = await resp.json()
@@ -110,7 +110,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                     count = 0
                     has_unassigned = False
                     for face_data in faces:
-                        if face_data.get('det_score') < config_manager.config.ai.face_recognition_threshold:
+                        if face_data.get('det_score') < config_manager.get_user_config(photo.owner_id, db).ai.face_recognition_threshold:
                             continue
                         face = Face(
                             photo_id=photo.id,

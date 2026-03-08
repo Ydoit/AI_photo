@@ -161,7 +161,7 @@ class TicketService:
                     continue
 
                 # 1. 保存裁剪图像到临时文件
-                temp_filename = f"temp_crop_{uuid.uuid4().hex[:8]}.png"
+                temp_filename = f"temp_crop_{uuid.uuid4().hex[:8]}_{conf*100:.0f}.png"
                 temp_path = os.path.join(output_dir, temp_filename)
                 cv2.imwrite(temp_path, crop)
 
@@ -175,9 +175,10 @@ class TicketService:
                     logging.warning(f"OCR inference failed for {temp_path}: {e}")
                     out = None
                 finally:
+                    pass
                     # 清理临时图片文件
-                    if os.path.exists(temp_path):
-                        os.remove(temp_path)
+                    # if os.path.exists(temp_path):
+                    #     os.remove(temp_path)
 
                 if isinstance(out, tuple):
                     ocr_result = out[0]

@@ -27,7 +27,7 @@ async def create_album(album: schemas.AlbumCreate, background_tasks: BackgroundT
         # Call AI service
         try:
             async with aiohttp.ClientSession() as session:
-                url = f"{config_manager.config.ai.ai_api_url}/classification/embed/text"
+                url = f"{config_manager.get_user_config(current_user.id, db).ai.ai_api_url}/classification/embed/text"
                 payload = {'text': album.description}
                 async with session.post(url, json=payload) as resp:
                     if resp.status == 200:
@@ -96,7 +96,7 @@ async def update_album(album_id: UUID, album: schemas.AlbumCreate, background_ta
         if album.description and album.description != current_album.description:
             try:
                 async with aiohttp.ClientSession() as session:
-                    url = f"{config_manager.config.ai.ai_api_url}/classification/embed/text"
+                    url = f"{config_manager.get_user_config(current_user.id, db).ai.ai_api_url}/classification/embed/text"
                     payload = {'text': album.description}
                     async with session.post(url, json=payload) as resp:
                         if resp.status == 200:

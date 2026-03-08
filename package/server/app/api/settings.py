@@ -36,8 +36,15 @@ router = APIRouter()
 RG_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'resources', 'rg_data')
 COUNTRIES_JSON_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'resources', 'rg_data', 'countries.json')
 
-def get_storage_root() -> str:
-    return _get_storage_root()
+def get_storage_root(user_id: str, db: Session = Depends(get_db)) -> str:
+    try:
+        config = config_manager.get_user_config(user_id, db)
+        root = config.storage.photo_storage_path
+        if not root:
+             root = 'uploads'
+        return root
+    finally:
+        db.close()
 
 class PathValidator:
     @staticmethod
@@ -77,7 +84,7 @@ def get_directories(
             if not target_user:
                 raise HTTPException(status_code=404, detail="User not found")
 
-    primary = get_storage_root()
+    primary = get_storage_root(target_user.id, db)
     external = target_user.settings.get('storage',{}).get('external_directories', []) if target_user.settings else []
     return {'primary': primary, 'external': external}
 
@@ -103,31 +110,29 @@ def add_directory(
 
     path = PathValidator.validate(raw_path)
 
-    # Update target user settings
+    # Update target user settings via ConfigManager to ensure cache update
     if not target_user.settings:
         target_user.settings = {}
 
     settings = dict(target_user.settings)
+    # Ensure storage dict exists
+    if 'storage' not in settings:
+        settings['storage'] = {}
+        
     external = settings.get('storage',{}).get('external_directories', [])
 
     if path in external:
-        return {'primary': get_storage_root(), 'external': external}
+        return {'primary': get_storage_root(target_user.id, db), 'external': external}
 
     external.append(path)
     settings['storage']['external_directories'] = external
-    target_user.settings = settings
-
-    from sqlalchemy.orm.attributes import flag_modified
-    flag_modified(target_user, "settings")
-
-    db.add(target_user)
-    db.commit()
-    db.refresh(target_user)
+    
+    # Update via manager
+    config_manager.update_user_config(target_user.id, settings, db)
 
     # Trigger scan to update index
     TaskManager.get_instance().add_task(db, TaskType.SCAN_FOLDER, {'scan_roots': external, 'user_id': str(target_user.id)})
-    config_manager.set_user_context(settings)
-    return {'primary': get_storage_root(), 'external': external}
+    return {'primary': get_storage_root(target_user.id, db), 'external': external}
 
 @router.delete('/directories')
 def remove_directory(
@@ -150,41 +155,52 @@ def remove_directory(
             raise HTTPException(status_code=404, detail="User not found")
     
     if not target_user.settings:
-        return {'primary': get_storage_root(), 'external': []}
+        return {'primary': get_storage_root(target_user.id, db), 'external': []}
 
-    settings = dict(target_user.settings)
-    external = settings.get('external_directories', [])
+    settings = config_manager.get_user_config(target_user.id, db)
+    external = settings.storage.external_directories
     
     if path in external:
         external.remove(path)
-        settings['external_directories'] = external
-        target_user.settings = settings
-        
-        from sqlalchemy.orm.attributes import flag_modified
-        flag_modified(target_user, "settings")
-        db.add(target_user)
-        
+
+        settings.storage.external_directories = external
+        # target_user.settings = settings
+
+        # from sqlalchemy.orm.attributes import flag_modified
+        # flag_modified(target_user, "settings")
+        # db.add(target_user)
+
+        # Update via manager
+        config_manager.update_user_config(target_user.id, settings.model_dump(), db)
+
         # Cleanup photos belonging to this directory and user
         norm_path = os.path.normpath(path)
         photos = db.query(Photo).filter(Photo.owner_id == target_user.id).all()
-        
+
         for p in photos:
             if os.path.normpath(p.file_path).startswith(norm_path):
-                delete_thumbnails(p.id)
+                delete_thumbnails(target_user.id, p.id)
                 db.delete(p)
                 db.add(IndexLog(action='deleted', file_path=p.file_path, photo_id=p.id, owner_id=target_user.id))
         
         db.commit()
         db.refresh(target_user)
 
-    return {'primary': get_storage_root(), 'external': external}
+    return {'primary': get_storage_root(target_user.id, db), 'external': external}
 
 @router.get('/storage-root')
-def read_storage_root(db: Session = Depends(get_db)):
-    return {'storage_root': get_storage_root()}
+def read_storage_root(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return {'storage_root': get_storage_root(current_user.id, db)}
 
 @router.put('/storage-root')
-def update_storage_root(payload: dict, db: Session = Depends(get_db)):
+def update_storage_root(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     path = payload.get('storage_root')
     if not path or not isinstance(path, str):
         raise HTTPException(status_code=400, detail='invalid path')
@@ -196,16 +212,29 @@ def update_storage_root(payload: dict, db: Session = Depends(get_db)):
         os.remove(tmp)
     except Exception:
         raise HTTPException(status_code=400, detail='rw check failed')
-    config_manager.config.storage.photo_storage_path = path
-    config_manager.save()
-    # Update global cache
-    update_storage_root_cache(path)
+    
+    # Update user config
+    config = config_manager.get_user_config(current_user.id, db)
+    settings = config.model_dump()
+    if 'storage' not in settings:
+        settings['storage'] = {}
+    settings['storage']['photo_storage_path'] = path
+    
+    config_manager.update_user_config(current_user.id, settings, db)
+    
+    # Update global cache (Note: this cache might need to be user-aware too, or just removed)
+    # update_storage_root_cache(path) 
+    # For now, let's keep it but it might be misleading if multiple users have different roots.
+    # Actually, we should probably remove the global cache or make it keyed by user.
+    
     return {'storage_root': path}
 
 @router.get('/')
-def get_settings(current_user: User = Depends(get_current_user)):
-    user_settings = current_user.settings if current_user.settings else {}
-    return config_manager.merge_user_settings(user_settings).model_dump()
+def get_settings(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return config_manager.get_user_config(current_user.id, db).model_dump()
 
 @router.put('/')
 def update_settings(
@@ -213,47 +242,17 @@ def update_settings(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Ensure user settings dict exists
-    if not current_user.settings:
-        current_user.settings = {}
-    
-    # We need to work with a copy to ensure SQLAlchemy detects changes
-    user_settings = dict(current_user.settings)
+    # Use config_manager to update settings and cache
+    new_config = config_manager.update_user_config(current_user.id, payload, db)
 
-    # Helper to deep merge payload into user_settings
-    def deep_merge(target, source):
-        for key, value in source.items():
-            if isinstance(value, dict) and key in target and isinstance(target[key], dict):
-                deep_merge(target[key], value)
-            else:
-                target[key] = value
-        return target
-
-    # Merge payload into user settings
-    deep_merge(user_settings, payload)
-    
-    # Save back to user
-    current_user.settings = user_settings
-    
-    from sqlalchemy.orm.attributes import flag_modified
-    flag_modified(current_user, "settings")
-    
-    db.add(current_user)
-    db.commit()
-    db.refresh(current_user)
-
-    # Update context for the current request (if we were using ContextVar dependency)
-    # But since this is the end of request, it matters less, unless we trigger tasks.
-    # If we trigger tasks here, we should pass the new config.
-    
     # Check if storage root changed to update cache
-    # We need to resolve the full config to see the effective storage root
-    full_config = config_manager.merge_user_settings(user_settings)
-    root = full_config.storage.photo_storage_path
+    root = new_config.storage.photo_storage_path
     if root:
-        update_storage_root_cache(root)
-    config_manager.set_user_context(user_settings)
-    return {"status": "success", "config": full_config.model_dump()}
+        update_storage_root_cache(current_user.id, root)
+    
+    # Update context for current request
+    # config_manager.set_user_context(new_config.model_dump())
+    return {"status": "success", "config": new_config.model_dump()}
 
 def apply_filter_task_bg(user_id: str = None):
     db = SessionLocal()
@@ -294,7 +293,7 @@ def apply_filter_task_bg(user_id: str = None):
              
              photos_to_delete = query.filter(or_(*filters)).all()
              for p in photos_to_delete:
-                 delete_thumbnails(p.id)
+                 delete_thumbnails(target_user.id, p.id)
                  db.delete(p)
                  db.add(IndexLog(action='deleted', file_path=p.file_path, photo_id=p.id, owner_id=p.owner_id))
                  deleted_count += 1
@@ -332,7 +331,7 @@ def apply_filter_task_bg(user_id: str = None):
                         # Re-fetch to delete (ensure it still exists)
                         p = db.query(Photo).get(pid)
                         if p:
-                            delete_thumbnails(p.id)
+                            delete_thumbnails(target_user.id, p.id)
                             db.delete(p)
                             db.add(IndexLog(action='deleted', file_path=p.file_path, photo_id=p.id, owner_id=p.owner_id))
                             deleted_count += 1
@@ -355,17 +354,28 @@ def apply_filter(
     return {"status": "started", "message": "Filter application started in background"}
 
 @router.get('/export')
-def export_settings():
-    return config_manager.get_all()
+def export_settings(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return config_manager.get_user_config(current_user.id, db).model_dump()
 
 @router.post('/import')
-def import_settings(payload: dict):
-    config_manager.update_all(payload)
+def import_settings(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Update current user settings in DB
+    config_manager.update_user_config(current_user.id, payload, db)
+    
     # Update cache if storage_root changed
-    root = config_manager.config.storage.photo_storage_path
+    new_config = config_manager.get_user_config(current_user.id, db)
+    root = new_config.storage.photo_storage_path
     if root:
         update_storage_root_cache(root)
-    return {"status": "success", "config": config_manager.get_all()}
+        
+    return {"status": "success", "config": new_config.model_dump()}
 
 @router.get('/map/countries')
 def get_map_countries():

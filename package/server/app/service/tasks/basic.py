@@ -20,14 +20,14 @@ from app.utils import exif
 from app.schemas import photo as photo_schemas
 from app.utils import motion_photo
 
-def process_basic_cpu_job(file_path: str, file_id: UUID, storage_root: str):
+def process_basic_cpu_job(file_path: str, file_id: UUID, storage_root: str, user_id: str):
     """
     CPU-intensive task running in a separate process.
     Generates thumbnails and extracts BASIC metadata (no heavy geolocation).
     """
     try:
         # Initialize storage root cache in this process
-        storage.update_storage_root_cache(storage_root)
+        storage.update_storage_root_cache(user_id, storage_root)
 
         # Open image once if possible to reduce IO
         image_obj = None
@@ -39,7 +39,7 @@ def process_basic_cpu_job(file_path: str, file_id: UUID, storage_root: str):
                  pass
 
         # 1. Generate thumbnail
-        thumb_path = storage.generate_thumbnail(file_path, file_id, image_obj=image_obj)
+        thumb_path = storage.generate_thumbnail(user_id, file_path, file_id, image_obj=image_obj)
 
         # 2. Extract metadata (BASIC ONLY)
         file_name = os.path.basename(file_path)
@@ -89,11 +89,15 @@ async def handle_process_basic(task_manager, task: Task, db: Session):
     live_photo_video_path = task.payload.get('live_photo_video_path')
     is_live_photo = task.payload.get('is_live_photo', False)
     user_id = task.payload.get('user_id')
+    # Use task owner_id as fallback if user_id not in payload
+    if not user_id and task.owner_id:
+        user_id = str(task.owner_id)
+        
     if not file_path or not os.path.exists(file_path):
         return {'status': 'skipped', 'reason': 'file not found'}
 
     photo_id = uuid4()
-    storage_root = storage._get_storage_root()
+    storage_root = storage._get_storage_root(user_id, db)
 
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(
@@ -101,14 +105,15 @@ async def handle_process_basic(task_manager, task: Task, db: Session):
         process_basic_cpu_job,
         file_path,
         photo_id,
-        storage_root
+        storage_root,
+        user_id
     )
     # result = process_basic_cpu_job(file_path, photo_id, storage_root)
     if not result['success']:
         raise Exception(result.get('error', 'Unknown error'))
 
     # Check resolution filter
-    filter_config = config_manager.config.filter
+    filter_config = config_manager.get_user_config(user_id, db).filter
     if filter_config.enable:
         if filter_config.min_width > 0 and result['width'] < filter_config.min_width:
              return {'status': 'skipped', 'reason': 'filtered_by_width'}

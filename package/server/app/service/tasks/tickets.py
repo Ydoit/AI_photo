@@ -150,7 +150,7 @@ async def handle_ticket_task(task_manager, task: Task, db: Session) -> Dict[str,
 
 async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[str, Any]:
     try:
-        target_path = storage.get_preview_path(photo.id)
+        target_path = storage.get_preview_path(photo.owner_id, photo.id)
         if not os.path.exists(target_path):
             target_path = photo.file_path
             if not target_path or not os.path.exists(target_path):
@@ -172,7 +172,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                 content_type='image/jpeg'
             )
 
-            api_url = f"{config_manager.config.ai.ai_api_url}/tickets/predict"
+            api_url = f"{config_manager.get_user_config(photo.owner_id, db).ai.ai_api_url}/tickets/predict"
             async with session.post(api_url, data=form_data) as response:
                 if response.status == 200:
                     result = await response.json()

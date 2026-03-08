@@ -19,15 +19,23 @@ logger = logging.getLogger(__name__)
 from app.core.config_manager import config_manager
 
 class FaceClusterService:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, user_id: uuid.UUID = None):
         self.db = db
         # Initialize from config
-        self.SIMILARITY_THRESHOLD = config_manager.config.ai.face_recognition_threshold
-        self.DISTANCE_THRESHOLD = config_manager.config.ai.face_cluster_threshold
+        if user_id:
+            config = config_manager.get_user_config(user_id, db)
+            self.SIMILARITY_THRESHOLD = config.ai.face_recognition_threshold
+            self.DISTANCE_THRESHOLD = config.ai.face_cluster_threshold
+            self.MIN_CLUSTER_SIZE_FOR_IDENTITY = config.ai.face_recognition_min_photos
+        else:
+            # Fallback (should be avoided)
+            self.SIMILARITY_THRESHOLD = 0.7
+            self.DISTANCE_THRESHOLD = 0.4
+            self.MIN_CLUSTER_SIZE_FOR_IDENTITY = 5
+            
         self.DBSCAN_EPS = self.DISTANCE_THRESHOLD
         self.DBSCAN_MIN_SAMPLES = 5
         self.CLUSTER_MERGE_THRESHOLD = self.DISTANCE_THRESHOLD + 0.08
-        self.MIN_CLUSTER_SIZE_FOR_IDENTITY = config_manager.config.ai.face_recognition_min_photos
 
     @staticmethod
     def normalize_embedding(embedding: list | np.ndarray) -> np.ndarray:
@@ -83,7 +91,7 @@ class FaceClusterService:
             dist = 1.0 - np.dot(target_emb, nearest_emb)
 
             # 3. 判断是否匹配成功
-            if dist < config_manager.config.ai.face_cluster_threshold:
+            if dist < config_manager.get_user_config(owner_id, self.db).ai.face_cluster_threshold:
                 # 分配到已有Identity
                 best_match_id = nearest_face.face_identity_id
 

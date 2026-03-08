@@ -42,6 +42,7 @@ router = APIRouter()
 @router.post("/recognize", summary="识别车票图片")
 async def recognize_ticket(
     file: UploadFile = File(..., description="车票图片"),
+    current_user: User = Depends(get_current_user),
 ):
     """
     上传车票图片并调用AI服务进行识别
@@ -62,7 +63,7 @@ async def recognize_ticket(
                 content_type=file.content_type or 'image/jpeg'
             )
             
-            api_url = f"{config_manager.config.ai.ai_api_url}/tickets/predict"
+            api_url = f"{config_manager.get_user_config(current_user.id, db).ai.ai_api_url}/tickets/predict"
             
             async with session.post(api_url, data=form_data) as response:
                 if response.status != 200:

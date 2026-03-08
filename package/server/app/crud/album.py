@@ -173,7 +173,7 @@ def save_and_create_photo(db: Session, file_path: str, file_name: str, album_id:
     if ext.lower() in ['.mp4', '.mov', '.avi']:
         file_type = FileType.video
 
-    storage.generate_thumbnail(file_path, photo_id, db)
+    storage.generate_thumbnail(user_id, file_path, photo_id, db)
 
     # Get Metadata
     size = storage.get_file_size(file_path)

@@ -81,7 +81,7 @@ async def handle_classify_image(task_manager, task: Task, db: Session) -> Dict[s
 
 async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[str, Any]:
     try:
-        target_path = storage.get_preview_path(photo.id)
+        target_path = storage.get_preview_path(photo.owner_id, photo.id)
         if not os.path.exists(target_path):
             target_path = photo.file_path
             if not target_path or not os.path.exists(target_path):
@@ -99,7 +99,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                 content_type='image/jpeg'
             )
 
-            api_url = f"{config_manager.config.ai.ai_api_url}/classification/classify"
+            api_url = f"{config_manager.get_user_config(photo.owner_id, db).ai.ai_api_url}/classification/classify"
             async with session.post(api_url, data=form_data) as resp:
                 if resp.status == 200:
                     result = await resp.json()
@@ -118,7 +118,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                     for res in results:
                         tag_name = res['label']
                         confidence = res['confidence']
-                        if confidence < config_manager.config.ai.classification_tag_threshold:
+                        if confidence < config_manager.get_user_config(photo.owner_id, db).ai.classification_tag_threshold:
                             continue
                         tag = db.query(PhotoTag).filter(PhotoTag.tag_name == tag_name).first()
                         if not tag:

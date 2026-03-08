@@ -38,9 +38,8 @@ def login_access_token(
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     elif not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
-
-    access_token_expires = timedelta(minutes=config_manager.config.security.access_token_expire_minutes)
-    config_manager.set_user_context(dict(user.settings))
+    
+    access_token_expires = timedelta(minutes=config_manager.get_user_config(user.id, db).security.access_token_expire_minutes)
     return {
         "access_token": security.create_access_token(
             {"sub": str(user.id)}, expires_delta=access_token_expires

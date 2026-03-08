@@ -20,7 +20,7 @@ async def handle_visual_description_task(task_manager, task: Task, db: Session) 
     """
     try:
         # Check configuration
-        settings = config_manager.config.ai.llm_vl_settings
+        settings = config_manager.get_user_config(task.owner_id, db).ai.llm_vl_settings
         if not settings.base_url or not settings.api_key or not settings.model_name:
              return {'status': 'skipped', 'reason': 'Visual Model not configured'}
 
@@ -98,7 +98,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session, settings
     try:
         # 1. Resolve file path
         # Use preview path for smaller size and faster processing, or original if preview missing
-        target_path = storage.get_preview_path(photo.id)
+        target_path = storage.get_preview_path(photo.owner_id, photo.id)
         if not os.path.exists(target_path):
             target_path = photo.file_path
             if not target_path or not os.path.exists(target_path):

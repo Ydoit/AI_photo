@@ -20,12 +20,10 @@ def get_current_user(
         db: Session = Depends(get_db),
         token: str = Depends(reusable_oauth2)
 ) -> User:
-    print(token)
     try:
         payload = jwt.decode(
             token, config_manager.config.security.secret_key, algorithms=[config_manager.config.security.algorithm]
         )
-        print(payload)
         token_data = TokenPayload(**payload)
     except ExpiredSignatureError:  # 专门捕获令牌过期异常
         raise HTTPException(

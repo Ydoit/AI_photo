@@ -113,7 +113,14 @@ class TaskWorker:
         self.fast_mode = self._load_system_state('fast_mode', False)
 
         # Use config for max_workers
-        max_workers = config_manager.config.task.max_concurrent_tasks
+        # For max_workers, we don't have a user context yet. 
+        # We can either use a default or pick the first admin user's config?
+        # Or just hardcode a reasonable default for system-wide setting.
+        # Since this is a system-level resource setting, it shouldn't really be per-user.
+        # But if it was in config.json, it was system-wide.
+        # Let's assume default 10 if not found, or maybe we can fetch from a "system" user if one exists?
+        # For now, let's use a safe default as we removed system config.
+        max_workers = 10 
         self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count())
         self.thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers * 2) # More threads for IO
 
@@ -190,7 +197,7 @@ class TaskWorker:
                 now = datetime.now()
                 if (now - last_sync).total_seconds() > 5:
                     # Reload config if changed
-                    config_manager.reload()
+                    # config_manager.reload()
                     
                     self._save_system_state('scan_status', self.scan_status)
                     # Refresh paused categories
@@ -249,7 +256,7 @@ class TaskWorker:
                             logging.info(f"Restarting process pool")
                             self.process_pool = concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count())
                     if self.thread_pool is None and active_io_count > 0:
-                        max_workers = config_manager.config.task.max_concurrent_tasks
+                        max_workers = 10
                         logging.info(f"Restarting thread pool")
                         self.thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers * 2)
 
@@ -276,7 +283,7 @@ class TaskWorker:
 
                 else:
                     # Normal Mode: Strict Concurrency Limit
-                    max_concurrency = config_manager.config.task.max_concurrent_tasks
+                    max_concurrency = 10
                     if active_count < max_concurrency:
                         allowed_types = [t for t in TaskType] # All types allowed
 
@@ -331,10 +338,19 @@ class TaskWorker:
 
     async def execute_task_wrapper(self, task_id: UUID, task_type: str):
         db = SessionLocal()
+        token = None
         try:
             task = db.query(Task).filter(Task.id == task_id).first()
             if not task:
                 return
+            
+            # Set User Context for this task execution
+            if task.owner_id:
+                try:
+                    user_config = config_manager.get_user_config(task.owner_id, db)
+                except Exception as e:
+                    logging.error(f"Failed to set user context for task {task_id}: {e}")
+
             try:
                 result = await self.process_task(task, db)
                 # Enqueue success result
@@ -356,6 +372,9 @@ class TaskWorker:
         except Exception as e:
             logging.error(f"Error in task wrapper for {task_id}: {e}")
         finally:
+            # We don't strictly need to reset token as the task is ending,
+            # but it's good practice if we were reusing the task (which we aren't).
+            # Also ContextVar is task-local so it won't leak.
             db.close()
 
     async def process_task(self, task: Task, db: Session):

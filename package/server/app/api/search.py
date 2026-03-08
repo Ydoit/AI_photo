@@ -7,11 +7,14 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func, distinct
 import aiohttp
+
+from app.db.models import User
 from app.dependencies import get_db
 from app.crud import crud_vector
 from app.core.config_manager import config_manager
 from app.schemas.photo import Photo as PhotoSchema
 from app.crud import album as crud_album
+from app.api.deps import get_current_user
 
 # DB Models
 from app.db.models.ocr import OCR
@@ -43,7 +46,8 @@ class TextSearchRequest(BaseModel):
 @router.get("/suggestions", response_model=List[SearchSuggestion])
 async def get_search_suggestions(
     q: str = Query(..., min_length=1),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     """
     Get search suggestions based on query string.
@@ -55,7 +59,7 @@ async def get_search_suggestions(
     try:
         # 1. Person Name
         persons = db.query(distinct(FaceIdentity.identity_name))\
-            .filter(FaceIdentity.identity_name.ilike(search_term))\
+            .filter(FaceIdentity.owner_id == user.id, FaceIdentity.identity_name.ilike(search_term))\
             .limit(limit).all()
         for p in persons:
             if p[0]:
@@ -65,6 +69,8 @@ async def get_search_suggestions(
         # Helper to add location suggestions
         def add_loc_suggestions(field, label_prefix):
             res = db.query(distinct(field))\
+                .join(Photo, PhotoMetadata.photo_id == Photo.id)\
+                .filter(Photo.owner_id == user.id)\
                 .filter(field.ilike(search_term))\
                 .limit(limit).all()
             for r in res:
@@ -78,6 +84,8 @@ async def get_search_suggestions(
         
         # 3. OCR Text
         ocr_texts = db.query(distinct(OCR.text))\
+            .join(Photo, OCR.photo_id == Photo.id)\
+            .filter(Photo.owner_id == user.id)\
             .filter(OCR.text.ilike(search_term))\
             .limit(limit).all()
         for t in ocr_texts:
@@ -88,7 +96,7 @@ async def get_search_suggestions(
 
         # 4. Album Name
         albums = db.query(distinct(Album.name))\
-            .filter(Album.name.ilike(search_term))\
+            .filter(Album.owner_id == user.id, Album.name.ilike(search_term))\
             .limit(limit).all()
         for a in albums:
             if a[0]:
@@ -96,7 +104,7 @@ async def get_search_suggestions(
 
         # 5. Filename
         filenames = db.query(distinct(Photo.filename))\
-            .filter(Photo.filename.ilike(search_term))\
+            .filter(Photo.owner_id == user.id, Photo.filename.ilike(search_term))\
             .limit(limit).all()
         for f in filenames:
             if f[0]:
@@ -104,7 +112,7 @@ async def get_search_suggestions(
 
         # 6. Folder (Path)
         paths = db.query(distinct(Photo.file_path))\
-            .filter(Photo.file_path.ilike(search_term))\
+            .filter(Photo.owner_id == user.id, Photo.file_path.ilike(search_term))\
             .limit(50).all()
         
         found_folders = set()
@@ -125,7 +133,7 @@ async def get_search_suggestions(
 
         # 7. Tag
         tags = db.query(distinct(PhotoTag.tag_name))\
-            .filter(PhotoTag.tag_name.ilike(search_term))\
+            .filter(PhotoTag.owner_id == user.id, PhotoTag.tag_name.ilike(search_term))\
             .limit(limit).all()
         for t in tags:
             if t[0]:
@@ -133,7 +141,7 @@ async def get_search_suggestions(
 
         # 8. Scene
         scenes = db.query(distinct(Scene.name))\
-            .filter(Scene.name.ilike(search_term))\
+            .filter(Scene.owner_id == user.id, Scene.name.ilike(search_term))\
             .limit(limit).all()
         for s in scenes:
             if s[0]:
@@ -148,7 +156,8 @@ async def get_search_suggestions(
 @router.post("/text", response_model=List[SearchResult])
 async def search_by_text(
     request: TextSearchRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     """
     Search photos by text query using vector similarity.
@@ -156,7 +165,7 @@ async def search_by_text(
     try:
         if request.type:
             # Metadata Search
-            query = db.query(Photo)
+            query = db.query(Photo).filter(Photo.owner_id == user.id)
             term = f"%{request.text}%"
             
             if request.type == 'person':
@@ -194,7 +203,7 @@ async def search_by_text(
         else:
             # 1. Get Text Embedding from AI Service
             async with aiohttp.ClientSession() as session:
-                api_url = f"{config_manager.config.ai.ai_api_url}/classification/embed/text"
+                api_url = f"{config_manager.get_user_config(user.id, db).ai.ai_api_url}/classification/embed/text"
                 async with session.post(
                     api_url,
                     json={"text": request.text}
@@ -204,7 +213,7 @@ async def search_by_text(
                     embedding = await resp.json()
 
             # 2. Search Vectors
-            results = crud_vector.search_similar_vectors(db, embedding, request.limit, request.skip)
+            results = crud_vector.search_similar_vectors(db, embedding, request.limit, request.skip, user_id=user.id)
 
             # 3. Format Response
             response = []
@@ -227,7 +236,8 @@ async def search_by_image(
     file: UploadFile = File(...),
     limit: int = Form(20),
     threshold: float = Form(0.0),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     """
     Search photos by image query using vector similarity.
@@ -240,7 +250,7 @@ async def search_by_image(
             form_data = aiohttp.FormData()
             form_data.add_field('file', file_content, filename=file.filename)
             
-            api_url = f"{config_manager.config.ai.ai_api_url}/classification/classify"
+            api_url = f"{config_manager.get_user_config(user.id, db).ai.ai_api_url}/classification/classify"
             async with session.post(
                 api_url,
                 data=form_data,
@@ -254,7 +264,7 @@ async def search_by_image(
                     raise HTTPException(status_code=500, detail="No embedding returned from AI service")
 
         # 2. Search Vectors
-        results = crud_vector.search_similar_vectors(db, embedding, limit)
+        results = crud_vector.search_similar_vectors(db, embedding, limit, user_id=user.id)
 
         # 3. Format Response
         response = []

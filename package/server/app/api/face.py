@@ -185,7 +185,7 @@ def list_identities(
     获取人物列表，包含每个人的封面照片和照片总数。
     """
     offset = (page - 1) * limit
-    min_photos = config_manager.config.ai.face_recognition_min_photos
+    min_photos = config_manager.get_user_config(current_user.id, db).ai.face_recognition_min_photos
     return crud_face.get_identities_with_details(
         db,
         skip=offset,

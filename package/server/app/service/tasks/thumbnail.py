@@ -7,10 +7,10 @@ from app.db.models.task import Task, TaskStatus, TaskType
 from app.db.models.photo import Photo
 from app.service import storage
 
-def rebuild_thumbnail_cpu_job(file_path: str, file_id: UUID, storage_root: str):
+def rebuild_thumbnail_cpu_job(user_id: str, file_path: str, file_id: UUID, db: Session = None):
     try:
         storage.update_storage_root_cache(storage_root)
-        thumb_path = storage.generate_thumbnail(file_path, file_id, db=None)
+        thumb_path = storage.generate_thumbnail(user_id, file_path, file_id, db=None)
         return {"success": True, "thumb_path": thumb_path}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -33,12 +33,13 @@ async def handle_generate_thumbnail(task_manager, task: Task, db: Session):
     if not os.path.exists(photo.file_path):
         return {'status': 'failed', 'reason': 'file not found'}
 
-    storage_root = storage._get_storage_root()
+    storage_root = storage._get_storage_root(photo.owner_id, db)
     loop = asyncio.get_running_loop()
     
     res = await loop.run_in_executor(
         task_manager.thread_pool,
         rebuild_thumbnail_cpu_job,
+        photo.owner_id,
         photo.file_path,
         photo.id,
         storage_root
