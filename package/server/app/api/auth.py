@@ -76,10 +76,10 @@ def register_user(
         user_in.is_superuser = True
 
     user = crud_user.create(db, user=user_in)
-    
+    user.settings = config_manager.get_default_config()  # Apply default settings to new user
     if is_first_user:
         migrate_system_config(db, user)
-        
+
     return user
 
 @router.post("/check-reset-user", response_model=PasswordResetCheckResponse)

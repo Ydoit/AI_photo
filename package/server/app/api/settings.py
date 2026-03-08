@@ -102,24 +102,24 @@ def add_directory(
          raise HTTPException(status_code=400, detail='invalid path')
 
     path = PathValidator.validate(raw_path)
-    
+
     # Update target user settings
     if not target_user.settings:
         target_user.settings = {}
-        
+
     settings = dict(target_user.settings)
-    external = settings.get('external_directories', [])
-    
+    external = settings.get('storage',{}).get('external_directories', [])
+
     if path in external:
         return {'primary': get_storage_root(), 'external': external}
-    
+
     external.append(path)
-    settings['external_directories'] = external
+    settings['storage']['external_directories'] = external
     target_user.settings = settings
-    
+
     from sqlalchemy.orm.attributes import flag_modified
     flag_modified(target_user, "settings")
-    
+
     db.add(target_user)
     db.commit()
     db.refresh(target_user)

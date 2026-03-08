@@ -21,7 +21,7 @@ def migrate_system_config(db: Session, admin_user: User):
     # 1. Migrate ALL settings
     # Get current system config as dict
     system_config = config_manager.config.model_dump()
-    
+
     if system_config:
         logger.info(f"Migrating system config to user {admin_user.username}")
 
@@ -32,7 +32,7 @@ def migrate_system_config(db: Session, admin_user: User):
         # Update settings
         # We need to copy to ensure change tracking works if it's a mutable dict
         new_settings = dict(admin_user.settings)
-        
+
         # Merge system config into user settings
         # We prioritize system config here because this is the first migration
         for key, value in system_config.items():
@@ -43,11 +43,10 @@ def migrate_system_config(db: Session, admin_user: User):
                  for k, v in value.items():
                      if k not in new_settings[key]:
                          new_settings[key][k] = v
-        
+
         admin_user.settings = new_settings
 
         db.add(admin_user)
-
         # Optionally clear some sensitive or large lists from system config?
         # But keeping them as defaults is also fine.
         # The requirement says "Read from config.json... put into settings".
@@ -57,7 +56,7 @@ def migrate_system_config(db: Session, admin_user: User):
         if config_manager.config.storage.external_directories:
              config_manager.config.storage.external_directories = []
              config_manager.save()
-             
+
         logger.info("Migrated system config to admin user.")
 
     # 2. Update owner_id for existing records

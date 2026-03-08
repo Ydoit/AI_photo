@@ -36,10 +36,10 @@ def scan_directory_recursive(path: str, exts: Set[str], filter_settings: Optiona
                                         break
                                 except re.error:
                                     pass # Ignore invalid regex
-                            
+
                             if should_skip:
                                 continue
-                            
+
                             # File size
                             min_size = filter_settings.get('min_size_kb', 0) * 1024
                             if min_size > 0 and entry.stat().st_size < min_size:
@@ -56,7 +56,7 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
     task_manager.scan_status['message'] = "Scanning folders..."
     scan_roots = task.payload.get('scan_roots')
     user_id = task.payload.get('user_id')
-    
+
     user = None
     if user_id:
         user = db.query(User).filter(User.id == user_id).first()
@@ -64,13 +64,13 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
     if not scan_roots:
         if user:
              scan_roots = user.settings.get('external_directories', []) if user.settings else []
-        
+
         if not scan_roots and not user_id:
             root = storage._get_storage_root()
             primary_uploads = os.path.join(root, 'uploads')
             external_dirs = config_manager.config.storage.external_directories
             scan_roots = [primary_uploads] + external_dirs
-            
+
     if scan_roots is None:
         scan_roots = []
 
@@ -78,18 +78,10 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
     loop = asyncio.get_running_loop()
     logging.info(f"Scanning roots: {scan_roots}")
 
-    # Get filter settings
-    user_settings = {}
     token = None
-    if user and user.settings:
-        user_settings = user.settings
-        # Set config context for the duration of this task
-        merged_config = config_manager.merge_user_settings(user_settings)
-        token = config_manager._user_config_ctx.set(merged_config)
-    
+    user_settings = dict(user.settings)
+    filter_config = user_settings.get('filter', {})
     try:
-        filter_config = config_manager.config.filter.model_dump()
-
         def parallel_scan_wrapper():
             found_files = set()
             work_items = []
@@ -110,14 +102,14 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
                 for future in concurrent.futures.as_completed(futures):
                     found_files.update(future.result())
             return found_files
-    
+
         files_on_disk = await loop.run_in_executor(None, parallel_scan_wrapper)
-    
+
         existing_files = set()
         live_photo_files = set()
         live_photo_to_add = set()
-    
-        query = db.query(Photo.file_path, Photo.file_type)
+
+        query = db.query(Photo.file_path, Photo.file_type).filter(Photo.owner_id==user_id)
         norm_paths = {os.path.normpath(path) for path in scan_roots}
         for p in query.all():
             is_exist = False
@@ -144,7 +136,7 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
         # Determine new and deleted
         new_files = files_on_disk - existing_files
         deleted_files = existing_files - files_on_disk
-    
+
         for lp in live_photo_to_add:
             if lp.endswith('.jpg'):
                 deleted_files.add(lp[:-3] + 'mp4')
@@ -160,11 +152,11 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
                 new_files.add(lp[:-3] + 'HEIC')
             new_files.add(lp)
             deleted_files.add(lp)
-    
+
         logging.info(f"Scan result: {len(new_files)} new, {len(deleted_files)} deleted")
         task_manager.scan_status['message'] = f"Found {len(new_files)} new, {len(deleted_files)} deleted"
         task_manager.scan_status['total_files'] += len(new_files)
-    
+
         # Queue process tasks for new files
         new_tasks = []
         # Group files to identify Live Photos
@@ -176,12 +168,12 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
             if key not in grouped_files:
                 grouped_files[key] = {}
             grouped_files[key][ext.lower()] = fp
-    
+
         processed_paths = set()
         for key, files in grouped_files.items():
             image_path = None
             video_path = None
-    
+
             # Identify candidates for Live Photos
             if '.heic' in files:
                 image_path = files['.heic']
@@ -189,15 +181,15 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
                 image_path = files['.jpg']
             elif '.jpeg' in files:
                 image_path = files['.jpeg']
-    
+
             if '.mov' in files:
                 video_path = files['.mov']
             elif '.mp4' in files:
                 video_path = files['.mp4']
-    
+
             is_live = False
             final_video_path = None
-    
+
             try:
                 # Must have both Image and Video, and they must share the Content Identifier
                 if image_path and video_path:
@@ -205,14 +197,14 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
                          cid1 = live_photo_service.get_content_identifier(img)
                          cid2 = live_photo_service.get_content_identifier(vid)
                          return cid1 and cid2 and cid1 == cid2
-                     
+
                      if await loop.run_in_executor(None, check_live_pair, image_path, video_path):
                          is_live = True
                          final_video_path = video_path
-    
+
             except Exception as e:
                 logging.error(f"Error checking live photo for {image_path}: {e}")
-    
+
             if is_live:
                 new_tasks.append(Task(
                     type=TaskType.PROCESS_BASIC,
@@ -228,7 +220,7 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
                 processed_paths.add(image_path)
                 if final_video_path:
                     processed_paths.add(final_video_path)
-    
+
             # Add remaining files as individual tasks
             for ext, fp in files.items():
                 if fp not in processed_paths:
@@ -239,27 +231,27 @@ async def handle_scan_folder(task_manager, task: Task, db: Session):
                         status=TaskStatus.PENDING
                     ))
                     processed_paths.add(fp)
-                    
+
         if new_tasks:
             chunk_size = 1000
             for i in range(0, len(new_tasks), chunk_size):
                 db.bulk_save_objects(new_tasks[i:i+chunk_size])
                 db.commit()
-    
+
         # Handle deleted
         if deleted_files:
             deleted_list = list(deleted_files)
             chunk_size = 500
             for i in range(0, len(deleted_list), chunk_size):
                 chunk = deleted_list[i:i+chunk_size]
-                photos_to_delete = db.query(Photo).filter(Photo.file_path.in_(chunk)).all()
+                photos_to_delete = db.query(Photo).filter(Photo.owner_id==user_id, Photo.file_path.in_(chunk)).all()
                 for ph in photos_to_delete:
                     storage.delete_thumbnails(ph.id)
                     db.delete(ph)
                     db.add(IndexLog(action='deleted', file_path=ph.file_path, photo_id=ph.id, owner_id=user_id))
                 db.commit()
                 task_manager.scan_status['deleted'] += len(photos_to_delete)
-    
+
         return {'new_files': len(new_files), 'deleted_files': len(deleted_files)}
     finally:
         if token:

@@ -3,6 +3,8 @@ from uuid import UUID
 from datetime import datetime, timedelta
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
+
+from app.core.config_manager import config_manager
 from app.core.security import get_password_hash, verify_password
 from app.db.models.user import User
 from app.schemas.user import UserCreate
@@ -40,7 +42,8 @@ def create(db: Session, user: UserCreate) -> User:
         is_active=user.is_active,
         is_superuser=user.is_superuser,
         security_question=user.security_question,
-        security_answer_hash=security_answer_hash
+        security_answer_hash=security_answer_hash,
+        settings=config_manager.get_default_config()
     )
     db.add(db_user)
     db.commit()

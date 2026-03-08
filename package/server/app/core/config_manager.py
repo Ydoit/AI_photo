@@ -229,6 +229,10 @@ class ConfigManager:
         
         return AppSettings(**merged_data)
 
+    def get_default_config(self) -> Dict[str, Any]:
+        """Return the default config as a dict."""
+        return AppSettings().model_dump()
+
 # Global instance
 config_manager = ConfigManager()
 VERSION = "0.2.4"

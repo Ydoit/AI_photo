@@ -25,7 +25,7 @@ class FaceClusterService:
         self.SIMILARITY_THRESHOLD = config_manager.config.ai.face_recognition_threshold
         self.DISTANCE_THRESHOLD = config_manager.config.ai.face_cluster_threshold
         self.DBSCAN_EPS = self.DISTANCE_THRESHOLD
-        self.DBSCAN_MIN_SAMPLES = 3
+        self.DBSCAN_MIN_SAMPLES = 5
         self.CLUSTER_MERGE_THRESHOLD = self.DISTANCE_THRESHOLD + 0.08
         self.MIN_CLUSTER_SIZE_FOR_IDENTITY = config_manager.config.ai.face_recognition_min_photos
 
