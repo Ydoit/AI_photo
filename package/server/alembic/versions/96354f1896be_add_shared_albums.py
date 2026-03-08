@@ -55,6 +55,7 @@ def upgrade() -> None:
 
         results = bind.execute(query).fetchall()
         config_path = './data/config.json'
+        import os
         if os.path.exists(config_path):
             import json
             with open(config_path, 'r') as f:
