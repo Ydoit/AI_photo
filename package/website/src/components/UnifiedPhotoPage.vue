@@ -212,6 +212,7 @@ import {
   ArrowLeft, Grid3x3, Grid2x2, Maximize, LayoutDashboard, LayoutGrid,
   UploadCloud, CheckSquare, Settings2
 } from 'lucide-vue-next'
+import { ElMessageBox } from 'element-plus'
 
 import PhotoGallery from '@/components/PhotoGallery.vue'
 import AlbumTimeline from '@/components/AlbumTimeline.vue'
@@ -357,11 +358,21 @@ const handleBatchDelete = (ids: string[]) => {
 
 // Reuse for remove-from-album which is essentially a delete from this view
 const handleBatchRemoveFromAlbum = (ids: string[]) => {
-    if (props.confirmRemove) {
-        handleBatchDelete(ids)
-    } else {
-        emit('remove-from-album', ids)
-    }
+    if (ids.length === 0) return
+    // 确认对话框
+    ElMessageBox.confirm(`确定要将选中的 ${ids.length} 张照片移出相册吗？`, '确认', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+    }).then(() => {
+        if (props.confirmRemove) {
+            handleBatchDelete(ids)
+        } else {
+            emit('remove-from-album', ids)
+        }
+    }).catch(() => {
+        // 用户点击取消
+    })
 }
 
 const handlePhotoDelete = (id: string) => {

@@ -16,14 +16,15 @@
     @set-cover="handleSetCover"
   >
     <template #batch-actions="{ selectedIds, clearSelection }">
-      <button
+      <el-dropdown-item
           v-if="selectedIds.size === 1"
           @click="handleSetCover(Array.from(selectedIds)); clearSelection()"
-          class="bg-transparent flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors font-medium"
-          title="设为封面"
       >
-          <ImageIcon class="w-5 h-5" />
-      </button>
+          <div class="flex items-center gap-2">
+            <ImageIcon class="w-4 h-4" />
+            <span>设为封面</span>
+          </div>
+      </el-dropdown-item>
     </template>
   </UnifiedPhotoPage>
 

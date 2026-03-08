@@ -160,7 +160,7 @@ const handleConfirmDelete = async (ids: string[], callback: (success: boolean) =
 const handleBatchRemoveFromAlbum = async (ids: string[]) => {
     if (ids.length === 0) return
     if (album.value?.type !== 'user') {
-        ElMessage.warning('仅用户相册支持批量移出')
+        ElMessage.warning('仅普通相册支持批量移出')
         return
     }
     // Optimistic UI: Mark as pending remove (shrink animation)
