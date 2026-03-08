@@ -240,17 +240,13 @@ def get_identities_with_details(
     query = query.order_by(FaceIdentity.is_hidden.asc(), face_counts_subq.c.count.desc()).offset(skip).limit(limit)
 
     results = []
-    p_size = config_manager.get_user_config(owner_id, db).image.preview_size
 
     for identity, count, default_face, photo in query.all():
         # 无需再过滤min_photos（已在SQL层处理）
         cover = None
         if default_face and photo:
-            scale = p_size / max(photo.width, photo.height) if max(photo.width, photo.height) > 0 else 1
             cover = schemas.CoverPhotoInfo(
                 photo_id=default_face.photo_id,
-                width=int(photo.width * scale),
-                height=int(photo.height * scale),
                 face_rect=default_face.face_rect,
                 face_confidence=default_face.face_confidence,
                 recognize_confidence=default_face.recognize_confidence
@@ -282,27 +278,18 @@ def get_identities_by_photo_id(db: Session, photo_id: UUID, owner_id: Optional[U
         Face.is_deleted == False,
         FaceIdentity.is_deleted == False
     )
-
     if owner_id:
         query = query.filter(Photo.owner_id == owner_id)
 
     results = []
-    p_size = config_manager.get_user_config(owner_id, db).image.preview_size
-
     for face, identity, photo in query.all():
-        # Calculate scale for preview size
-        scale = p_size / max(photo.width, photo.height) if max(photo.width, photo.height) > 0 else 1
-        
         # Use current face data for cover_photo info instead of identity's default cover
         cover_photo_info = schemas.CoverPhotoInfo(
             photo_id=photo.id,
-            width=int(photo.width * scale),
-            height=int(photo.height * scale),
             face_rect=face.face_rect,
             face_confidence=face.face_confidence,
             recognize_confidence=face.recognize_confidence
         )
-        
         # Get face count for this identity
         face_count = db.query(func.count(Face.id)).filter(
             Face.face_identity_id == identity.id,
@@ -317,12 +304,11 @@ def get_identities_by_photo_id(db: Session, photo_id: UUID, owner_id: Optional[U
             tags=identity.tags,
             face_count=face_count or 0,
             cover_photo=cover_photo_info,
-            cover=None, 
+            cover=None,
             is_hidden=identity.is_hidden,
             create_time=identity.create_time,
             update_time=identity.update_time
         ))
-    
     return results
 
 def get_identity_photos(db: Session, identity_id: UUID, skip: int = 0, limit: int = 50, owner_id: Optional[UUID] = None) -> List[Photo]:

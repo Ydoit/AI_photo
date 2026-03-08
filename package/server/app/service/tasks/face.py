@@ -89,6 +89,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
         async with aiohttp.ClientSession() as session:
             with open(target_path, 'rb') as f:
                 file_data = f.read()
+            width, height, _ = storage.get_image_dimensions(target_path)
 
             form_data = FormData()
             form_data.add_field(
@@ -112,15 +113,15 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                     for face_data in faces:
                         if face_data.get('det_score') < config_manager.get_user_config(photo.owner_id, db).ai.face_recognition_threshold:
                             continue
-                        
+
                         # Normalize face_rect (bbox) to 0-1 relative coordinates
                         bbox = face_data.get('bbox')
-                        if bbox and len(bbox) == 4 and photo.width and photo.height and photo.width > 0 and photo.height > 0:
+                        if bbox and len(bbox) == 4 and width and height and width > 0 and height > 0:
                             bbox = [
-                                min(max(bbox[0] / photo.width, 0.0), 1.0),
-                                min(max(bbox[1] / photo.height, 0.0), 1.0),
-                                min(max(bbox[2] / photo.width, 0.0), 1.0),
-                                min(max(bbox[3] / photo.height, 0.0), 1.0)
+                                min(max(bbox[0] / width, 0.0), 1.0),
+                                min(max(bbox[1] / height, 0.0), 1.0),
+                                min(max(bbox[2] / width, 0.0), 1.0),
+                                min(max(bbox[3] / height, 0.0), 1.0)
                             ]
 
                         face = Face(

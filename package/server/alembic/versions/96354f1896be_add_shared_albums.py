@@ -54,7 +54,14 @@ def upgrade() -> None:
         )
 
         results = bind.execute(query).fetchall()
-        p_size = 1440
+        config_path = './data/config.json'
+        if os.path.exists(config_path):
+            import json
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                p_size = config.get('image', {}).get('preview_size', 1440)
+        else:
+            p_size = 1440
         for row in results:
             face_id = row.id
             rect = row.face_rect
