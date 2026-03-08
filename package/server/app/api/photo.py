@@ -135,7 +135,7 @@ def batch_update_photos(
         # Get photos to delete files
         photos = crud_album.get_photos_by_ids(db, batch_data.photo_ids, user_id=current_user.id)
         for photo in photos:
-            storage.delete_file(photo.file_path, photo.id, db)
+            storage.delete_file(photo.owner_id, photo.file_path, photo.id)
 
         crud_album.batch_delete_photos_db(db, batch_data.photo_ids, user_id=current_user.id)
         return {"message": "Photos deleted successfully"}

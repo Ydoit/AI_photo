@@ -77,7 +77,7 @@ def _ensure_unique_path(dir_path: str, filename: str) -> str:
         idx += 1
     return candidate
 
-def save_upload_file(upload_file: UploadFile, file_id: UUID, user_id: str) -> str:
+def save_upload_file(upload_file: UploadFile, file_id: UUID, user_id: UUID) -> str:
     ext = os.path.splitext(upload_file.filename)[1]
     now = datetime.now()
     year = f"{now.year:04d}"
@@ -90,7 +90,7 @@ def save_upload_file(upload_file: UploadFile, file_id: UUID, user_id: str) -> st
         shutil.copyfileobj(upload_file.file, buffer)
     return target_path
 
-def generate_video_thumbnail(file_path: str, file_id: UUID, user_id: str):
+def generate_video_thumbnail(file_path: str, file_id: UUID, user_id: UUID):
     if cv2 is None:
         logging.warning("opencv-python not installed, skipping video thumbnail generation")
         return None
@@ -109,7 +109,7 @@ def generate_video_thumbnail(file_path: str, file_id: UUID, user_id: str):
         logging.error(f"Error generating video thumbnail for {file_path}: {e}")
     return None
 
-def _save_thumbnails(img: Image.Image, file_id: UUID, user_id: str) -> str:
+def _save_thumbnails(img: Image.Image, file_id: UUID, user_id: UUID) -> str:
     if img.mode not in ('RGB', 'L'):
         img = img.convert('RGB')
     compact = str(file_id).replace('-', '')

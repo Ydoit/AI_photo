@@ -13,9 +13,9 @@ import { useUserStore } from '@/stores/user';
 const service: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '',
   timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json'
-  },
+  // headers: {
+  //   'Content-Type': 'application/json'
+  // },
   paramsSerializer: (params) => {
     const p = new URLSearchParams();
     for (const key in params) {

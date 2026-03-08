@@ -219,7 +219,7 @@ async def upload_photo_generic(
     photo_id = uuid.uuid4()
 
     # Save file
-    file_path = storage.save_upload_file(file, photo_id)
+    file_path = storage.save_upload_file(file, photo_id, current_user.id)
 
     # Create and Save
     photo = save_and_create_photo(db, file_path, file.filename, album_id, photo_id, user_id=current_user.id)
@@ -241,9 +241,9 @@ def init_upload():
 
 @router.post("/upload/chunk")
 def upload_chunk(
-        upload_id: UUID = Form(...),
-        chunk_index: int = Form(...),
-        file: UploadFile = File(...)
+    upload_id: UUID = Form(...),
+    chunk_index: int = Form(...),
+    file: UploadFile = File(...)
 ):
     chunk_dir = os.path.join("uploads", "chunks", str(upload_id))
     if not os.path.exists(chunk_dir):
@@ -280,7 +280,7 @@ def finish_upload_generic(
 
     photo_id = uuid.uuid4()
     ext = os.path.splitext(file_name)[1]
-
+    print(ext,photo_id)
     # Save to storage_root/year/month with conflict resolution
     class _Tmp:
         filename = file_name
@@ -293,7 +293,7 @@ def finish_upload_generic(
                 outfile.write(infile.read())
     with open(os.path.join("uploads", "chunks", str(upload_id), "merged"), "rb") as merged:
         _Tmp.file = merged
-        final_path = storage.save_upload_file(_Tmp, photo_id)
+        final_path = storage.save_upload_file(_Tmp, photo_id, current_user.id)
 
     # Clean up chunks
     shutil.rmtree(chunk_dir)

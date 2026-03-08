@@ -177,6 +177,8 @@ class ConfigManager:
         """Return the default config as a dict."""
         return AppSettings().model_dump()
 
+os.makedirs('./data', exist_ok=True)
+os.makedirs('./data/uploads', exist_ok=True)
 # Global instance
 config_manager = ConfigManager()
 VERSION = "0.2.4"
