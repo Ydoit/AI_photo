@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 from uuid import UUID
 import os
 
@@ -12,6 +12,7 @@ from app.db.models.photo_metadata import PhotoMetadata
 from app.db.models.face import Face
 from app.db.models.tag import PhotoTag
 from app.db.models.image_vector import ImageVector
+from app.db.models.user import User
 from app.schemas import album as album_schemas
 from app.schemas import photo as photo_schemas
 from app.schemas.metadata import PhotoMetadataUpdate,PhotoMetadataCreate
@@ -110,7 +111,7 @@ def _update_album_photo_count(db: Session, album_id: UUID):
 def get_album(db: Session, album_id: UUID, user_id: UUID = None):
     query = db.query(Album).options(joinedload(Album.cover)).filter(Album.id == album_id)
     if user_id is not None:
-        query = query.filter(Album.owner_id == user_id)
+        query = query.filter(or_(Album.owner_id == user_id, Album.shared_users.any(id=user_id)))
     return query.first()
 
 def get_albums_by_photo_id(db: Session, photo_id: UUID):
@@ -119,7 +120,7 @@ def get_albums_by_photo_id(db: Session, photo_id: UUID):
 def get_albums(db: Session, skip: int = 0, limit: int = 100, user_id: UUID = None):
     query = db.query(Album).options(joinedload(Album.cover))
     if user_id is not None:
-        query = query.filter(Album.owner_id == user_id)
+        query = query.filter(or_(Album.owner_id == user_id, Album.shared_users.any(id=user_id)))
     return query.offset(skip).limit(limit).all()
 
 def create_album(db: Session, album: album_schemas.AlbumCreate, query_embedding: Optional[List[float]] = None, user_id: UUID = None):
@@ -132,6 +133,11 @@ def create_album(db: Session, album: album_schemas.AlbumCreate, query_embedding:
         threshold=album.threshold,
         owner_id=user_id
     )
+    
+    if album.shared_users:
+        users = db.query(User).filter(User.id.in_(album.shared_users)).all()
+        db_album.shared_users = users
+
     db.add(db_album)
     db.commit()
     db.refresh(db_album)
@@ -145,10 +151,11 @@ def delete_album(db: Session, album_id: UUID):
         db.commit()
     return db_album
 
-def update_album(db: Session, album_id: UUID, album: album_schemas.AlbumCreate, query_embedding: Optional[List[float]] = None):
+def update_album(db: Session, album_id: UUID, album: Union[album_schemas.AlbumUpdate, album_schemas.AlbumCreate], query_embedding: Optional[List[float]] = None):
     db_album = get_album(db, album_id)
     if db_album:
-        db_album.name = album.name
+        if album.name:
+            db_album.name = album.name
         if album.description is not None:
             db_album.description = album.description
         if album.condition is not None:
@@ -157,6 +164,15 @@ def update_album(db: Session, album_id: UUID, album: album_schemas.AlbumCreate, 
             db_album.threshold = album.threshold
         if query_embedding is not None:
             db_album.query_embedding = query_embedding
+
+        # Handle shared_users
+        shared_users_ids = getattr(album, 'shared_users', None)
+        if shared_users_ids is not None:
+            if not shared_users_ids:
+                db_album.shared_users = []
+            else:
+                users = db.query(User).filter(User.id.in_(shared_users_ids)).all()
+                db_album.shared_users = users
 
         db.commit()
         db.refresh(db_album)

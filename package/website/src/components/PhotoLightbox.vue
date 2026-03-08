@@ -517,15 +517,15 @@ const handleHighlightFace = (payload: { face: CoverPhotoInfo | null, name: strin
 
 const faceBoxStyle = computed(() => {
     const face = highlightedFace.value
-    if (!face || !face.face_rect || !face.width || !face.height) return null
+    if (!face || !face.face_rect) return null
 
     // face_rect is [x1, y1, x2, y2]
     const [x1, y1, x2, y2] = face.face_rect
 
-    const left = (x1 / face.width) * 100
-    const top = (y1 / face.height) * 100
-    const width = (x2 - x1) / face.width * 100
-    const height = (y2 - y1) / face.height * 100
+    const left = x1 * 100
+    const top = y1 * 100
+    const width = (x2 - x1) * 100
+    const height = (y2 - y1) * 100
     return {
         left: `${left}%`,
         top: `${top}%`,

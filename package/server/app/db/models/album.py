@@ -43,6 +43,9 @@ class Album(Base):
     # M:N relationship with Photo
     photos = relationship("Photo", secondary="album_photos", back_populates="albums")
 
+    # Shared users
+    shared_users = relationship("User", secondary="album_shared_users", backref="shared_albums")
+
 
 class AlbumPhoto(Base):
     __tablename__ = 'album_photos'
@@ -55,3 +58,11 @@ class AlbumPhoto(Base):
     __table_args__ = (
         UniqueConstraint('album_id', 'photo_id', name='uq_album_photo'),
     )
+
+
+class AlbumSharedUser(Base):
+    __tablename__ = 'album_shared_users'
+
+    album_id = Column(UUID(as_uuid=True), ForeignKey('albums.id', ondelete='CASCADE'), primary_key=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete='CASCADE'), primary_key=True)
+    created_at = Column(DateTime, default=datetime.now)

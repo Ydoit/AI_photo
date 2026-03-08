@@ -217,13 +217,10 @@ async def upload_photo_generic(
 
     # Generate ID
     photo_id = uuid.uuid4()
-
     # Save file
     file_path = storage.save_upload_file(file, photo_id, current_user.id)
-
     # Create and Save
     photo = save_and_create_photo(db, file_path, file.filename, album_id, photo_id, user_id=current_user.id)
-
     # Add tasks
     add_tasks(db, current_user.id, photo_id, file_path)
 
@@ -280,7 +277,6 @@ def finish_upload_generic(
 
     photo_id = uuid.uuid4()
     ext = os.path.splitext(file_name)[1]
-    print(ext,photo_id)
     # Save to storage_root/year/month with conflict resolution
     class _Tmp:
         filename = file_name

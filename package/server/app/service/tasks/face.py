@@ -112,10 +112,21 @@ async def process_single_photo(task_manager, photo: Photo, db: Session) -> Dict[
                     for face_data in faces:
                         if face_data.get('det_score') < config_manager.get_user_config(photo.owner_id, db).ai.face_recognition_threshold:
                             continue
+                        
+                        # Normalize face_rect (bbox) to 0-1 relative coordinates
+                        bbox = face_data.get('bbox')
+                        if bbox and len(bbox) == 4 and photo.width and photo.height and photo.width > 0 and photo.height > 0:
+                            bbox = [
+                                min(max(bbox[0] / photo.width, 0.0), 1.0),
+                                min(max(bbox[1] / photo.height, 0.0), 1.0),
+                                min(max(bbox[2] / photo.width, 0.0), 1.0),
+                                min(max(bbox[3] / photo.height, 0.0), 1.0)
+                            ]
+
                         face = Face(
                             photo_id=photo.id,
                             face_feature=face_data.get('embedding'),
-                            face_rect=face_data.get('bbox'),
+                            face_rect=bbox,
                             face_confidence=face_data.get('det_score'),
                             recognize_confidence=0.0 # Placeholder
                         )

@@ -79,6 +79,9 @@ def delete_album(album_id: UUID, db: Session = Depends(get_db), current_user: Us
     db_album = crud.get_album(db, album_id, user_id=current_user.id)
     if not db_album:
         raise HTTPException(status_code=404, detail="Album not found")
+    
+    if db_album.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this album")
         
     db_album = crud.delete_album(db, album_id=album_id)
     if db_album is None:
@@ -86,10 +89,13 @@ def delete_album(album_id: UUID, db: Session = Depends(get_db), current_user: Us
     return db_album
 
 @router.put("/{album_id}", response_model=schemas.Album)
-async def update_album(album_id: UUID, album: schemas.AlbumCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+async def update_album(album_id: UUID, album: schemas.AlbumUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     current_album = crud.get_album(db, album_id, user_id=current_user.id)
     if not current_album:
         raise HTTPException(status_code=404, detail="Album not found")
+
+    if current_album.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this album")
 
     query_embedding = None
     if current_album.type == 'smart':
@@ -125,6 +131,10 @@ def set_album_cover(album_id: UUID, payload: dict, db: Session = Depends(get_db)
     db_album = crud.get_album(db, album_id=album_id, user_id=current_user.id)
     if not db_album:
         raise HTTPException(status_code=404, detail="Album not found")
+    
+    if db_album.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this album")
+
     photo = crud.get_photo(db, UUID(str(photo_id)))
     if not photo:
         raise HTTPException(status_code=404, detail="Photo not found")
@@ -145,6 +155,13 @@ async def upload_photo(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user)
 ):
+    # Check album permission
+    album = crud.get_album(db, album_id, user_id=current_user.id)
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found")
+    if album.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to upload to this album")
+
     # Forward to generic handler
     # Note: upload_photo_generic needs to be imported if not available. 
     # It seems it was expected to be available or I need to import it.
@@ -165,6 +182,9 @@ def delete_photo(album_id: UUID, photo_id: UUID, db: Session = Depends(get_db), 
     db_album = crud.get_album(db, album_id, user_id=current_user.id)
     if not db_album:
         raise HTTPException(status_code=404, detail="Album not found")
+    
+    if db_album.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to remove photos from this album")
 
     # Remove association
     count = crud.batch_update_album_association(db, [photo_id], album_id, 'remove_from_album')
