@@ -190,7 +190,7 @@ def delete_thumbnails(user_id: UUID, file_id: UUID):
             os.remove(s)
     except Exception as e:
         logging.error(f"Error deleting thumbnails for {user_id}/{file_id}: {e}")
-        
+
 def delete_file(user_id: UUID, file_path: str, file_id: UUID):
     try:
         if os.path.exists(file_path):

@@ -54,6 +54,7 @@ export default withMermaid(defineConfig({
                     { text: '地图设置', link: '/docs/guide/settings/mapsetting' }
                   ]
                 },
+                { text: '常见问题', link: '/docs/guide/questions' },
                 { text: '问题反馈', link: '/docs/guide/feedback' },
                 { text: '更新日志', link: '/docs/guide/changelog' },
               ]
@@ -152,6 +153,7 @@ export default withMermaid(defineConfig({
                     { text: 'Map Settings', link: '/en/docs/guide/settings/mapsetting' }
                   ]
                 },
+                { text: 'Questions', link: '/en/docs/guide/questions' },
                 { text: 'Feedback', link: '/en/docs/guide/feedback' },
                 { text: 'Changelog', link: '/en/docs/guide/changelog' },
               ]

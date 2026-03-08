@@ -49,8 +49,6 @@
               {{ isAllSelected ? '取消全选' : '全选' }}
             </button>
             
-            <!-- Custom Batch Actions Slot -->
-            <slot name="batch-actions" :selected-ids="localSelectedIds" :clear-selection="exitSelectionMode"></slot>
             <button
                 @click="$emit('add-to-album', Array.from(localSelectedIds))"
                 :disabled="localSelectedIds.size === 0"
@@ -60,24 +58,6 @@
                 <ImagePlusIcon class="w-5 h-5" />
             </button>
 
-            <button
-                v-if="store.currentContext.type === 'album'"
-                @click="$emit('remove-from-album', Array.from(localSelectedIds))"
-                :disabled="localSelectedIds.size === 0"
-                class="bg-transparent flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                title="移出相册"
-                >
-                <ImageMinusIcon class="w-5 h-5" />
-            </button>
-
-            <button
-                v-if="store.currentContext.type === 'album' && localSelectedIds.size===1"
-                @click="$emit('set-album-cover', Array.from(localSelectedIds))"
-                class="bg-transparent flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                title="设为封面"
-                >
-                <ImageIcon class="w-5 h-5" />
-            </button>
             <!-- Download Action -->
             <button
               @click="handleDownload"
@@ -100,8 +80,7 @@
               class="bg-transparent p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               :title="deleteLabel"
             >
-              <Trash2 v-if="deleteLabel.includes('删除')" class="w-5 h-5" />
-              <FolderMinus v-else class="w-5 h-5" />
+              <Trash2 class="w-5 h-5" />
             </button>
 
             <!-- More Actions -->
@@ -117,6 +96,30 @@
                       <span>添加到人物</span>
                     </div>
                   </el-dropdown-item>
+
+                  <el-dropdown-item 
+                    v-if="store.currentContext.type === 'album'"
+                    :disabled="localSelectedIds.size === 0"
+                    @click="$emit('remove-from-album', Array.from(localSelectedIds))"
+                  >
+                     <div class="flex items-center gap-2">
+                        <ImageMinusIcon class="w-4 h-4" />
+                        <span>移出相册</span>
+                     </div>
+                  </el-dropdown-item>
+
+                  <el-dropdown-item 
+                    v-if="store.currentContext.type === 'album' && localSelectedIds.size===1"
+                    @click="$emit('set-album-cover', Array.from(localSelectedIds))"
+                  >
+                     <div class="flex items-center gap-2">
+                        <ImageIcon class="w-4 h-4" />
+                        <span>设为封面</span>
+                     </div>
+                  </el-dropdown-item>
+
+                  <div class="border-t border-gray-100 dark:border-gray-800 my-1 mx-2" v-if="$slots['batch-actions']"></div>
+                  <slot name="batch-actions" :selected-ids="localSelectedIds" :clear-selection="exitSelectionMode"></slot>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>

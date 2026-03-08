@@ -11,6 +11,8 @@ from app.core.security import get_password_hash, verify_password
 from app.db.models import Photo, Album, PhotoTag
 from app.db.models.user import User
 from app.schemas.user import UserCreate
+from app.service import storage
+
 
 def get(db: Session, id: Union[int, str, UUID]) -> Optional[User]:
     try:
@@ -59,7 +61,10 @@ def delete(db: Session, user_id: UUID) -> bool:
         return False
 
     # Delete associated data (Albums, Photos) - Only DB records
-    db.query(Photo).filter(Photo.owner_id == user_id).delete()
+    photos = db.query(Photo).filter(Photo.owner_id == user_id)
+    for photo in photos:
+        storage.delete_thumbnails(user_id, photo.id)
+    photos.delete(synchronize_session=False)
     db.query(Album).filter(Album.owner_id == user_id).delete()
 
     db.delete(user)

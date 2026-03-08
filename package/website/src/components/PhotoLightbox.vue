@@ -21,16 +21,16 @@
             </button>
 
             <!-- Actions -->
-            <button @click.stop="downloadImage" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0">
+            <button @click.stop="downloadImage" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0" title="下载图片">
                 <Download class="w-6 h-6" />
             </button>
-             <button @click.stop="handleDelete" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors text-red-400 hover:text-red-300 bg-transparent p-0">
+             <button @click.stop="handleDelete" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors text-red-400 hover:text-red-300 bg-transparent p-0" title="删除图片">
                 <Trash2 class="w-6 h-6" />
             </button>
             <button @click.stop="toggleOriginal" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0" :class="{ 'text-primary-400': showOriginal }" title="查看原图">
-                <ImageIcon class="w-6 h-6" />
+                <Focus class="w-6 h-6" />
             </button>
-            <button @click.stop="toggleSidebar" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0" :class="{ 'bg-white/20 text-white': showSidebar }">
+            <button @click.stop="toggleSidebar" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0" :class="{ 'bg-white/20 text-white': showSidebar }", title="查看元数据">
                 <Info class="w-6 h-6" />
             </button>
 
@@ -49,7 +49,7 @@
                             </el-dropdown-item>
                             <el-dropdown-item command="addToAlbum">
                                 <div class="flex items-center gap-2">
-                                    <FolderPlus class="w-4 h-4" />
+                                    <ImagePlus class="w-4 h-4" />
                                     <span>添加到相册</span>
                                 </div>
                             </el-dropdown-item>
@@ -215,11 +215,14 @@
 import { ref, watch, computed, onUnmounted, nextTick } from 'vue'
 import {
     X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, FolderPlus, Info,
+    ImagePlus,
     ScanText,
     MoreHorizontal,
     Image as ImageIcon,
     Trash2,
-    Aperture
+    Aperture,
+    Maximize2,
+    Focus,
 } from 'lucide-vue-next'
 import videojs from 'video.js'
 import 'video.js/dist/video-js.css'

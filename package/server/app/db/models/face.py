@@ -54,6 +54,4 @@ class Face(Base):
         Index("idx_face_identity_id", "face_identity_id"),
         # 向量索引
         Index("idx_face_feature", "face_feature", postgresql_using="hnsw", postgresql_ops={"face_feature": "vector_cosine_ops"}),
-        # 可选：添加常用联合索引（如按用户+身份查询，需结合user_id字段，若有）
-        # Index("idx_face_user_identity", "user_id", "face_identity_id"),
     )
