@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, extract
 
+import app.crud.photo
 from app.db.models import User
 from app.dependencies import get_db
 from app.db.models.photo import Photo
@@ -31,7 +32,7 @@ def get_timeline_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return crud_album.get_timeline_stats(
+    return app.crud.photo.get_timeline_stats(
         db,
         album_id=album_id,
         years=years,
@@ -55,4 +56,4 @@ def get_filter_options(db: Session = Depends(get_db), current_user: User = Depen
     """
     Get all available filter options.
     """
-    return crud_album.get_filter_options(db, user_id=current_user.id)
+    return app.crud.photo.get_filter_options(db, user_id=current_user.id)

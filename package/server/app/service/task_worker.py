@@ -9,6 +9,7 @@ from uuid import UUID
 from datetime import datetime
 from sqlalchemy.orm import Session
 
+import app.crud.photo
 from app.db.session import SessionLocal
 from app.db.models.task import Task, TaskType, TaskStatus
 from app.db.models.index_log import IndexLog
@@ -509,7 +510,7 @@ class TaskWorker:
             # Batch insert photos
             if photos_to_create:
                 for uid, photos in photos_to_create.items():
-                    album_crud.batch_create_photos(db, photos, user_id=uid)
+                    app.crud.photo.batch_create_photos(db, photos, user_id=uid)
                 db.add_all(index_logs)
 
                 # Now chain subsequent tasks for newly created photos

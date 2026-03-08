@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, func, distinct
 import aiohttp
 
+import app.crud.photo
 from app.db.models import User
 from app.dependencies import get_db
 from app.crud import crud_vector
@@ -222,7 +223,7 @@ async def search_by_text(
                 if score < request.threshold:
                     continue
 
-                photo = crud_album.get_photo(db, vector.photo_id)
+                photo = app.crud.photo.get_photo(db, vector.photo_id)
                 if photo:
                     response.append(SearchResult(photo=photo, score=score))
             return response
@@ -273,7 +274,7 @@ async def search_by_image(
             if score < threshold:
                 continue
             
-            photo = crud_album.get_photo(db, vector.photo_id)
+            photo = app.crud.photo.get_photo(db, vector.photo_id)
             if photo:
                 response.append(SearchResult(photo=photo, score=score))
         return response

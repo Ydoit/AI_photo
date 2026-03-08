@@ -1,11 +1,14 @@
 from typing import Optional, Union, Any
 from uuid import UUID
 from datetime import datetime, timedelta
+
+from fastapi import HTTPException
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.config_manager import config_manager
 from app.core.security import get_password_hash, verify_password
+from app.db.models import Photo, Album, PhotoTag
 from app.db.models.user import User
 from app.schemas.user import UserCreate
 
@@ -49,6 +52,21 @@ def create(db: Session, user: UserCreate) -> User:
     db.commit()
     db.refresh(db_user)
     return db_user
+
+def delete(db: Session, user_id: UUID) -> bool:
+    user = get(db, user_id)
+    if not user:
+        return False
+
+    # Delete associated data (Albums, Photos) - Only DB records
+    db.query(Photo).filter(Photo.owner_id == user_id).delete()
+    db.query(Album).filter(Album.owner_id == user_id).delete()
+
+    db.delete(user)
+    db.commit()
+    db.delete(user)
+    db.commit()
+    return True
 
 def authenticate(db: Session, email: str, password: str) -> Optional[User]:
     # Try by email first, then username if not found (though param says email)

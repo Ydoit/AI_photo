@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header, Request, status, 
 from fastapi.responses import FileResponse, StreamingResponse, Response
 from sqlalchemy.orm import Session
 
-from app.crud.album import save_and_create_photo
+from app.crud.photo import save_and_create_photo
 from app.db.models.task import TaskType
 from app.dependencies import get_db
 from app.db.models.photo import Photo

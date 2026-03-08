@@ -23,25 +23,8 @@ except ImportError:
 _STORAGE_ROOT_CACHE = {}
 
 def _get_storage_root(user_id: UUID, db: Session = None) -> str:
-    global _STORAGE_ROOT_CACHE
-
-    # Check cache
-    if user_id in _STORAGE_ROOT_CACHE:
-        return _STORAGE_ROOT_CACHE[user_id]
-
-    # Get from config
-    should_close = False
-    if db is None:
-        from app.db.session import SessionLocal
-        db = SessionLocal()
-        should_close = True
-
     try:
-        config = config_manager.get_user_config(user_id, db)
-        root = config.storage.photo_storage_path
-        if not root:
-            root = 'uploads'
-
+        root = './data/uploads'  # Default path
         # Ensure directories exist
         try:
             os.makedirs(root, exist_ok=True)
@@ -49,13 +32,10 @@ def _get_storage_root(user_id: UUID, db: Session = None) -> str:
             os.makedirs(os.path.join(root, 'thumbnails'), exist_ok=True)
         except Exception as e:
             logging.error(f"Failed to create directories for {root}: {e}")
-
-        # Update cache
-        _STORAGE_ROOT_CACHE[user_id] = root
         return root
     finally:
-        if should_close:
-            db.close()
+        pass
+
 
 def update_storage_root_cache(user_id: str, new_root: str):
     """Update the global storage root cache for a user and ensure directories exist."""

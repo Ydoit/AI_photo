@@ -15,37 +15,6 @@
         <el-button @click="handleExport">导出配置</el-button>
       </div>
     </div>
-    <!-- Storage Settings -->
-    <el-collapse v-model="activeNames" class="mb-8 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 overflow-hidden">
-      <el-collapse-item name="storage">
-        <template #title>
-           <h2 class="text-lg font-semibold dark:text-white px-6">存储配置</h2>
-        </template>
-        <div class="px-6 pb-6">
-          <el-form :model="storageForm" label-position="top" class="max-w-3xl">
-        <el-form-item label="图片存储根目录">
-          <div class="flex flex-col sm:flex-row gap-2 w-full">
-            <el-input v-model="storageForm.photo_storage_path" placeholder="例如 C:/TrailSnap/uploads" />
-            <el-button type="primary" @click="validatePath" class="bg-primary-600 text-white w-full sm:w-auto mt-2 sm:mt-0">验证并保存</el-button>
-          </div>
-          <p class="text-sm mt-2 text-gray-500">主目录用于存储上传的照片和所有缩略图。</p>
-          <p class="text-sm mt-1" :class="pathStatusClass">{{ pathStatusText }}</p>
-        </el-form-item>
-        
-        <!-- External Directories (Read-only display for now or simple list) -->
-        <el-form-item label="外部挂载目录">
-           <div class="w-full">
-             <div v-for="(dir, idx) in storageForm.external_directories" :key="idx" class="flex justify-between items-center bg-gray-50 dark:bg-gray-700 p-2 rounded mb-1 text-sm">
-                <span>{{ dir }}</span>
-             </div>
-             <div v-if="storageForm.external_directories.length === 0" class="text-gray-400 text-sm">暂无挂载目录 (请通过管理工具配置)</div>
-           </div>
-        </el-form-item>
-          </el-form>
-        </div>
-      </el-collapse-item>
-    </el-collapse>
-
     <!-- Map Settings -->
     <el-collapse v-model="activeNames" class="mb-8 bg-white rounded-lg shadow-sm border border-gray-100 dark:bg-gray-800 dark:border-gray-700 overflow-hidden">
       <el-collapse-item name="map">

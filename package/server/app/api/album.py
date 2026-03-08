@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status,
 from sqlalchemy.orm import Session
 import aiohttp
 
+import app.crud.photo
 from app.dependencies import get_db
 from app.crud import album as crud
 from app.schemas import album as schemas
@@ -60,7 +61,7 @@ def read_album(album_id: UUID, db: Session = Depends(get_db), current_user: User
 
     # Check if cover is set (relationship or ID)
     if db_album.cover_id is None:
-        photos = crud.get_photos(db, current_user.id, user_id=current_user.id)
+        photos = app.crud.photo.get_photos(db, current_user.id, user_id=current_user.id)
         if photos:
             earliest = min(photos, key=lambda p: p.photo_time or p.upload_time)
             try:
@@ -135,7 +136,7 @@ def set_album_cover(album_id: UUID, payload: dict, db: Session = Depends(get_db)
     if db_album.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this album")
 
-    photo = crud.get_photo(db, UUID(str(photo_id)))
+    photo = app.crud.photo.get_photo(db, UUID(str(photo_id)))
     if not photo:
         raise HTTPException(status_code=404, detail="Photo not found")
     # Verify photo ownership if necessary, or assume if user can see photo they can set it?
@@ -173,7 +174,7 @@ async def upload_photo(
 
 @router.get("/{album_id}/photos", response_model=List[schemas.Photo])
 def read_photos(album_id: UUID, skip: int = 0, limit: int = 100, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return crud.get_photos(db, album_id=album_id, skip=skip, limit=limit, start_time=start_time, end_time=end_time, user_id=current_user.id)
+    return app.crud.photo.get_photos(db, album_id=album_id, skip=skip, limit=limit, start_time=start_time, end_time=end_time, user_id=current_user.id)
 
 
 @router.delete("/{album_id}/photos/{photo_id}", response_model=schemas.Photo)
@@ -191,4 +192,4 @@ def delete_photo(album_id: UUID, photo_id: UUID, db: Session = Depends(get_db), 
     if count == 0:
         raise HTTPException(status_code=404, detail="Photo not in album or not found")
 
-    return crud.get_photo(db, photo_id)  # Return the photo
+    return app.crud.photo.get_photo(db, photo_id)  # Return the photo
