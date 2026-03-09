@@ -36,6 +36,9 @@ IO_TASKS = {
     TaskType.OCR,
     TaskType.CLASSIFY_IMAGE,
     TaskType.RECOGNIZE_TICKET,
+}
+
+AI_TASKS = {
     TaskType.VISUAL_DESCRIPTION,
 }
 
@@ -268,25 +271,33 @@ class TaskWorker:
                     # Fast Mode: Smart Scheduling
                     active_cpu = sum(1 for t in self.active_task_map.values() if t in CPU_TASKS)
                     active_io = sum(1 for t in self.active_task_map.values() if t in IO_TASKS)
-                    
+                    active_ai = sum(1 for t in self.active_task_map.values() if t in AI_TASKS)
+
                     max_cpu = os.cpu_count() or 4
                     max_io = 30 # Allow up to 10 concurrent IO tasks
-                    
+                    max_ai = 2  # Max concurrent AI tasks
+
                     if active_cpu < max_cpu:
                         allowed_types.extend(CPU_TASKS)
                     if active_io < max_io:
                         allowed_types.extend(IO_TASKS)
-                        
-                    # Also include any other types not in CPU/IO sets
-                    other_types = [t for t in TaskType if t not in CPU_TASKS and t not in IO_TASKS]
-                    if active_cpu + active_io < max_cpu + max_io:
-                        allowed_types.extend(other_types)
+                    if active_ai < max_ai:
+                        allowed_types.extend(AI_TASKS)
 
+                    # Also include any other types not in CPU/IO/AI sets
+                    other_types = [t for t in TaskType if t not in CPU_TASKS and t not in IO_TASKS and t not in AI_TASKS]
+                    if active_cpu + active_io + active_ai < max_cpu + max_io + max_ai:
+                        allowed_types.extend(other_types)
                 else:
                     # Normal Mode: Strict Concurrency Limit
                     max_concurrency = 10
+                    active_ai = sum(1 for t in self.active_task_map.values() if t in AI_TASKS)
+                    max_ai = 2
+
                     if active_count < max_concurrency:
-                        allowed_types = [t for t in TaskType] # All types allowed
+                        allowed_types = [t for t in TaskType if t not in AI_TASKS] # All types except AI
+                        if active_ai < max_ai:
+                            allowed_types.extend(AI_TASKS)
 
                 if not allowed_types:
                     await asyncio.sleep(0.1)

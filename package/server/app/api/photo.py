@@ -36,6 +36,10 @@ import uuid
 import os
 import shutil
 
+from app.db.models.image_description import ImageDescription as ImageDescriptionModel
+from app.schemas.image_description import ImageDescription as ImageDescriptionSchema
+from app.db.models.photo import Photo
+
 router = APIRouter()
 
 # Photo Endpoints
@@ -236,3 +240,20 @@ def delete_photo_tag(photo_id: UUID, tag_id: UUID, db: Session = Depends(get_db)
     crud_tag.remove_tag_from_photo(db, photo_id, tag_id)
     return {"message": "Tag deleted successfully"}
 
+@router.get("/{photo_id}/description", response_model=Optional[ImageDescriptionSchema], summary="获取图片描述")
+def get_photo_description(
+    photo_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    desc = db.query(ImageDescriptionModel).filter(
+        ImageDescriptionModel.photo_id == photo_id
+    ).first()
+    
+    # Check ownership via photo
+    if desc:
+        photo = db.query(Photo).filter(Photo.id == photo_id).first()
+        if not photo or photo.owner_id != current_user.id:
+             raise HTTPException(status_code=403, detail="Not authorized")
+    
+    return desc

@@ -71,7 +71,7 @@ CATEGORY_NAME_MAP = {
     'face': '人脸识别',
     'tickets': '车票识别',
     'classification': '场景识别',
-    'ai': '视觉大模型',
+    'ai': '大模型智能分析',
     'ocr': '文字识别',
 }
 

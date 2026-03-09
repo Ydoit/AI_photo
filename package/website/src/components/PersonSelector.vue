@@ -4,6 +4,7 @@
     title="添加到人物相册"
     :width="dialogWidth"
     class="rounded-xl"
+    append-to-body
     @update:model-value="$emit('update:visible', $event)"
   >
     <div class="flex flex-col gap-4">

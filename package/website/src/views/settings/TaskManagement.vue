@@ -46,7 +46,8 @@
                         <el-dropdown-menu>
                             <el-dropdown-item v-if="cat.status === 'paused'" command="resume">继续任务</el-dropdown-item>
                             <el-dropdown-item v-else command="pause">暂停任务</el-dropdown-item>
-                            <el-dropdown-item command="retry" :disabled="cat.failed === 0" divided>重试失败任务</el-dropdown-item>
+                            <el-dropdown-item command="scan_missing" divided>执行缺失任务</el-dropdown-item>
+                            <el-dropdown-item command="retry" :disabled="cat.failed === 0">重试失败任务</el-dropdown-item>
                             <el-dropdown-item command="delete_failed" :disabled="cat.failed === 0">删除失败任务</el-dropdown-item>
                             <el-dropdown-item command="rebuild">强制重做此项</el-dropdown-item>
                         </el-dropdown-menu>
@@ -168,6 +169,8 @@ const handleCategoryCommand = async (category: string, command: string) => {
         await resumeCategory(category)
     } else if (command === 'retry') {
         await retryCategoryFailed(category)
+    } else if (command === 'scan_missing') {
+        confirmScanMissing(category)
     } else if (command === 'rebuild') {
         confirmCategoryRebuild(category)
     } else if (command === 'delete_failed') {
@@ -210,6 +213,35 @@ const deleteCategoryFailed = async (category: string) => {
         fetchTasks()
     } catch (e) {
         ElMessage.error('操作失败')
+    }
+}
+
+const confirmScanMissing = (category: string) => {
+    ElMessageBox.confirm(
+        `此操作将扫描并为 "${formatCategory(category)}" 类别下缺失数据的照片创建任务。是否继续？`,
+        '提示',
+        {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'info',
+        }
+    ).then(() => {
+        triggerScanMissing(category)
+    })
+}
+
+const triggerScanMissing = async (category: string) => {
+    const types = categoryMap[category]
+    if (!types) return
+    try {
+        for (const type of types) {
+            // force: false indicates scanning for missing data only
+            await tasksApi.createTask(type, { scope: 'all', force: false })
+        }
+        ElMessage.success('已触发缺失数据扫描')
+        fetchTasks()
+    } catch (e) {
+        ElMessage.error('操作部分失败，请查看日志')
     }
 }
 
@@ -302,7 +334,7 @@ const formatCategory = (cat: string) => {
         'metadata': '元数据提取',
         'face': '人脸识别',
         'classification': '场景识别',
-        'ai': '视觉大模型',
+        'ai': '大模型智能分析',
         'ocr': '文字识别',
         'tickets': '车票识别'
     }

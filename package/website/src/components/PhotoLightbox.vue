@@ -53,6 +53,18 @@
                                     <span>添加到相册</span>
                                 </div>
                             </el-dropdown-item>
+                            <el-dropdown-item command="addToPerson">
+                                <div class="flex items-center gap-2">
+                                    <UserPlus class="w-4 h-4" />
+                                    <span>添加到人物</span>
+                                </div>
+                            </el-dropdown-item>
+                            <el-dropdown-item command="viewDescription">
+                                <div class="flex items-center gap-2">
+                                    <FileText class="w-4 h-4" />
+                                    <span>查看描述</span>
+                                </div>
+                            </el-dropdown-item>
                         </el-dropdown-menu>
                     </template>
                 </el-dropdown>
@@ -207,6 +219,40 @@
         @click-record="onOCRRecordClick"
       />
 
+      <PersonSelector 
+        v-model:visible="showPersonSelector"
+        :submitting="isAddingPerson"
+        @select="handlePersonSelected"
+      />
+
+      <el-dialog
+        v-model="showDescription"
+        title="图片描述"
+        width="500px"
+        align-center
+        class="rounded-xl"
+        append-to-body
+      >
+        <div v-loading="descriptionLoading">
+            <div v-if="imageDescription">
+                <p v-if="imageDescription.narrative" class="mb-4 text-lg font-medium">{{ imageDescription.narrative }}</p>
+                <p v-if="imageDescription.description" class="mb-2 text-gray-600 dark:text-gray-300">{{ imageDescription.description }}</p>
+                
+                <div class="flex gap-2 mt-4">
+                    <el-tag v-if="imageDescription.memory_score !== null">回忆值: {{ imageDescription.memory_score }}</el-tag>
+                    <el-tag v-if="imageDescription.quality_score !== null" type="success">质量分: {{ imageDescription.quality_score }}</el-tag>
+                </div>
+                 <div class="flex flex-wrap gap-2 mt-2" v-if="imageDescription.tags && imageDescription.tags.length">
+                    <el-tag v-for="tag in imageDescription.tags" :key="tag" type="info" size="small">{{ tag }}</el-tag>
+                </div>
+                <p v-if="imageDescription.reason" class="mt-2 text-sm text-gray-500">评分理由: {{ imageDescription.reason }}</p>
+            </div>
+            <div v-else class="text-center py-8 text-gray-500">
+                暂无描述信息
+            </div>
+        </div>
+      </el-dialog>
+
     </div>
   </Transition>
 </template>
@@ -223,15 +269,19 @@ import {
     Aperture,
     Maximize2,
     Focus,
+    UserPlus,
+    FileText,
 } from 'lucide-vue-next'
 import videojs from 'video.js'
 import 'video.js/dist/video-js.css'
 import { albumService } from '@/api/album'
 import { ocrApi, type OCRRecord } from '@/api/ocr'
+import { faceApi } from '@/api/face'
 import type { PhotoMetadata, AlbumImage, CoverPhotoInfo } from '@/types/album'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import PhotoMetadataSidebar from './PhotoMetadataSidebar.vue'
 import PhotoOCRPanel from './PhotoOCRPanel.vue'
+import PersonSelector from './PersonSelector.vue'
 
 
 interface Props {
@@ -421,6 +471,10 @@ watch(() => props.visible, async (newVal) => {
         document.body.style.overflow = ''
         disposePlayer()
         isPlayingLive.value = false
+        showPersonSelector.value = false
+        showDescription.value = false
+        showSidebar.value = false
+        showOCR.value = false
     }
 })
 
@@ -441,7 +495,54 @@ const handleCommand = (command: string) => {
         toggleOCR()
     } else if (command === 'addToAlbum') {
         emit('add-to-album', props.image)
+    } else if (command === 'addToPerson') {
+        showPersonSelector.value = true
+    } else if (command === 'viewDescription') {
+        if (props.image) {
+            fetchDescription(props.image.id)
+        }
     }
+}
+
+// Description State
+const showDescription = ref(false)
+const descriptionLoading = ref(false)
+const imageDescription = ref<any>(null)
+
+const fetchDescription = async (photoId: string) => {
+    descriptionLoading.value = true
+    showDescription.value = true
+    imageDescription.value = null
+    try {
+        const res = await albumService.getImageDescription(photoId)
+        imageDescription.value = res
+    } catch (e) {
+        console.error(e)
+        // ElMessage.error('获取描述失败') // Fail silently or show empty state
+    } finally {
+        descriptionLoading.value = false
+    }
+}
+
+// Person Selector State
+const showPersonSelector = ref(false)
+const isAddingPerson = ref(false)
+
+const handlePersonSelected = async (person: any) => {
+  if (!props.image) return
+  try {
+    isAddingPerson.value = true
+    await faceApi.addPhotosToIdentity(person.id, [props.image.id])
+    ElMessage.success('添加成功')
+    showPersonSelector.value = false
+    // Refresh metadata if needed
+    fetchMetadata(undefined, props.image.id)
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('添加失败')
+  } finally {
+    isAddingPerson.value = false
+  }
 }
 
 const fetchMetadata = async (albumId: string | undefined, photoId: string) => {

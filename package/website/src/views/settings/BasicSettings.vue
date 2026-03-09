@@ -182,6 +182,12 @@
             <el-form-item label="Model Name">
                 <el-input v-model="aiForm.llm_vl_settings.model_name" placeholder="gpt-4-vision-preview" />
             </el-form-item>
+            <el-form-item label="Evaluation Prompt">
+                <el-input v-model="aiForm.visual_evaluation_prompt" type="textarea" :rows="4" placeholder="用于生成评分和描述的提示词" />
+            </el-form-item>
+            <el-form-item label="Narrative Prompt">
+                <el-input v-model="aiForm.visual_narrative_prompt" type="textarea" :rows="4" placeholder="用于生成文案的提示词" />
+            </el-form-item>
           </el-collapse-item>
 
           <!-- Face Recognition -->
@@ -394,6 +400,8 @@ const aiForm = ref({
   face_recognition_threshold: 0.6,
   face_cluster_threshold: 0.4,
   face_recognition_min_photos: 5,
+  visual_evaluation_prompt: '',
+  visual_narrative_prompt: '',
   llm_vl_settings: {
     base_url: '',
     model_name: '',
@@ -544,9 +552,12 @@ const loadData = async () => {
       }
       if (settings.ai) {
           aiForm.value = { 
+            ...aiForm.value,
             ...settings.ai,
             llm_vl_settings: settings.ai.llm_vl_settings || { base_url: '', model_name: '', api_key: '' },
-            llm_settings: settings.ai.llm_settings || { base_url: '', model_name: '', api_key: '' }
+            llm_settings: settings.ai.llm_settings || { base_url: '', model_name: '', api_key: '' },
+            visual_evaluation_prompt: settings.ai.visual_evaluation_prompt || '',
+            visual_narrative_prompt: settings.ai.visual_narrative_prompt || ''
           }
       }
       if (settings.image) {

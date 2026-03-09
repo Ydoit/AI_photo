@@ -5,7 +5,9 @@ import base64
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from openai import AsyncOpenAI
+from sqlalchemy.testing.suite.test_reflection import metadata
 
+from app.db.models import PhotoMetadata
 from app.db.models.task import Task, TaskType
 from app.db.models.photo import Photo, FileType
 from app.db.models.image_description import ImageDescription
@@ -49,7 +51,11 @@ async def handle_visual_description_task(task_manager, task: Task, db: Session) 
         generated_count = 0
         
         while True:
-            batch = db.query(Photo).offset(offset).limit(batch_size).all()
+            query = db.query(Photo)
+            if task.owner_id:
+                query = query.filter(Photo.owner_id == task.owner_id)
+            
+            batch = query.offset(offset).limit(batch_size).all()
             if not batch:
                 break
 
@@ -104,6 +110,11 @@ async def process_single_photo(task_manager, photo: Photo, db: Session, settings
             if not target_path or not os.path.exists(target_path):
                 return {'status': 'failed', 'error': 'file not found'}
 
+        # Get user config for prompts
+        user_config = config_manager.get_user_config(photo.owner_id, db)
+        eval_prompt = user_config.ai.visual_evaluation_prompt
+        narrative_prompt = user_config.ai.visual_narrative_prompt
+
         # 2. Call OpenAI API
         client = AsyncOpenAI(
             api_key=settings.api_key,
@@ -112,23 +123,19 @@ async def process_single_photo(task_manager, photo: Photo, db: Session, settings
         )
 
         base64_image = encode_image(target_path)
-
-        prompt = """
-        Analyze this image and provide a JSON response with the following fields:
-        - description: A short description of the image content in Chinese.
-        - quality_score: An integer from 0 to 100 indicating the quality of the photo (focus, lighting, composition).
-        - tags: A list of relevant tags (e.g., landscape, person, animal, food, etc.) in Chinese.
-        
-        Return ONLY the JSON string, no markdown formatting.
-        """
-
-        response = await client.chat.completions.create(
+        image_info = f"照片时间：{photo.photo_time}\n"
+        metadata = db.query(PhotoMetadata).filter(PhotoMetadata.photo_id == photo.id).first()
+        if metadata:
+            image_info += f"照片位置：{metadata.address}\n"
+        # Step A: Evaluation
+        eval_response = await client.chat.completions.create(
             model=settings.model_name,
             messages=[
+                {"role": "system", "content": eval_prompt},
                 {
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": prompt},
+                        {"type": "text", "text": "下面是照片的内容，请结合图像本身完成上述任务。\n**不要输出任何多余文字，不要加注释，禁止思考。** /no_think\n照片信息：\n" + image_info},
                         {
                             "type": "image_url",
                             "image_url": {
@@ -138,17 +145,20 @@ async def process_single_photo(task_manager, photo: Photo, db: Session, settings
                     ],
                 }
             ],
-            max_tokens=4096,
         )
 
-        content = response.choices[0].message.content
+        eval_content = eval_response.choices[0].message.content.strip().strip('`').strip().strip('json')
+        print(eval_content)
         # Clean up code blocks if present
-        if content.startswith("```"):
-            content = content.strip("`")
-            if content.startswith("json"):
-                content = content[4:]
-
-        result_json = json.loads(content)
+        if eval_content.startswith("```"):
+            eval_content = eval_content.strip("`")
+            if eval_content.startswith("json"):
+                eval_content = eval_content[4:]
+        try:
+            result_json = json.loads(eval_content.strip())
+        except json.JSONDecodeError:
+            logger.error(f"Failed to parse evaluation JSON for photo {photo.id}: {eval_content}")
+            result_json = {}
 
         # 3. Save to DB
         # Remove existing if any
@@ -160,13 +170,17 @@ async def process_single_photo(task_manager, photo: Photo, db: Session, settings
         desc = ImageDescription(
             photo_id=photo.id,
             description=result_json.get("description"),
-            quality_score=result_json.get("quality_score"),
-            tags=result_json.get("tags")
+            memory_score=result_json.get("memory_score"),
+            # Map beauty_score from prompt to quality_score in DB
+            quality_score=result_json.get("beauty_score") if "beauty_score" in result_json else result_json.get("quality_score"),
+            tags=result_json.get("tags", []),
+            reason=result_json.get("reason"),
+            narrative=result_json.get('narrative', "").strip()
         )
         db.add(desc)
 
         # Update photo processed status
-        tasks_status = photo.processed_tasks or {}
+        tasks_status = dict(photo.processed_tasks or {})
         tasks_status['visual_description'] = True
         photo.processed_tasks = tasks_status
         
@@ -175,7 +189,8 @@ async def process_single_photo(task_manager, photo: Photo, db: Session, settings
         return {
             'status': 'completed',
             'description': desc.description,
-            'quality': desc.quality_score
+            'quality': desc.quality_score,
+            'narrative': desc.narrative
         }
 
     except Exception as e:

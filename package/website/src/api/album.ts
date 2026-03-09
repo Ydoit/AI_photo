@@ -166,5 +166,10 @@ export const albumService = {
 
   async deletePhotoTag(photoId: string, tagId: string) {
     await request.delete(`/api/photos/${photoId}/tags/${tagId}`);
+  },
+
+  async getImageDescription(photoId: string) {
+      const data = await request.get<any>(`/api/photos/${photoId}/description`);
+      return data.data;
   }
 };
