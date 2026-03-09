@@ -60,17 +60,34 @@ export function useVirtualLayout(options: UseVirtualLayoutOptions) {
   }
 
   const recalculateLayout = () => {
-    if (!timelineStats.value?.timeline) {
+    // If no timeline, check if we have photos to show in a flat list
+    if (!timelineStats.value?.timeline && photos.value.length === 0) {
         monthBlocks.value = []
         totalHeight.value = 0
         return
     }
 
-    const timeline = [...timelineStats.value.timeline].sort((a, b) => {
-        if (a.year !== b.year) return b.year - a.year
-        if (a.month !== b.month) return b.month - a.month
-        return b.day - a.day
-    })
+    // Prepare timeline data
+    let timeline = timelineStats.value?.timeline 
+      ? [...timelineStats.value.timeline].sort((a, b) => {
+          if (a.year !== b.year) return b.year - a.year
+          if (a.month !== b.month) return b.month - a.month
+          return b.day - a.day
+        })
+      : []
+
+    // If no timeline data but we have photos, create a dummy timeline item
+    if (timeline.length === 0 && photos.value.length > 0) {
+       // Create a single "All Photos" block
+       // We can iterate photos to find date range or just group them all
+       // For simplicity, let's treat them as one large group
+       timeline = [{
+         year: 0,
+         month: 0,
+         day: 0,
+         count: photos.value.length
+       }]
+    }
 
     const mode = layoutMode.value
     const cols = getColumns()
@@ -134,8 +151,15 @@ export function useVirtualLayout(options: UseVirtualLayoutOptions) {
             
             if (mode === 'waterfall') {
                 // Calculate rows for Justified Layout
-                const dayKey = `${dayItem.year}-${dayItem.month}-${dayItem.day}`
-                const dayPhotos = photosByDay.get(dayKey) || []
+                // For dummy timeline (year=0), we need to map photos correctly
+                // If timeline is dummy, we can't key by date. 
+                // We should rely on global indices or just map all photos.
+                
+                // If it's a dummy day (year=0), just take the slice of photos for this "day"
+                // But wait, the loop below iterates dayItem.count.
+                // We need to fetch the correct photos.
+                // The globalIndex tracks where we are in the photo array.
+                // So we can use globalIndex + i to access photos.value
                 
                 let currentWidth = 0
                 rows = 1
@@ -144,8 +168,9 @@ export function useVirtualLayout(options: UseVirtualLayoutOptions) {
                 for (let i = 0; i < dayItem.count; i++) {
                     // Try to get photo
                     let ar = 1.5
-                    if (i < dayPhotos.length) {
-                        const p = dayPhotos[i]
+                    const pIndex = globalIndex + i
+                    if (pIndex < photos.value.length) {
+                        const p = photos.value[pIndex]
                         if (p.width && p.height) ar = p.width / p.height
                     }
                     
@@ -165,11 +190,16 @@ export function useVirtualLayout(options: UseVirtualLayoutOptions) {
                 rows = Math.ceil(dayItem.count / cols)
                 contentHeight = rows * rowHeight + Math.max(0, rows - 1) * gap
             }
+            
+            // If it's the dummy day, don't show header?
+            // Or just show 0 height header.
+            const isDummy = dayItem.year === 0
+            const effectiveHeaderHeight = isDummy ? 0 : DAY_HEADER_HEIGHT
 
-            const dayHeight = DAY_HEADER_HEIGHT + contentHeight + gap 
+            const dayHeight = effectiveHeaderHeight + contentHeight + gap 
             
             dayBlocks.push({
-                key: `${dayItem.year}-${dayItem.month}-${dayItem.day}`,
+                key: isDummy ? 'all' : `${dayItem.year}-${dayItem.month}-${dayItem.day}`,
                 year: dayItem.year,
                 month: dayItem.month,
                 day: dayItem.day,

@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-screen bg-white dark:bg-gray-950 pb-8">
+  <div class="min-h-screen pb-8">
     <!-- Header -->
-    <div class="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+    <div class="sticky top-0 z-30 backdrop-blur-md border-b border-gray-200 bg-white/60 dark:bg-gray-950/60">
       <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
         <button 
           @click="router.back()" 
@@ -35,22 +35,16 @@
       </div>
 
       <!-- Photo Grid -->
-      <div v-else class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
-        <div 
-          v-for="(photo, index) in photos" 
-          :key="photo.id" 
-          class="group relative aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden cursor-pointer"
-          @click="openLightbox(index)"
-        >
-          <img 
-            :src="photo.thumbnail" 
-            :alt="photo.id"
-            loading="lazy"
-            class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-          />
-          <!-- Hover Overlay -->
-          <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300"></div>
-        </div>
+      <div v-else>
+        <PhotoGallery 
+            :photos="photos" 
+            :loading="loading" 
+            layout-mode="grid"
+            :show-action-bar="true"
+            @click-photo="handleGalleryClick"
+            @batch-delete="handleBatchDelete"
+            @add-to-album="handleAddToAlbum"
+        />
       </div>
 
       <!-- Load More Sentinel / Loading Indicator -->
@@ -81,11 +75,12 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Search } from 'lucide-vue-next'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import searchService from '@/api/search'
 import { albumService } from '@/api/album'
 import { mapPhotoToImage } from '@/stores/photoStore'
 import PhotoLightbox from '@/components/PhotoLightbox.vue'
+import PhotoGallery from '@/components/PhotoGallery.vue'
 import type { AlbumImage } from '@/types/album'
 
 const route = useRoute()
@@ -120,6 +115,44 @@ const loadMoreTrigger = ref<HTMLElement | null>(null)
 // Lightbox State
 const showLightbox = ref(false)
 const lightboxIndex = ref(0)
+
+const handleGalleryClick = (photo: AlbumImage) => {
+  const index = photos.value.findIndex(p => p.id === photo.id)
+  if (index !== -1) {
+    openLightbox(index)
+  }
+}
+
+const handleBatchDelete = async (ids: string[]) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除选中的 ${ids.length} 张照片吗？`, '批量删除', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    await albumService.batchUpdatePhotos({
+        photo_ids: ids,
+        action: 'delete'
+    })
+    
+    photos.value = photos.value.filter(p => !ids.includes(p.id))
+    ElMessage.success('批量删除成功')
+  } catch (e) {
+    if (e !== 'cancel') {
+        console.error(e)
+        ElMessage.error('删除失败')
+    }
+  }
+}
+
+const handleAddToAlbum = (ids: string[]) => {
+    // Implement add to album dialog logic if needed
+    // Currently SearchResult doesn't have the dialog component
+    // We can just log or implement later
+    console.log('Add to album:', ids)
+    ElMessage.info('功能开发中')
+}
 
 const openLightbox = (index: number) => {
   lightboxIndex.value = index

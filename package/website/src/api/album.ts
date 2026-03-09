@@ -172,4 +172,5 @@ export const albumService = {
       const data = await request.get<any>(`/api/photos/${photoId}/description`);
       return data.data;
   }
+  
 };

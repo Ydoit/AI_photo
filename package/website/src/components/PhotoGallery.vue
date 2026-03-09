@@ -303,6 +303,7 @@ import { useAlbumStore } from '@/stores/albumStore'
 import { usePhotoStore } from '@/stores/photoStore'
 import type { TimelineStats, AlbumImage } from '@/types/album'
 import { useVirtualLayout, type MonthBlock, type DayBlock } from '@/composables/useVirtualLayout'
+import { useSelection } from '@/composables/useSelection'
 import { useWindowScroll, useScroll, useDebounceFn } from '@vueuse/core'
 import PersonSelector from './PersonSelector.vue'
 import { faceApi } from '@/api/face'
@@ -340,8 +341,20 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits(['click-photo', 'load-more', 'load-range', 'update:activeDate', 'batch-delete', 'add-to-album', 'remove-from-album', 'set-album-cover', 'retry', 'selection-change'])
 
     // --- Selection State ---
-const isSelectionMode = ref(false)
-const localSelectedIds = reactive(new Set<string>())
+const { 
+  isSelectionMode, 
+  selectedIds: localSelectedIds, 
+  enterSelectionMode, 
+  exitSelectionMode, 
+  toggleSelect: toggleSelectionId,
+  selectAll: selectAllIds,
+  isSelected
+} = useSelection()
+
+// Sync selection with parent if needed
+watch(() => localSelectedIds.size, () => {
+  emit('selection-change', Array.from(localSelectedIds))
+})
 
 const isDownloading = ref(false)
 const downloadProgress = ref(0)
@@ -600,6 +613,19 @@ watch(visibleBlockKeys, () => {
 // --- Photo Grouping ---
 const groupedPhotos = computed(() => {
     const map = new Map<string, AlbumImage[]>()
+    
+    // Check if we are in dummy mode (no timeline stats)
+    // If no timeline stats provided, we assume flat list mode
+    // We check if monthBlocks has 'all' key (which comes from useVirtualLayout handling)
+    // But monthBlocks is derived from useVirtualLayout.
+    // A simpler check is if timelineStats prop is missing/empty
+    if (!props.timelineStats?.timeline) {
+         // Create a single group with key 'all'
+         // We must filter out invalid dates if needed, but for 'all' we take everything
+         map.set('all', props.photos)
+         return map
+    }
+
     // Group by Day Key: YYYY-MM-DD
     props.photos.forEach(p => {
         const d = new Date(p.timestamp)
@@ -611,6 +637,9 @@ const groupedPhotos = computed(() => {
 })
 
 const hasPhotosForMonth = (monthKey: string) => {
+    // If flat mode, we don't load by month
+    if (!props.timelineStats?.timeline) return true
+    
     const block = monthBlocks.value.find(b => b.key === monthKey)
     if (!block || block.count === 0) return true // No need to load
     // Check if we have at least one photo for this month
@@ -645,26 +674,31 @@ const scrollToDate = (date: string) => {
 const formatTime = (ts: number) => format(new Date(ts), 'yyyy-MM-dd HH:mm')
 
 // Selection Helpers
+
+
+/*
 const enterSelectionMode = (photo?: AlbumImage) => {
   // if (photo) localSelectedIds.value.add(photo.id) // Hover doesn't select automatically usually
   // But legacy code did. Let's keep manual selection.
   isSelectionMode.value = true
 }
+*/
 
+/*
 const exitSelectionMode = () => {
   isSelectionMode.value = false
   localSelectedIds.clear()
   emit('selection-change', [])
 }
+*/
 
 const toggleSelection = (photo: AlbumImage) => {
-  if (localSelectedIds.has(photo.id)) {
-    localSelectedIds.delete(photo.id)
+  toggleSelectionId(photo.id)
+  if (localSelectedIds.size > 0) {
+      if (!isSelectionMode.value) enterSelectionMode()
   } else {
-    localSelectedIds.add(photo.id)
-    isSelectionMode.value = true
+      // exitSelectionMode() // Don't auto exit usually
   }
-  emit('selection-change', Array.from(localSelectedIds))
 }
 
 const isDaySelected = (day: DayBlock) => {
@@ -678,15 +712,15 @@ const toggleDaySelection = (day: DayBlock) => {
     if (photos.length === 0) return
 
     const allSelected = isDaySelected(day)
+    const ids = photos.map(p => p.id)
     
     if (allSelected) {
-        photos.forEach(p => localSelectedIds.delete(p.id))
-        if (localSelectedIds.size === 0) isSelectionMode.value = false
+        ids.forEach(id => localSelectedIds.delete(id))
+        if (localSelectedIds.size === 0) exitSelectionMode()
     } else {
-        photos.forEach(p => localSelectedIds.add(p.id))
-        isSelectionMode.value = true
+        ids.forEach(id => localSelectedIds.add(id))
+        enterSelectionMode()
     }
-    emit('selection-change', Array.from(localSelectedIds))
 }
 
 const handlePhotoClick = (photo: AlbumImage) => {
@@ -705,9 +739,9 @@ const toggleSelectAll = () => {
     if (isAllSelected.value) {
         exitSelectionMode()
     } else {
-        props.photos.forEach(p => localSelectedIds.add(p.id))
-        isSelectionMode.value = true
-        emit('selection-change', Array.from(localSelectedIds))
+        const ids = props.photos.map(p => p.id)
+        selectAllIds(ids)
+        enterSelectionMode()
     }
 }
 

@@ -15,6 +15,7 @@ from uuid import UUID
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 import app.crud.photo
 from app.core.config_manager import config_manager
@@ -43,6 +44,30 @@ from app.db.models.photo import Photo
 router = APIRouter()
 
 # Photo Endpoints
+
+@router.get("/cleanup", response_model=List[schemas.Photo])
+def get_photos_for_cleanup(
+    skip: int = 0,
+    limit: int = 50,
+    sort_by: str = "asc",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Join with ImageDescription to access scores
+    query = db.query(Photo).join(ImageDescriptionModel, Photo.id == ImageDescriptionModel.photo_id).filter(Photo.owner_id == current_user.id)
+
+    # Calculate score: memory_score + quality_score
+    # We use coalesce to treat nulls as 0
+    score_expr = func.coalesce(ImageDescriptionModel.memory_score, 0) + func.coalesce(ImageDescriptionModel.quality_score, 0)
+
+    if sort_by == "desc":
+        query = query.order_by(score_expr.desc())
+    else:
+        query = query.order_by(score_expr.asc())
+
+    photos = query.offset(skip).limit(limit).all()
+    return photos
+
 
 @router.get("", response_model=List[schemas.Photo])
 def read_all_photos(

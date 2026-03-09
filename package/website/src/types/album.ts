@@ -37,6 +37,7 @@ export interface PhotoMetadata {
   };
 }
 
+// 从后端返回的照片数据
 export interface Photo {
   id: string;
   album_ids?: string[];
@@ -74,6 +75,7 @@ export interface TimelineStats {
   timeline: TimelineItem[];
 }
 
+// 前端使用的照片数据，包含了更多信息
 export interface AlbumImage {
   id: string
   url: string
