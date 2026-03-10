@@ -51,7 +51,8 @@ export default withMermaid(defineConfig({
                   link: '/docs/guide/settings/',
                   collapsed: true,
                   items: [
-                    { text: '地图设置', link: '/docs/guide/settings/mapsetting' }
+                    { text: '地图设置', link: '/docs/guide/settings/mapsetting' },
+                    { text: 'AI 大模型设置', link: '/docs/guide/settings/aisetting' }
                   ]
                 },
                 { text: '常见问题', link: '/docs/guide/questions' },
@@ -150,7 +151,8 @@ export default withMermaid(defineConfig({
                   link: '/en/docs/guide/settings/',
                   collapsed: true,
                   items: [
-                    { text: 'Map Settings', link: '/en/docs/guide/settings/mapsetting' }
+                    { text: 'Map Settings', link: '/en/docs/guide/settings/mapsetting' },
+                    { text: 'AI Settings', link: '/en/docs/guide/settings/aisetting' }
                   ]
                 },
                 { text: 'Questions', link: '/en/docs/guide/questions' },

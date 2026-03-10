@@ -299,5 +299,5 @@ def get_on_this_day_photos(
         now = datetime.now()
         month = month or now.month
         day = day or now.day
-        
+
     return app.crud.photo.get_on_this_day_photos(db, user_id=current_user.id, month=month, day=day, limit=limit)

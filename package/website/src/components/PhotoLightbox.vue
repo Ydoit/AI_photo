@@ -62,7 +62,7 @@
                             <el-dropdown-item command="viewDescription">
                                 <div class="flex items-center gap-2">
                                     <FileText class="w-4 h-4" />
-                                    <span>查看描述</span>
+                                    <span>查看AI分析结果</span>
                                 </div>
                             </el-dropdown-item>
                         </el-dropdown-menu>

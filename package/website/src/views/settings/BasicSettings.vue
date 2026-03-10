@@ -168,11 +168,16 @@
             <template #title>
               <div class="flex items-center w-full">
                 <span class="text-sm font-medium text-gray-600 dark:text-gray-300 mr-2">视觉大模型配置 (Visual LLM)</span>
-                <el-tooltip content="用于图片内容理解、标签生成等视觉任务" placement="top">
+                <el-tooltip content="选择带有图像理解能力的大模型，用于图片内容理解、标签生成等视觉任务" placement="top">
                   <Info class="w-4 h-4 text-gray-400 cursor-help" />
                 </el-tooltip>
               </div>
             </template>
+            <p class="bg-red-50 dark:bg-gray-700 p-3 rounded mb-3 text-xs text-red-600 dark:text-red-300">用于图片内容理解、标签生成、评分等视觉任务
+              <a href="http://trailsnap.cn/docs/guide/settings/aisetting.html" target="_blank" class="text-blue-500 hover:underline">
+                点击查看详细说明
+              </a>
+            </p>
             <el-form-item label="Base URL">
                 <el-input v-model="aiForm.llm_vl_settings.base_url" placeholder="https://api.openai.com/v1" />
             </el-form-item>
@@ -182,11 +187,8 @@
             <el-form-item label="Model Name">
                 <el-input v-model="aiForm.llm_vl_settings.model_name" placeholder="gpt-4-vision-preview" />
             </el-form-item>
-            <el-form-item label="Evaluation Prompt">
+            <el-form-item label="图片分析提示词">
                 <el-input v-model="aiForm.visual_evaluation_prompt" type="textarea" :rows="4" placeholder="用于生成评分和描述的提示词" />
-            </el-form-item>
-            <el-form-item label="Narrative Prompt">
-                <el-input v-model="aiForm.visual_narrative_prompt" type="textarea" :rows="4" placeholder="用于生成文案的提示词" />
             </el-form-item>
           </el-collapse-item>
 
@@ -198,7 +200,7 @@
             <el-form-item label="识别阈值">
               <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full">
                 <el-slider v-model="aiForm.face_recognition_threshold" :min="0" :max="1" :step="0.05" class="w-full sm:w-64" show-input />
-                <span class="text-sm text-gray-500">判定为人脸的最低置信度 (默认 0.6)</span>
+                <span class="text-sm text-gray-500">判定为人脸的最低置信度 (默认 0.7)</span>
               </div>
             </el-form-item>
             <el-form-item label="聚类阈值">
