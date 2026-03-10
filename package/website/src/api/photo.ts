@@ -7,5 +7,12 @@ export const photoApi = {
       params
     });
     return data.data;
+  },
+
+  async getOnThisDayPhotos(params?: { month?: number; day?: number; limit?: number }) {
+    const data = await request.get<Photo[]>('/api/photos/on-this-day', {
+      params
+    });
+    return data.data;
   }
 }

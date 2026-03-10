@@ -39,7 +39,7 @@
           @blur="handleBlur"
           @focus="handleFocus"
           type="text"
-          placeholder="搜索 (支持文字/地点/人物/相册...)"
+          placeholder="画面内容/地点/人物/相册..."
           class="w-full pl-9 pr-7 py-1 text-sm bg-transparent border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:border-primary-500 text-gray-700 dark:text-gray-200"
         />
         
@@ -53,7 +53,7 @@
 
         <!-- Suggestions Dropdown -->
         <div 
-          v-if="isSearchExpanded && (suggestions.length > 0 || searchText)" 
+          v-if="isSearchExpanded && showDropdown && (suggestions.length > 0 || searchText)" 
           class="absolute top-full left-0 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg mt-2 overflow-hidden z-50 max-h-60 overflow-y-auto"
         >
           <!-- Semantic Search Option (Always First) -->
@@ -166,6 +166,7 @@ const isMobile = breakpoints.smaller('md');
 
 const searchText = ref('');
 const isSearchExpanded = ref(false);
+const showDropdown = ref(false);
 const searchInputRef = ref<HTMLInputElement | null>(null);
 const suggestions = ref<SearchSuggestion[]>([]);
 
@@ -207,6 +208,7 @@ const handleBlur = () => {
     // But if user clicks elsewhere, we want to close suggestions.
     // However, we only close search box if it's empty? 
     // The original logic closed search box if empty.
+    showDropdown.value = false;
     if (!searchText.value) {
       isSearchExpanded.value = false;
     }
@@ -215,6 +217,7 @@ const handleBlur = () => {
 };
 
 const handleFocus = () => {
+  showDropdown.value = true;
   if (searchText.value) {
     fetchSuggestions(searchText.value);
   }
@@ -222,8 +225,10 @@ const handleFocus = () => {
 
 const handleSearch = () => {
   if (searchText.value.trim()) {
+    showDropdown.value = false;
     suggestions.value = []; // Clear suggestions
     router.push({ path: '/search', query: { q: searchText.value } });
+    searchInputRef.value?.blur();
   }
 };
 
@@ -269,11 +274,13 @@ const fetchSuggestions = useDebounceFn(async (q: string) => {
 }, 300);
 
 const onInput = () => {
+  showDropdown.value = true;
   fetchSuggestions(searchText.value);
 }
 
 const selectSuggestion = (item: SearchSuggestion) => {
   searchText.value = item.value;
+  showDropdown.value = false;
   suggestions.value = [];
   router.push({ 
     path: '/search', 
@@ -282,6 +289,7 @@ const selectSuggestion = (item: SearchSuggestion) => {
       type: item.type 
     } 
   });
+  searchInputRef.value?.blur();
 };
 
 const getLabel = (type: string) => {

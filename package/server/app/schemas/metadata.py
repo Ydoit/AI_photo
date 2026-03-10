@@ -16,6 +16,8 @@ from pydantic import BaseModel, Field, computed_field
 from app.db.models.photo import FileType
 from app.schemas.album import Album
 from app.schemas.face import FaceIdentitySchema
+from app.schemas.image_description import ImageDescription
+from app.schemas.photo import Photo
 from app.schemas.tag import PhotoTagResponse
 
 # Metadata Schemas
@@ -52,3 +54,7 @@ class PhotoMetadata(PhotoMetadataBase):
     tags: Optional[List[PhotoTagResponse]] = None
     class Config:
         from_attributes = True
+
+class PhotoDetail(Photo):
+    metadata_info: Optional[PhotoMetadata] = None
+    image_description: Optional[ImageDescription] = None

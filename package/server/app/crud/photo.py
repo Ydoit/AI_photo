@@ -18,7 +18,8 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.crud import face as crud_face
 from app.crud.album import get_album, _build_album_query, _update_album_photo_count
-from app.db.models import Photo, PhotoMetadata, ImageVector, Album, Face, PhotoTag
+from app.crud.search_vector import POSITIVE_SENTIMENT_VECTOR
+from app.db.models import Photo, PhotoMetadata, ImageVector, Album, Face, PhotoTag, ImageDescription
 from app.db.models.photo import FileType, ImageType
 from app.schemas import photo as photo_schemas
 from app.schemas.metadata import PhotoMetadataUpdate
@@ -617,3 +618,32 @@ def batch_delete_photos_db(db: Session, photo_ids: List[UUID], is_delete_file = 
         _update_album_photo_count(db, album_id)
 
     return count
+
+
+def get_on_this_day_photos(db: Session, user_id: UUID, month: int, day: int, limit: int = 10):
+    """
+    获取“那年今日”的照片：
+    1. 过滤：同月同日，排除截图
+    2. 排序：AI 评分 (memory_score + quality_score) -> 向量相似度 (POSITIVE_SENTIMENT_VECTOR) -> 时间倒序
+    """
+    query = db.query(Photo).options(
+        joinedload(Photo.metadata_info),
+        joinedload(Photo.image_description)
+    ).outerjoin(ImageDescription).outerjoin(ImageVector).filter(
+        Photo.owner_id == user_id,
+        func.extract('month', Photo.photo_time) == month,
+        func.extract('day', Photo.photo_time) == day,
+        Photo.image_type != ImageType.SCREENSHOT
+    )
+
+    # 排序 1: AI 评分 (memory_score + quality_score)
+    ai_score = func.coalesce(ImageDescription.memory_score, 0) + func.coalesce(ImageDescription.quality_score, 0)
+    
+    # 排序 2: 向量相似度 (如果 POSITIVE_SENTIMENT_VECTOR 不为空)
+    if POSITIVE_SENTIMENT_VECTOR.embedding:
+        distance = ImageVector.embedding.cosine_distance(POSITIVE_SENTIMENT_VECTOR.embedding)
+        query = query.order_by(ai_score.desc(), distance.asc(), Photo.photo_time.desc())
+    else:
+        query = query.order_by(ai_score.desc(), Photo.photo_time.desc())
+
+    return query.limit(limit).all()

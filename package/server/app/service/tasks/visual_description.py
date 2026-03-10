@@ -9,7 +9,7 @@ from sqlalchemy.testing.suite.test_reflection import metadata
 
 from app.db.models import PhotoMetadata
 from app.db.models.task import Task, TaskType
-from app.db.models.photo import Photo, FileType
+from app.db.models.photo import Photo, FileType, ImageType
 from app.db.models.image_description import ImageDescription
 from app.core.config_manager import config_manager
 from app.service import storage
@@ -102,6 +102,9 @@ def encode_image(image_path):
 
 async def process_single_photo(task_manager, photo: Photo, db: Session, settings) -> Dict[str, Any]:
     try:
+        if photo.image_type == ImageType.SCREENSHOT:
+            return {'status': 'skipped', 'reason': 'screenshot not supported'}
+
         # 1. Resolve file path
         # Use preview path for smaller size and faster processing, or original if preview missing
         target_path = storage.get_preview_path(photo.owner_id, photo.id)
@@ -114,7 +117,12 @@ async def process_single_photo(task_manager, photo: Photo, db: Session, settings
         user_config = config_manager.get_user_config(photo.owner_id, db)
         eval_prompt = user_config.ai.visual_evaluation_prompt
         narrative_prompt = user_config.ai.visual_narrative_prompt
-
+        base64_image = encode_image(target_path)
+        image_info = f"照片时间：{photo.photo_time}\n"
+        metadata = db.query(PhotoMetadata).filter(PhotoMetadata.photo_id == photo.id).first()
+        if metadata:
+            image_info += f"照片位置：{metadata.address}\n"
+    
         # 2. Call OpenAI API
         client = AsyncOpenAI(
             api_key=settings.api_key,
@@ -122,11 +130,6 @@ async def process_single_photo(task_manager, photo: Photo, db: Session, settings
             timeout=120,
         )
 
-        base64_image = encode_image(target_path)
-        image_info = f"照片时间：{photo.photo_time}\n"
-        metadata = db.query(PhotoMetadata).filter(PhotoMetadata.photo_id == photo.id).first()
-        if metadata:
-            image_info += f"照片位置：{metadata.address}\n"
         # Step A: Evaluation
         eval_response = await client.chat.completions.create(
             model=settings.model_name,
@@ -145,6 +148,14 @@ async def process_single_photo(task_manager, photo: Photo, db: Session, settings
                     ],
                 }
             ],
+            max_tokens=32768,
+            temperature=0.7,
+            top_p=0.8,
+            presence_penalty=1.5,
+            extra_body={
+                "top_k": 20,
+                "chat_template_kwargs": {"enable_thinking": False},
+            },
         )
 
         eval_content = eval_response.choices[0].message.content.strip().strip('`').strip().strip('json')
@@ -156,9 +167,9 @@ async def process_single_photo(task_manager, photo: Photo, db: Session, settings
                 eval_content = eval_content[4:]
         try:
             result_json = json.loads(eval_content.strip())
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
             logger.error(f"Failed to parse evaluation JSON for photo {photo.id}: {eval_content}")
-            result_json = {}
+            raise e
 
         # 3. Save to DB
         # Remove existing if any
@@ -178,21 +189,17 @@ async def process_single_photo(task_manager, photo: Photo, db: Session, settings
             narrative=result_json.get('narrative', "").strip()
         )
         db.add(desc)
-
         # Update photo processed status
         tasks_status = dict(photo.processed_tasks or {})
         tasks_status['visual_description'] = True
         photo.processed_tasks = tasks_status
-        
         db.commit()
-
         return {
             'status': 'completed',
             'description': desc.description,
             'quality': desc.quality_score,
             'narrative': desc.narrative
         }
-
     except Exception as e:
         logger.error(f"Error processing visual description for photo {photo.id}: {e}")
-        return {'status': 'failed', 'error': str(e)}
+        raise e

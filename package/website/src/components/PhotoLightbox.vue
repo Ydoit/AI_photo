@@ -227,7 +227,7 @@
 
       <el-dialog
         v-model="showDescription"
-        title="图片描述"
+        title="AI智能分析"
         width="500px"
         align-center
         class="rounded-xl"

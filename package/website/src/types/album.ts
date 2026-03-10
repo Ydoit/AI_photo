@@ -37,6 +37,14 @@ export interface PhotoMetadata {
   };
 }
 
+export interface ImageDescription {
+  id: string;
+  photo_id: string;
+  narrative?: string;
+  caption?: string;
+  [key: string]: any;
+}
+
 // 从后端返回的照片数据
 export interface Photo {
   id: string;
@@ -52,6 +60,8 @@ export interface Photo {
   width?: number;
   height?: number;
   duration?: number;
+  metadata_info?: PhotoMetadata;
+  image_description?: ImageDescription;
 }
 
 export interface PhotoGroup {

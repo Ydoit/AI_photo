@@ -26,7 +26,7 @@ from app.crud import face as crud_face
 from app.crud import tag as crud_tag
 
 from app.schemas import photo as schemas
-from app.schemas.metadata import PhotoMetadata, PhotoMetadataUpdate
+from app.schemas.metadata import PhotoMetadata, PhotoMetadataUpdate, PhotoDetail
 from app.schemas import tag as tag_schemas
 from app.service import storage
 from app.service.task_manager import TaskManager
@@ -282,3 +282,22 @@ def get_photo_description(
              raise HTTPException(status_code=403, detail="Not authorized")
     
     return desc
+
+
+@router.get("/on-this-day", response_model=List[PhotoDetail])
+def get_on_this_day_photos(
+    month: Optional[int] = None,
+    day: Optional[int] = None,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    获取那年今日的照片
+    """
+    if month is None or day is None:
+        now = datetime.now()
+        month = month or now.month
+        day = day or now.day
+        
+    return app.crud.photo.get_on_this_day_photos(db, user_id=current_user.id, month=month, day=day, limit=limit)

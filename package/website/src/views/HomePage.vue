@@ -17,7 +17,9 @@
 
     <!-- Content -->
     <div v-else-if="dashboardData" class="py-3 space-y-2">
-      <!-- Annual Report Banner -->
+ 
+      <OnThisDay />
+     <!-- Annual Report Banner -->
       <div 
         class="mx-4 p-4 rounded-xl bg-gradient-to-r from-orange-100 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/20 border border-orange-200 dark:border-orange-800/50 flex items-center justify-between cursor-pointer hover:shadow-md transition-shadow"
         @click="$router.push('/annual-report')"
@@ -35,7 +37,6 @@
            <i class="mgc_right_line"></i>
         </div>
       </div>
-
       <OverviewCards :data="dashboardData.card" @show-storage="showStorageDialog = true" />
       
       <FaceSection :data="dashboardData.face" />
@@ -91,6 +92,7 @@ import ContentStats from '@/components/home/ContentStats.vue';
 import TimeChart from '@/components/home/TimeChart.vue';
 import ToolsSection from '@/components/home/ToolsSection.vue';
 import BottomBar from '@/components/home/BottomBar.vue';
+import OnThisDay from '@/components/OnThisDay.vue';
 
 const loading = ref(false);
 const dashboardData = ref<DashboardResponse | null>(null);
