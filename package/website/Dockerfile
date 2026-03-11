@@ -1,9 +1,6 @@
 # 第一阶段：构建前端项目（优化缓存、权限、版本）
 FROM node:22.14-alpine as build-stage
 
-# 切换非root用户（提升安全性）
-RUN addgroup -g 1001 -S nodejs && adduser -S frontend -u 1001 -G nodejs
-USER frontend
 WORKDIR /app
 
 # 先复制依赖文件（利用Docker缓存，仅依赖变动时重新安装）
