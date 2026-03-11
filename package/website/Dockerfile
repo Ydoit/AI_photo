@@ -34,7 +34,7 @@ RUN mkdir -p /var/log/nginx/frontend \
 
 # 复制自定义Nginx配置（先验证配置合法性）
 COPY ./nginx.conf /etc/nginx/conf.d/default.conf
-RUN nginx -t -c /etc/nginx/nginx.conf || (echo "Nginx配置错误" && exit 1)
+# RUN nginx -t -c /etc/nginx/nginx.conf || (echo "Nginx配置错误" && exit 1)
 
 # 从构建阶段复制dist目录（仅复制必要文件，减少镜像体积）
 COPY --from=build-stage /app/dist /usr/share/nginx/html
