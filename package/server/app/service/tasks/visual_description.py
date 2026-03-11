@@ -105,7 +105,14 @@ async def process_single_photo(task_manager, photo: Photo, db: Session, settings
     try:
         if photo.image_type == ImageType.SCREENSHOT:
             return {'status': 'skipped', 'reason': 'screenshot not supported'}
-
+        # Get user config for prompts
+        user_config = config_manager.get_user_config(photo.owner_id, db)
+        if not user_config.ai.llm_vl_settings.base_url or not user_config.ai.llm_vl_settings.api_key or not user_config.ai.llm_vl_settings.model_name:
+            logger.error(
+                "Visual Model not configured, please check settings. base_url: %s, api_key: %s, model_name: %s",
+                user_config.ai.llm_vl_settings.base_url, user_config.ai.llm_vl_settings.api_key, user_config.ai.llm_vl_settings.model_name
+            )
+            raise ValueError("Visual Model not configured, please check settings in Basic Settings.")
         # 1. Resolve file path
         # Use preview path for smaller size and faster processing, or original if preview missing
         target_path = storage.get_preview_path(photo.owner_id, photo.id)
@@ -114,8 +121,6 @@ async def process_single_photo(task_manager, photo: Photo, db: Session, settings
             if not target_path or not os.path.exists(target_path):
                 return {'status': 'failed', 'error': 'file not found'}
 
-        # Get user config for prompts
-        user_config = config_manager.get_user_config(photo.owner_id, db)
         eval_prompt = user_config.ai.visual_evaluation_prompt
         narrative_prompt = user_config.ai.visual_narrative_prompt
         base64_image = encode_image(target_path)
@@ -149,7 +154,6 @@ async def process_single_photo(task_manager, photo: Photo, db: Session, settings
                     ],
                 }
             ],
-            max_tokens=32768,
             temperature=0.7,
             top_p=0.8,
             presence_penalty=1.5,

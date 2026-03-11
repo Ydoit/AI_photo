@@ -31,28 +31,30 @@
       leave-from-class="transform translate-y-0 opacity-100"
       leave-to-class="transform -translate-y-full opacity-0"
     >
-      <div v-if="isSelectionMode && showActionBar" class="fixed bottom-[20px] left-0 right-0 z-40 flex justify-center pointer-events-none px-2">
-        <div class="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200 dark:border-gray-700 shadow-lg rounded-full px-3 py-0 md:py-1 flex items-center gap-1 sm:gap-6 pointer-events-auto min-w-[320px] max-w-full overflow-x-auto scrollbar-hide">
-          <div class="flex items-center gap-0 md:gap-3 flex-shrink-0">
-            <button @click="exitSelectionMode" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors dark:text-gray-300 bg-transparent" title="取消选择">
+      <div v-if="isSelectionMode && showActionBar" class="fixed bottom-[20px] left-0 right-0 z-40 flex justify-center pointer-events-none px-4">
+        <div class="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border border-gray-200 dark:border-gray-700 shadow-lg rounded-full px-3 py-1 md:py-1 flex items-center gap-2 sm:gap-6 pointer-events-auto min-w-fit max-w-full overflow-x-auto scrollbar-hide">
+          <div class="flex items-center gap-1 md:gap-3 flex-shrink-0">
+            <button @click="exitSelectionMode" class="p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors dark:text-gray-300 bg-transparent" title="取消选择">
               <X class="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
-            <span class="font-medium text-gray-900 dark:text-white whitespace-nowrap">
-              已选 {{ localSelectedIds.size }} 项
+            <span class="font-medium text-gray-900 dark:text-white whitespace-nowrap text-sm sm:text-base">
+              <span class="sm:hidden">{{ localSelectedIds.size }}</span>
+              <span class="hidden sm:inline">已选 {{ localSelectedIds.size }} 项</span>
             </span>
           </div>
 
           <div class="h-6 w-px bg-gray-300 dark:bg-gray-600 flex-shrink-0"></div>
 
-          <div class="flex items-center gap-2 flex-nowrap">
-            <button @click="toggleSelectAll" class="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors bg-transparent">
-              {{ isAllSelected ? '取消全选' : '全选' }}
+          <div class="flex items-center gap-1 sm:gap-2 flex-nowrap">
+            <button @click="toggleSelectAll" class="p-2 sm:px-3 sm:py-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors bg-transparent" :title="isAllSelected ? '取消全选' : '全选'">
+              <span class="hidden sm:inline">{{ isAllSelected ? '取消全选' : '全选' }}</span>
+              <CheckSquare class="w-5 h-5 sm:hidden" />
             </button>
             
             <button
                 @click="$emit('add-to-album', Array.from(localSelectedIds))"
                 :disabled="localSelectedIds.size === 0"
-                class="bg-transparent flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                class="bg-transparent flex items-center gap-2 p-2 sm:px-4 sm:py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                 title="添加到相册"
                 >
                 <ImagePlusIcon class="w-5 h-5" />
@@ -223,7 +225,7 @@
                                 <!-- Selection Checkbox (Top Left) -->
                                 <div
                                     class="absolute top-2 left-2 z-30 transition-opacity duration-200 cursor-pointer"
-                                    :class="(isSelectionMode || localSelectedIds.has(img.id)) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
+                                    :class="(isSelectionMode || localSelectedIds.has(img.id)) ? 'opacity-100 pointer-events-auto' : 'opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto'"
                                     @click.stop="toggleSelection(img)"
                                 >
                                     <div
@@ -297,7 +299,7 @@ import {
   ref, computed, watch, onMounted, onUnmounted, nextTick, toRef, reactive
 } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { CalendarDays, PlayCircle, Image as ImageIcon, MapPin, Check, X, Download, Trash2, FolderMinus, Loader2, PlaySquare, Play, PlayIcon, PlayCircleIcon, Plus, FolderPlus, PhoneOutgoingIcon, PictureInPicture, CloverIcon, ImageMinusIcon, ImagePlusIcon, RefreshCcw, Aperture, MoreHorizontal, UserPlus } from 'lucide-vue-next'
+import { CalendarDays, PlayCircle, Image as ImageIcon, MapPin, Check, X, Download, Trash2, FolderMinus, Loader2, PlaySquare, Play, PlayIcon, PlayCircleIcon, Plus, FolderPlus, PhoneOutgoingIcon, PictureInPicture, CloverIcon, ImageMinusIcon, ImagePlusIcon, RefreshCcw, Aperture, MoreHorizontal, UserPlus, CheckSquare } from 'lucide-vue-next'
 import { format } from 'date-fns'
 import { useAlbumStore } from '@/stores/albumStore'
 import { usePhotoStore } from '@/stores/photoStore'

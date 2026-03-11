@@ -102,7 +102,7 @@
               @touchstart="startTouch"
             >
                 <!-- Image Wrapper for Correct Overlay Positioning -->
-                <div class="relative flex justify-center items-center max-w-full h-full">
+                <div class="relative flex justify-center items-center w-full h-full">
                     <img
                         ref="imageRef"
                         :src="displayImageSrc"
@@ -330,7 +330,6 @@ const toggleLivePlayback = () => {
 }
 
 const onLiveEnded = () => {
-    console.log('Live video ended')
     isPlayingLive.value = false
 }
 
@@ -357,25 +356,6 @@ const scale = ref(1)
 const translateX = ref(0)
 const translateY = ref(0)
 
-watch(() => props.image, (newImg) => {
-    showOriginal.value = false
-    scale.value = 1
-    translateX.value = 0
-    translateY.value = 0
-    ocrRecords.value = []
-    highlightedOCR.value = null
-    highlightedFace.value = null
-    videoStyle.value = {}
-    
-    // Auto play if live photo
-    if (newImg && newImg.file_type === 'live_photo') {
-        isPlayingLive.value = true
-    } else {
-        isPlayingLive.value = false
-    }
-})
-
-const isDragging = ref(false)
 const startX = ref(0)
 const startY = ref(0)
 const initialDistance = ref(0)
@@ -418,35 +398,49 @@ onUnmounted(() => {
     disposePlayer()
 })
 
-// Watchers
+const isDragging = ref(false)
 watch(() => props.image, async (newImg, oldImg) => {
+    // 1. Reset State
+    showOriginal.value = false
+    scale.value = 1
+    translateX.value = 0
+    translateY.value = 0
+    ocrRecords.value = []
+    highlightedOCR.value = null
+    highlightedFace.value = null
+    videoStyle.value = {}
+    isDragging.value = false // Ensure dragging is reset
+
+    // 2. Handle Resource Cleanup & Initialization
+    if (oldImg?.file_type === 'video') {
+        disposePlayer()
+    }
+
     if (newImg && props.visible) {
-        resetZoom()
-        highlightedOCR.value = null
-        if (showOCR.value) {
-            await fetchOCR(newImg.id)
+        // Auto play if live photo
+        if (newImg.file_type === 'live_photo') {
+            isPlayingLive.value = true
         } else {
-            ocrRecords.value = []
+            isPlayingLive.value = false
         }
-        
-        // Dispose old player if switching from video
-        if (oldImg?.file_type === 'video') {
-            disposePlayer()
-        }
-        
+
         // Init new player if switching to video
         if (newImg.file_type === 'video') {
             await nextTick()
             initPlayer()
         }
+
+        // Fetch Data
+        // Don't await these to prevent blocking UI updates if they are slow
+        fetchMetadata(undefined, newImg.id)
         
-        await fetchMetadata(undefined, newImg.id)
         if (showOCR.value) {
-            await fetchOCR(newImg.id)
+            fetchOCR(newImg.id)
         }
     } else {
         // If image is null (closed or cleared), dispose
         disposePlayer()
+        isPlayingLive.value = false
     }
 })
 
@@ -708,19 +702,24 @@ const stopDrag = () => {
 
 // Touch Support (Pinch & Drag)
 const startTouch = (e: TouchEvent) => {
+    // Only handle pinch or drag if needed
     if (e.touches.length === 2) {
         // Pinch start
         const touch1 = e.touches[0]
         const touch2 = e.touches[1]
         initialDistance.value = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY)
+        window.addEventListener('touchmove', onTouchMove, { passive: false })
+        window.addEventListener('touchend', stopTouch)
+        window.addEventListener('touchcancel', stopTouch)
     } else if (e.touches.length === 1 && scale.value > 1) {
         // Drag start
         isDragging.value = true
         startX.value = e.touches[0].clientX - translateX.value
         startY.value = e.touches[0].clientY - translateY.value
+        window.addEventListener('touchmove', onTouchMove, { passive: false })
+        window.addEventListener('touchend', stopTouch)
+        window.addEventListener('touchcancel', stopTouch)
     }
-    window.addEventListener('touchmove', onTouchMove, { passive: false })
-    window.addEventListener('touchend', stopTouch)
 }
 
 const onTouchMove = (e: TouchEvent) => {
@@ -750,6 +749,7 @@ const stopTouch = () => {
     initialDistance.value = 0
     window.removeEventListener('touchmove', onTouchMove)
     window.removeEventListener('touchend', stopTouch)
+    window.removeEventListener('touchcancel', stopTouch)
 }
 
 const downloadImage = async () => {
