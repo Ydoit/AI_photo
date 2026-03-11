@@ -30,7 +30,7 @@
             <button @click.stop="toggleOriginal" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0" :class="{ 'text-primary-400': showOriginal }" title="查看原图">
                 <Focus class="w-6 h-6" />
             </button>
-            <button @click.stop="toggleSidebar" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0" :class="{ 'bg-white/20 text-white': showSidebar }", title="查看元数据">
+            <button @click.stop="toggleSidebar" class="w-12 h-12 flex items-center justify-center rounded-full text-white/90 hover:bg-white/10 transition-colors bg-transparent p-0" :class="{ 'bg-white/20 text-white': showSidebar }" title="查看元数据">
                 <Info class="w-6 h-6" />
             </button>
 
@@ -180,6 +180,7 @@
             >
               <video
                 ref="videoPlayer"
+                :key="image.id"
                 class="video-js vjs-big-play-centered vjs-theme-forest"
                 controls
                 preload="auto"

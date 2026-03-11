@@ -292,7 +292,7 @@ class TaskWorker:
                     # Normal Mode: Strict Concurrency Limit
                     max_concurrency = 10
                     active_ai = sum(1 for t in self.active_task_map.values() if t in AI_TASKS)
-                    max_ai = 20
+                    max_ai = 2
 
                     if active_count < max_concurrency:
                         allowed_types = [t for t in TaskType if t not in AI_TASKS] # All types except AI
