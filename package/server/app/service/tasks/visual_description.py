@@ -24,10 +24,11 @@ async def handle_visual_description_task(task_manager, task: Task, db: Session) 
         # Check configuration
         settings = config_manager.get_user_config(task.owner_id, db).ai.llm_vl_settings
         if not settings.base_url or not settings.api_key or not settings.model_name:
-             return {'status': 'skipped', 'reason': 'Visual Model not configured'}
+            logger.error("Visual Model not configured, please check settings. base_url: %s, api_key: %s, model_name: %s", settings.base_url, settings.api_key, settings.model_name)
+            raise ValueError("Visual Model not configured, please check settings in Basic Settings.")
 
         force = task.payload.get('force', False)
-        
+
         # 1. Single Photo Mode
         if task.payload and 'photo_id' in task.payload:
             photo_id = task.payload['photo_id']
@@ -47,14 +48,14 @@ async def handle_visual_description_task(task_manager, task: Task, db: Session) 
         photos_to_process = []
         batch_size = 1000
         offset = 0
-        
+
         generated_count = 0
-        
+
         while True:
             query = db.query(Photo)
             if task.owner_id:
                 query = query.filter(Photo.owner_id == task.owner_id)
-            
+
             batch = query.offset(offset).limit(batch_size).all()
             if not batch:
                 break
@@ -63,7 +64,7 @@ async def handle_visual_description_task(task_manager, task: Task, db: Session) 
             for p in batch:
                 if p.file_type == FileType.video:
                     continue
-                
+
                 should_process = False
                 if force:
                     should_process = True
@@ -71,7 +72,7 @@ async def handle_visual_description_task(task_manager, task: Task, db: Session) 
                     tasks_status = p.processed_tasks or {}
                     if not tasks_status.get('visual_description'):
                         should_process = True
-                
+
                 if should_process:
                     tasks_to_create.append({
                         'type': TaskType.VISUAL_DESCRIPTION,

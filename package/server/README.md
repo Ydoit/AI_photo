@@ -48,7 +48,7 @@ DB_URL=postgresql://msi:msi4090@localhost:5532/trailsnap
 RAILWAY_DB_URL=postgresql://msi:msi4090@localhost:5532/railway
 
 # AI 服务地址
-AI_SERVICE_URL=http://localhost:8001
+AI_API_URL=http://localhost:8001
 ```
 
 ### 3. 运行服务

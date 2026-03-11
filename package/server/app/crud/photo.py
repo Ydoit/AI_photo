@@ -633,7 +633,8 @@ def get_on_this_day_photos(db: Session, user_id: UUID, month: int, day: int, lim
         Photo.owner_id == user_id,
         func.extract('month', Photo.photo_time) == month,
         func.extract('day', Photo.photo_time) == day,
-        Photo.image_type != ImageType.SCREENSHOT
+        Photo.image_type != ImageType.SCREENSHOT,
+        Photo.file_type != FileType.video
     )
 
     # 排序 1: AI 评分 (memory_score + quality_score)
