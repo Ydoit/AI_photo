@@ -188,21 +188,32 @@ def get_photos_by_time(db: Session, owner_id: UUID, skip: int = 0, limit: int = 
 
 
 def get_filter_options(db: Session, user_id: UUID):
-    # Years
-    years = db.query(func.extract('year', Photo.photo_time)).distinct().filter(Photo.owner_id == user_id).order_by(func.extract('year', Photo.photo_time).desc()).all()
-    years = [int(y[0]) for y in years if y[0] is not None]
+    # Optimize: Fetch all distinct combinations in a single query
+    results = db.query(
+        func.extract('year', Photo.photo_time).label('year'),
+        PhotoMetadata.city,
+        PhotoMetadata.make,
+        PhotoMetadata.model
+    ).outerjoin(
+        PhotoMetadata, Photo.id == PhotoMetadata.photo_id
+    ).filter(
+        Photo.owner_id == user_id
+    ).distinct().all()
 
-    # Cities
-    cities = db.query(PhotoMetadata.city).distinct().filter(PhotoMetadata.city.isnot(None), Photo.owner_id == user_id).order_by(PhotoMetadata.city).all()
-    cities = [c[0] for c in cities if c[0]]
+    years_set = set()
+    cities_set = set()
+    makes_set = set()
+    models_set = set()
 
-    # Makes
-    makes = db.query(PhotoMetadata.make).distinct().filter(PhotoMetadata.make.isnot(None), Photo.owner_id == user_id).order_by(PhotoMetadata.make).all()
-    makes = [m[0] for m in makes if m[0]]
-
-    # Models
-    models = db.query(PhotoMetadata.model).distinct().filter(PhotoMetadata.model.isnot(None), Photo.owner_id == user_id).order_by(PhotoMetadata.model).all()
-    models = [m[0] for m in models if m[0]]
+    for r in results:
+        if r.year is not None:
+            years_set.add(int(r.year))
+        if r.city:
+            cities_set.add(r.city)
+        if r.make:
+            makes_set.add(r.make)
+        if r.model:
+            models_set.add(r.model)
 
     # Image Types
     image_types = [t.value for t in ImageType]
@@ -211,10 +222,10 @@ def get_filter_options(db: Session, user_id: UUID):
     file_types = [t.value for t in FileType]
 
     return {
-        "years": years,
-        "cities": cities,
-        "makes": makes,
-        "models": models,
+        "years": sorted(list(years_set), reverse=True),
+        "cities": sorted(list(cities_set)),
+        "makes": sorted(list(makes_set)),
+        "models": sorted(list(models_set)),
         "image_types": image_types,
         "file_types": file_types
     }
@@ -620,10 +631,10 @@ def batch_delete_photos_db(db: Session, photo_ids: List[UUID], is_delete_file = 
     return count
 
 
-def get_on_this_day_photos(db: Session, user_id: UUID, month: int, day: int, limit: int = 10):
+def get_on_this_day_photos(db: Session, user_id: UUID, month: int, day: int, year: int, limit: int = 10):
     """
     获取“那年今日”的照片：
-    1. 过滤：同月同日，排除截图
+    1. 过滤：同月同日，排除截图，排除当年
     2. 排序：AI 评分 (memory_score + quality_score) -> 向量相似度 (POSITIVE_SENTIMENT_VECTOR) -> 时间倒序
     """
     query = db.query(Photo).options(
@@ -633,8 +644,8 @@ def get_on_this_day_photos(db: Session, user_id: UUID, month: int, day: int, lim
         Photo.owner_id == user_id,
         func.extract('month', Photo.photo_time) == month,
         func.extract('day', Photo.photo_time) == day,
-        Photo.image_type != ImageType.SCREENSHOT,
-        Photo.file_type != FileType.video
+        func.extract('year', Photo.photo_time) != year,
+        Photo.image_type != ImageType.SCREENSHOT
     )
 
     # 排序 1: AI 评分 (memory_score + quality_score)

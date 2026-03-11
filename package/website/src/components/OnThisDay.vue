@@ -119,7 +119,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { CalendarCheck, MapPin } from 'lucide-vue-next'
 import { photoApi } from '@/api/photo';
 import type { Photo } from '@/types/album';
-import { differenceInYears, format } from 'date-fns';
+import { format } from 'date-fns';
 
 const photos = ref<Photo[]>([]);
 const currentIndex = ref(0);
@@ -176,9 +176,11 @@ const getNarrative = (photo: Photo) => {
 };
 
 const getTimeAgo = (photo: Photo) => {
-    const date = new Date(photo.photo_time || photo.upload_time);
-    const years = differenceInYears(new Date(), date);
-    if (years === 0) return '今年';
+    const date = new Date(photo.photo_time);
+    const currentYear = new Date().getFullYear();
+    const photoYear = date.getFullYear();
+    const years = currentYear - photoYear;
+    if (years <= 0) return '今年';
     return `${years} 年前`;
 };
 

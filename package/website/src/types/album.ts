@@ -50,7 +50,7 @@ export interface Photo {
   id: string;
   album_ids?: string[];
   filename?: string;
-  photo_time?: string;
+  photo_time: string;
   // file_path: string; // Deprecated/Excluded
   url: string;
   thumbnail_url: string;

@@ -288,6 +288,7 @@ def get_photo_description(
 def get_on_this_day_photos(
     month: Optional[int] = None,
     day: Optional[int] = None,
+    year: Optional[int] = None,
     limit: int = 10,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -295,9 +296,10 @@ def get_on_this_day_photos(
     """
     获取那年今日的照片
     """
-    if month is None or day is None:
+    if month is None or day is None or year is None:
         now = datetime.now()
         month = month or now.month
         day = day or now.day
+        year = year or now.year
 
-    return app.crud.photo.get_on_this_day_photos(db, user_id=current_user.id, month=month, day=day, limit=limit)
+    return app.crud.photo.get_on_this_day_photos(db, user_id=current_user.id, month=month, day=day, year=year, limit=limit)
