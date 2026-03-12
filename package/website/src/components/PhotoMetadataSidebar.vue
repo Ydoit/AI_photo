@@ -32,7 +32,7 @@
                 <span v-if="image?.width && image?.height">{{ image.width }} x {{ image.height }}</span>
                 <span>{{ formatSize(image?.size) }}</span>
             </div>
-            <button @click="showExifDialog = true" class="text-xs text-primary-500 hover:text-primary-400 hover:underline pt-1">
+            <button @click="showExifDialog = true" class="text-xs text-primary-500 hover:text-primary-400 hover:underline pt-1 dark:bg-gray-800">
                 查看文件 EXIF 信息
             </button>
         </div>
@@ -69,7 +69,7 @@
                 <button
                     v-if="!isEditing"
                     @click="startEdit"
-                    class="text-primary-500 hover:text-primary-600"
+                    class="text-primary-500 hover:text-primary-600 dark:bg-gray-800"
                 >
                     编辑
                 </button>
@@ -184,7 +184,7 @@
          <div v-if="!isEditing" class="pt-4 border-t border-gray-100 dark:border-gray-800">
             <button 
                  @click="handleDelete"
-                 class="w-full flex items-center justify-center gap-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 py-2 rounded-lg transition-colors text-sm"
+                 class="w-full flex items-center justify-center gap-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 py-2 rounded-lg transition-colors text-sm dark:text-red-300 dark:bg-gray-800"
             >
                  <Trash2 class="w-4 h-4" />
                  <span>删除照片</span>

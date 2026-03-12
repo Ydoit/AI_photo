@@ -645,7 +645,8 @@ def get_on_this_day_photos(db: Session, user_id: UUID, month: int, day: int, yea
         func.extract('month', Photo.photo_time) == month,
         func.extract('day', Photo.photo_time) == day,
         func.extract('year', Photo.photo_time) != year,
-        Photo.image_type != ImageType.SCREENSHOT
+        Photo.image_type != ImageType.SCREENSHOT,
+        Photo.file_type != FileType.video
     )
 
     # 排序 1: AI 评分 (memory_score + quality_score)
