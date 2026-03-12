@@ -13,7 +13,7 @@
             :class="{ 'bg-primary-50 text-primary-500 border-primary-200': showFilterPanel }"
             title="筛选"
           >
-            <Filter class="w-5 h-5" />
+            <Filter class="w-3 h-3 md:w-5 md:h-5" />
           </button>
 
           <!-- View Options Menu -->
@@ -23,7 +23,7 @@
               class="p-2 text-gray-700 dark:text-gray-200 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md hover:bg-white dark:hover:bg-gray-900 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50 transition-all"
               title="视图设置"
             >
-              <Settings2 class="w-5 h-5" />
+              <Settings2 class="w-3 h-3 md:w-5 md:h-5" />
             </button>
 
             <!-- Secondary Menu Dropdown -->
@@ -89,14 +89,14 @@
             class="p-2 text-gray-700 dark:text-gray-200 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md hover:bg-white dark:hover:bg-gray-900 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50 transition-all"
             title="批量管理"
           >
-            <CheckSquare class="w-5 h-5" />
+            <CheckSquare class="w-3 h-3 md:w-5 md:h-5" />
           </button>
           
           <button
             @click="triggerUpload"
             class="bg-primary-500 hover:bg-primary-600 text-white p-2 sm:px-4 sm:py-2 rounded-full shadow-lg shadow-primary-500/30 flex items-center gap-2 text-sm font-medium transition-all active:scale-95"
           >
-            <UploadCloud class="w-5 h-5" />
+            <UploadCloud class="w-3 h-3 md:w-5 md:h-5" />
             <span class="hidden sm:inline">上传</span>
           </button>
 
@@ -155,7 +155,7 @@
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
           <div class="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
             <h3 class="font-bold text-lg text-gray-900 dark:text-white">上传照片</h3>
-            <button @click="showUploadModal = false" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"><X class="w-5 h-5" /></button>
+            <button @click="showUploadModal = false" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full dark:bg-gray-800"><X class="w-5 h-5" /></button>
           </div>
           <div class="p-6 overflow-y-auto">
             <MultiFileUpload :albumId="undefined" @upload-complete="handleUploadComplete" />

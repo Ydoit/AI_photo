@@ -2,7 +2,7 @@
   <div class="p-4 space-y-4">
     <!-- Source Group -->
     <div class="space-y-2">
-      <button @click="toggleSection('source')" class="flex items-center justify-between w-full group">
+      <button @click="toggleSection('source')" class="flex items-center justify-between w-full group dark:bg-gray-800">
           <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors">来源</h3>
           <ChevronDown class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': !collapsed.source }" />
       </button>
@@ -62,7 +62,7 @@
 
     <!-- Type Group -->
     <div class="space-y-2">
-      <button @click="toggleSection('type')" class="flex items-center justify-between w-full group">
+      <button @click="toggleSection('type')" class="flex items-center justify-between w-full group dark:bg-gray-800">
           <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors">类型</h3>
           <ChevronDown class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': !collapsed.type }" />
       </button>
@@ -83,7 +83,7 @@
 
     <!-- Year Group -->
     <div class="space-y-2" v-if="availableFilters?.years?.length">
-      <button @click="toggleSection('year')" class="flex items-center justify-between w-full group">
+      <button @click="toggleSection('year')" class="flex items-center justify-between w-full group dark:bg-gray-800">
           <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors">年份</h3>
           <ChevronDown class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': !collapsed.year }" />
       </button>
@@ -104,7 +104,7 @@
 
     <!-- Location Group -->
     <div class="space-y-2" v-if="availableFilters?.cities?.length">
-      <button @click="toggleSection('location')" class="flex items-center justify-between w-full group">
+      <button @click="toggleSection('location')" class="flex items-center justify-between w-full group dark:bg-gray-800">
           <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors">地点</h3>
           <ChevronDown class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': !collapsed.location }" />
       </button>

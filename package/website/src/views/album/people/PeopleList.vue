@@ -16,8 +16,8 @@
           trigger="click"
         >
           <template #reference>
-            <button class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-              <FilterIcon class="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            <button class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-300 dark:bg-gray-800">
+              <FilterIcon class="w-5 h-5" />
             </button>
           </template>
           

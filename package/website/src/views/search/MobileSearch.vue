@@ -4,7 +4,7 @@
     <div class="flex items-center gap-2 p-4 border-b border-gray-100 dark:border-gray-800">
       <button 
         @click="goBack" 
-        class="p-2 -ml-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+        class="p-2 -ml-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 dark:text-gray-300 dark:bg-gray-800"
       >
         <ArrowLeft class="w-6 h-6" />
       </button>

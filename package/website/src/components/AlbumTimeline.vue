@@ -43,9 +43,9 @@
         class="h-1 rounded-full transition-all duration-300"
         :class="[
           item.isYearStart
-            ? 'w-4 bg-gray-400 dark:bg-gray-400'
-            : 'w-2 bg-gray-300 dark:bg-gray-600',
-          item.isActive ? '!w-6 !bg-primary-500 shadow-[0_0_8px_rgba(var(--primary-500),0.6)]' : '',
+            ? 'w-2 md:w-4 bg-gray-400 dark:bg-gray-400'
+            : 'w-1 md:w-2 bg-gray-300 dark:bg-gray-600',
+          item.isActive ? '!w-3 !md:w-6 !bg-primary-500 shadow-[0_0_8px_rgba(var(--primary-500),0.6)]' : '',
         ]"
       ></div>
     </div>

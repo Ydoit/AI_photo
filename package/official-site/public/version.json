@@ -18,5 +18,10 @@
         "version": "0.2.3",
         "update_info": "- 新增图片文件过滤功能<br>- 位置相册新增按年份筛选功能<br>- 修复人物相册下一张照片显示顺序混乱的问题<br>- 优化页面布局和Ui",
         "download_url": "https://trailsnap.cn"
+    },
+    {
+        "version": "0.3.0",
+        "update_info": "- 新增多用户支持，用户之间数据隔离<br>- 新增AI大模型分析照片功能，让AI分析照片内容，生成描述和评分<br>- 新增“那年今日”功能，用户可以查看往年今天的照片，按图片评分排序<br>- 优化页面布局和Ui",
+        "download_url": "https://trailsnap.cn"
     }
 ]

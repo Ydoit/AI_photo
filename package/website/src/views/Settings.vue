@@ -49,7 +49,7 @@ const menuItems = [
   { key: 'tasks', label: '任务管理', icon: List },
   { key: 'basic', label: '基础设置', icon: Settings },
   { key: 'external', label: '外部图库', icon: FolderOpen },
-  { key: 'about', label: '关于我们', icon: Info },
+  { key: 'about', label: '关于行影集', icon: Info },
 ]
 
 // Handle URL hash navigation

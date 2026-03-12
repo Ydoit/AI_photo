@@ -374,7 +374,7 @@ const i18n = {
     hero: {
       title1: 'AI赋能出行记忆',
       title2: '你的专属行影集',
-      desc: '智能记录行程、整理旅行照片、生成专属记忆报告，<br class="hidden md:inline">让每一段出行都值得珍藏',
+      desc: 'AI智能分析、整理旅行照片、生成专属记忆报告，<br class="hidden md:inline">让每一段出行都值得珍藏',
       tags: ['智能相册', '足迹相册', '生活相册'],
       download: '立即下载',
       details: '查看功能详情',
@@ -460,6 +460,7 @@ const t = computed(() => i18n[lang.value as keyof typeof i18n] || i18n['zh-CN'])
 
 const featureScreenshotsList = {
   'zh-CN': [
+    { title: 'AI时光旁白', desc: '大模型分析照片内容，对每张图进行评分和总结，精准推送那年今日值得回忆的照片', image: '/images/on-this-day.png' },
     { title: '时光轴展示', desc: '丝滑的时间轴滚动效果', image: '/images/timeline.png' },
     { title: '地图模式', desc: '在地图上查看您的足迹，点亮每一个去过的城市', image: '/images/map.png' },
     { title: '智能分类', desc: '自动识别照片中的人物、景物，智能归类', image: '/images/classification.jpeg'}
@@ -501,8 +502,8 @@ const featuresList = {
   {
     title: 'AI赋能',
     icon: '🤖',
-    desc: '一句话生成旅行日记，自动剪辑15s旅行Vlog，智能修图筛选高质量照片，轻松打造专属旅行分享内容。',
-    status: '待开发',
+    desc: 'AI给每张照片多维度评分，智能清理低质量照片；一句话生成旅行日记，自动剪辑15s旅行Vlog，智能修图筛选高质量照片，轻松打造专属旅行分享内容。',
+    status: '开发中',
     statusColor: 'bg-blue-100 text-blue-600'
   }
   ],
@@ -536,7 +537,7 @@ const features = computed(() => featuresList[lang.value as keyof typeof features
 const overviewFeaturesList = {
   'zh-CN': [
     { title: '智能相册', icon: '📸', items: ['精准人脸识别归类', '场景/物体智能标签', '自定义条件（智能）相册'], image: '/images/classification.jpeg' },
-    { title: 'AI能力', icon: '🤖', items: ['一句话生成游记', 'Vlog智能剪辑', '照片智能精修'], image: '/images/timeline.png' },
+    { title: 'AI能力', icon: '🤖', items: ['一句话生成游记', 'Vlog智能剪辑', '照片智能精修'], image: '/images/AI-narrative.jpg' },
     { title: '行程票据', icon: '🎫', items: ['票据自动识别录入', '国内5A景区位置识别', '多票据统一管理'], image: '/images/map.png' },
     { title: '数据可视化', icon: '📊', items: ['足迹地图点亮', '出行里程统计', '城市打卡记录'], image: '/images/map-province.png' },
     { title: '年度报告', icon: '📅', items: ['年度出行总结', '专属回忆生成', '分享朋友圈'], image: '/images/report.png' }
