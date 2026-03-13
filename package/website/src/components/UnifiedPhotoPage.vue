@@ -5,25 +5,29 @@
       <div class="flex md:flex-row items-center justify-between gap-4 max-w-7xl mx-auto px-4 py-3 pointer-events-auto">
         
         <!-- Back & Title -->
-        <div class="flex items-center gap-3 w-full max-w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
-          <button @click="$emit('back')" class="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors bg-white dark:bg-gray-900">
-            <ArrowLeft class="w-5 h-5 text-gray-600 dark:text-gray-300" />
-          </button>
-          <div class="pr-2 min-w-0" v-if="!loadingTitle">
-            <h1 class="max-w-[140px] md:max-w-[300px] text-sm md:text-lg font-bold text-gray-900 dark:text-white leading-tight flex items-center gap-2 truncate">
-              <span class="truncate">{{ title }}</span>
-              <slot name="title-extra"></slot>
-            </h1>
-            <p class="text-xs text-gray-500 truncate">{{ subtitle }}</p>
+        <slot name="header-left">
+          <div v-if="showBack || title || $slots['title-extra']" class="flex items-center gap-3 w-full max-w-full md:w-auto bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-gray-200/50 dark:border-gray-700/50">
+            <button v-if="showBack" @click="$emit('back')" class="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors bg-white dark:bg-gray-900">
+              <ArrowLeft class="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            </button>
+            <div class="pr-2 min-w-0" v-if="!loadingTitle">
+              <h1 class="max-w-[140px] md:max-w-[300px] text-sm md:text-lg font-bold text-gray-900 dark:text-white leading-tight flex items-center gap-2 truncate">
+                <span class="truncate">{{ title }}</span>
+                <slot name="title-extra"></slot>
+              </h1>
+              <p class="text-xs text-gray-500 truncate">{{ subtitle }}</p>
+            </div>
+            <div v-else class="pr-2 animate-pulse">
+              <div class="h-6 w-32 bg-gray-200 dark:bg-gray-800 rounded"></div>
+            </div>
           </div>
-          <div v-else class="pr-2 animate-pulse">
-            <div class="h-6 w-32 bg-gray-200 dark:bg-gray-800 rounded"></div>
-          </div>
-        </div>
+        </slot>
 
         <!-- Controls -->
         <div class="flex items-center gap-2 ml-auto animate-in fade-in slide-in-from-right-4 duration-300">
           
+          <slot name="header-controls-start"></slot>
+
           <!-- View Options Menu -->
           <div class="relative">
              <button
@@ -116,6 +120,9 @@
 
         </div>
       </div>
+
+      <!-- Header Extension Slot (e.g. Filter Panel) -->
+      <slot name="header-extension"></slot>
     </div>
 
     <!-- Timeline Navigation Sidebar (Right Sticky) -->
@@ -240,6 +247,7 @@ const props = withDefaults(defineProps<{
   confirmRemove?: boolean
   pendingRemoveIds?: Set<string>
   store?: any
+  showBack?: boolean
 }>(), {
   title: '',
   subtitle: '',
@@ -253,7 +261,8 @@ const props = withDefaults(defineProps<{
   hasMore: false,
   timelineStats: null,
   confirmRemove: false,
-  pendingRemoveIds: () => new Set()
+  pendingRemoveIds: () => new Set(),
+  showBack: true
 })
 
 const emit = defineEmits<{

@@ -43,11 +43,13 @@
 
        <FlatPhotoGallery 
             v-else
+            ref="galleryRef"
             :photos="photos" 
             :loading="loading" 
             :show-action-bar="true"
             @click-photo="handleGalleryClick"
             @batch-delete="handleBatchDelete"
+            @add-to-album="handleAddToAlbum"
         />
         
         <!-- Load More Sentinel -->
@@ -71,6 +73,13 @@
       @next="nextPhoto"
       @delete="handlePhotoDelete"
     />
+    
+    <!-- Album Select Modal -->
+    <AlbumSelector
+      v-model:visible="showAlbumSelectModal"
+      :photo-ids="tempSelectedIds"
+      @success="closeAlbumSelectModal"
+    />
   </div>
 </template>
 
@@ -84,6 +93,7 @@ import { albumService } from '@/api/album'
 import { mapPhotoToImage } from '@/stores/photoStore'
 import PhotoLightbox from '@/components/PhotoLightbox.vue'
 import FlatPhotoGallery from '@/components/FlatPhotoGallery.vue'
+import AlbumSelector from '@/components/AlbumSelector.vue'
 import type { AlbumImage } from '@/types/album'
 
 const router = useRouter()
@@ -95,6 +105,9 @@ const limit = 50
 const hasMore = ref(true)
 const loadMoreTrigger = ref<HTMLElement | null>(null)
 const sortBy = ref<'asc' | 'desc'>('asc')
+const galleryRef = ref<InstanceType<typeof FlatPhotoGallery> | null>(null)
+const showAlbumSelectModal = ref(false)
+const tempSelectedIds = ref<string[]>([])
 
 const subtitle = computed(() => {
   if (loading.value && photos.value.length === 0) return '加载中...'
@@ -212,6 +225,18 @@ const handleBatchDelete = async (ids: string[]) => {
         ElMessage.error('删除失败')
     }
   }
+}
+
+const handleAddToAlbum = (ids: string[]) => {
+    if (ids.length === 0) return
+    tempSelectedIds.value = ids
+    showAlbumSelectModal.value = true
+}
+
+const closeAlbumSelectModal = () => {
+    showAlbumSelectModal.value = false
+    tempSelectedIds.value = []
+    galleryRef.value?.exitSelectionMode()
 }
 
 // Lightbox

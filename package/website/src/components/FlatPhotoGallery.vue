@@ -532,6 +532,11 @@ const handleDownload = async () => {
   isDownloading.value = false
   downloadProgress.value = 0
 }
+
+defineExpose({
+    enterSelectionMode,
+    exitSelectionMode
+})
 </script>
 
 <style scoped>

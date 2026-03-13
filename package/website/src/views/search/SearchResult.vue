@@ -37,6 +37,7 @@
       <!-- Photo Grid -->
       <div v-else>
         <FlatPhotoGallery 
+            ref="galleryRef"
             :photos="photos" 
             :loading="loading" 
             :show-action-bar="true"
@@ -67,6 +68,13 @@
       @next="nextPhoto"
       @delete="handlePhotoDelete"
     />
+    
+    <!-- Album Select Modal -->
+    <AlbumSelector
+      v-model:visible="showAlbumSelectModal"
+      :photo-ids="tempSelectedIds"
+      @success="closeAlbumSelectModal"
+    />
   </div>
 </template>
 
@@ -80,6 +88,7 @@ import { albumService } from '@/api/album'
 import { mapPhotoToImage } from '@/stores/photoStore'
 import PhotoLightbox from '@/components/PhotoLightbox.vue'
 import FlatPhotoGallery from '@/components/FlatPhotoGallery.vue'
+import AlbumSelector from '@/components/AlbumSelector.vue'
 import type { AlbumImage } from '@/types/album'
 
 const route = useRoute()
@@ -110,10 +119,13 @@ const skip = ref(0)
 const limit = 50 // Increased from 3 to 50 for grid view
 const hasMore = ref(true)
 const loadMoreTrigger = ref<HTMLElement | null>(null)
+const galleryRef = ref<InstanceType<typeof FlatPhotoGallery> | null>(null)
 
 // Lightbox State
 const showLightbox = ref(false)
 const lightboxIndex = ref(0)
+const showAlbumSelectModal = ref(false)
+const tempSelectedIds = ref<string[]>([])
 
 const handleGalleryClick = (photo: AlbumImage) => {
   const index = photos.value.findIndex(p => p.id === photo.id)
@@ -146,11 +158,16 @@ const handleBatchDelete = async (ids: string[]) => {
 }
 
 const handleAddToAlbum = (ids: string[]) => {
-    // Implement add to album dialog logic if needed
-    // Currently SearchResult doesn't have the dialog component
-    // We can just log or implement later
-    console.log('Add to album:', ids)
-    ElMessage.info('功能开发中')
+    if (ids.length === 0) return
+    tempSelectedIds.value = ids
+    showAlbumSelectModal.value = true
+}
+
+const closeAlbumSelectModal = () => {
+    showAlbumSelectModal.value = false
+    tempSelectedIds.value = []
+    // Exit selection mode in gallery
+    galleryRef.value?.exitSelectionMode()
 }
 
 const openLightbox = (index: number) => {
