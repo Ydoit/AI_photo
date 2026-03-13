@@ -67,6 +67,7 @@ services:
       - ./data:/app/data
       - /path/to/your/photos:/app/Photos/
     environment:
+      - TZ=Asia/Shanghai
       - DB_URL=postgresql://trailsnap:trailsnap@postgres:5432/trailsnap
       - RAILWAY_DB_URL=postgresql://trailsnap:trailsnap@postgres:5432/railway
       - AI_API_URL=http://ai:8001

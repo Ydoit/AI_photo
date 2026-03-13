@@ -136,7 +136,7 @@ const updateCarouselHeight = () => {
 
 const fetchOnThisDay = async () => {
   try {
-    const data = await photoApi.getOnThisDayPhotos({year:2026, month:11, day:17, limit: 10 });
+    const data = await photoApi.getOnThisDayPhotos({ limit: 10 });
     photos.value = data;
   } catch (error) {
     console.error('Failed to fetch On This Day photos', error);

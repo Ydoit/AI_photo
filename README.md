@@ -69,6 +69,7 @@ services:
     container_name: postgres_container
     restart: always
     environment:
+      TZ: Asia/Shanghai
       POSTGRES_DB: trailsnap
       POSTGRES_USER: trailsnap
       POSTGRES_PASSWORD: trailsnap
@@ -96,6 +97,7 @@ services:
       - ./data:/app/data        # 挂载数据目录
       - F:\Photos:/app/Photos/  # 挂载本地照片目录
     environment:
+      - TZ=Asia/Shanghai
       - DB_URL=postgresql://trailsnap:trailsnap@postgres:5432/trailsnap
       - RAILWAY_DB_URL=postgresql://trailsnap:trailsnap@postgres:5432/railway
       - AI_API_URL=http://ai:8001
@@ -112,6 +114,8 @@ services:
     networks: [ app-network ]
     volumes:
       - ./data:/app/data        # 挂载数据目录
+    environment:
+      - TZ: Asia/Shanghai
 
   frontend:
     image: siyuan044/trailsnap-frontend:latest
@@ -119,6 +123,8 @@ services:
     ports: [ "8082:80" ]
     depends_on: [ server ]
     networks: [ app-network ]
+    environment:
+      - TZ: Asia/Shanghai
 
 networks:
   app-network:

@@ -78,6 +78,10 @@ export default withMermaid(defineConfig({
                     { text: '2025-12-25', link: '/docs/dev/prompt/2025-12-25' },
                     { text: '2026-01-07', link: '/docs/dev/prompt/2026-01-07' },
                     { text: '2026-01-24', link: '/docs/dev/prompt/2026-01-24' },
+                    { text: '0.2.0', link: '/docs/dev/prompt/0.2.0' },
+                    { text: '0.2.2', link: '/docs/dev/prompt/0.2.2' },
+                    { text: '0.2.3', link: '/docs/dev/prompt/0.2.3' },
+                    { text: '0.3.0', link: '/docs/dev/prompt/0.3.0' },
                     { text: '官网设计文档', link: '/docs/dev/prompt/official_website_design' }
                   ]
                 }

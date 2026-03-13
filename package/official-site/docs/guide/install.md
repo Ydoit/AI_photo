@@ -37,6 +37,7 @@ TrailSnap 目前仅支持docker部署，推荐使用 Docker Compose 进行快速
        container_name: postgres_container
        restart: always
        environment:
+         TZ: Asia/Shanghai
          POSTGRES_DB: trailsnap
          POSTGRES_USER: trailsnap
          POSTGRES_PASSWORD: trailsnap
@@ -64,6 +65,7 @@ TrailSnap 目前仅支持docker部署，推荐使用 Docker Compose 进行快速
          - ./data:/app/data
          - /path/to/your/photos:/app/Photos/  # 请修改为你的照片目录路径
        environment:
+         - TZ=Asia/Shanghai
          - DB_URL=postgresql://trailsnap:trailsnap@postgres:5432/trailsnap
          - RAILWAY_DB_URL=postgresql://trailsnap:trailsnap@postgres:5432/railway
          - AI_API_URL=http://ai:8001
@@ -80,6 +82,8 @@ TrailSnap 目前仅支持docker部署，推荐使用 Docker Compose 进行快速
        networks: [ app-network ]
        volumes:
          - ./data:/app/data
+       environment:
+         - TZ=Asia/Shanghai
        
      frontend:
        image: siyuan044/trailsnap-frontend:latest
@@ -87,6 +91,8 @@ TrailSnap 目前仅支持docker部署，推荐使用 Docker Compose 进行快速
        ports: [ "8082:80" ]
        depends_on: [ server ]
        networks: [ app-network ]
+       environment:
+         - TZ=Asia/Shanghai
 
    networks:
      app-network:
