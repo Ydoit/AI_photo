@@ -175,25 +175,10 @@
 
             <div
               v-else-if="image && image.file_type === 'video'"
-              class="relative w-full h-full flex items-center justify-center"
+              class="relative w-full h-full flex items-center justify-center bg-black"
               @click.stop
             >
-              <video
-                ref="videoPlayer"
-                :key="image.id"
-                class="video-js vjs-big-play-centered vjs-theme-forest"
-                controls
-                preload="auto"
-                :poster="image.thumbnail"
-                data-setup="{}"
-              >
-                <source :src="image.url" type="video/mp4" />
-                <p class="vjs-no-js">
-                  To view this video please enable JavaScript, and consider upgrading to a
-                  web browser that
-                  <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
-                </p>
-              </video>
+              <div ref="videoPlayer" class="w-full h-full"></div>
             </div>
         </div>
       </div>
@@ -272,8 +257,8 @@ import {
     UserPlus,
     FileText,
 } from 'lucide-vue-next'
-import videojs from 'video.js'
-import 'video.js/dist/video-js.css'
+import Player from 'xgplayer'
+import 'xgplayer/dist/index.min.css'
 import { albumService } from '@/api/album'
 import { ocrApi, type OCRRecord } from '@/api/ocr'
 import { faceApi } from '@/api/face'
@@ -362,26 +347,46 @@ const initialDistance = ref(0)
 
 // Video Player State
 const videoPlayer = ref<HTMLElement | null>(null)
-const player = ref<any>(null)
+const player = ref<Player | null>(null)
 
 const initPlayer = () => {
-    if (videoPlayer.value && !player.value) {
-        player.value = videojs(videoPlayer.value, {
-            controls: true,
+    if (videoPlayer.value && props.image) {
+        if (player.value) {
+            player.value.destroy()
+            player.value = null
+        }
+        
+        player.value = new Player({
+            el: videoPlayer.value,
+            url: props.image.url,
+            poster: props.image.thumbnail,
+            playsinline: true,
             autoplay: true,
-            preload: 'auto',
-            fluid: false, // Responsive
-            fill: true,
-            controlBar: {
-                children: [
-                    'playToggle',
-                    'volumePanel',
-                    'currentTimeDisplay',
-                    'timeDivider',
-                    'durationDisplay',
-                    'progressControl',
-                    'fullscreenToggle',
-                ]
+            height: '100%',
+            width: '100%',
+            fitVideoSize: 'fixHeight',
+            videoInit: true, // 初始化显示首帧
+            lang: 'zh-cn',
+            playbackRate: [0.5, 0.75, 1, 1.25, 1.5, 2], // 倍速
+            fluid: false, // 禁止流式布局，让width/height生效
+            // 针对移动端的特殊配置
+            commonStyle: {
+                progressColor: '#1989fa',
+                playedColor: '#1989fa',
+            },
+            // x5 内核适配
+            x5: {
+                type: 'h5',
+                videoType: 'h5', 
+                // orientation: 'landscape' 
+            },
+            fullscreen: {
+                index: 1, // 全屏按钮位置
+                rotateFullscreen: false // 旋转全屏
+            },
+            cssFullscreen: false, // 使用原生全屏
+            controls: {
+               mode: 'flex'
             }
         })
     }
@@ -389,7 +394,7 @@ const initPlayer = () => {
 
 const disposePlayer = () => {
     if (player.value) {
-        player.value.dispose()
+        player.value.destroy()
         player.value = null
     }
 }
