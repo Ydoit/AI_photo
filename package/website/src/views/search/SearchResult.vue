@@ -36,10 +36,9 @@
 
       <!-- Photo Grid -->
       <div v-else>
-        <PhotoGallery 
+        <FlatPhotoGallery 
             :photos="photos" 
             :loading="loading" 
-            layout-mode="grid"
             :show-action-bar="true"
             @click-photo="handleGalleryClick"
             @batch-delete="handleBatchDelete"
@@ -80,7 +79,7 @@ import searchService from '@/api/search'
 import { albumService } from '@/api/album'
 import { mapPhotoToImage } from '@/stores/photoStore'
 import PhotoLightbox from '@/components/PhotoLightbox.vue'
-import PhotoGallery from '@/components/PhotoGallery.vue'
+import FlatPhotoGallery from '@/components/FlatPhotoGallery.vue'
 import type { AlbumImage } from '@/types/album'
 
 const route = useRoute()

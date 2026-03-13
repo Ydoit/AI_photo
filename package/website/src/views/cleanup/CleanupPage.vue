@@ -41,11 +41,10 @@
           之后再执行清理操作</p>
       </div>
 
-       <PhotoGallery 
+       <FlatPhotoGallery 
             v-else
             :photos="photos" 
             :loading="loading" 
-            layout-mode="grid"
             :show-action-bar="true"
             @click-photo="handleGalleryClick"
             @batch-delete="handleBatchDelete"
@@ -84,7 +83,7 @@ import { photoApi } from '@/api/photo'
 import { albumService } from '@/api/album'
 import { mapPhotoToImage } from '@/stores/photoStore'
 import PhotoLightbox from '@/components/PhotoLightbox.vue'
-import PhotoGallery from '@/components/PhotoGallery.vue'
+import FlatPhotoGallery from '@/components/FlatPhotoGallery.vue'
 import type { AlbumImage } from '@/types/album'
 
 const router = useRouter()
