@@ -8,6 +8,13 @@ export const locationService = {
     return data.data;
   },
 
+  async searchLocations(q: string) {
+    const data = await request.get<{ label: string, value: { province?: string, city?: string, district?: string } }[]>('/api/locations/search', {
+      params: { q }
+    });
+    return data.data;
+  },
+
   async getLocations(level: 'city' | 'province' | 'district' | 'scene' = 'city', skip: number = 0, limit: number = 100, year?: number | null) {
     const data = await request.get<Location[]>('/api/locations', {
       params: { level, skip, limit, year: year || undefined }

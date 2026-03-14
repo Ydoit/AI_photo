@@ -25,3 +25,12 @@ class MapMarker(BaseModel):
     id: str
     lat: float
     lng: float
+
+class LocationValue(BaseModel):
+    province: Optional[str] = None
+    city: Optional[str] = None
+    district: Optional[str] = None
+
+class LocationSearchItem(BaseModel):
+    label: str
+    value: LocationValue

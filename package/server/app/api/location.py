@@ -13,6 +13,17 @@ from app.db.models import User
 
 router = APIRouter()
 
+@router.get("/search", response_model=List[schemas.LocationSearchItem], summary="搜索位置")
+def search_locations(
+    q: str = Query(..., min_length=1, description="搜索关键词"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(deps.get_current_user)
+):
+    """
+    搜索包含关键词的省/市/区。
+    """
+    return crud.search_locations(db, current_user.id, q)
+
 @router.get("/years", response_model=List[int], summary="获取所有年份")
 def get_years(db: Session = Depends(get_db), current_user: User = Depends(deps.get_current_user)):
     """

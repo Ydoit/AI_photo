@@ -102,7 +102,7 @@
               @touchstart="startTouch"
             >
                 <!-- Image Wrapper for Correct Overlay Positioning -->
-                <div class="relative flex justify-center items-center w-full h-full">
+                <div class="relative flex justify-center items-center h-full">
                     <img
                         ref="imageRef"
                         :src="displayImageSrc"

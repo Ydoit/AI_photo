@@ -232,3 +232,91 @@ def get_location_statistics(db: Session, owner_id: UUID):
         "district_count": result[2] or 0,
         "country_count": result[3] or 0
     }
+
+def search_locations(db: Session, owner_id: UUID, query: str, limit: int = 20):
+    search = f"%{query}%"
+    suggestions = []
+    seen = set()
+
+    # 1. Search Provinces
+    provinces = db.query(PhotoMetadata.province)\
+        .join(Photo, Photo.id == PhotoMetadata.photo_id)\
+        .filter(Photo.owner_id == owner_id)\
+        .filter(PhotoMetadata.province.ilike(search))\
+        .filter(PhotoMetadata.province.isnot(None), PhotoMetadata.province != '')\
+        .distinct()\
+        .limit(10).all()
+        
+    for p in provinces:
+        label = p[0]
+        if label and label not in seen:
+            seen.add(label)
+            suggestions.append({
+                "label": label,
+                "value": {
+                    "province": label,
+                    "city": "",
+                    "district": ""
+                }
+            })
+            
+    # 2. Search Cities (Distinct Province + City)
+    # Match on Province OR City
+    cities = db.query(PhotoMetadata.province, PhotoMetadata.city)\
+        .join(Photo, Photo.id == PhotoMetadata.photo_id)\
+        .filter(Photo.owner_id == owner_id)\
+        .filter((PhotoMetadata.province.ilike(search)) | (PhotoMetadata.city.ilike(search)))\
+        .filter(PhotoMetadata.city.isnot(None), PhotoMetadata.city != '')\
+        .distinct()\
+        .limit(20).all()
+
+    for p, c in cities:
+        parts = [x for x in [p, c] if x]
+        label = "".join(parts)
+        
+        # Only add if it matches the query string somewhat (e.g. contains query)
+        # Or simply add because it was returned by the query
+        if label and label not in seen:
+            seen.add(label)
+            suggestions.append({
+                "label": label,
+                "value": {
+                    "province": p or "",
+                    "city": c,
+                    "district": ""
+                }
+            })
+
+    # 3. Search Districts (Distinct Province + City + District)
+    # Match on Province OR City OR District
+    districts = db.query(PhotoMetadata.province, PhotoMetadata.city, PhotoMetadata.district)\
+        .join(Photo, Photo.id == PhotoMetadata.photo_id)\
+        .filter(Photo.owner_id == owner_id)\
+        .filter(
+            (PhotoMetadata.province.ilike(search)) |
+            (PhotoMetadata.city.ilike(search)) |
+            (PhotoMetadata.district.ilike(search))
+        )\
+        .filter(PhotoMetadata.district.isnot(None), PhotoMetadata.district != '')\
+        .distinct()\
+        .limit(20).all()
+        
+    for p, c, d in districts:
+        parts = [x for x in [p, c, d] if x]
+        label = "".join(parts)
+        
+        if label and label not in seen:
+            seen.add(label)
+            suggestions.append({
+                "label": label,
+                "value": {
+                    "province": p or "",
+                    "city": c or "",
+                    "district": d
+                }
+            })
+            
+    # Sort by label length (shorter = broader scope usually comes first)
+    suggestions.sort(key=lambda x: len(x["label"]))
+    
+    return suggestions[:limit]

@@ -193,24 +193,27 @@
             
             <!-- Locations -->
             <div>
-                <div class="flex justify-between items-center mb-1">
-                    <label class="block text-xs font-medium text-gray-500">地点</label>
-                    <button @click="addLocation" class="text-xs text-primary-500 hover:text-primary-600 flex items-center gap-1">
-                        <Plus class="w-3 h-3" /> 添加
-                    </button>
-                </div>
-                <div class="space-y-2">
-                    <div v-for="(loc, index) in form.locations" :key="index" class="grid grid-cols-12 gap-2 items-center">
-                        <input v-model="loc.province" placeholder="省" class="col-span-3 px-2 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700 min-w-0" />
-                        <input v-model="loc.city" placeholder="市" class="col-span-4 px-2 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700 min-w-0" />
-                        <input v-model="loc.district" placeholder="区" class="col-span-4 px-2 py-1 text-sm border rounded dark:bg-gray-800 dark:border-gray-700 min-w-0" />
-                        <button @click="removeLocation(index)" class="col-span-1 flex p-1 justify-center text-gray-400 hover:text-red-500">
-                            <X class="w-4 h-4" />
-                        </button>
-                    </div>
-                    <div v-if="form.locations.length === 0" class="text-xs text-gray-400 italic">暂无地点条件</div>
-                    <span v-else class="text-xs text-gray-400 italic">输入地名全称，不需要的层级可留空</span>
-                </div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">地点</label>
+                <el-select
+                    v-model="form.locations"
+                    multiple
+                    filterable
+                    remote
+                    reserve-keyword
+                    placeholder="请输入地点关键词搜索"
+                    :remote-method="searchLocation"
+                    :loading="locationLoading"
+                    value-key="_id"
+                    class="w-full"
+                >
+                    <el-option
+                        v-for="item in locationOptions"
+                        :key="item.label"
+                        :label="item.label"
+                        :value="item.value"
+                    />
+                </el-select>
+                <p class="text-xs text-gray-400 mt-1">支持搜索省、市、区</p>
             </div>
 
             <!-- People -->
@@ -223,6 +226,9 @@
                     class="w-full"
                     filterable
                 >
+                    <!-- 如果为空，显示提示 -->
+                    <div v-if="form.people.length === 0" class="text-xs text-gray-400 italic">暂无人物条件</div>
+                    <!-- 否则，显示人物条件 -->
                     <el-option
                         v-for="face in faces"
                         :key="face.id"
@@ -261,8 +267,9 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAlbumStore } from '@/stores/albumStore'
 import type { Album, FaceIdentity, CreateAlbumDto } from '@/types/album'
-import { Plus, Sparkles, Edit2, Trash2, Clock, Users, MapPin, FolderHeart, FolderOpen, Tag, Filter, X } from 'lucide-vue-next'
+import { Plus, Sparkles, Edit2, Trash2, Clock, Users, MapPin, FolderHeart, FolderOpen, Tag, Filter } from 'lucide-vue-next'
 import { albumService } from '@/api/album'
+import { locationService } from '@/api/location'
 import { faceApi } from '@/api/face'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { format } from 'date-fns'
@@ -335,6 +342,46 @@ interface LocationForm {
     province: string;
     city: string;
     district: string;
+    _id?: string;
+}
+
+const locationOptions = ref<{ label: string; value: LocationForm }[]>([])
+const locationLoading = ref(false)
+
+const searchLocation = async (query: string) => {
+  if (query) {
+    locationLoading.value = true
+    try {
+        const res = await locationService.searchLocations(query)
+        const newOptions = res.map(item => ({
+            label: item.label,
+            value: {
+                province: item.value.province || '',
+                city: item.value.city || '',
+                district: item.value.district || '',
+                _id: item.label
+            }
+        }))
+        
+        // Merge with existing selected items to keep them visible
+        const selectedIds = new Set(form.locations.map(l => l._id))
+        const existingOptions = locationOptions.value.filter(o => selectedIds.has(o.value._id))
+        
+        // Filter out duplicates from new options
+        const existingIds = new Set(existingOptions.map(o => o.value._id))
+        const filteredNew = newOptions.filter(o => !existingIds.has(o.value._id))
+        
+        locationOptions.value = [...existingOptions, ...filteredNew]
+    } catch (e) {
+        console.error(e)
+    } finally {
+        locationLoading.value = false
+    }
+  } else {
+     // Keep selected options
+     const selectedIds = new Set(form.locations.map((l: any) => l._id))
+     locationOptions.value = locationOptions.value.filter(o => selectedIds.has(o.value._id))
+  }
 }
 
 const form = reactive({
@@ -365,6 +412,7 @@ const openCreateModal = async (type: string = 'user') => {
   form.type = type
   form.timeRange = []
   form.locations = []
+  locationOptions.value = []
   form.people = []
   form.threshold = 0.25
   
@@ -386,6 +434,7 @@ const openEditModal = async (album: any) => {
   // Reset fields
   form.timeRange = []
   form.locations = []
+  locationOptions.value = []
   form.people = []
   if (form.type === 'conditional' && album.condition) {
 
@@ -398,10 +447,20 @@ const openEditModal = async (album: any) => {
           ].filter(Boolean)
       }
       if (album.condition.locations) {
-          form.locations = album.condition.locations.map((l: any) => ({
-              province: l.province || '',
-              city: l.city || '',
-              district: l.district || ''
+          form.locations = album.condition.locations.map((l: any) => {
+             const parts = [l.province, l.city, l.district].filter(Boolean)
+             const label = parts.join('')
+             return {
+                 province: l.province || '',
+                 city: l.city || '',
+                 district: l.district || '',
+                 _id: label
+             }
+          })
+          // Pre-populate options
+          locationOptions.value = form.locations.map(l => ({
+              label: l._id!,
+              value: l
           }))
       }
       if (album.condition.people) {
@@ -414,14 +473,6 @@ const openEditModal = async (album: any) => {
 
 const closeModal = () => {
   showModal.value = false
-}
-
-const addLocation = () => {
-    form.locations.push({ province: '', city: '', district: '' })
-}
-
-const removeLocation = (index: number) => {
-    form.locations.splice(index, 1)
 }
 
 const submitForm = async () => {

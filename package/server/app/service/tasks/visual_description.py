@@ -52,7 +52,7 @@ async def handle_visual_description_task(task_manager, task: Task, db: Session) 
         generated_count = 0
 
         while True:
-            query = db.query(Photo)
+            query = db.query(Photo).filter(Photo.file_type != FileType.video, Photo.image_type != ImageType.SCREENSHOT)
             if task.owner_id:
                 query = query.filter(Photo.owner_id == task.owner_id)
 
@@ -62,9 +62,6 @@ async def handle_visual_description_task(task_manager, task: Task, db: Session) 
 
             tasks_to_create = []
             for p in batch:
-                if p.file_type == FileType.video:
-                    continue
-
                 should_process = False
                 if force:
                     should_process = True

@@ -72,13 +72,16 @@ def get_live_photo_video(
                  return Response(status_code=416, headers=headers)
 
             chunk_size = end - start + 1
+            buffer_size = 1024 * 1024 # 1MB buffer
 
             def iterfile():
                 with open(file_path, "rb") as f:
                     f.seek(start)
                     bytes_read = 0
                     while bytes_read < chunk_size:
-                        chunk = f.read(min(4096, chunk_size - bytes_read))
+                        # Read in larger chunks for better performance
+                        read_size = min(buffer_size, chunk_size - bytes_read)
+                        chunk = f.read(read_size)
                         if not chunk:
                             break
                         bytes_read += len(chunk)
@@ -148,13 +151,16 @@ def get_media_file(
                  return Response(status_code=416, headers=headers)
 
             chunk_size = end - start + 1
+            buffer_size = 1024 * 1024 # 1MB buffer
 
             def iterfile():
                 with open(file_path, "rb") as f:
                     f.seek(start)
                     bytes_read = 0
                     while bytes_read < chunk_size:
-                        chunk = f.read(min(4096, chunk_size - bytes_read))
+                        # Read in larger chunks for better performance
+                        read_size = min(buffer_size, chunk_size - bytes_read)
+                        chunk = f.read(read_size)
                         if not chunk:
                             break
                         bytes_read += len(chunk)
