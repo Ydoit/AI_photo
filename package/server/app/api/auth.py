@@ -32,12 +32,12 @@ def login_access_token(
     if not user:
         # Check if user exists to provide more specific error (lockout vs invalid creds)
         user_obj = crud_user.get_by_username_or_email(db, identifier=form_data.username)
-        if user_obj and user_obj.lockout_until and user_obj.lockout_until > datetime.utcnow():
-             raise HTTPException(status_code=403, detail="Account locked due to too many failed login attempts.")
+        if user_obj and user_obj.lockout_until and user_obj.lockout_until > datetime.now():
+             raise HTTPException(status_code=403, detail="密码错误次数过多，用户已被锁定，请5分钟后重试")
 
-        raise HTTPException(status_code=401, detail="Incorrect email or password")
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
     elif not user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(status_code=400, detail="用户已被禁用")
     
     access_token_expires = timedelta(minutes=config_manager.get_user_config(user.id, db).security.access_token_expire_minutes)
     return {

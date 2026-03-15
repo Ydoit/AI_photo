@@ -82,15 +82,15 @@ def authenticate(db: Session, email: str, password: str) -> Optional[User]:
         return None
     
     # Check lockout
-    if user.lockout_until and user.lockout_until > datetime.utcnow():
+    if user.lockout_until and user.lockout_until > datetime.now():
         return None # Caller should handle specific lockout message by checking user state if auth fails
 
     if not verify_password(password, user.hashed_password):
         # Handle failed attempt
         user.failed_login_attempts += 1
-        user.last_failed_login = datetime.utcnow()
+        user.last_failed_login = datetime.now()
         if user.failed_login_attempts >= 5: # Threshold could be configured
-             user.lockout_until = datetime.utcnow() + timedelta(minutes=15) # Lockout duration
+             user.lockout_until = datetime.now() + timedelta(minutes=5) # Lockout duration
         db.add(user)
         db.commit()
         return None

@@ -1,60 +1,79 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 px-4">
-    <el-card class="w-full max-w-md shadow-lg">
-      <template #header>
-        <div class="text-center">
-          <h2 class="text-xl font-bold text-gray-800 dark:text-white">登录 TrailSnap</h2>
-        </div>
-      </template>
-      
-      <el-form
-        ref="loginFormRef"
-        :model="loginForm"
-        :rules="rules"
-        label-position="top"
-        size="large"
-        @submit.prevent="handleLogin"
-      >
-        <el-form-item label="用户名" prop="username">
-          <el-input 
-            v-model="loginForm.username" 
-            placeholder="请输入用户名"
-            :prefix-icon="User"
-          />
-        </el-form-item>
-        
-        <el-form-item label="密码" prop="password">
-          <el-input 
-            v-model="loginForm.password" 
-            type="password" 
-            placeholder="请输入密码"
-            :prefix-icon="Lock"
-            show-password
-          />
-        </el-form-item>
+  <div class="min-h-screen w-full flex items-center justify-center bg-white dark:bg-gray-900">
+    <!-- 外层容器：控制整体居中 -->
+    <div class="w-full max-w-6xl mx-auto flex flex-col md:flex-row bg-white dark:bg-gray-900 rounded-xl shadow-xl overflow-hidden">
+      <!-- Left Side: Characters (Desktop Only) -->
+      <div class="hidden md:flex w-1/2 bg-gray-100 dark:bg-gray-800 items-center justify-center relative overflow-hidden min-h-[500px]">
+        <LoginCharacters 
+          :focus-target="focusTarget" 
+          :is-celebrating="isCelebrating" 
+          :is-mocking="isMocking"
+        />
+      </div>
 
-        <div class="flex items-center justify-between mb-4">
-          <el-checkbox v-model="rememberMe">记住我</el-checkbox>
-          <router-link to="/forgot-password" class="text-sm text-blue-600 hover:underline">忘记密码?</router-link>
-        </div>
-
-        <el-form-item>
-          <el-button 
-            type="primary" 
-            class="w-full" 
-            :loading="loading" 
-            @click="handleLogin"
+      <!-- Right Side: Login Form -->
+      <div class="w-full md:w-1/2 flex items-center justify-center p-8 md:p-12 bg-white dark:bg-gray-900">
+        <div class="w-full max-w-md">
+          <div class="mb-10 text-center md:text-left">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">登录 TrailSnap</h2>
+            <p class="text-gray-500 dark:text-gray-400">欢迎回来，请输入您的账号密码</p>
+          </div>
+          
+          <el-form
+            ref="loginFormRef"
+            :model="loginForm"
+            :rules="rules"
+            label-position="top"
+            size="large"
+            class="space-y-6"
+            @submit.prevent="handleLogin"
           >
-            登录
-          </el-button>
-        </el-form-item>
+            <el-form-item label="用户名" prop="username" class="!mb-4">
+              <el-input 
+                v-model="loginForm.username" 
+                placeholder="请输入用户名"
+                :prefix-icon="User"
+                class="!h-12"
+                @focus="focusTarget = 'username'"
+                @blur="focusTarget = null"
+              />
+            </el-form-item>
+            
+            <el-form-item label="密码" prop="password" class="!mb-2">
+              <el-input 
+                v-model="loginForm.password" 
+                type="password" 
+                placeholder="请输入密码"
+                :prefix-icon="Lock"
+                show-password
+                class="!h-12"
+                @focus="focusTarget = 'password'"
+                @blur="focusTarget = null"
+              />
+            </el-form-item>
 
-        <div class="text-center mt-4" v-if="!hasUsers">
-          <span class="text-gray-600 text-sm">还没有账号? </span>
-          <router-link to="/register" class="text-blue-600 hover:underline text-sm">立即注册</router-link>
+            <div class="flex items-center justify-between mb-6">
+              <el-checkbox v-model="rememberMe" size="large">记住我</el-checkbox>
+              <router-link to="/forgot-password" class="text-sm text-blue-600 hover:underline">忘记密码?</router-link>
+            </div>
+
+            <el-button 
+              type="primary" 
+              class="w-full !bg-blue-500 hover:!bg-blue-600 !border-none !h-12 !text-lg !rounded-lg font-medium transition-colors duration-200" 
+              :loading="loading" 
+              @click="handleLogin"
+            >
+              登录
+            </el-button>
+
+            <div class="text-center mt-6" v-if="!hasUsers">
+              <span class="text-gray-600 text-sm">还没有账号? </span>
+              <router-link to="/register" class="text-blue-600 hover:underline text-sm font-medium">立即注册</router-link>
+            </div>
+          </el-form>
         </div>
-      </el-form>
-    </el-card>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -65,6 +84,7 @@ import { useUserStore } from '@/stores/user';
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus';
 import { User, Lock } from '@element-plus/icons-vue';
 import { authService } from '@/api/auth';
+import LoginCharacters from './components/LoginCharacters.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -74,6 +94,11 @@ const loginFormRef = ref<FormInstance>();
 const loading = ref(false);
 const rememberMe = ref(false);
 const hasUsers = ref(true);
+
+// Character interaction state
+const focusTarget = ref<'username' | 'password' | null>(null);
+const isCelebrating = ref(false);
+const isMocking = ref(false);
 
 const loginForm = reactive({
   username: '',
@@ -115,6 +140,9 @@ const handleLogin = async () => {
       try {
         await userStore.login(loginForm);
 
+        // Celebration animation
+        isCelebrating.value = true;
+        
         if (rememberMe.value) {
           localStorage.setItem('remember_username', loginForm.username);
         } else {
@@ -123,16 +151,33 @@ const handleLogin = async () => {
 
         ElMessage.success('登录成功');
 
-        // Redirect to previous page or home
-        const redirect = route.query.redirect as string || '/';
-        router.push(redirect);
+        // Redirect after a short delay to show animation
+        setTimeout(() => {
+            const redirect = route.query.redirect as string || '/';
+            router.push(redirect);
+        }, 1500);
+        
       } catch (error: any) {
         console.error(error);
-        // Extract error message if available from backend response structure
         const msg = error.response?.data?.detail || error.message || '登录失败，请检查用户名和密码';
         ElMessage.error(msg);
+        
+        // Mocking animation on error
+        isMocking.value = true;
+        setTimeout(() => {
+          isMocking.value = false;
+        }, 1000);
       } finally {
-        loading.value = false;
+        // Wait for animation or immediate if error
+        if (!isCelebrating.value) {
+           loading.value = false;
+        } else {
+           // If celebrating, keep loading state until redirect? 
+           // Or stop loading but keep celebrating.
+           // Let's stop loading so button shows "Login" (or maybe "Success"?)
+           // But we want to prevent double clicks.
+           // Loading spinner is fine.
+        }
       }
     } else {
       console.log('error submit!', fields);
@@ -142,5 +187,16 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-/* Scoped styles if needed */
+:deep(.el-form-item__label) {
+  font-weight: 500;
+  color: #374151; /* gray-700 */
+}
+.dark :deep(.el-form-item__label) {
+  color: #d1d5db; /* gray-300 */
+}
+
+/* Customize input focus color */
+:deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #3b82f6 inset !important;
+}
 </style>
