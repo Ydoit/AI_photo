@@ -128,19 +128,13 @@
               {{ person.identity_name }}
             </span>
 
-            <el-dropdown v-if="!isMergeMode" trigger="click" @command="(cmd: string) => handleCommand(cmd, person)">
-              <div class="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors cursor-pointer" @click.stop>
-                <MoreVerticalIcon class="w-3.5 h-3.5 text-gray-400 group-hover/name:text-gray-600" />
-              </div>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item command="rename">编辑人物信息</el-dropdown-item>
-                  <el-dropdown-item command="rescan">重新扫描人脸</el-dropdown-item>
-                  <el-dropdown-item v-if="person.is_hidden" command="show">显示人物</el-dropdown-item>
-                  <el-dropdown-item v-else command="hide" divided class="text-orange-500">隐藏人物</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+            <div 
+              v-if="!isMergeMode" 
+              class="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors cursor-pointer" 
+              @click.stop="openMenu($event, person)"
+            >
+              <MoreVerticalIcon class="w-3.5 h-3.5 text-gray-400 group-hover/name:text-gray-600" />
+            </div>
           </div>
           <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
             {{ person.face_count }} 个项目
@@ -154,6 +148,38 @@
       :identity="currentEditingIdentity"
       @saved="handleEditSaved"
     />
+
+    <!-- Context Menu -->
+    <Teleport to="body">
+      <div 
+        v-if="menuVisible" 
+        class="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1 min-w-[140px]"
+        :style="{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }"
+        @click.stop
+      >
+        <div class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors" @click="handleMenuClick('rename')">
+          编辑人物信息
+        </div>
+        <div class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors" @click="handleMenuClick('rescan')">
+          重新扫描人脸
+        </div>
+        <div 
+          v-if="activePerson?.is_hidden" 
+          class="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors" 
+          @click="handleMenuClick('show')"
+        >
+          显示人物
+        </div>
+        <template v-else>
+          <div class="h-px bg-gray-200 dark:bg-gray-700 my-1 mx-2"></div>
+          <div class="px-4 py-2 text-sm text-orange-500 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer transition-colors" @click="handleMenuClick('hide')">
+            隐藏人物
+          </div>
+        </template>
+      </div>
+    </Teleport>
+    
+    <div v-if="menuVisible" class="fixed inset-0 z-40" @click="closeMenu"></div>
   </div>
 </template>
 
@@ -198,6 +224,11 @@ try {
 
 const editDialogVisible = ref(false)
 const currentEditingIdentity = ref<FaceIdentity | null>(null)
+
+// Context Menu State
+const menuVisible = ref(false)
+const menuPosition = ref({ top: 0, left: 0 })
+const activePerson = ref<FaceIdentity | null>(null)
 
 const fetchIdentities = async () => {
   loading.value = true
@@ -314,6 +345,45 @@ const handleBulkShow = async () => {
   } catch (e) {
     if (e !== 'cancel') ElMessage.error('显示失败')
   }
+}
+
+const openMenu = (event: MouseEvent, person: FaceIdentity) => {
+  activePerson.value = person
+  const target = event.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+  
+  const menuWidth = 140
+  const menuHeight = 150 // Estimated height
+  let left = rect.left
+  let top = rect.bottom + 5
+
+  // Adjust horizontal position
+  if (left + menuWidth > window.innerWidth) {
+    left = rect.right - menuWidth
+  }
+  if (left < 0) left = 0
+
+  // Adjust vertical position
+  if (top + menuHeight > window.innerHeight) {
+    top = rect.top - menuHeight - 5
+  }
+
+  menuPosition.value = {
+    top,
+    left
+  }
+  menuVisible.value = true
+}
+
+const closeMenu = () => {
+  menuVisible.value = false
+}
+
+const handleMenuClick = (cmd: string) => {
+  if (activePerson.value) {
+    handleCommand(cmd, activePerson.value)
+  }
+  closeMenu()
 }
 
 const confirmMerge = async () => {

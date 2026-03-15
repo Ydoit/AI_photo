@@ -153,11 +153,7 @@ async def process_single_photo(task_manager, photo: Photo, db: Session, settings
             ],
             temperature=0.7,
             top_p=0.8,
-            presence_penalty=1.5,
-            extra_body={
-                "top_k": 20,
-                "chat_template_kwargs": {"enable_thinking": False},
-            },
+            presence_penalty=1.5
         )
 
         eval_content = eval_response.choices[0].message.content.strip().strip('`').strip().strip('json')

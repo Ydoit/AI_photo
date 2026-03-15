@@ -116,8 +116,39 @@ const initMap = () => {
     map.value = new T.Map('tianditu-map')
   }
 
-  map.value.centerAndZoom(new T.LngLat(104.195, 35.861), 4) // Center of China
+  // Load saved position
+  let center = new T.LngLat(104.195, 35.861)
+  let zoom = 4
+  
+  try {
+    const savedState = localStorage.getItem('trailsnap_map_state')
+    if (savedState) {
+      const { lng, lat, z } = JSON.parse(savedState)
+      if (lng && lat && z) {
+        center = new T.LngLat(lng, lat)
+        zoom = z
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to load map state', e)
+  }
+
+  map.value.centerAndZoom(center, zoom)
   map.value.enableScrollWheelZoom()
+  
+  // Save position on change
+  const saveState = () => {
+    const center = map.value.getCenter()
+    const zoom = map.value.getZoom()
+    localStorage.setItem('trailsnap_map_state', JSON.stringify({
+      lng: center.getLng(),
+      lat: center.getLat(),
+      z: zoom
+    }))
+  }
+  
+  map.value.addEventListener('moveend', saveState)
+  map.value.addEventListener('zoomend', saveState)
 }
 
 const scenesData = ref<any[]>([])
@@ -199,12 +230,12 @@ const loadScenes = async () => {
     renderScenes()
     
     // Fit view to scenes if any
-    if (scenesData.value.length > 0) {
-       const first = scenesData.value[0]
-       if (first.latitude && first.longitude) {
-           map.value.panTo(new T.LngLat(first.longitude, first.latitude))
-       }
-    }
+    // if (scenesData.value.length > 0) {
+    //    const first = scenesData.value[0]
+    //    if (first.latitude && first.longitude) {
+    //        map.value.panTo(new T.LngLat(first.longitude, first.latitude))
+    //    }
+    // }
 
   } catch (e) {
     console.error('Failed to load scenes:', e)
