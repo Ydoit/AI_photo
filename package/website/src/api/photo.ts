@@ -1,7 +1,49 @@
 import request from '@/utils/request'
-import type { AlbumImage,Photo } from '@/types/album'
+import type { AlbumImage,Photo, SimilarPhoto } from '@/types/album'
+
+export interface TaskResponse {
+  id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  result?: any;
+  error?: string;
+  total_items: number;
+  processed_items: number;
+}
 
 export const photoApi = {
+  // Similar Photo Task API
+  async createSimilarTask(threshold: number = 0.9) {
+    const data = await request.post<TaskResponse>('/api/photos/similar/tasks', null, {
+      params: { threshold }
+    });
+    return data.data;
+  },
+
+  async getLatestSimilarTask() {
+    const data = await request.get<TaskResponse | null>('/api/photos/similar/tasks/latest');
+    return data.data;
+  },
+
+  async getSimilarTaskResult(taskId: string, skip: number = 0, limit: number = 20) {
+    const data = await request.get<SimilarPhoto[][]>(`/api/photos/similar/tasks/${taskId}/result`, {
+      params: { skip, limit }
+    });
+    return data.data;
+  },
+
+  async cancelSimilarTask(taskId: string) {
+    await request.delete(`/api/photos/similar/tasks/${taskId}`);
+  },
+
+  // Legacy (Deprecated)
+  async getSimilarPhotos(threshold: number = 0.9) {
+    const data = await request.get<SimilarPhoto[][]>('/api/photos/similar', {
+      params: { threshold },
+      timeout: 120000
+    });
+    return data.data;
+  },
+
   async getCleanupPhotos(params: { skip: number; limit: number; sort_by: 'asc' | 'desc' }) {
     const data = await request.get<Photo[]>('/api/photos/cleanup', {
       params

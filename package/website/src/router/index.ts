@@ -20,6 +20,8 @@ const ClassificationDetail = () => import('@/views/album/intelligent-classificat
 const SearchResult = () => import('@/views/search/SearchResult.vue');
 const MobileSearch = () => import('@/views/search/MobileSearch.vue');
 const CleanupPage = () => import('@/views/cleanup/CleanupPage.vue');
+const ToolboxPage = () => import('@/views/toolbox/ToolboxPage.vue');
+const SimilarPhotoCleanup = () => import('@/views/toolbox/SimilarPhotoCleanup.vue');
 
 const NotFound = () => import('@/views/NotFound.vue');
 
@@ -42,6 +44,8 @@ const routes: RouteRecordRaw[] = [
       { path: '/classification/:name', name: 'ClassificationDetail', component: ClassificationDetail, meta: { title: '分类详情' } },
       { path: '/search', name: 'SearchResult', component: SearchResult, meta: { title: '搜索结果' } },
       { path: '/cleanup', name: 'Cleanup', component: CleanupPage, meta: { title: '清理相册' } },
+      { path: '/toolbox', name: 'Toolbox', component: ToolboxPage, meta: { title: '工具箱' } },
+      { path: '/toolbox/similar', name: 'SimilarPhotoCleanup', component: SimilarPhotoCleanup, meta: { title: '相似照片清理' } },
       { path: '/photos', name: 'Photos', component: PhotosPage, meta: { title: '所有照片' } },
       { path: '/mobile-search', name: 'MobileSearch', component: MobileSearch, meta: { title: '搜索', layout: 'blank' } },
       { path: '/ticket', name: 'Ticket', component: TicketPage, meta: { title: '车票', keepAlive: true } },

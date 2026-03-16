@@ -1,0 +1,527 @@
+<template>
+  <div class="container mx-auto py-6 px-4 h-screen flex flex-col">
+    <div class="flex items-center justify-between mb-4 flex-shrink-0">
+        <div class="flex items-center gap-2">
+            <button @click="$router.back()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+                <i class="mgc_arrow_left_line text-xl"></i>
+            </button>
+            <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">相似照片清理</h1>
+        </div>
+        <div class="flex gap-2">
+            <button 
+                v-if="!loading && groups.length > 0"
+                @click="startNewScan"
+                class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors shadow-sm"
+            >
+                重新扫描
+            </button>
+            <button 
+                v-if="groups.length > 0"
+                @click="handleDeleteAll"
+                class="px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition-colors shadow-sm"
+            >
+                删除所有冗余 (保留最佳)
+            </button>
+        </div>
+    </div>
+
+    <!-- Task Progress -->
+    <div v-if="task && (task.status === 'pending' || task.status === 'processing')" class="flex-1 flex flex-col items-center justify-center p-8">
+        <div class="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg text-center">
+             <div class="mb-6 relative">
+                 <div class="w-20 h-20 mx-auto rounded-full border-4 border-blue-100 dark:border-blue-900/30 flex items-center justify-center">
+                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+                 </div>
+             </div>
+             <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">正在分析相似照片</h3>
+             <p class="text-gray-500 dark:text-gray-400 text-sm mb-6">这可能需要几分钟，请耐心等待...</p>
+             
+             <!-- Progress Bar -->
+             <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-2 overflow-hidden">
+                <div 
+                    class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" 
+                    :style="{ width: progressPercentage + '%' }"
+                ></div>
+             </div>
+             <div class="flex justify-between text-xs text-gray-500 mb-6">
+                <span>{{ task.processed_items }} / {{ task.total_items }}</span>
+                <span>{{ progressPercentage }}%</span>
+             </div>
+
+             <button 
+                @click="cancelTask"
+                class="text-red-500 hover:text-red-600 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 rounded-lg transition-colors"
+             >
+                取消任务
+             </button>
+        </div>
+    </div>
+
+    <!-- Error/Start State -->
+    <div v-else-if="!task || task.status === 'failed' || task.status === 'cancelled'" class="flex-1 flex flex-col items-center justify-center">
+        <div v-if="task?.status === 'failed'" class="text-red-500 mb-4">
+            任务失败: {{ task.error }}
+        </div>
+        <div v-else-if="task?.status === 'cancelled'" class="text-orange-500 mb-4">
+            任务已取消
+        </div>
+        
+        <div class="text-center max-w-sm">
+            <div class="w-24 h-24 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl text-blue-500">
+                👯
+            </div>
+            <h2 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">开始相似照片分析</h2>
+            <p class="text-gray-500 dark:text-gray-400 mb-8">
+                系统将扫描您的相册，找出画面高度相似的照片（如连拍），帮助您筛选保留最佳瞬间。
+            </p>
+            <button 
+                @click="startNewScan" 
+                class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-500/30 transition-all transform hover:scale-105 font-medium"
+            >
+                开始扫描
+            </button>
+        </div>
+    </div>
+
+    <!-- Empty Result -->
+    <div v-else-if="task?.status === 'completed' && groups.length === 0" class="flex-1 flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+        <i class="mgc_check_circle_line text-4xl mb-2 text-green-500"></i>
+        <p>未发现相似照片分组</p>
+        <p class="text-sm mt-2 opacity-70">您的相册很整洁！</p>
+        <button 
+            @click="startNewScan" 
+            class="mt-6 px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+            重新扫描
+        </button>
+    </div>
+
+    <!-- Result Content -->
+    <div v-else class="flex-1 overflow-y-auto space-y-6 pb-20 scrollbar-hide" ref="containerRef">
+        <div v-for="(group, gIndex) in groups" :key="gIndex" class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-sm font-medium text-gray-600 dark:text-gray-300">
+                    分组 {{ gIndex + 1 }} ({{ group.length }} 张)
+                </span>
+                <button 
+                    @click="toggleGroupSelection(gIndex)"
+                    class="text-sm text-blue-500 hover:text-blue-600 font-medium"
+                >
+                    {{ isGroupAllSelected(gIndex) ? '取消全选' : '选择冗余' }}
+                </button>
+            </div>
+            
+            <!-- Horizontal Scroll Container -->
+            <div class="relative group-scroll-container group/scroll">
+                 <!-- Scroll Buttons (Desktop) -->
+                 <button 
+                    v-if="canScrollLeft(gIndex)"
+                    @click="scroll(gIndex, -1)"
+                    class="absolute left-0 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/90 dark:bg-gray-700/90 rounded-full shadow-md hover:bg-white dark:hover:bg-gray-600 hidden md:flex items-center justify-center text-gray-700 dark:text-gray-200 opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-300"
+                 >
+                    <i class="mgc_left_line"></i>
+                 </button>
+                 <button 
+                    v-if="canScrollRight(gIndex)"
+                    @click="scroll(gIndex, 1)"
+                    class="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2 bg-white/90 dark:bg-gray-700/90 rounded-full shadow-md hover:bg-white dark:hover:bg-gray-600 hidden md:flex items-center justify-center text-gray-700 dark:text-gray-200 opacity-0 group-hover/scroll:opacity-100 transition-opacity duration-300"
+                 >
+                    <i class="mgc_right_line"></i>
+                 </button>
+
+                <div 
+                    :ref="el => setScrollRef(el, gIndex)"
+                    class="flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory py-2 px-1"
+                    @scroll="updateScrollState(gIndex)"
+                >
+                    <div 
+                        v-for="(photo, pIndex) in group" 
+                        :key="photo.id"
+                        class="relative flex-shrink-0 w-32 sm:w-40 snap-start"
+                    >
+                        <!-- Photo Card -->
+                        <div 
+                            class="relative aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-colors bg-gray-100 dark:bg-gray-700"
+                            :class="selectedPhotos.has(photo.id) ? 'border-blue-500' : 'border-transparent'"
+                            @click="openLightbox(gIndex, pIndex)"
+                        >
+                            <img 
+                                :src="photo.thumbnail_path" 
+                                class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                                loading="lazy"
+                            />
+                            <!-- Best Badge -->
+                            <div v-if="pIndex === 0" class="absolute top-1 left-1 bg-green-500/90 backdrop-blur-sm text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm">
+                                最佳
+                            </div>
+                            <!-- Selection Checkbox -->
+                            <div 
+                                class="absolute top-1 right-1 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors z-10"
+                                :class="selectedPhotos.has(photo.id) ? 'bg-blue-500 border-blue-500' : 'bg-black/30 border-white hover:bg-black/50'"
+                                @click.stop="togglePhotoSelection(photo.id)"
+                            >
+                                <i v-if="selectedPhotos.has(photo.id)" class="mgc_check_line text-white text-sm"></i>
+                            </div>
+                        </div>
+                        <div class="mt-1.5 px-1">
+                            <div class="text-xs text-gray-700 dark:text-gray-300 truncate text-center font-medium">
+                                {{ photo.filename }}
+                            </div>
+                            <div class="text-[10px] text-gray-400 text-center mt-0.5">
+                                Score: {{ photo.score.toFixed(1) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+             <!-- Group Action -->
+             <div v-if="getGroupSelectionCount(gIndex) > 0" class="mt-3 flex justify-end border-t border-gray-100 dark:border-gray-700 pt-3">
+                <button 
+                    @click="deleteGroupSelection(gIndex)"
+                    class="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors flex items-center gap-1"
+                >
+                    <i class="mgc_delete_2_line"></i>
+                    删除选中 ({{ getGroupSelectionCount(gIndex) }}张)
+                </button>
+             </div>
+        </div>
+        
+        <!-- Load More Spinner -->
+        <div v-if="isLoadingMore" class="flex justify-center py-4">
+             <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+        </div>
+        <div v-if="!hasMore && groups.length > 0" class="text-center text-gray-400 text-sm py-4">
+             没有更多了
+        </div>
+    </div>
+
+    <!-- Photo Lightbox -->
+    <PhotoLightbox 
+        v-if="lightbox.show"
+        :initialIndex="lightbox.index"
+        :photos="lightbox.photos"
+        :visible="lightbox.show"
+        @close="lightbox.show = false"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, reactive, computed, onUnmounted } from 'vue';
+import { photoApi, type TaskResponse } from '@/api/photo';
+import type { SimilarPhoto, AlbumImage } from '@/types/album';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import PhotoLightbox from '@/components/PhotoLightbox.vue';
+import request from '@/utils/request';
+
+import { useInfiniteScroll } from '@vueuse/core';
+
+const groups = ref<SimilarPhoto[][]>([]);
+const loading = ref(false);
+const error = ref('');
+const selectedPhotos = ref<Set<string>>(new Set());
+const task = ref<TaskResponse | null>(null);
+const pollTimer = ref<number | null>(null);
+
+// Pagination
+const currentPage = ref(0);
+const pageSize = 20;
+const hasMore = ref(true);
+const containerRef = ref<HTMLElement | null>(null);
+const isLoadingMore = ref(false);
+
+useInfiniteScroll(containerRef, async () => {
+    if (hasMore.value && !isLoadingMore.value && task.value?.status === 'completed') {
+        await loadMore();
+    }
+}, { distance: 10 });
+
+// Progress
+const progressPercentage = computed(() => {
+    if (!task.value || !task.value.total_items) return 0;
+    const pct = Math.round((task.value.processed_items / task.value.total_items) * 100);
+    return Math.min(pct, 99); // Hold at 99 until finished
+});
+
+// Scroll refs and state
+const scrollRefs = ref<HTMLElement[]>([]);
+const scrollState = reactive<Record<number, { left: boolean; right: boolean }>>({});
+
+const setScrollRef = (el: any, index: number) => {
+    if (el) scrollRefs.value[index] = el;
+};
+
+const updateScrollState = (index: number) => {
+    const el = scrollRefs.value[index];
+    if (!el) return;
+    scrollState[index] = {
+        left: el.scrollLeft > 0,
+        right: el.scrollLeft + el.clientWidth < el.scrollWidth - 1 // -1 for rounding
+    };
+};
+
+const canScrollLeft = (index: number) => scrollState[index]?.left ?? false;
+const canScrollRight = (index: number) => scrollState[index]?.right ?? true;
+
+const scroll = (index: number, direction: number) => {
+    const el = scrollRefs.value[index];
+    if (!el) return;
+    const scrollAmount = el.clientWidth * 0.8;
+    el.scrollBy({ left: scrollAmount * direction, behavior: 'smooth' });
+};
+
+// Data Fetching
+const fetchLatestTask = async () => {
+    loading.value = true;
+    try {
+        const latestTask = await photoApi.getLatestSimilarTask();
+        task.value = latestTask;
+        
+        if (latestTask) {
+            if (latestTask.status === 'completed') {
+                await loadMore(true); // Initial Load
+            } else if (['pending', 'processing'].includes(latestTask.status)) {
+                startPolling();
+            }
+        }
+    } catch (err) {
+        console.error(err);
+        error.value = '加载任务状态失败';
+    } finally {
+        loading.value = false;
+    }
+};
+
+const loadMore = async (reset = false) => {
+    if (!task.value) return;
+    if (reset) {
+        currentPage.value = 0;
+        groups.value = [];
+        hasMore.value = true;
+    }
+    if (!hasMore.value) return;
+
+    isLoadingMore.value = true;
+    try {
+        const skip = currentPage.value * pageSize;
+        const result = await photoApi.getSimilarTaskResult(task.value.id, skip, pageSize);
+        
+        if (result.length < pageSize) {
+            hasMore.value = false;
+        }
+        
+        if (reset) {
+            groups.value = result;
+        } else {
+            groups.value.push(...result);
+        }
+        
+        currentPage.value++;
+        
+        // Initialize scroll states for new items
+        setTimeout(() => {
+            groups.value.forEach((_, i) => updateScrollState(i));
+        }, 100);
+    } catch (err) {
+        console.error(err);
+        ElMessage.error('加载更多失败');
+    } finally {
+        isLoadingMore.value = false;
+    }
+};
+
+const startNewScan = async () => {
+    try {
+        const newTask = await photoApi.createSimilarTask(0.9);
+        task.value = newTask;
+        groups.value = [];
+        hasMore.value = true;
+        currentPage.value = 0;
+        startPolling();
+    } catch (err) {
+        console.error(err);
+        ElMessage.error('创建任务失败');
+    }
+};
+
+const startPolling = () => {
+    if (pollTimer.value) clearInterval(pollTimer.value);
+    pollTimer.value = window.setInterval(async () => {
+        if (!task.value) return;
+        try {
+            const updatedTask = await photoApi.getLatestSimilarTask();
+            task.value = updatedTask;
+            
+            if (updatedTask && updatedTask.status === 'completed') {
+                stopPolling();
+                await loadMore(true);
+                ElMessage.success('分析完成');
+            } else if (updatedTask && (updatedTask.status === 'failed' || updatedTask.status === 'cancelled')) {
+                stopPolling();
+            }
+        } catch (err) {
+            console.error("Polling error", err);
+        }
+    }, 2000); // Poll every 2s
+};
+
+const stopPolling = () => {
+    if (pollTimer.value) {
+        clearInterval(pollTimer.value);
+        pollTimer.value = null;
+    }
+};
+
+const cancelTask = async () => {
+    if (!task.value) return;
+    try {
+        await photoApi.cancelSimilarTask(task.value.id);
+        task.value.status = 'cancelled'; // Optimistic update
+        stopPolling();
+        ElMessage.info('任务已取消');
+    } catch (err) {
+        console.error(err);
+        ElMessage.error('取消任务失败');
+    }
+};
+
+onMounted(() => {
+    fetchLatestTask();
+});
+
+onUnmounted(() => {
+    stopPolling();
+});
+
+// Selection Logic (Same as before)
+const togglePhotoSelection = (id: string) => {
+    if (selectedPhotos.value.has(id)) {
+        selectedPhotos.value.delete(id);
+    } else {
+        selectedPhotos.value.add(id);
+    }
+};
+
+const isGroupAllSelected = (groupIndex: number) => {
+    const group = groups.value[groupIndex];
+    if (group.length <= 1) return false;
+    const redundantPhotos = group.slice(1);
+    return redundantPhotos.every(p => selectedPhotos.value.has(p.id));
+};
+
+const toggleGroupSelection = (groupIndex: number) => {
+    const group = groups.value[groupIndex];
+    if (group.length <= 1) return;
+    
+    const redundantPhotos = group.slice(1);
+    const allSelected = redundantPhotos.every(p => selectedPhotos.value.has(p.id));
+    
+    if (allSelected) {
+        redundantPhotos.forEach(p => selectedPhotos.value.delete(p.id));
+    } else {
+        redundantPhotos.forEach(p => selectedPhotos.value.add(p.id));
+    }
+};
+
+const getGroupSelectionCount = (groupIndex: number) => {
+    const group = groups.value[groupIndex];
+    return group.filter(p => selectedPhotos.value.has(p.id)).length;
+};
+
+// Delete Logic
+const deletePhotos = async (ids: string[]) => {
+    try {
+        await request.delete('/api/photos/batch', {
+            data: { photo_ids: ids }
+        });
+        
+        // Remove from local state
+        const idSet = new Set(ids);
+        groups.value = groups.value.map(group => group.filter(p => !idSet.has(p.id))).filter(group => group.length > 1);
+        
+        // Clear selection
+        ids.forEach(id => selectedPhotos.value.delete(id));
+        
+        ElMessage.success(`成功删除 ${ids.length} 张照片`);
+    } catch (err) {
+        console.error(err);
+        ElMessage.error('删除失败');
+    }
+};
+
+const deleteGroupSelection = (groupIndex: number) => {
+    const group = groups.value[groupIndex];
+    const idsToDelete = group.filter(p => selectedPhotos.value.has(p.id)).map(p => p.id);
+    if (idsToDelete.length === 0) return;
+    
+    ElMessageBox.confirm(
+        `确定删除选中的 ${idsToDelete.length} 张照片吗？此操作不可恢复。`,
+        '确认删除',
+        {
+            confirmButtonText: '删除',
+            cancelButtonText: '取消',
+            type: 'warning',
+        }
+    ).then(() => {
+        deletePhotos(idsToDelete);
+    });
+};
+
+const handleDeleteAll = () => {
+    const idsToDelete: string[] = [];
+    groups.value.forEach(group => {
+        if (group.length > 1) {
+            group.slice(1).forEach(p => idsToDelete.push(p.id));
+        }
+    });
+    
+    if (idsToDelete.length === 0) return;
+
+    ElMessageBox.confirm(
+        `确定删除所有分组的冗余照片（共 ${idsToDelete.length} 张）吗？每个分组将只保留第一张。`,
+        '确认删除所有',
+        {
+            confirmButtonText: '全部删除',
+            cancelButtonText: '取消',
+            type: 'warning',
+        }
+    ).then(() => {
+        deletePhotos(idsToDelete);
+    });
+};
+
+// Lightbox Logic
+const lightbox = reactive({
+    show: false,
+    index: 0,
+    photos: [] as AlbumImage[]
+});
+
+const openLightbox = (groupIndex: number, photoIndex: number) => {
+    const group = groups.value[groupIndex];
+    lightbox.photos = group.map(p => ({
+        id: p.id,
+        url: p.src,
+        thumbnail: p.thumbnail_path,
+        preview: p.src,
+        filename: p.filename,
+        timestamp: new Date(p.photo_time).getTime(),
+        file_type: 'image',
+        albumIds: [],
+        srcset: ''
+    }));
+    lightbox.index = photoIndex;
+    lightbox.show = true;
+};
+
+</script>
+
+<style scoped>
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+</style>

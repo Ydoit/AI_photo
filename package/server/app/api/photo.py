@@ -40,10 +40,107 @@ import shutil
 from app.db.models.image_description import ImageDescription as ImageDescriptionModel
 from app.schemas.image_description import ImageDescription as ImageDescriptionSchema
 from app.db.models.photo import Photo
+from app.service.similar_photo import SimilarPhotoService
+from app.db.models.task import Task
+from app.db.models.task import TaskStatus
+from app.schemas.task import TaskResponse
 
 router = APIRouter()
 
 # Photo Endpoints
+
+@router.post("/similar/tasks", response_model=TaskResponse)
+def create_similar_photo_task(
+    threshold: float = 0.9,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Create a new similar photo clustering task
+    """
+    task = TaskManager.get_instance().add_task(
+        db,
+        type=TaskType.SIMILAR_PHOTO_CLUSTERING,
+        payload={"threshold": threshold},
+        owner_id=current_user.id
+    )
+    return task
+
+@router.get("/similar/tasks/latest", response_model=Optional[TaskResponse])
+def get_latest_similar_task(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get the latest similar photo clustering task
+    """
+    task = db.query(Task).filter(
+        Task.type == TaskType.SIMILAR_PHOTO_CLUSTERING,
+        Task.owner_id == current_user.id
+    ).order_by(Task.created_at.desc()).first()
+    return task
+
+@router.get("/similar/tasks/{task_id}/result", response_model=List[List[schemas.SimilarPhoto]])
+def get_similar_task_result(
+    task_id: UUID,
+    skip: int = 0,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get the result of a similar photo clustering task
+    """
+    task = db.query(Task).filter(
+        Task.id == task_id,
+        Task.owner_id == current_user.id
+    ).first()
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    if task.status != TaskStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="Task not completed")
+    
+    result = task.result or []
+    return result[skip:skip+limit]
+
+@router.delete("/similar/tasks/{task_id}")
+def cancel_similar_task(
+    task_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Cancel/Delete a similar photo clustering task
+    """
+    task = db.query(Task).filter(
+        Task.id == task_id,
+        Task.owner_id == current_user.id
+    ).first()
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    if task.status in [TaskStatus.PENDING, TaskStatus.PROCESSING]:
+        task.status = TaskStatus.CANCELLED
+        # Note: This doesn't stop the running thread immediately if it's processing, 
+        # but TaskWorker should handle cancellation check.
+        # Our handler implementation doesn't check for cancellation yet, but it's okay for now.
+        
+    db.delete(task)
+    db.commit()
+    return {"message": "Task deleted"}
+
+@router.get("/similar", response_model=List[List[schemas.SimilarPhoto]], deprecated=True)
+def get_similar_photos(
+    threshold: float = 0.9,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    print(f"Getting similar photos with threshold {threshold} for user {current_user.id}")
+    service = SimilarPhotoService(db, str(current_user.id))
+    return service.get_similar_groups(threshold)
 
 @router.get("/cleanup", response_model=List[schemas.Photo])
 def get_photos_for_cleanup(

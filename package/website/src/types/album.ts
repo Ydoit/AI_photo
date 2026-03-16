@@ -179,6 +179,15 @@ export interface FilterOptions {
   file_types: string[];
 }
 
+export interface SimilarPhoto {
+  id: string;
+  filename: string;
+  photo_time: string;
+  score: number;
+  thumbnail_path: string;
+  src: string;
+}
+
 export interface FilterState {
   years: number[];
   cities: string[];

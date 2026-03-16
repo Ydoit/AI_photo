@@ -21,6 +21,7 @@ DEFAULT_PRIORITIES = {
     TaskType.OCR: 5,
     TaskType.RECOGNIZE_TICKET: 1,
     TaskType.VISUAL_DESCRIPTION: 1,
+    TaskType.SIMILAR_PHOTO_CLUSTERING: 1,
 }
 
 DEFAULT_SCAN_STATUS = {
@@ -51,6 +52,7 @@ CATEGORY_MAP = {
     TaskType.CLASSIFY_IMAGE: 'classification',
     TaskType.VISUAL_DESCRIPTION: 'ai',
     TaskType.OCR: 'ocr',
+    TaskType.SIMILAR_PHOTO_CLUSTERING: 'similar',
 }
 
 CATEGORY_DESCRIPTION_MAP = {
@@ -62,6 +64,7 @@ CATEGORY_DESCRIPTION_MAP = {
     'classification': '用于场景分类',
     'ai': '用于生成图片的视觉描述',
     'ocr': '用于识别图片中的文字',
+    'similar': '用于相似照片聚类',
 }
 
 CATEGORY_NAME_MAP = {
@@ -73,6 +76,7 @@ CATEGORY_NAME_MAP = {
     'classification': '场景识别',
     'ai': '大模型智能分析',
     'ocr': '文字识别',
+    'similar': '相似照片清理',
 }
 
 class TaskManager:
@@ -143,7 +147,7 @@ class TaskManager:
 
         stats = []
         # Define categories to show
-        categories = ['basic', 'metadata', 'face', 'classification', 'ocr', 'tickets', 'ai']
+        categories = ['basic', 'metadata', 'face', 'classification', 'ocr', 'tickets', 'ai', 'similar']
 
         # Priority map for categories (higher is better)
         cat_priority = {
@@ -153,7 +157,8 @@ class TaskManager:
             'classification': DEFAULT_PRIORITIES.get(TaskType.CLASSIFY_IMAGE, 0),
             'ocr': DEFAULT_PRIORITIES.get(TaskType.OCR, 0),
             'tickets': DEFAULT_PRIORITIES.get(TaskType.RECOGNIZE_TICKET, 0),
-            'ai': DEFAULT_PRIORITIES.get(TaskType.VISUAL_DESCRIPTION, 0)
+            'ai': DEFAULT_PRIORITIES.get(TaskType.VISUAL_DESCRIPTION, 0),
+            'similar': DEFAULT_PRIORITIES.get(TaskType.SIMILAR_PHOTO_CLUSTERING, 0)
         }
 
         for cat in categories:
@@ -214,7 +219,7 @@ class TaskManager:
         if priority == 0:
             priority = DEFAULT_PRIORITIES.get(type, 0)
 
-        task = Task(type=type, payload=payload, priority=priority, owner_id=owner_id)
+        task = Task(type=type, payload=payload, priority=priority, status=TaskStatus.PENDING, owner_id=owner_id)
         logging.info(f"Added task: {task.type} with priority {task.priority}")
         db.add(task)
         db.commit()

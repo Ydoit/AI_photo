@@ -19,12 +19,13 @@ from app.core.config_manager import config_manager
 from app.service.task_manager import DEFAULT_SCAN_STATUS, CATEGORY_MAP, DEFAULT_PRIORITIES
 
 # Import handlers
-from app.service.tasks import thumbnail, metadata, scan, face, ocr, classification, tickets, visual_description, basic
+from app.service.tasks import thumbnail, metadata, scan, face, ocr, classification, tickets, visual_description, basic, similar
 
 CPU_TASKS = {
     TaskType.GENERATE_THUMBNAIL,
     TaskType.REBUILD_THUMBNAILS,
     TaskType.PROCESS_BASIC,
+    TaskType.SIMILAR_PHOTO_CLUSTERING,
 }
 
 IO_TASKS = {
@@ -412,6 +413,8 @@ class TaskWorker:
             return await classification.handle_classify_image(self, task, db)
         elif task.type == TaskType.VISUAL_DESCRIPTION:
             return await visual_description.handle_visual_description_task(self, task, db)
+        elif task.type == TaskType.SIMILAR_PHOTO_CLUSTERING:
+            return await similar.handle_similar_task(self, task, db)
         else:
             return {'status': 'not_implemented', 'type': task.type}
 
@@ -586,9 +589,18 @@ class TaskWorker:
             task_ids_completed = []
             task_ids_failed = []
 
+            # Tasks that should be preserved in DB after completion
+            PRESERVED_TASK_TYPES = {
+                TaskType.SIMILAR_PHOTO_CLUSTERING
+            }
+
             for item in items:
                 if item['status'] == TaskStatus.COMPLETED:
-                    task_ids_completed.append(item['task_id'])
+                    # Only delete if not in preserved types
+                    if item['task_type'] not in PRESERVED_TASK_TYPES:
+                        task_ids_completed.append(item['task_id'])
+                    else:
+                        logging.info(f"Preserving completed task {item['task_id']} of type {item['task_type']}")
                 else:
                     task_ids_failed.append(item['task_id'])
 

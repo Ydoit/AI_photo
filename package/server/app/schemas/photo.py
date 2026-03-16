@@ -50,3 +50,11 @@ class PhotoCreateItem(BaseModel):
 
 class BatchPhotoCreate(BaseModel):
     items: List[PhotoCreateItem]
+
+class SimilarPhoto(BaseModel):
+    id: str
+    filename: Optional[str] = None
+    photo_time: Optional[datetime] = None
+    score: float
+    thumbnail_path: str
+    src: str
