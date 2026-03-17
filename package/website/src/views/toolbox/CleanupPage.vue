@@ -1,8 +1,8 @@
 <template>
-  <div class="min-h-screen pb-8">
+  <div class="container mx-auto py-6 px-4 h-screen flex flex-col">
     <!-- Header -->
-    <div class="sticky top-0 z-30 backdrop-blur-md border-b border-gray-200 bg-white/60 dark:bg-gray-950/60">
-      <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="sticky top-0 z-30 backdrop-blur-md">
+      <div class="flex items-center justify-between mb-4 flex-shrink-0">
         <div class="flex items-center gap-4">
             <button 
             @click="router.back()" 
