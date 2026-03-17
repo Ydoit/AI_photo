@@ -81,7 +81,7 @@
               <!-- Main Visual Placeholder (Phone App Interface) -->
               <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-float overflow-hidden border-8 border-white dark:border-slate-700 transform rotate-3 relative z-10 aspect-[9/16] flex items-center justify-center bg-gray-100 dark:bg-slate-900">
                 <div class="text-center p-4">
-                  <img src="/demo.jpg" alt="App 瀑布流界面演示" class="w-full h-full object-cover">
+                  <img src="https://blog.siyuan.ink/static/img/2c9efdea026ebeed2b2c872c396f83c0.demo.webp" alt="App 瀑布流界面演示" class="w-full h-full object-cover" loading="lazy">
                 </div>
               </div>
               
@@ -130,7 +130,7 @@
              <div v-for="(shot, index) in featureScreenshots" :key="index" 
                  class="absolute inset-0 transition-opacity duration-500 ease-in-out"
                  :class="index === activeScreenshotIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'">
-              <img v-if="shot.image" :src="shot.image" :alt="shot.title" class="w-full h-full object-cover">
+              <img v-if="shot.image" :src="shot.image" :alt="shot.title" class="w-full h-full object-cover" loading="lazy">
               <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-xl bg-gray-900">Image Placeholder: {{ shot.title }}</div>
               
               <!-- Caption Overlay -->
@@ -216,7 +216,7 @@
             <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-float p-4 w-full max-w-xl aspect-[4/3] flex items-center justify-center border border-gray-100 dark:border-slate-700 relative overflow-hidden group">
               <div class="text-center">
                 <!-- <div class="text-6xl mb-4">{{ overviewFeatures[activeFeatureIndex].icon }}</div> -->
-                <img :src="overviewFeatures[activeFeatureIndex].image" alt="Feature Image" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110">
+                <img :src="overviewFeatures[activeFeatureIndex].image" alt="Feature Image" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" loading="lazy">
               </div>
               
               <!-- Hover Arrows (Mock) -->
@@ -315,7 +315,7 @@
                 </span>
                 <!-- QQ Group QR Code Popup -->
                 <div class="absolute bottom-full left-0 mb-2 w-64 bg-white p-2 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 text-neutral-dark">
-                  <img src="/qq_group.jpg" alt="QQ群二维码" class="w-full h-auto rounded" />
+                  <img src="https://blog.siyuan.ink/static/img/51b2cc72642406a33b42b572203a173c.qq_group.webp" alt="QQ群二维码" class="w-full h-auto rounded" loading="lazy" />
                   <div class="text-xs text-center mt-1 text-black">扫码加入QQ群</div>
                   <!-- Arrow -->
                   <div class="absolute top-full left-4 border-8 border-transparent border-t-white"></div>
@@ -460,10 +460,10 @@ const t = computed(() => i18n[lang.value as keyof typeof i18n] || i18n['zh-CN'])
 
 const featureScreenshotsList = {
   'zh-CN': [
-    { title: 'AI时光旁白', desc: '大模型分析照片内容，对每张图进行评分和总结，精准推送那年今日值得回忆的照片', image: '/images/on-this-day.png' },
-    { title: '时光轴展示', desc: '丝滑的时间轴滚动效果', image: '/images/timeline.png' },
-    { title: '地图模式', desc: '在地图上查看您的足迹，点亮每一个去过的城市', image: '/images/map.png' },
-    { title: '智能分类', desc: '自动识别照片中的人物、景物，智能归类', image: '/images/classification.jpeg'}
+    { title: 'AI时光旁白', desc: '大模型分析照片内容，对每张图进行评分和总结，精准推送那年今日值得回忆的照片', image: 'https://blog.siyuan.ink/static/img/f811e803accb19fac75d25aee85d6fef.b9c6733fd2043b5fd7c908099c5e1ec5.webp' },
+    { title: '时光轴展示', desc: '丝滑的时间轴滚动效果', image: 'https://blog.siyuan.ink/static/img/7f3995c1fa22ded5a26506194a516da4.timeline.webp' },
+    { title: '地图模式', desc: '在地图上查看您的足迹，点亮每一个去过的城市', image: 'https://blog.siyuan.ink/static/img/38bd45b7c69fe79457e74109dbba8683.map.webp' },
+    { title: '智能分类', desc: '自动识别照片中的人物、景物，智能归类', image: 'https://blog.siyuan.ink/static/img/8082f0451f051b1ad848b9c4261359e7.classification.webp'}
   ],
   'en-US': [
     { title: 'Timeline View', desc: 'Smooth timeline scrolling effect', image: '' },
@@ -536,18 +536,18 @@ const features = computed(() => featuresList[lang.value as keyof typeof features
 
 const overviewFeaturesList = {
   'zh-CN': [
-    { title: '智能相册', icon: '📸', items: ['精准人脸识别归类', '场景/物体智能标签', '自定义条件（智能）相册'], image: '/images/classification.jpeg' },
-    { title: 'AI能力', icon: '🤖', items: ['一句话生成游记', 'Vlog智能剪辑', '照片智能精修'], image: '/images/AI-narrative.jpg' },
-    { title: '行程票据', icon: '🎫', items: ['票据自动识别录入', '国内5A景区位置识别', '多票据统一管理'], image: '/images/map.png' },
-    { title: '数据可视化', icon: '📊', items: ['足迹地图点亮', '出行里程统计', '城市打卡记录'], image: '/images/map-province.png' },
-    { title: '年度报告', icon: '📅', items: ['年度出行总结', '专属回忆生成', '分享朋友圈'], image: '/images/report.png' }
+    { title: '智能相册', icon: '📸', items: ['精准人脸识别归类', '场景/物体智能标签', '自定义条件（智能）相册'], image: 'https://blog.siyuan.ink/static/img/8082f0451f051b1ad848b9c4261359e7.classification.webp' },
+    { title: 'AI能力', icon: '🤖', items: ['一句话生成游记', 'Vlog智能剪辑', '照片智能精修'], image: 'https://blog.siyuan.ink/static/img/943063875ecd4ff82543e0ae3a21a4a4.AI-narrative.webp' },
+    { title: '行程票据', icon: '🎫', items: ['票据自动识别录入', '国内5A景区位置识别', '多票据统一管理'], image: 'https://blog.siyuan.ink/static/img/38bd45b7c69fe79457e74109dbba8683.map.webp' },
+    { title: '数据可视化', icon: '📊', items: ['足迹地图点亮', '出行里程统计', '城市打卡记录'], image: 'https://blog.siyuan.ink/static/img/fc209e02f7046645cb38bd6dead5d088.map-province.webp' },
+    { title: '年度报告', icon: '📅', items: ['年度出行总结', '专属回忆生成', '分享朋友圈'], image: 'https://blog.siyuan.ink/static/img/720c50509ca349f40b1e8038371b7bcf.å¹´åº¦æ¥å.webp' }
   ],
   'en-US': [
-    { title: 'Smart Album', icon: '📸', items: ['Precise Face Clustering', 'Scene/Object Smart Tags', 'Custom Smart Albums'], image: '/images/classification.jpeg' },
-    { title: 'AI Capabilities', icon: '🤖', items: ['One-sentence Diary', 'Smart Vlog Editing', 'Smart Photo Retouching'], image: '/images/timeline.png' },
-    { title: 'Itinerary & Tickets', icon: '🎫', items: ['Auto Ticket Recognition', '5A Scenic Spot Location', 'Unified Ticket Mgmt'], image: '/images/ticket.jpeg' },
-    { title: 'Data Visualization', icon: '📊', items: ['Footprint Map Lighting', 'Travel Mileage Stats', 'City Check-in Records'], image: '/images/map-province.png' },
-    { title: 'Annual Report', icon: '📅', items: ['Annual Travel Summary', 'Exclusive Memory Gen', 'Share to Moments'], image: '/images/report.png' }
+    { title: 'Smart Album', icon: '📸', items: ['Precise Face Clustering', 'Scene/Object Smart Tags', 'Custom Smart Albums'], image: 'https://blog.siyuan.ink/static/img/8082f0451f051b1ad848b9c4261359e7.classification.webp' },
+    { title: 'AI Capabilities', icon: '🤖', items: ['One-sentence Diary', 'Smart Vlog Editing', 'Smart Photo Retouching'], image: 'https://blog.siyuan.ink/static/img/943063875ecd4ff82543e0ae3a21a4a4.AI-narrative.webp' },
+    { title: 'Itinerary & Tickets', icon: '🎫', items: ['Auto Ticket Recognition', '5A Scenic Spot Location', 'Unified Ticket Mgmt'], image: 'https://blog.siyuan.ink/static/img/38bd45b7c69fe79457e74109dbba8683.map.webp' },
+    { title: 'Data Visualization', icon: '📊', items: ['Footprint Map Lighting', 'Travel Mileage Stats', 'City Check-in Records'], image: 'https://blog.siyuan.ink/static/img/fc209e02f7046645cb38bd6dead5d088.map-province.webp' },
+    { title: 'Annual Report', icon: '📅', items: ['Annual Travel Summary', 'Exclusive Memory Gen', 'Share to Moments'], image: 'https://blog.siyuan.ink/static/img/720c50509ca349f40b1e8038371b7bcf.å¹´åº¦æ¥å.webp' }
   ]
 }
 
