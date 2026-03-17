@@ -184,17 +184,39 @@ def delete_thumbnails(user_id: UUID, file_id: UUID):
         base = os.path.join(root, 'thumbnails', p1, p2)
         m = os.path.join(base, f"{compact}.jpg")
         s = os.path.join(base, f"{compact}-thumb.jpg")
+        v = os.path.join(base, f"{compact}.mp4")
         if os.path.exists(m):
             os.remove(m)
         if os.path.exists(s):
             os.remove(s)
+        if os.path.exists(v):
+            os.remove(v)
     except Exception as e:
         logging.error(f"Error deleting thumbnails for {user_id}/{file_id}: {e}")
 
-def delete_file(user_id: UUID, file_path: str, file_id: UUID):
+def get_live_photo_vide(image_path: str) -> Optional[str]:
+    try:
+        base, ext = os.path.splitext(image_path)
+        if ext.lower() in ('.heic', '.heif'):
+            video_path = base + '.mov'
+            if os.path.exists(video_path):
+                return video_path
+        elif ext.lower() in ('.jpg', '.jpeg'):
+            video_path = base + '.mp4'
+            if os.path.exists(video_path):
+                return video_path
+    except Exception as e:
+        logging.error(f"Error getting live photo video for {image_path}: {e}")
+    return None
+
+def delete_file(user_id: UUID, file_path: str, file_id: UUID, is_live_photo: bool = False):
     try:
         if os.path.exists(file_path):
             os.remove(file_path)
+        if is_live_photo:
+            video_path = get_live_photo_vide(file_path)
+            if video_path and os.path.exists(video_path):
+                os.remove(video_path)
         delete_thumbnails(user_id, file_id)
     except Exception as e:
         logging.error(f"Error deleting file {user_id}/{file_path}: {e}")

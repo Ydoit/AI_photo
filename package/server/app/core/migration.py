@@ -32,8 +32,7 @@ def migrate_system_config(db: Session, admin_user: User):
         with open(config_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         os.remove(config_path)
-
-    admin_user.settings = data
+        admin_user.settings = data
 
     db.add(admin_user)
     logger.info("Migrated system config to admin user.")

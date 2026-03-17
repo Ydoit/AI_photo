@@ -260,11 +260,8 @@ def batch_update_photos(
 
     elif batch_data.action == 'delete':
         # Get photos to delete files
-        photos = app.crud.photo.get_photos_by_ids(db, batch_data.photo_ids, user_id=current_user.id)
-        for photo in photos:
-            storage.delete_file(photo.owner_id, photo.file_path, photo.id)
-            storage.delete_thumbnails(photo.owner_id, photo.id)
-        app.crud.photo.batch_delete_photos_db(db, batch_data.photo_ids, user_id=current_user.id)
+        # photos = app.crud.photo.get_photos_by_ids(db, batch_data.photo_ids, user_id=current_user.id)
+        app.crud.photo.batch_delete_photos_db(db, batch_data.photo_ids, is_delete_file=True, user_id=current_user.id)
         return {"message": "Photos deleted successfully"}
 
     else:

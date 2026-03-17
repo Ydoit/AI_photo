@@ -586,16 +586,15 @@ def delete_photo(db: Session, photo_id: UUID, is_delete_file = False, user_id: U
     if db_photo:
         if user_id is not None and db_photo.owner_id != user_id:
             return None
-
         affected_album_ids = [album.id for album in db_photo.albums]
-        db.delete(db_photo)
-        db.commit()
         if is_delete_file:
-            storage.delete_file(user_id, db_photo.file_path, db_photo.id)
+            storage.delete_file(user_id, db_photo.file_path, db_photo.id, db_photo.file_type == FileType.live_photo)
         else:
             storage.delete_thumbnails(user_id, db_photo.id)
         for album_id in affected_album_ids:
             _update_album_photo_count(db, album_id)
+        db.delete(db_photo)
+        db.commit()
     return db_photo
 
 
@@ -617,11 +616,12 @@ def batch_delete_photos_db(db: Session, photo_ids: List[UUID], is_delete_file = 
 
     count = len(photos)
     for photo in photos:
-        db.delete(photo)
+        print(photo.file_path, photo.file_type, photo.file_type == FileType.live_photo)
         if is_delete_file:
-            storage.delete_file(user_id, photo.file_path, photo.id)
+            storage.delete_file(user_id, photo.file_path, photo.id, photo.file_type == FileType.live_photo)
         else:
             storage.delete_thumbnails(user_id, photo.id)
+        db.delete(photo)
     db.commit()
 
     # Update counts
