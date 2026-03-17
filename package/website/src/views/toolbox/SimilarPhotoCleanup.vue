@@ -107,7 +107,7 @@
                     @click="toggleGroupSelection(gIndex)"
                     class="text-sm text-blue-500 hover:text-blue-600 font-medium"
                 >
-                    {{ isGroupAllSelected(gIndex) ? '取消全选' : '选择冗余' }}
+                    {{ isGroupAllSelected(gIndex) ? '取消全选' : '全选' }}
                 </button>
             </div>
             
@@ -146,21 +146,31 @@
                             @click="openLightbox(gIndex, pIndex)"
                         >
                             <img 
-                                :src="`/api/medias/${photo.id}/thumbnail`" 
+                                :src="photo.thumbnail" 
                                 class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                                 loading="lazy"
                             />
                             <!-- Best Badge -->
-                            <div v-if="pIndex === 0" class="absolute top-1 left-1 bg-green-500/90 backdrop-blur-sm text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm">
+                            <div v-if="pIndex === 0" class="absolute bottom-1 left-1 bg-green-500/90 backdrop-blur-sm text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm">
                                 最佳
                             </div>
                             <!-- Selection Checkbox -->
                             <div 
-                                class="absolute top-1 right-1 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors z-10"
+                                class="absolute top-1 left-1 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors z-10"
                                 :class="selectedPhotos.has(photo.id) ? 'bg-blue-500 border-blue-500' : 'bg-black/30 border-white hover:bg-black/50'"
                                 @click.stop="togglePhotoSelection(photo.id)"
                             >
                                 <i v-if="selectedPhotos.has(photo.id)" class="mgc_check_line text-white text-sm"></i>
+                            </div>
+                            <!-- Video Indicator (List View) -->
+                            <div v-if="photo.file_type === 'video'" class="flex mb-1 absolute top-1 right-2 justify-center pointer-events-none z-10 items-center">
+                                <div class="text-white text-sm">
+                                {{ photo.duration}}
+                                </div>
+                                <PlayCircle class="w-4 h-4 text-white drop-shadow-md opacity-90" />
+                            </div>
+                            <div v-else-if="photo.file_type === 'live_photo'" class="flex mb-1 absolute top-2 right-2 justify-center pointer-events-none z-10 items-center">
+                                <span class="icon-[tabler--live-photo] w-4 h-4 text-white drop-shadow-md opacity-90"></span>
                             </div>
                         </div>
                         <div class="mt-1.5 px-1">
@@ -193,8 +203,7 @@
     </div>
 
     <!-- Photo Lightbox -->
-    <PhotoLightbox 
-        v-if="lightbox.show"
+    <PhotoLightbox
         :image="currentLightboxImage"
         :has-prev="lightbox.index > 0"
         :has-next="lightbox.index < lightbox.photos.length - 1"
@@ -216,7 +225,7 @@ import request from '@/utils/request';
 import {usePhotoStore, mapPhotoToImage} from '@/stores/photoStore'
 import { useInfiniteScroll } from '@vueuse/core';
 
-const groups = ref<Photo[][]>([]);
+const groups = ref<AlbumImage[][]>([]);
 const loading = ref(false);
 const error = ref('');
 const selectedPhotos = ref<Set<string>>(new Set());
@@ -311,9 +320,9 @@ const loadMore = async (reset = false) => {
         }
         
         if (reset) {
-            groups.value = result;
+            groups.value = result.map(group => group.map(mapPhotoToImage));
         } else {
-            groups.value.push(...result);
+            groups.value.push(...result.map(group => group.map(mapPhotoToImage)));
         }
         
         currentPage.value++;
@@ -497,9 +506,11 @@ const lightbox = reactive({
     photos: [] as AlbumImage[]
 });
 
+
+
 const openLightbox = (groupIndex: number, photoIndex: number) => {
     const group = groups.value[groupIndex];
-    lightbox.photos = group.map(mapPhotoToImage);
+    lightbox.photos = group;
     lightbox.index = photoIndex;
     lightbox.show = true;
 };

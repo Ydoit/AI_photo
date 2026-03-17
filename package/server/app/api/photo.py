@@ -153,41 +153,82 @@ def get_similar_task_result(
     """
     Get the result of a similar photo clustering task
     """
-    clusters = db.query(ImageCluster).filter(
-        ImageCluster.task_id == str(task_id),
-        ImageCluster.cluster_type == "SIMILARITY"
-    ).order_by(ImageCluster.created_at.desc()).offset(skip).limit(limit).all()
-
-    if not clusters:
-        return []
-
     result = []
-    for cluster in clusters:
-        photo_clusters = db.query(PhotoCluster).filter(PhotoCluster.cluster_id == cluster.cluster_id).all()
-        photo_ids = [pc.photo_id for pc in photo_clusters]
-
-        if not photo_ids:
-            continue
-
-        photos_query = db.query(Photo, ImageDescriptionModel).outerjoin(
-            ImageDescriptionModel, Photo.id == ImageDescriptionModel.photo_id
-        ).filter(
-            Photo.id.in_(photo_ids),
-            Photo.owner_id == current_user.id
-        ).all()
-
-        cluster_photos = []
-        for photo, desc in photos_query:
-            score = 0
-            if desc:
-                score = (desc.memory_score or 0) + (desc.quality_score or 0)
-            
-            cluster_photos.append((photo, score))
+    current_skip = skip
+    # Safety break to avoid infinite loops
+    max_loops = 100 
+    loop_count = 0
+    
+    while len(result) < limit and loop_count < max_loops:
+        loop_count += 1
         
-        # Sort by score desc, then photo_time desc
-        cluster_photos.sort(key=lambda x: (x[1], x[0].photo_time or datetime.min), reverse=True)
-        if len(cluster_photos) > 1:
-            result.append([x[0] for x in cluster_photos])
+        # Calculate how many more we need
+        remaining_needed = limit - len(result)
+        # Fetch at least 20 or remaining_needed to be efficient
+        fetch_limit = max(remaining_needed, 20)
+        
+        clusters = db.query(ImageCluster).filter(
+            ImageCluster.task_id == str(task_id),
+            ImageCluster.cluster_type == "SIMILARITY"
+        ).order_by(ImageCluster.created_at.desc()).offset(current_skip).limit(fetch_limit).all()
+
+        if not clusters:
+            break
+
+        processed_count = 0
+        deleted_count = 0
+        
+        for cluster in clusters:
+            # If we have enough results, we stop adding to result,
+            # but we simply break and let the offset calculation handle the next page start.
+            if len(result) >= limit:
+                break
+                
+            processed_count += 1
+            
+            photo_clusters = db.query(PhotoCluster).filter(PhotoCluster.cluster_id == cluster.cluster_id).all()
+            photo_ids = [pc.photo_id for pc in photo_clusters]
+
+            should_delete = False
+            cluster_photos = []
+            
+            if not photo_ids:
+                should_delete = True
+            else:
+                photos_query = db.query(Photo, ImageDescriptionModel).outerjoin(
+                    ImageDescriptionModel, Photo.id == ImageDescriptionModel.photo_id
+                ).filter(
+                    Photo.id.in_(photo_ids),
+                    Photo.owner_id == current_user.id
+                ).all()
+
+                for photo, desc in photos_query:
+                    score = 0
+                    if desc:
+                        score = (desc.memory_score or 0) + (desc.quality_score or 0)
+                    
+                    cluster_photos.append((photo, score))
+                
+                # Sort by score desc, then photo_time desc
+                cluster_photos.sort(key=lambda x: (x[1], x[0].photo_time or datetime.min), reverse=True)
+                
+                if len(cluster_photos) < 2:
+                    should_delete = True
+            
+            if should_delete:
+                # Delete invalid cluster
+                db.delete(cluster)
+                # Commit to ensure DB state reflects deletion for next query or consistency
+                db.commit() 
+                deleted_count += 1
+            else:
+                result.append([x[0] for x in cluster_photos])
+        
+        # Update current_skip for the next iteration or next page logic
+        # logic: we advanced 'processed_count' positions in the original list,
+        # but 'deleted_count' items were removed, so the DB shifts.
+        # Next item is at 'current_skip + processed_count - deleted_count'
+        current_skip = current_skip + processed_count - deleted_count
 
     return result
 
