@@ -590,9 +590,7 @@ class TaskWorker:
             task_ids_failed = []
 
             # Tasks that should be preserved in DB after completion
-            PRESERVED_TASK_TYPES = {
-                TaskType.SIMILAR_PHOTO_CLUSTERING
-            }
+            PRESERVED_TASK_TYPES = set()
 
             for item in items:
                 if item['status'] == TaskStatus.COMPLETED:

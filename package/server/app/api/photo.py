@@ -41,9 +41,9 @@ from app.db.models.image_description import ImageDescription as ImageDescription
 from app.schemas.image_description import ImageDescription as ImageDescriptionSchema
 from app.db.models.photo import Photo
 from app.service.similar_photo import SimilarPhotoService
-from app.db.models.task import Task
-from app.db.models.task import TaskStatus
+from app.db.models.task import Task, TaskType, TaskStatus
 from app.schemas.task import TaskResponse
+from app.db.models.cluster import ImageCluster, PhotoCluster
 
 router = APIRouter()
 
@@ -76,11 +76,73 @@ def get_latest_similar_task(
     """
     task = db.query(Task).filter(
         Task.type == TaskType.SIMILAR_PHOTO_CLUSTERING,
-        Task.owner_id == current_user.id
+        Task.owner_id == current_user.id,
+        Task.status.in_([TaskStatus.PENDING.value, TaskStatus.PROCESSING.value])
     ).order_by(Task.created_at.desc()).first()
-    return task
+    
+    if task:
+        return task
 
-@router.get("/similar/tasks/{task_id}/result", response_model=List[List[schemas.SimilarPhoto]])
+    # If no pending/processing task, check ImageCluster for the latest task_id
+    latest_cluster = db.query(ImageCluster).join(
+        PhotoCluster, ImageCluster.cluster_id == PhotoCluster.cluster_id
+    ).join(
+        Photo, PhotoCluster.photo_id == Photo.id
+    ).filter(
+        Photo.owner_id == current_user.id,
+        ImageCluster.cluster_type == "SIMILARITY"
+    ).order_by(ImageCluster.created_at.desc()).first()
+
+    if latest_cluster and latest_cluster.task_id:
+        try:
+            task_id_uuid = UUID(latest_cluster.task_id)
+        except ValueError:
+            return None
+            
+        return TaskResponse(
+            id=task_id_uuid,
+            type=TaskType.SIMILAR_PHOTO_CLUSTERING,
+            status=TaskStatus.COMPLETED.value,
+            created_at=latest_cluster.created_at,
+            updated_at=latest_cluster.created_at,
+            total_items=0,
+            processed_items=0,
+            result=None
+        )
+        
+    return None
+
+@router.get("/similar/tasks/{task_id}", response_model=TaskResponse)
+def get_similar_task(
+    task_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get the status of a specific similar photo clustering task
+    """
+    task = db.query(Task).filter(
+        Task.id == task_id,
+        Task.owner_id == current_user.id
+    ).first()
+    
+    if task:
+        return task
+        
+    # If not in Task table, it was either completed or deleted.
+    # We assume it's completed.
+    return TaskResponse(
+        id=task_id,
+        type=TaskType.SIMILAR_PHOTO_CLUSTERING,
+        status=TaskStatus.COMPLETED.value,
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+        total_items=0,
+        processed_items=0,
+        result=None
+    )
+
+@router.get("/similar/tasks/{task_id}/result", response_model=List[List[schemas.Photo]])
 def get_similar_task_result(
     task_id: UUID,
     skip: int = 0,
@@ -91,19 +153,43 @@ def get_similar_task_result(
     """
     Get the result of a similar photo clustering task
     """
-    task = db.query(Task).filter(
-        Task.id == task_id,
-        Task.owner_id == current_user.id
-    ).first()
-    
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+    clusters = db.query(ImageCluster).filter(
+        ImageCluster.task_id == str(task_id),
+        ImageCluster.cluster_type == "SIMILARITY"
+    ).order_by(ImageCluster.created_at.desc()).offset(skip).limit(limit).all()
+
+    if not clusters:
+        return []
+
+    result = []
+    for cluster in clusters:
+        photo_clusters = db.query(PhotoCluster).filter(PhotoCluster.cluster_id == cluster.cluster_id).all()
+        photo_ids = [pc.photo_id for pc in photo_clusters]
+
+        if not photo_ids:
+            continue
+
+        photos_query = db.query(Photo, ImageDescriptionModel).outerjoin(
+            ImageDescriptionModel, Photo.id == ImageDescriptionModel.photo_id
+        ).filter(
+            Photo.id.in_(photo_ids),
+            Photo.owner_id == current_user.id
+        ).all()
+
+        cluster_photos = []
+        for photo, desc in photos_query:
+            score = 0
+            if desc:
+                score = (desc.memory_score or 0) + (desc.quality_score or 0)
+            
+            cluster_photos.append((photo, score))
         
-    if task.status != TaskStatus.COMPLETED:
-        raise HTTPException(status_code=400, detail="Task not completed")
-    
-    result = task.result or []
-    return result[skip:skip+limit]
+        # Sort by score desc, then photo_time desc
+        cluster_photos.sort(key=lambda x: (x[1], x[0].photo_time or datetime.min), reverse=True)
+        if len(cluster_photos) > 1:
+            result.append([x[0] for x in cluster_photos])
+
+    return result
 
 @router.delete("/similar/tasks/{task_id}")
 def cancel_similar_task(
@@ -119,16 +205,20 @@ def cancel_similar_task(
         Task.owner_id == current_user.id
     ).first()
     
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-        
-    if task.status in [TaskStatus.PENDING, TaskStatus.PROCESSING]:
-        task.status = TaskStatus.CANCELLED
-        # Note: This doesn't stop the running thread immediately if it's processing, 
-        # but TaskWorker should handle cancellation check.
-        # Our handler implementation doesn't check for cancellation yet, but it's okay for now.
-        
-    db.delete(task)
+    if task:
+        if task.status in [TaskStatus.PENDING, TaskStatus.PROCESSING]:
+            task.status = TaskStatus.CANCELLED
+            # Note: This doesn't stop the running thread immediately if it's processing, 
+            # but TaskWorker should handle cancellation check.
+        db.delete(task)
+    else:
+        # Check if it exists in ImageCluster
+        clusters = db.query(ImageCluster).filter(ImageCluster.task_id == str(task_id)).all()
+        if not clusters:
+            raise HTTPException(status_code=404, detail="Task not found")
+        for cluster in clusters:
+            db.delete(cluster)
+            
     db.commit()
     return {"message": "Task deleted"}
 

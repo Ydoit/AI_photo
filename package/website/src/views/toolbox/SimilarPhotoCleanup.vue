@@ -146,7 +146,7 @@
                             @click="openLightbox(gIndex, pIndex)"
                         >
                             <img 
-                                :src="photo.thumbnail_path" 
+                                :src="`/api/medias/${photo.id}/thumbnail`" 
                                 class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
                                 loading="lazy"
                             />
@@ -166,9 +166,6 @@
                         <div class="mt-1.5 px-1">
                             <div class="text-xs text-gray-700 dark:text-gray-300 truncate text-center font-medium">
                                 {{ photo.filename }}
-                            </div>
-                            <div class="text-[10px] text-gray-400 text-center mt-0.5">
-                                Score: {{ photo.score.toFixed(1) }}
                             </div>
                         </div>
                     </div>
@@ -198,10 +195,13 @@
     <!-- Photo Lightbox -->
     <PhotoLightbox 
         v-if="lightbox.show"
-        :initialIndex="lightbox.index"
-        :photos="lightbox.photos"
+        :image="currentLightboxImage"
+        :has-prev="lightbox.index > 0"
+        :has-next="lightbox.index < lightbox.photos.length - 1"
         :visible="lightbox.show"
         @close="lightbox.show = false"
+        @prev="lightbox.index--"
+        @next="lightbox.index++"
     />
   </div>
 </template>
@@ -209,14 +209,14 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive, computed, onUnmounted } from 'vue';
 import { photoApi, type TaskResponse } from '@/api/photo';
-import type { SimilarPhoto, AlbumImage } from '@/types/album';
+import type { Photo, AlbumImage } from '@/types/album';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import PhotoLightbox from '@/components/PhotoLightbox.vue';
 import request from '@/utils/request';
-
+import {usePhotoStore, mapPhotoToImage} from '@/stores/photoStore'
 import { useInfiniteScroll } from '@vueuse/core';
 
-const groups = ref<SimilarPhoto[][]>([]);
+const groups = ref<Photo[][]>([]);
 const loading = ref(false);
 const error = ref('');
 const selectedPhotos = ref<Set<string>>(new Set());
@@ -349,7 +349,7 @@ const startPolling = () => {
     pollTimer.value = window.setInterval(async () => {
         if (!task.value) return;
         try {
-            const updatedTask = await photoApi.getLatestSimilarTask();
+            const updatedTask = await photoApi.getSimilarTask(task.value.id);
             task.value = updatedTask;
             
             if (updatedTask && updatedTask.status === 'completed') {
@@ -499,20 +499,14 @@ const lightbox = reactive({
 
 const openLightbox = (groupIndex: number, photoIndex: number) => {
     const group = groups.value[groupIndex];
-    lightbox.photos = group.map(p => ({
-        id: p.id,
-        url: p.src,
-        thumbnail: p.thumbnail_path,
-        preview: p.src,
-        filename: p.filename,
-        timestamp: new Date(p.photo_time).getTime(),
-        file_type: 'image',
-        albumIds: [],
-        srcset: ''
-    }));
+    lightbox.photos = group.map(mapPhotoToImage);
     lightbox.index = photoIndex;
     lightbox.show = true;
 };
+
+const currentLightboxImage = computed(() => {
+    return lightbox.photos[lightbox.index] || null;
+});
 
 </script>
 

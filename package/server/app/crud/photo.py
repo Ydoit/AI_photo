@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.crud import face as crud_face
 from app.crud.album import get_album, _build_album_query, _update_album_photo_count
+from app.crud.cluster import remove_photo_from_clusters
 from app.crud.search_vector import POSITIVE_SENTIMENT_VECTOR
 from app.db.models import Photo, PhotoMetadata, ImageVector, Album, Face, PhotoTag, ImageDescription
 from app.db.models.photo import FileType, ImageType
@@ -593,6 +594,9 @@ def delete_photo(db: Session, photo_id: UUID, is_delete_file = False, user_id: U
             storage.delete_thumbnails(user_id, db_photo.id)
         for album_id in affected_album_ids:
             _update_album_photo_count(db, album_id)
+            
+        remove_photo_from_clusters(db, db_photo.id)
+        
         db.delete(db_photo)
         db.commit()
     return db_photo
@@ -621,6 +625,9 @@ def batch_delete_photos_db(db: Session, photo_ids: List[UUID], is_delete_file = 
             storage.delete_file(user_id, photo.file_path, photo.id, photo.file_type == FileType.live_photo)
         else:
             storage.delete_thumbnails(user_id, photo.id)
+            
+        remove_photo_from_clusters(db, photo.id)
+        
         db.delete(photo)
     db.commit()
 

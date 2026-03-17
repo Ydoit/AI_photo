@@ -24,8 +24,13 @@ export const photoApi = {
     return data.data;
   },
 
+  async getSimilarTask(taskId: string) {
+    const data = await request.get<TaskResponse>(`/api/photos/similar/tasks/${taskId}`);
+    return data.data;
+  },
+
   async getSimilarTaskResult(taskId: string, skip: number = 0, limit: number = 20) {
-    const data = await request.get<SimilarPhoto[][]>(`/api/photos/similar/tasks/${taskId}/result`, {
+    const data = await request.get<Photo[][]>(`/api/photos/similar/tasks/${taskId}/result`, {
       params: { skip, limit }
     });
     return data.data;

@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from app.db.models.task import Task, TaskStatus
 from app.db.models.photo import Photo
+from app.db.models.cluster import ImageCluster, PhotoCluster
 from app.service.similar_photo import SimilarPhotoService
 import time
 import json
@@ -156,68 +157,31 @@ async def handle_similar_task(worker, task: Task, db: Session):
                 task.processed_items = processed_count
                 db.commit()
                 
-        # 4. Fetch details for groups and format result
-        # To avoid saving huge JSON, we can format minimal info or full info.
-        # User wants "result persistence".
-        # Let's use the SimilarPhotoService's formatting logic but adapted.
+        # 4. Save to DB
         
-        formatted_groups = []
-        
-        # Fetch details in batches or all at once?
-        # All group photos IDs
-        all_group_photo_ids = [pid for group in all_groups for pid in group]
-        
-        if all_group_photo_ids:
-            # Fetch details
-            # We need Photo and ImageDescription
-            from app.db.models.image_description import ImageDescription
+        for p_ids in all_groups:
+            cluster = ImageCluster(
+                task_id=str(task.id),
+                cluster_type="SIMILARITY",
+                count=len(p_ids)
+            )
+            db.add(cluster)
+            db.flush()
             
-            # Fetch all involved photos
-            # Chunking if too many
-            chunk_size = 500
-            photo_details_map = {}
-            
-            for i in range(0, len(all_group_photo_ids), chunk_size):
-                chunk_ids = all_group_photo_ids[i:i+chunk_size]
-                detail_stmt = (
-                    select(Photo, ImageDescription)
-                    .outerjoin(ImageDescription, Photo.id == ImageDescription.photo_id)
-                    .where(Photo.id.in_(chunk_ids))
+            for pid in p_ids:
+                pc = PhotoCluster(
+                    photo_id=pid,
+                    cluster_id=cluster.cluster_id
                 )
-                details = db.execute(detail_stmt).all()
-                for photo, desc in details:
-                    score = 0
-                    if desc:
-                        score = (desc.memory_score or 0) + (desc.quality_score or 0)
-                    
-                    photo_details_map[str(photo.id)] = {
-                        "id": str(photo.id),
-                        "filename": photo.filename,
-                        "photo_time": photo.photo_time.isoformat() if photo.photo_time else None,
-                        "score": score,
-                        "thumbnail_path": f"/api/medias/{photo.id}/thumbnail",
-                        "src": f"/api/medias/{photo.id}/preview"
-                    }
-
-            # Construct groups
-            for p_ids in all_groups:
-                group_items = []
-                for pid in p_ids:
-                    if pid in photo_details_map:
-                        group_items.append(photo_details_map[pid])
-                
-                # Sort: Score desc, then Photo Time desc
-                # Handle None time
-                group_items.sort(key=lambda x: (x['score'], x['photo_time'] or ""), reverse=True)
-                formatted_groups.append(group_items)
+                db.add(pc)
 
         # Save result
-        task.result = formatted_groups
+        task.result = []
         task.status = TaskStatus.COMPLETED
         task.processed_items = total_photos
         db.commit()
         
-        return {'status': 'completed', 'groups': len(formatted_groups)}
+        return {'status': 'completed', 'groups': len(all_groups)}
 
     except Exception as e:
         logging.error(f"Similar task failed: {e}")
