@@ -1,16 +1,16 @@
 <template>
-  <div class="bg-white dark:bg-neutral-900 rounded-lg p-4 mx-4 my-3">
+  <div class="bg-white dark:bg-neutral-900 rounded-xl p-5 mx-4 my-3 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow duration-300">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-4">
+    <div class="flex justify-between items-center mb-5">
       <div class="flex items-baseline gap-2">
         <span class="text-gray-600 dark:text-gray-300 text-sm">{{ selectedYear ? `在 ${selectedYear} 年` : '过去一年' }}共拍摄</span>
-        <span class="text-xl font-bold text-gray-800 dark:text-gray-100">{{ data?.total_photos || 0 }}</span>
+        <span class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ data?.total_photos || 0 }}</span>
         <span class="text-gray-600 dark:text-gray-300 text-sm">张</span>
       </div>
-      <div class="flex items-center gap-4 text-xs text-gray-500">
-        <span class="hidden sm:inline">累计拍摄天数: {{ data?.total_days || 0 }}</span>
-        <span class="hidden sm:inline">连续拍摄: {{ data?.max_consecutive_days || 0 }}</span>
-        <el-select v-model="selectedYear" size="small" class="w-28" @change="fetchData" placeholder="过去一年">
+      <div class="flex items-center gap-4 text-sm text-gray-500">
+        <span class="hidden sm:inline">累计拍摄天数: <span class="font-medium text-gray-700 dark:text-gray-200">{{ data?.total_days || 0 }}</span></span>
+        <span class="hidden sm:inline">连续拍摄: <span class="font-medium text-gray-700 dark:text-gray-200">{{ data?.max_consecutive_days || 0 }}</span></span>
+        <el-select v-model="selectedYear" size="default" class="w-28 ml-2" @change="fetchData" placeholder="过去一年">
           <el-option label="过去一年" :value="undefined" />
           <el-option v-for="year in availableYears" :key="year" :label="`${year}年`" :value="year" />
         </el-select>
@@ -24,21 +24,30 @@
 
     <!-- Heatmap Grid -->
     <div class="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700" ref="scrollContainer">
-      <div class="flex flex-col gap-1" style="min-width: max-content;">
-        <div class="flex gap-1">
-          <div v-for="(col, colIndex) in gridColumns" :key="colIndex" class="flex flex-col gap-1">
-             <div v-for="(day, rowIndex) in col" :key="`${colIndex}-${rowIndex}`" 
-                  class="w-3 h-3 rounded-[2px]"
-                  :class="getColorClass(day.count)"
-                  :title="day.date ? `${day.date}: ${day.count}张` : ''">
-             </div>
+      <div class="flex flex-col gap-[3px]" style="min-width: max-content;">
+        <div class="flex gap-[3px]">
+          <div v-for="(col, colIndex) in gridColumns" :key="colIndex" class="flex flex-col gap-[3px]">
+             <template v-for="(day, rowIndex) in col" :key="`${colIndex}-${rowIndex}`">
+                <el-tooltip
+                  v-if="day.count !== -1"
+                  :content="`${day.displayDate} 拍摄了 ${day.count} 张照片`"
+                  placement="top"
+                  effect="dark"
+                  :show-after="100"
+                >
+                  <div class="w-[14px] h-[14px] rounded-[3px] cursor-pointer hover:ring-1 hover:ring-gray-400 dark:hover:ring-gray-500 transition-all"
+                       :class="getColorClass(day.count)">
+                  </div>
+                </el-tooltip>
+                <div v-else class="w-[14px] h-[14px] bg-transparent"></div>
+             </template>
           </div>
         </div>
         <!-- Month labels -->
-        <div class="mt-1 text-[10px] text-gray-400 relative h-4 w-full">
+        <div class="mt-1 text-[12px] text-gray-400 relative h-4 w-full">
            <div v-for="label in monthLabels" :key="label.index"
                 class="absolute"
-                :style="{ left: `${label.index * 16}px` }">
+                :style="{ left: `${label.index * 17}px` }">
              {{ label.text }}
            </div>
         </div>
@@ -58,12 +67,12 @@ const data = ref<HeatmapResponse | null>(null);
 const availableYears = ref<number[]>([]);
 const scrollContainer = ref<HTMLElement | null>(null);
 
-const gridColumns = ref<{date: string, count: number}[][]>([]);
+const gridColumns = ref<{date: string, displayDate: string, count: number}[][]>([]);
 const monthLabels = ref<{text: string, index: number}[]>([]);
 
 const getColorClass = (count: number) => {
   if (count === -1) return 'bg-transparent';
-  if (count === 0) return 'bg-gray-100 dark:bg-gray-800';
+  if (count === 0) return 'bg-[#ebedf0] dark:bg-[#161b22]';
   if (count < 5) return 'bg-[#9be9a8] dark:bg-[#0e4429]';
   if (count < 15) return 'bg-[#40c463] dark:bg-[#006d32]';
   if (count < 30) return 'bg-[#30a14e] dark:bg-[#26a641]';
@@ -109,10 +118,12 @@ const buildGrid = (heatmapData: {date: string, count: number}[]) => {
     }
     
     columns.push(colDays.map(date => {
-      if (!date) return { date: '', count: -1 };
+      if (!date) return { date: '', displayDate: '', count: -1 };
       const dateStr = format(date, 'yyyy-MM-dd');
+      const displayDateStr = format(date, 'yyyy年MM月dd日');
       return {
         date: dateStr,
+        displayDate: displayDateStr,
         count: dataMap[dateStr] || 0
       };
     }));

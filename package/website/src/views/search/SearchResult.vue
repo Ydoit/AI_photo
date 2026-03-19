@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen pb-8">
     <!-- Header -->
-    <div class="sticky top-0 z-30 backdrop-blur-md border-b border-gray-200 bg-white/60 dark:bg-gray-950/60">
+    <div class="sticky top-0 z-30 backdrop-blur-md">
       <div class="max-w-7xl mx-auto px-4 py-3 flex items-center gap-4">
         <button 
           @click="router.back()" 

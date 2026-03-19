@@ -1,30 +1,31 @@
 <template>
-  <div class="container mx-auto py-6 px-4 h-screen flex flex-col">
-    <div class="flex items-center justify-between mb-4 flex-shrink-0">
-        <div class="flex items-center gap-2">
-            <button @click="$router.back()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
-                <i class="mgc_arrow_left_line text-xl"></i>
-            </button>
-            <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">相似照片清理</h1>
-        </div>
-        <div class="flex gap-2">
-            <button 
-                v-if="!loading && groups.length > 0"
-                @click="startNewScan"
-                class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors shadow-sm"
-            >
-                重新扫描
-            </button>
-            <button 
-                v-if="groups.length > 0"
-                @click="handleDeleteAll"
-                class="px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition-colors shadow-sm"
-            >
-                删除所有冗余 (保留最佳)
-            </button>
+  <div class="container mx-auto flex flex-col h-screen">
+    <div class="sticky top-0 z-30 backdrop-blur-md">
+        <div class="mx-auto px-4 py-3 flex items-center gap-4 justify-between flex-shrink-0">
+            <div class="flex items-center gap-2">
+                <button @click="$router.back()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 dark:bg-gray-900 rounded-full transition-colors">
+                    <ArrowLeft class="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                </button>
+                <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">相似照片清理</h1>
+            </div>
+            <div class="flex gap-2">
+                <button 
+                    v-if="!loading && groups.length > 0"
+                    @click="startNewScan"
+                    class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors shadow-sm"
+                >
+                    重新扫描
+                </button>
+                <button 
+                    v-if="groups.length > 0"
+                    @click="handleDeleteAll"
+                    class="px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition-colors shadow-sm"
+                >
+                    保留最佳
+                </button>
+            </div>
         </div>
     </div>
-
     <!-- Task Progress -->
     <div v-if="task && (task.status === 'pending' || task.status === 'processing')" class="flex-1 flex flex-col items-center justify-center p-8">
         <div class="w-full max-w-md bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg text-center">
@@ -105,7 +106,7 @@
                 </span>
                 <button 
                     @click="toggleGroupSelection(gIndex)"
-                    class="text-sm text-blue-500 hover:text-blue-600 font-medium"
+                    class="text-sm text-primary-500 hover:text-primary-600 font-medium dark:bg-gray-900"
                 >
                     {{ isGroupAllSelected(gIndex) ? '取消全选' : '全选' }}
                 </button>
@@ -220,6 +221,7 @@ import { ref, onMounted, reactive, computed, onUnmounted } from 'vue';
 import { photoApi, type TaskResponse } from '@/api/photo';
 import type { Photo, AlbumImage } from '@/types/album';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { ArrowLeft, Search } from 'lucide-vue-next'
 import PhotoLightbox from '@/components/PhotoLightbox.vue';
 import request from '@/utils/request';
 import {usePhotoStore, mapPhotoToImage} from '@/stores/photoStore'
