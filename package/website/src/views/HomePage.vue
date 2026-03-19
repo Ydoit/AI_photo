@@ -39,13 +39,15 @@
       </div>
       <OverviewCards :data="dashboardData.card" @show-storage="showStorageDialog = true" />
       
+      <HeatmapSection />
+      
       <FaceSection :data="dashboardData.face" />
       
       <ContentStats :data="dashboardData.content" />
       
       <TimeChart :data="dashboardData.time" />
       
-      <ToolsSection />
+      <!-- <ToolsSection /> -->
     </div>
     
     <!-- Error State -->
@@ -87,6 +89,7 @@ import { ElMessage } from 'element-plus';
 
 // Components
 import OverviewCards from '@/components/home/OverviewCards.vue';
+import HeatmapSection from '@/components/home/HeatmapSection.vue';
 import FaceSection from '@/components/home/FaceSection.vue';
 import ContentStats from '@/components/home/ContentStats.vue';
 import TimeChart from '@/components/home/TimeChart.vue';

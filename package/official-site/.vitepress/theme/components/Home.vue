@@ -134,9 +134,9 @@
               <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-xl bg-gray-900">Image Placeholder: {{ shot.title }}</div>
               
               <!-- Caption Overlay -->
-              <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-8 text-white">
-                <h3 class="text-2xl font-bold mb-2">{{ shot.title }}</h3>
-                <p class="text-lg opacity-90">{{ shot.desc }}</p>
+              <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 md:p-8 text-white">
+                <h3 class="text-md md:text-2xl font-bold mb-2">{{ shot.title }}</h3>
+                <p class="text-xs md:text-lg opacity-90">{{ shot.desc }}</p>
               </div>
             </div>
 

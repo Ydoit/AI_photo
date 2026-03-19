@@ -1,8 +1,8 @@
 from uuid import UUID
 
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract, desc
-from datetime import datetime, date
+from sqlalchemy import func, extract, desc, cast, Date
+from datetime import datetime, date, timedelta
 
 from app.crud.face import get_identities_with_details
 from app.db.models.photo import Photo, FileType
@@ -11,7 +11,8 @@ from app.db.models.tag import PhotoTag, PhotoTagRelation
 from app.schemas.dashboard import (
     DashboardCard, DashboardFace,
     DashboardContentStats, ContentDetail, DashboardTime, 
-    DashboardTimeChartItem, DashboardResponse
+    DashboardTimeChartItem, DashboardResponse,
+    HeatmapResponse, HeatmapItem
 )
 
 def get_dashboard_stats(db: Session, owner_id: UUID) -> DashboardResponse:
@@ -152,3 +153,68 @@ def get_dashboard_stats(db: Session, owner_id: UUID) -> DashboardResponse:
         content=content_stats,
         time=time_stats
     )
+
+def get_heatmap_stats(db: Session, owner_id: UUID, year: int | None = None) -> HeatmapResponse:
+    today = datetime.now().date()
+    query = db.query(
+        cast(Photo.photo_time, Date).label('photo_date'),
+        func.count(Photo.id).label('count')
+    ).filter(Photo.owner_id == owner_id, Photo.photo_time != None)
+    
+    if year:
+        # filter by specific year
+        start_date = date(year, 1, 1)
+        end_date = date(year, 12, 31)
+        query = query.filter(
+            Photo.photo_time >= datetime.combine(start_date, datetime.min.time()), 
+            Photo.photo_time <= datetime.combine(end_date, datetime.max.time())
+        )
+    else:
+        # past 365 days
+        start_date = today - timedelta(days=364)
+        end_date = today
+        query = query.filter(
+            Photo.photo_time >= datetime.combine(start_date, datetime.min.time()), 
+            Photo.photo_time <= datetime.combine(end_date, datetime.max.time())
+        )
+        
+    query = query.group_by(cast(Photo.photo_time, Date)).order_by(cast(Photo.photo_time, Date))
+    results = query.all()
+    
+    total_photos = 0
+    total_days = len(results)
+    data = []
+    
+    max_consecutive_days = 0
+    current_consecutive = 0
+    prev_date = None
+    
+    for r in results:
+        total_photos += r.count
+        data.append(HeatmapItem(date=r.photo_date.isoformat(), count=r.count))
+        
+        if prev_date and (r.photo_date - prev_date).days == 1:
+            current_consecutive += 1
+        else:
+            current_consecutive = 1
+            
+        max_consecutive_days = max(max_consecutive_days, current_consecutive)
+        prev_date = r.photo_date
+        
+    # Find available years
+    years_query = db.query(
+        func.extract('year', Photo.photo_time).label('year')
+    ).filter(Photo.owner_id == owner_id, Photo.photo_time != None)\
+    .group_by(func.extract('year', Photo.photo_time))\
+    .order_by(desc('year')).all()
+    
+    available_years = [int(y.year) for y in years_query if y.year]
+    
+    return HeatmapResponse(
+        total_photos=total_photos,
+        total_days=total_days,
+        max_consecutive_days=max_consecutive_days,
+        data=data,
+        available_years=available_years
+    )
+

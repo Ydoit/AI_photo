@@ -39,6 +39,17 @@ class DashboardTime(BaseModel):
     chart_data: List[DashboardTimeChartItem]
     monthly_peak: str
 
+class HeatmapItem(BaseModel):
+    date: str
+    count: int
+
+class HeatmapResponse(BaseModel):
+    total_photos: int
+    total_days: int
+    max_consecutive_days: int
+    data: List[HeatmapItem]
+    available_years: List[int]
+
 class DashboardResponse(BaseModel):
     card: DashboardCard
     face: DashboardFace

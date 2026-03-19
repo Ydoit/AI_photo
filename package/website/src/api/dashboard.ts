@@ -56,9 +56,27 @@ export interface DashboardResponse {
   time: DashboardTime;
 }
 
+export interface HeatmapItem {
+  date: string;
+  count: number;
+}
+
+export interface HeatmapResponse {
+  total_photos: number;
+  total_days: number;
+  max_consecutive_days: number;
+  data: HeatmapItem[];
+  available_years: number[];
+}
+
 export const dashboardApi = {
   async getOverview() {
     const data = await request.get<DashboardResponse>('/api/stats/dashboard');
+    return data.data;
+  },
+  
+  async getHeatmap(year?: number) {
+    const data = await request.get<HeatmapResponse>('/api/stats/heatmap', { params: { year } });
     return data.data;
   }
 };

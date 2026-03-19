@@ -12,7 +12,7 @@ from app.dependencies import get_db
 from app.db.models.photo import Photo
 from app.db.models.album import Album
 from app.schemas.album import TimelineItem, TimelineStats
-from app.schemas.dashboard import DashboardResponse
+from app.schemas.dashboard import DashboardResponse, HeatmapResponse
 from app.schemas.filter import FilterOptions
 from app.crud import dashboard as crud_dashboard
 from app.crud import album as crud_album
@@ -50,6 +50,13 @@ def get_dashboard_overview(db: Session = Depends(get_db), current_user: User = D
     Get dashboard overview data.
     """
     return crud_dashboard.get_dashboard_stats(db, owner_id=current_user.id)
+
+@router.get("/heatmap", response_model=HeatmapResponse)
+def get_heatmap_stats(year: Optional[int] = Query(None), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Get heatmap stats data.
+    """
+    return crud_dashboard.get_heatmap_stats(db, owner_id=current_user.id, year=year)
 
 @router.get("/filters", response_model=FilterOptions)
 def get_filter_options(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
