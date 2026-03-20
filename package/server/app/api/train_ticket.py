@@ -42,6 +42,7 @@ router = APIRouter()
 @router.post("/recognize", summary="识别车票图片")
 async def recognize_ticket(
     file: UploadFile = File(..., description="车票图片"),
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
