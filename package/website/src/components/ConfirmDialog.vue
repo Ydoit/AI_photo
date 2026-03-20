@@ -9,7 +9,7 @@
           <div class="flex gap-3 justify-end">
              <button 
                @click="cancel"
-               class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors font-medium text-sm"
+               class="px-4 py-2 text-gray-600 dark:text-gray-300 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors font-medium text-sm"
              >
                {{ cancelText }}
              </button>

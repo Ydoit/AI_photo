@@ -1,12 +1,12 @@
 <template>
-  <div class="bg-white dark:bg-neutral-900 rounded-lg p-4 mx-4 my-3">
+  <div class="w-full h-full flex flex-col justify-between">
     <!-- Header -->
     <div class="flex justify-between items-center mb-4">
       <h3 class="text-base font-bold text-gray-800 dark:text-gray-100">拍摄时光</h3>
-      <span class="text-xs text-gray-500">2025年占{{ data.current_year_percentage }}%</span>
+      <span class="text-xs text-gray-500">{{ latestYear }}年占{{ latestYearData?.percentage }}%</span>
     </div>
 
-    <div class="flex items-center">
+    <div class="flex items-center flex-1">
       <!-- Chart -->
       <div ref="chartRef" class="w-[100px] h-[100px]"></div>
       
@@ -36,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, PropType, nextTick } from 'vue';
+import { ref, onMounted, watch, PropType, nextTick, computed } from 'vue';
 import * as echarts from 'echarts';
 import { DashboardTime } from '@/api/dashboard';
 
@@ -49,6 +49,8 @@ const props = defineProps({
 
 const chartRef = ref<HTMLElement | null>(null);
 let chartInstance: echarts.ECharts | null = null;
+const latestYear = computed(() => props.data.chart_data[0].year);
+const latestYearData = computed(() => props.data.chart_data.find(item => item.year === latestYear.value));
 
 const initChart = () => {
   if (!chartRef.value) return;

@@ -1,11 +1,11 @@
 <template>
-  <div class="bg-white dark:bg-neutral-900 rounded-xl p-5 mx-4 my-3 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow duration-300">
+  <div class="w-full">
     <!-- Header -->
     <div class="flex justify-between items-center mb-5">
       <div class="flex items-baseline gap-2">
         <span class="text-gray-600 dark:text-gray-300 text-sm">{{ selectedYear ? `在 ${selectedYear} 年` : '过去一年' }}共拍摄</span>
         <span class="text-2xl font-bold text-gray-800 dark:text-gray-100">{{ data?.total_photos || 0 }}</span>
-        <span class="text-gray-600 dark:text-gray-300 text-sm">张</span>
+        <span class="text-gray-600 dark:text-gray-300 text-sm">张照片</span>
       </div>
       <div class="flex items-center gap-4 text-sm text-gray-500">
         <span class="hidden sm:inline">累计拍摄天数: <span class="font-medium text-gray-700 dark:text-gray-200">{{ data?.total_days || 0 }}</span></span>
@@ -23,32 +23,27 @@
     </div>
 
     <!-- Heatmap Grid -->
-    <div class="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700" ref="scrollContainer">
-      <div class="flex flex-col gap-[3px]" style="min-width: max-content;">
-        <div class="flex gap-[3px]">
-          <div v-for="(col, colIndex) in gridColumns" :key="colIndex" class="flex flex-col gap-[3px]">
-             <template v-for="(day, rowIndex) in col" :key="`${colIndex}-${rowIndex}`">
-                <el-tooltip
-                  v-if="day.count !== -1"
-                  :content="`${day.displayDate} 拍摄了 ${day.count} 张照片`"
-                  placement="top"
-                  effect="dark"
-                  :show-after="100"
-                >
-                  <div class="w-[14px] h-[14px] rounded-[3px] cursor-pointer hover:ring-1 hover:ring-gray-400 dark:hover:ring-gray-500 transition-all"
-                       :class="getColorClass(day.count)">
-                  </div>
-                </el-tooltip>
-                <div v-else class="w-[14px] h-[14px] bg-transparent"></div>
-             </template>
-          </div>
-        </div>
-        <!-- Month labels -->
-        <div class="mt-1 text-[12px] text-gray-400 relative h-4 w-full">
-           <div v-for="label in monthLabels" :key="label.index"
-                class="absolute"
-                :style="{ left: `${label.index * 17}px` }">
-             {{ label.text }}
+    <div class="overflow-x-auto pb-6 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700" ref="scrollContainer">
+      <div class="flex gap-[2px] sm:gap-[3px] xl:gap-[4px] w-full min-w-[600px]">
+        <div v-for="(col, colIndex) in gridColumns" :key="colIndex" class="flex-1 flex flex-col gap-[2px] sm:gap-[3px] xl:gap-[4px] relative">
+           <template v-for="(day, rowIndex) in col" :key="`${colIndex}-${rowIndex}`">
+              <el-tooltip
+                v-if="day.count !== -1"
+                :content="`${day.displayDate} 拍摄了 ${day.count} 张照片`"
+                placement="top"
+                effect="dark"
+                :show-after="100"
+              >
+                <div class="w-full aspect-square rounded-[2px] sm:rounded-[3px] cursor-pointer hover:ring-1 hover:ring-gray-400 dark:hover:ring-gray-500 transition-all"
+                     :class="getColorClass(day.count)">
+                </div>
+              </el-tooltip>
+              <div v-else class="w-full aspect-square bg-transparent"></div>
+           </template>
+           
+           <!-- Month labels -->
+           <div v-if="monthLabelMap[colIndex]" class="absolute -bottom-5 left-0 text-[10px] sm:text-[12px] text-gray-400 whitespace-nowrap">
+             {{ monthLabelMap[colIndex] }}
            </div>
         </div>
       </div>
@@ -69,6 +64,14 @@ const scrollContainer = ref<HTMLElement | null>(null);
 
 const gridColumns = ref<{date: string, displayDate: string, count: number}[][]>([]);
 const monthLabels = ref<{text: string, index: number}[]>([]);
+
+const monthLabelMap = computed(() => {
+  const map: Record<number, string> = {};
+  monthLabels.value.forEach(label => {
+    map[label.index] = label.text;
+  });
+  return map;
+});
 
 const getColorClass = (count: number) => {
   if (count === -1) return 'bg-transparent';

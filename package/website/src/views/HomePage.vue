@@ -39,17 +39,20 @@
       </div>
       <OverviewCards :data="dashboardData.card" @show-storage="showStorageDialog = true" />
       
-      <HeatmapSection />
-      
+      <div class="mx-4 my-3 bg-white dark:bg-neutral-900 rounded-xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow duration-300">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <div class="w-full lg:w-64 flex-shrink-0 pt-4 lg:pt-0 border-t lg:border-t-0 border-gray-100 dark:border-gray-800">
+             <TimeChart :data="dashboardData.time" />
+          </div>
+          <div class="flex-1 overflow-hidden lg:border-r border-gray-100 dark:border-gray-800 lg:pr-6">
+             <HeatmapSection />
+          </div>
+        </div>
+      </div>
       <FaceSection :data="dashboardData.face" />
-      
       <ContentStats :data="dashboardData.content" />
-      
-      <TimeChart :data="dashboardData.time" />
-      
       <!-- <ToolsSection /> -->
     </div>
-    
     <!-- Error State -->
     <div v-else class="flex flex-col items-center justify-center h-[calc(100vh-56px)] text-gray-500">
       <i class="mgc_warning_line text-4xl mb-2"></i>

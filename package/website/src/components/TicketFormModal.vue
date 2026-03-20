@@ -24,7 +24,7 @@
               class="hidden" 
               @change="handleFileChange"
             />
-            <button @click="handleCancel" class="text-slate-400 hover:text-red-500 transition-colors ml-2">
+            <button @click="handleCancel" class="text-slate-400 hover:text-red-500 transition-colors ml-2 dark:bg-slate-700 dark:text-slate-200">
               <X class="w-6 h-6" />
             </button>
           </div>
@@ -196,7 +196,7 @@
         </div>
 
         <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 bg-slate-50 dark:bg-slate-800">
-          <button @click="handleCancel" class="px-5 py-2 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">取消</button>
+          <button @click="handleCancel" class="px-5 py-2 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors dark:bg-slate-700 dark:text-slate-200">取消</button>
           <button
             @click="handleSubmit"
             :disabled="saving"
@@ -216,6 +216,7 @@ import { ref, watch, onUnmounted } from 'vue';
 import { X } from 'lucide-vue-next';
 import axios from 'axios';
 import { ElMessage } from 'element-plus';
+import { ticketService } from '@/api/ticketService';
 
 
 // 接收props
@@ -278,29 +279,7 @@ const handleFileChange = async (event) => {
 
   recognizing.value = true;
   try {
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    // 直接使用 axiosInstance 调用后端接口
-    // 注意：这里需要根据实际 API 路径调整，假设 apiBaseUrl 是后端根地址
-    // 如果 ticketService 已经封装好了，最好通过 props 传入 ticketService 或者 emit 事件让父组件处理
-    // 但为了保持组件独立性，这里我们直接调用 /api/train-ticket/recognize
-    
-    // 由于 props.apiBaseUrl 可能包含 /api 也可能不包含，这里假设它指向后端根目录
-    // 检查 apiBaseUrl 是否以 /api 结尾
-    let url = '/api/train-ticket/recognize';
-    if (!props.apiBaseUrl.includes('/api')) {
-        // 如果 base url 没有 /api，保持原样
-    }
-    
-    const response = await axiosInstance.post('/train-ticket/recognize', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    
-    const data = response.data;
-    
+    const data = await ticketService.recognizeTicket(file);
     // 重置被识别字段，避免历史残留
     form.value.train_code = '';
     form.value.from = '';
