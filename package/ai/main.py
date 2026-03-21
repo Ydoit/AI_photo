@@ -22,14 +22,14 @@ async def check_idle_and_restart():
     while True:
         try:
             await asyncio.sleep(settings.CHECK_INTERVAL)
-            
+
             # If there are active requests, we are not idle
             if active_requests > 0:
                 continue
-                
+
             current_time = time.time()
             idle_duration = current_time - last_request_time
-            
+
             if idle_duration > settings.IDLE_TIMEOUT:
                 logging.getLogger("app.main").warning(
                     f"Service idle for {idle_duration:.0f} seconds (Threshold: {settings.IDLE_TIMEOUT}s). "
@@ -37,7 +37,7 @@ async def check_idle_and_restart():
                 )
                 # Exit the process. The container orchestrator or process manager should restart it.
                 sys.exit(0)
-                
+
         except asyncio.CancelledError:
             break
         except Exception as e:

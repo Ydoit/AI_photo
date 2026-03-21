@@ -133,5 +133,50 @@
         "zh": "票据",
         "en": "Ticket",
         "prompts": ["a photo of flight ticket", "a photo of train ticket", "a photo of bus ticket", "a photo of membership ticket", "a photo of movie ticket"]
+    },
+    "skiing": {
+        "zh": "滑雪",
+        "en": "Skiing",
+        "prompts": ["a photo of skiing", "a photo of ski resort", "a photo of snowboard"]
+    },
+    "swimming": {
+        "zh": "游泳",
+        "en": "Swimming",
+        "prompts": ["a photo of swimming", "a photo of swimming pool", "a photo of swimmer"]
+    },
+    "running": {
+        "zh": "跑步",
+        "en": "Running",
+        "prompts": ["a photo of running", "a photo of jogging", "a photo of runway"]
+    },
+    "fitness": {
+        "zh": "健身",
+        "en": "Fitness",
+        "prompts": ["a photo of gym fitness", "a photo of workout", "a photo of dumbbell"]
+    },
+    "yoga": {
+        "zh": "瑜伽",
+        "en": "Yoga",
+        "prompts": ["a photo of yoga", "a photo of yoga mat", "a photo of yoga pose"]
+    },
+    "cycling": {
+        "zh": "骑行",
+        "en": "Cycling",
+        "prompts": ["a photo of cycling", "a photo of bicycle", "a photo of bike riding"]
+    },
+    "basketball": {
+        "zh": "篮球",
+        "en": "Basketball",
+        "prompts": ["a photo of playing basketball", "a photo of basketball court", "a photo of basketball"]
+    },
+    "football": {
+        "zh": "足球",
+        "en": "Football",
+        "prompts": ["a photo of playing football", "a photo of football field", "a photo of football"]
+    },
+    "badminton": {
+        "zh": "羽毛球",
+        "en": "Badminton",
+        "prompts": ["a photo of playing badminton", "a photo of badminton court", "a photo of badminton racket"]
     }
 }

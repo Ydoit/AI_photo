@@ -58,30 +58,6 @@
       <i class="mgc_warning_line text-4xl mb-2"></i>
       <p>加载失败，请下拉刷新</p>
     </div>
-
-    <BottomBar 
-      :loading="loading" 
-      @refresh="fetchData" 
-      @customize="showCustomizeDialog = true"
-    />
-
-    <!-- Dialogs (Mock) -->
-    <el-dialog v-model="showStorageDialog" title="存储分布" width="80%">
-      <div class="text-center py-4">存储分布图表（待实现）</div>
-    </el-dialog>
-
-    <el-dialog v-model="showCustomizeDialog" title="自定义展示" width="80%">
-      <div class="p-4">
-        <div class="flex items-center justify-between mb-4">
-          <span>存储空间</span>
-          <el-switch v-model="displaySettings.storage" />
-        </div>
-        <div class="flex items-center justify-between">
-          <span>时间分布</span>
-          <el-switch v-model="displaySettings.time" />
-        </div>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
@@ -96,19 +72,11 @@ import HeatmapSection from '@/components/home/HeatmapSection.vue';
 import FaceSection from '@/components/home/FaceSection.vue';
 import ContentStats from '@/components/home/ContentStats.vue';
 import TimeChart from '@/components/home/TimeChart.vue';
-import ToolsSection from '@/components/home/ToolsSection.vue';
-import BottomBar from '@/components/home/BottomBar.vue';
 import OnThisDay from '@/components/OnThisDay.vue';
 
 const loading = ref(false);
 const dashboardData = ref<DashboardResponse | null>(null);
 const showStorageDialog = ref(false);
-const showCustomizeDialog = ref(false);
-
-const displaySettings = ref({
-  storage: true,
-  time: true
-});
 
 const fetchData = async () => {
   loading.value = true;

@@ -40,6 +40,7 @@
             </el-form-item>
             
             <el-form-item label="密码" prop="password" class="!mb-2">
+              <!-- 按回车键触发登录 -->
               <el-input 
                 v-model="loginForm.password" 
                 type="password" 
@@ -49,6 +50,7 @@
                 class="!h-12"
                 @focus="focusTarget = 'password'"
                 @blur="focusTarget = null"
+                @keyup.enter="handleLogin"
               />
             </el-form-item>
 
