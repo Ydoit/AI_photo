@@ -13,4 +13,6 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+from app.db.models.agent import AgentSession, AgentMessage
+
 

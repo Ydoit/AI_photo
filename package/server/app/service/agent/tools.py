@@ -129,14 +129,14 @@ def get_agent_tools(user_id: str) -> List[StructuredTool]:
                     "arrival": t.arrival_station
                 })
             
-            for f in flight_results:
-                records.append({
-                    "type": "飞机",
-                    "date": f.date_time.strftime("%Y-%m-%d %H:%M:%S") if f.date_time else None,
-                    "flight_no": f.flight_no,
-                    "departure": f.departure_airport,
-                    "arrival": f.arrival_airport
-                })
+            # for f in flight_results:
+            #     records.append({
+            #         "type": "飞机",
+            #         "date": f.date_time.strftime("%Y-%m-%d %H:%M:%S") if f.date_time else None,
+            #         "flight_no": f.flight_code,
+            #         "departure": f.departure_airport,
+            #         "arrival": f.arrival_airport
+            #     })
             
             if not records:
                 return "这段时间内没有出行记录。"

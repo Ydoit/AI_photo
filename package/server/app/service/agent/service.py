@@ -1,34 +1,37 @@
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
+from uuid import UUID
 from langchain_openai import ChatOpenAI
-from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, BaseMessage
 from langgraph.prebuilt import create_react_agent
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from sqlalchemy.orm import Session
 
 from app.core.config_manager import config_manager
 from app.db.session import SessionLocal
 from app.service.agent.tools import get_agent_tools
+from app.crud.agent import get_messages_by_session, create_message
+from app.schemas.agent import AgentMessageCreate
 
 logger = logging.getLogger(__name__)
 
-# 全局存储聊天历史
-chat_histories: Dict[str, ChatMessageHistory] = {}
+def get_session_history(db: Session, session_id: str) -> List[BaseMessage]:
+    db_messages = get_messages_by_session(db, session_id, limit=100)
+    messages = []
+    for msg in db_messages:
+        if msg.role == "user":
+            messages.append(HumanMessage(content=msg.content))
+        elif msg.role == "assistant":
+            messages.append(AIMessage(content=msg.content))
+        elif msg.role == "system":
+            messages.append(SystemMessage(content=msg.content))
+    return messages
 
 
-def get_session_history(session_id: str) -> BaseChatMessageHistory:
-    if session_id not in chat_histories:
-        chat_histories[session_id] = ChatMessageHistory()
-    return chat_histories[session_id]
-
-
-def get_agent_executor(user_id: str, session_id: str):
+def get_agent_executor(user_id: str, session_id: str, db: Session):
     """
     完全适配 langgraph==1.1.3 的 Agent 初始化
     """
-    with SessionLocal() as db:
-        user_config = config_manager.get_user_config(user_id, db)
+    user_config = config_manager.get_user_config(user_id, db)
 
     llm_settings = user_config.ai.llm_settings
 
@@ -72,22 +75,25 @@ def get_agent_executor(user_id: str, session_id: str):
     return agent, system_prompt
 
 
-def chat_with_agent(user_id: str, session_id: str, user_input: str) -> str:
+def chat_with_agent(user_id: str, session_id: str, user_input: str, db: Session) -> str:
     """
     与 Agent 对话，维护上下文历史
     """
-    agent, system_prompt = get_agent_executor(user_id, session_id)
-    history = get_session_history(session_id)
-    
-    # 获取之前的消息 (必须创建副本，否则会修改全局的历史状态导致无限叠加 system message)
-    messages = list(history.messages)
+    agent, system_prompt = get_agent_executor(user_id, session_id, db)
+    messages = get_session_history(db, session_id)
     
     # 将 system_prompt 作为第一条消息传入，如果它不在历史中
     if not messages or not isinstance(messages[0], SystemMessage):
-        # 使用插入而不是追加，保证 system message 在最前面
         messages.insert(0, SystemMessage(content=system_prompt))
         
     messages.append(HumanMessage(content=user_input))
+    
+    # Save user message to DB
+    create_message(db, AgentMessageCreate(
+        session_id=UUID(session_id),
+        role="user",
+        content=user_input,
+    ))
     
     try:
         response = agent.invoke({"messages": messages})
@@ -95,11 +101,12 @@ def chat_with_agent(user_id: str, session_id: str, user_input: str) -> str:
         # 获取大模型的回复
         ai_message = response["messages"][-1].content
 
-        # 将用户的输入和 AI 的回复存入历史
-        # 将用户的输入和 AI 的回复存入历史
-        # 注意：不要将 SystemMessage 存入普通历史，否则会导致序列化和下一次提取问题
-        history.add_user_message(user_input)
-        history.add_ai_message(ai_message)
+        # Save AI message to DB
+        create_message(db, AgentMessageCreate(
+            session_id=UUID(session_id),
+            role="assistant",
+            content=ai_message,
+        ))
 
         return ai_message
     except Exception as e:

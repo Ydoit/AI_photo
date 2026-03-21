@@ -33,7 +33,7 @@ import { ref } from 'vue';
 // 导入导航栏、页脚组件
 import NavBar from '@/layouts/NavBar.vue';
 import Footer from '@/layouts/Footer.vue';
-import AgentChat from '@/components/AgentChat.vue';
+import AgentChat from '@/views/agent/AgentChat.vue';
 import { Bot } from 'lucide-vue-next';
 // 导入主题逻辑（保持原有的主题功能）
 import { provideTheme } from '@/composables/useTheme';
