@@ -13,15 +13,32 @@
         <router-view />
       </transition>
     </div>
+
+    <!-- 悬浮的 Agent 助手按钮 -->
+    <button 
+      v-show="!isAgentOpen && $route.name !== 'Login'" 
+      @click="isAgentOpen = true"
+      class="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-50 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 group"
+    >
+      <Bot class="w-6 h-6 group-hover:animate-bounce" />
+    </button>
+
+    <!-- Agent 聊天弹窗 -->
+    <AgentChat v-model="isAgentOpen" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 // 导入导航栏、页脚组件
 import NavBar from '@/layouts/NavBar.vue';
 import Footer from '@/layouts/Footer.vue';
+import AgentChat from '@/components/AgentChat.vue';
+import { Bot } from 'lucide-vue-next';
 // 导入主题逻辑（保持原有的主题功能）
 import { provideTheme } from '@/composables/useTheme';
+
+const isAgentOpen = ref(false);
 
 // 提供主题状态（供子组件（如 NavBar）注入使用）
 const {
