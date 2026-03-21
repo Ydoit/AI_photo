@@ -29,7 +29,7 @@ load_dotenv('./data/.env')
 from app.api import (
     user, train_ticket, flight_ticket, album, index, settings, face, ocr, 
     location, search, classification, system, media, stats, photo, tasks, 
-    annual_report, auth, deps
+    annual_report, auth, deps, agent
 )
 from railway.api import router as railway_router
 from app.db.session import engine, SessionLocal
@@ -163,6 +163,7 @@ app.include_router(search.router, prefix="/search", tags=["Search"])
 app.include_router(classification.router, prefix="/tags", tags=["Classification"])
 app.include_router(annual_report.router, prefix="/annual-report", tags=["AnnualReport"])
 app.include_router(system.router, prefix="/system", tags=["System"])
+app.include_router(agent.router, prefix="/agent", tags=["Agent"])
 
 if __name__ == "__main__":
     import uvicorn
