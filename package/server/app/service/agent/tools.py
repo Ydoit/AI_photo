@@ -30,7 +30,7 @@ def get_agent_tools(user_id: str) -> List[StructuredTool]:
         scenes: Optional[List[str]] = None,
         tags: Optional[List[str]] = None,
         persons: Optional[List[str]] = None,
-        limit: int = 10,
+        limit: int = 100,
         sort_by: str = "photo_time"
     ) -> str:
         """
@@ -84,16 +84,16 @@ def get_agent_tools(user_id: str) -> List[StructuredTool]:
                 query = query.filter(PhotoMetadata.city.in_(cities))
             if districts:
                 query = query.filter(PhotoMetadata.district.in_(districts))
-                
+
             if scenes:
                 query = query.filter(PhotoMetadata.scene.has(Scene.name.in_(scenes)))
-                
+
             if tags:
                 tag_conditions = [Photo.tags.any(PhotoTag.tag_name.in_(tags))]
                 for t in tags:
                     tag_conditions.append(cast(ImageDescription.tags, String).ilike(f'%"{t}"%'))
                 query = query.filter(or_(*tag_conditions))
-                
+
             if persons:
                 query = query.filter(Photo.faces.any(Face.identity.has(FaceIdentity.identity_name.in_(persons))))
 
@@ -118,7 +118,7 @@ def get_agent_tools(user_id: str) -> List[StructuredTool]:
                     "narrative": desc.narrative if desc else "无描述",
                     "quality_score": desc.quality_score if desc else None
                 })
-            
+
             return json.dumps(response_data, ensure_ascii=False)
 
     @tool
@@ -129,14 +129,14 @@ def get_agent_tools(user_id: str) -> List[StructuredTool]:
         limit: int = 50
     ) -> str:
         """
-        获取照片的详细地址信息，包括省、市、区、完整地址、所在的景区等。
+        获取照片包含的地点信息，包括省、市、区、所在的景区等（分类去重后的列表）。
         Args:
             photo_ids: 照片 ID 的字符串列表（可选）
             start_date: 开始日期 (YYYY-MM-DD)（可选）
             end_date: 结束日期 (YYYY-MM-DD)（可选）
             limit: 返回结果上限
         Returns:
-            包含照片ID、省、市、区、地址、景区名称的 JSON 字符串。
+            包含去重后的省(provinces)、市(cities)、区(districts)、景区(scenes)的 JSON 对象。
         """
         with SessionLocal() as db:
             query = db.query(Photo, PhotoMetadata, Scene).outerjoin(
@@ -160,21 +160,32 @@ def get_agent_tools(user_id: str) -> List[StructuredTool]:
                 except ValueError:
                     pass
             
-            results = query.order_by(Photo.photo_time.desc().nulls_last()).limit(limit).all()
+            results = query.order_by(Photo.photo_time.desc().nulls_last()).all()
 
             if not results:
                 return "没有找到照片的地址信息。"
 
-            response_data = []
+            provinces = set()
+            cities = set()
+            districts = set()
+            scenes = set()
+            
             for photo, meta, scene in results:
-                response_data.append({
-                    "photo_id": str(photo.id),
-                    "province": meta.province if meta else None,
-                    "city": meta.city if meta else None,
-                    "district": meta.district if meta else None,
-                    "address": meta.address if meta else None,
-                    "scene": scene.name if scene else None
-                })
+                if meta:
+                    if meta.province: provinces.add(meta.province)
+                    if meta.city: cities.add(meta.city)
+                    if meta.district: districts.add(meta.district)
+                if scene and scene.name:
+                    scenes.add(scene.name)
+            
+            response_data = {
+                "provinces": list(provinces),
+                "cities": list(cities),
+                "districts": list(districts),
+                "scenes": list(scenes)
+            }
+            print(start_date, end_date)
+            print(response_data)
             return json.dumps(response_data, ensure_ascii=False)
 
     @tool
@@ -185,14 +196,14 @@ def get_agent_tools(user_id: str) -> List[StructuredTool]:
         limit: int = 50
     ) -> str:
         """
-        获取照片的分类标签信息。
+        获取照片的分类标签信息（去重后的列表）。
         Args:
             photo_ids: 照片 ID 的字符串列表（可选）
             start_date: 开始日期 (YYYY-MM-DD)（可选）
             end_date: 结束日期 (YYYY-MM-DD)（可选）
             limit: 返回结果上限
         Returns:
-            包含照片ID、标签列表的 JSON 字符串。
+            包含去重后的标签名称的 JSON 字符串列表。
         """
         with SessionLocal() as db:
             query = db.query(Photo, ImageDescription).outerjoin(
@@ -214,25 +225,20 @@ def get_agent_tools(user_id: str) -> List[StructuredTool]:
                 except ValueError:
                     pass
 
-            results = query.order_by(Photo.photo_time.desc().nulls_last()).limit(limit).all()
+            results = query.order_by(Photo.photo_time.desc().nulls_last()).all()
 
             if not results:
                 return "没有找到照片的标签信息。"
 
-            response_data = []
+            all_tags = set()
             for photo, desc in results:
-                tags = []
                 if desc and desc.tags:
-                    tags.extend(desc.tags)
+                    for t in desc.tags:
+                        all_tags.add(t)
                 for t in photo.tags:
-                    if t.tag_name not in tags:
-                        tags.append(t.tag_name)
-                
-                response_data.append({
-                    "photo_id": str(photo.id),
-                    "tags": tags
-                })
-            return json.dumps(response_data, ensure_ascii=False)
+                    all_tags.add(t.tag_name)
+            
+            return json.dumps(list(all_tags), ensure_ascii=False)
 
     @tool
     def get_photo_persons_tool(
@@ -242,14 +248,14 @@ def get_agent_tools(user_id: str) -> List[StructuredTool]:
         limit: int = 50
     ) -> str:
         """
-        获取照片包含的人物/人脸标签信息。
+        获取照片包含的人物/人脸标签信息（去重后的列表）。
         Args:
             photo_ids: 照片 ID 的字符串列表（可选）
             start_date: 开始日期 (YYYY-MM-DD)（可选）
             end_date: 结束日期 (YYYY-MM-DD)（可选）
             limit: 返回结果上限
         Returns:
-            包含照片ID、人物名称列表的 JSON 字符串。
+            包含去重后的人物名称的 JSON 字符串列表。
         """
         with SessionLocal() as db:
             query = db.query(Photo).options(
@@ -271,29 +277,18 @@ def get_agent_tools(user_id: str) -> List[StructuredTool]:
                 except ValueError:
                     pass
 
-            results = query.order_by(Photo.photo_time.desc().nulls_last()).limit(limit).all()
+            results = query.order_by(Photo.photo_time.desc().nulls_last()).all()
 
             if not results:
                 return "没有找到照片的人物信息。"
 
-            response_data = []
+            all_persons = set()
             for photo in results:
-                persons = []
                 for face in photo.faces:
                     if face.identity and face.identity.identity_name:
-                        if face.identity.identity_name not in persons:
-                            persons.append(
-                                {
-                                    "name": face.identity.identity_name,
-                                    "tags": face.identity.tags
-                                }
-                            )
-                
-                response_data.append({
-                    "photo_id": str(photo.id),
-                    "persons": persons
-                })
-            return json.dumps(response_data, ensure_ascii=False)
+                        all_persons.add(face.identity.identity_name)
+            
+            return json.dumps(list(all_persons), ensure_ascii=False)
 
     @tool
     def get_travel_history_tool(start_date: Optional[str] = None, end_date: Optional[str] = None) -> str:
