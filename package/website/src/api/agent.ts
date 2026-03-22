@@ -3,6 +3,7 @@ import request from '@/utils/request';
 export interface ChatRequest {
   message: string;
   session_id?: string;
+  stream?: boolean;
 }
 
 export interface ChatResponse {
@@ -42,7 +43,77 @@ export interface CreateSessionRequest {
 
 export const agentApi = {
   chat(data: ChatRequest) {
-    return request.post<ChatResponse>('/api/agent/chat', data);
+    return request.post<ChatResponse>(
+      '/api/agent/chat',
+      data
+    );
+  },
+  async chatStream(data: ChatRequest, onMessage: (content: string) => void, onSessionId?: (id: string) => void) {
+    const userStore = (await import('@/stores/user')).useUserStore();
+    const token = userStore.token;
+    
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+    const url = `${baseUrl}/api/agent/chat`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ ...data, stream: true })
+    });
+
+    if (!response.ok) {
+      let errorMsg = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.detail) {
+          errorMsg = errorData.detail;
+        }
+      } catch (e) {
+        // ignore JSON parse error
+      }
+      throw new Error(errorMsg);
+    }
+
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder('utf-8');
+
+    if (!reader) {
+      throw new Error('Failed to get stream reader');
+    }
+
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      
+      buffer = lines.pop() || '';
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const dataStr = line.slice(6).trim();
+          if (dataStr === '[DONE]') {
+            return;
+          }
+          try {
+            const parsed = JSON.parse(dataStr);
+            if (parsed.content) {
+              onMessage(parsed.content);
+            }
+            if (parsed.session_id && onSessionId) {
+              onSessionId(parsed.session_id);
+            }
+          } catch (e) {
+            console.error('Failed to parse stream chunk', e);
+          }
+        }
+      }
+    }
   },
   getSessions(params?: { skip?: number; limit?: number }) {
     return request.get<AgentSession[]>('/api/agent/sessions', { params });

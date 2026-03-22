@@ -1,7 +1,8 @@
 import json
 from typing import List, Optional
 from datetime import datetime
-from sqlalchemy.orm import Session
+from sqlalchemy import or_, and_, cast, String
+from sqlalchemy.orm import Session, joinedload
 from langchain_core.tools import tool, StructuredTool
 
 from app.db.session import SessionLocal
@@ -9,26 +10,41 @@ from app.db.models.photo import Photo
 from app.db.models.photo_metadata import PhotoMetadata
 from app.db.models.image_description import ImageDescription
 from app.db.models.trip import TrainTicket, FlightTicket
+from app.db.models.scene import Scene
+from app.db.models.tag import PhotoTag, PhotoTagRelation
+from app.db.models.face import Face, FaceIdentity
 
 def get_agent_tools(user_id: str) -> List[StructuredTool]:
     """
     根据 user_id 动态生成绑定了用户的工具列表
     """
-    
+
     @tool
     def search_photos_tool(
         start_date: Optional[str] = None, 
         end_date: Optional[str] = None, 
         location: Optional[str] = None,
+        provinces: Optional[List[str]] = None,
+        cities: Optional[List[str]] = None,
+        districts: Optional[List[str]] = None,
+        scenes: Optional[List[str]] = None,
+        tags: Optional[List[str]] = None,
+        persons: Optional[List[str]] = None,
         limit: int = 10,
         sort_by: str = "photo_time"
     ) -> str:
         """
-        搜索用户的相册照片。
+        搜索用户的相册照片。支持多维度筛选。
         Args:
             start_date: 开始日期 (YYYY-MM-DD)
             end_date: 结束日期 (YYYY-MM-DD)
             location: 模糊的地点名称（如"北京", "西湖"）
+            provinces: 匹配的省份列表
+            cities: 匹配的城市列表
+            districts: 匹配的区县列表
+            scenes: 匹配的景区名称列表
+            tags: 匹配的照片标签列表（如"风景", "猫"）
+            persons: 匹配的人物/人脸名称列表
             limit: 返回的照片数量上限
             sort_by: 排序方式，可选 "photo_time"（按时间）, "quality_score"（按美观度）, "memory_score"（按回忆价值）
         Returns:
@@ -62,6 +78,25 @@ def get_agent_tools(user_id: str) -> List[StructuredTool]:
                     (PhotoMetadata.address.ilike(f"%{location}%"))
                 )
 
+            if provinces:
+                query = query.filter(PhotoMetadata.province.in_(provinces))
+            if cities:
+                query = query.filter(PhotoMetadata.city.in_(cities))
+            if districts:
+                query = query.filter(PhotoMetadata.district.in_(districts))
+                
+            if scenes:
+                query = query.filter(PhotoMetadata.scene.has(Scene.name.in_(scenes)))
+                
+            if tags:
+                tag_conditions = [Photo.tags.any(PhotoTag.tag_name.in_(tags))]
+                for t in tags:
+                    tag_conditions.append(cast(ImageDescription.tags, String).ilike(f'%"{t}"%'))
+                query = query.filter(or_(*tag_conditions))
+                
+            if persons:
+                query = query.filter(Photo.faces.any(Face.identity.has(FaceIdentity.identity_name.in_(persons))))
+
             if sort_by == "quality_score":
                 query = query.order_by(ImageDescription.quality_score.desc().nulls_last())
             elif sort_by == "memory_score":
@@ -84,6 +119,180 @@ def get_agent_tools(user_id: str) -> List[StructuredTool]:
                     "quality_score": desc.quality_score if desc else None
                 })
             
+            return json.dumps(response_data, ensure_ascii=False)
+
+    @tool
+    def get_photo_locations_tool(
+        photo_ids: Optional[List[str]] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        limit: int = 50
+    ) -> str:
+        """
+        获取照片的详细地址信息，包括省、市、区、完整地址、所在的景区等。
+        Args:
+            photo_ids: 照片 ID 的字符串列表（可选）
+            start_date: 开始日期 (YYYY-MM-DD)（可选）
+            end_date: 结束日期 (YYYY-MM-DD)（可选）
+            limit: 返回结果上限
+        Returns:
+            包含照片ID、省、市、区、地址、景区名称的 JSON 字符串。
+        """
+        with SessionLocal() as db:
+            query = db.query(Photo, PhotoMetadata, Scene).outerjoin(
+                PhotoMetadata, Photo.id == PhotoMetadata.photo_id
+            ).outerjoin(
+                Scene, PhotoMetadata.scene_id == Scene.id
+            ).filter(Photo.owner_id == user_id)
+
+            if photo_ids:
+                query = query.filter(Photo.id.in_(photo_ids))
+            if start_date:
+                try:
+                    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+                    query = query.filter(Photo.photo_time >= start_dt)
+                except ValueError:
+                    pass
+            if end_date:
+                try:
+                    end_dt = datetime.strptime(f"{end_date} 23:59:59", "%Y-%m-%d %H:%M:%S")
+                    query = query.filter(Photo.photo_time <= end_dt)
+                except ValueError:
+                    pass
+            
+            results = query.order_by(Photo.photo_time.desc().nulls_last()).limit(limit).all()
+
+            if not results:
+                return "没有找到照片的地址信息。"
+
+            response_data = []
+            for photo, meta, scene in results:
+                response_data.append({
+                    "photo_id": str(photo.id),
+                    "province": meta.province if meta else None,
+                    "city": meta.city if meta else None,
+                    "district": meta.district if meta else None,
+                    "address": meta.address if meta else None,
+                    "scene": scene.name if scene else None
+                })
+            return json.dumps(response_data, ensure_ascii=False)
+
+    @tool
+    def get_photo_tags_tool(
+        photo_ids: Optional[List[str]] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        limit: int = 50
+    ) -> str:
+        """
+        获取照片的分类标签信息。
+        Args:
+            photo_ids: 照片 ID 的字符串列表（可选）
+            start_date: 开始日期 (YYYY-MM-DD)（可选）
+            end_date: 结束日期 (YYYY-MM-DD)（可选）
+            limit: 返回结果上限
+        Returns:
+            包含照片ID、标签列表的 JSON 字符串。
+        """
+        with SessionLocal() as db:
+            query = db.query(Photo, ImageDescription).outerjoin(
+                ImageDescription, Photo.id == ImageDescription.photo_id
+            ).options(joinedload(Photo.tags)).filter(Photo.owner_id == user_id)
+
+            if photo_ids:
+                query = query.filter(Photo.id.in_(photo_ids))
+            if start_date:
+                try:
+                    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+                    query = query.filter(Photo.photo_time >= start_dt)
+                except ValueError:
+                    pass
+            if end_date:
+                try:
+                    end_dt = datetime.strptime(f"{end_date} 23:59:59", "%Y-%m-%d %H:%M:%S")
+                    query = query.filter(Photo.photo_time <= end_dt)
+                except ValueError:
+                    pass
+
+            results = query.order_by(Photo.photo_time.desc().nulls_last()).limit(limit).all()
+
+            if not results:
+                return "没有找到照片的标签信息。"
+
+            response_data = []
+            for photo, desc in results:
+                tags = []
+                if desc and desc.tags:
+                    tags.extend(desc.tags)
+                for t in photo.tags:
+                    if t.tag_name not in tags:
+                        tags.append(t.tag_name)
+                
+                response_data.append({
+                    "photo_id": str(photo.id),
+                    "tags": tags
+                })
+            return json.dumps(response_data, ensure_ascii=False)
+
+    @tool
+    def get_photo_persons_tool(
+        photo_ids: Optional[List[str]] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        limit: int = 50
+    ) -> str:
+        """
+        获取照片包含的人物/人脸标签信息。
+        Args:
+            photo_ids: 照片 ID 的字符串列表（可选）
+            start_date: 开始日期 (YYYY-MM-DD)（可选）
+            end_date: 结束日期 (YYYY-MM-DD)（可选）
+            limit: 返回结果上限
+        Returns:
+            包含照片ID、人物名称列表的 JSON 字符串。
+        """
+        with SessionLocal() as db:
+            query = db.query(Photo).options(
+                joinedload(Photo.faces).joinedload(Face.identity)
+            ).filter(Photo.owner_id == user_id)
+
+            if photo_ids:
+                query = query.filter(Photo.id.in_(photo_ids))
+            if start_date:
+                try:
+                    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+                    query = query.filter(Photo.photo_time >= start_dt)
+                except ValueError:
+                    pass
+            if end_date:
+                try:
+                    end_dt = datetime.strptime(f"{end_date} 23:59:59", "%Y-%m-%d %H:%M:%S")
+                    query = query.filter(Photo.photo_time <= end_dt)
+                except ValueError:
+                    pass
+
+            results = query.order_by(Photo.photo_time.desc().nulls_last()).limit(limit).all()
+
+            if not results:
+                return "没有找到照片的人物信息。"
+
+            response_data = []
+            for photo in results:
+                persons = []
+                for face in photo.faces:
+                    if face.identity and face.identity.identity_name:
+                        if face.identity.identity_name not in persons:
+                            persons.append(
+                                {
+                                    "name": face.identity.identity_name,
+                                    "tags": face.identity.tags
+                                }
+                            )
+                
+                response_data.append({
+                    "photo_id": str(photo.id),
+                    "persons": persons
+                })
             return json.dumps(response_data, ensure_ascii=False)
 
     @tool
@@ -176,4 +385,11 @@ def get_agent_tools(user_id: str) -> List[StructuredTool]:
                 })
             return json.dumps(response_data, ensure_ascii=False)
 
-    return [search_photos_tool, get_travel_history_tool, get_photo_details_tool]
+    return [
+        search_photos_tool, 
+        # get_travel_history_tool, 
+        get_photo_details_tool,
+        get_photo_locations_tool,
+        get_photo_tags_tool,
+        get_photo_persons_tool
+    ]

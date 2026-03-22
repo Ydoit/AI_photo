@@ -43,7 +43,8 @@ def get_agent_executor(user_id: str, session_id: str, db: Session):
         model=llm_settings.model_name,
         api_key=llm_settings.api_key,
         base_url=llm_settings.base_url if llm_settings.base_url else None,
-        temperature=0.7
+        temperature=0.7,
+        streaming=True
     )
 
     # 加载工具列表
@@ -57,7 +58,7 @@ def get_agent_executor(user_id: str, session_id: str, db: Session):
     system_prompt = f"""你是一个名为 TrailSnap 的智能相册与旅行足迹助手。
 今天是 {current_date}。
 你的目标是帮助用户回忆他们的旅行、检索相册中的照片，并为他们提供有趣的内容（例如发朋友圈的文案）。
-你可以使用提供的工具来搜索照片和出行记录（火车/飞机）。
+你可以使用提供的工具来搜索照片和查看照片的详细数据，例如地址、景区、标签、人脸等。
 
 【重要指令】：如果你需要展示照片给用户，请必须使用 Markdown 图片语法，并且 URL 格式必须为：
 `![照片描述](/api/medias/照片ID/thumbnail)`
@@ -112,3 +113,54 @@ def chat_with_agent(user_id: str, session_id: str, user_input: str, db: Session)
     except Exception as e:
         logger.error(f"Agent 对话失败：{str(e)}", exc_info=True)
         return f"抱歉，处理你的请求时出错了：{str(e)}，请稍后重试。"
+
+def stream_chat_with_agent(user_id: str, session_id: str, user_input: str, db: Session):
+    """
+    与 Agent 对话，并使用 SSE 流式返回大模型的回复
+    """
+    agent, system_prompt = get_agent_executor(user_id, session_id, db)
+    messages = get_session_history(db, session_id)
+    
+    if not messages or not isinstance(messages[0], SystemMessage):
+        messages.insert(0, SystemMessage(content=system_prompt))
+        
+    messages.append(HumanMessage(content=user_input))
+    
+    # Save user message to DB
+    create_message(db, AgentMessageCreate(
+        session_id=UUID(session_id),
+        role="user",
+        content=user_input,
+    ))
+    
+    try:
+        import json
+        full_response = ""
+        
+        # 使用 langgraph stream 模式
+        for chunk, metadata in agent.stream({"messages": messages}, stream_mode="messages"):
+            if chunk.type and metadata.get("langgraph_node") == "agent":
+                content = chunk.content
+                if isinstance(content, str) and content:
+                    full_response += content
+                    # yield SSE data
+                    data = json.dumps({"content": content, "session_id": session_id})
+                    yield f"data: {data}\n\n"
+
+        # 结束标志
+        yield f"data: [DONE]\n\n"
+
+        # Save AI message to DB
+        create_message(db, AgentMessageCreate(
+            session_id=UUID(session_id),
+            role="assistant",
+            content=full_response,
+        ))
+
+    except Exception as e:
+        logger.error(f"Agent 流式对话失败：{str(e)}", exc_info=True)
+        import json
+        error_msg = f"抱歉，处理你的请求时出错了：{str(e)}，请稍后重试。"
+        data = json.dumps({"content": error_msg, "session_id": session_id})
+        yield f"data: {data}\n\n"
+        yield f"data: [DONE]\n\n"

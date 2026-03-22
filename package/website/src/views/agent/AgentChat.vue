@@ -511,10 +511,14 @@ md.renderer.rules.paragraph_close = function(tokens, idx, options, env, self) {
   return defaultParagraphClose(tokens, idx, options, env, self);
 };
 
-const scrollToBottom = async () => {
+const scrollToBottom = async (force: boolean = false) => {
   await nextTick();
   if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
+    if (force || isNearBottom) {
+      messagesContainer.value.scrollTop = scrollHeight;
+    }
   }
 };
 
@@ -652,8 +656,8 @@ const switchSession = async (session: AgentSession) => {
   }
 };
 
-const loadMessages = async (sessionId: string) => {
-  isLoading.value = true;
+const loadMessages = async (sessionId: string, showLoading: boolean = true) => {
+  if (showLoading) isLoading.value = true;
   try {
     const res = await agentApi.getSessionMessages(sessionId);
     if (res.data.length === 0) {
@@ -666,12 +670,12 @@ const loadMessages = async (sessionId: string) => {
         isMarkdown: m.role === 'assistant'
       }));
     }
-    await scrollToBottom();
+    await scrollToBottom(true);
     setTimeout(setupImageClick, 100);
   } catch (error) {
     ElMessage.error('加载消息失败');
   } finally {
-    isLoading.value = false;
+    if (showLoading) isLoading.value = false;
   }
 };
 
@@ -713,39 +717,56 @@ const sendMessage = async () => {
   messages.value.push({ role: 'user', content: userText });
   inputMessage.value = '';
   isLoading.value = true;
-  await scrollToBottom();
+  await scrollToBottom(true);
 
   try {
-    const res = await agentApi.chat({
-      message: userText,
-      session_id: currentSession.value?.id || undefined
-    });
+    let aiMessageIndex = -1;
+    let sessionIdReceived = false;
 
-    if (res.data) {
-      if (!currentSession.value || currentSession.value.id !== res.data.session_id) {
-        // New session created by backend
-        await loadSessions();
-        const newSession = sessions.value.find(s => s.id === res.data.session_id);
-        if (newSession) {
-          currentSession.value = newSession;
+    await agentApi.chatStream(
+      {
+        message: userText,
+        session_id: currentSession.value?.id || undefined
+      },
+      (content) => {
+        if (aiMessageIndex === -1) {
+          // 首次收到响应，关闭加载状态并创建 AI 消息对象
+          isLoading.value = false;
+          aiMessageIndex = messages.value.length;
+          messages.value.push({ role: 'assistant', content: content, isMarkdown: true });
+        } else {
+          // 追加内容
+          messages.value[aiMessageIndex].content += content;
+        }
+        scrollToBottom();
+      },
+      async (sessionId) => {
+        if (!sessionIdReceived && (!currentSession.value || currentSession.value.id !== sessionId)) {
+          sessionIdReceived = true;
+          await loadSessions();
+          const newSession = sessions.value.find(s => s.id === sessionId);
+          if (newSession) {
+            currentSession.value = newSession;
+          }
         }
       }
-      
-      // 重新加载消息以获取带ID的消息列表
-      if (currentSession.value) {
-        await loadMessages(currentSession.value.id);
-      } else {
-        messages.value.push({ 
-          role: 'assistant', 
-          content: res.data.response,
-          isMarkdown: true 
-        });
-      }
+    );
+
+    // 流结束后更新 DOM
+    if (currentSession.value) {
+      await loadMessages(currentSession.value.id, false);
+    } else {
+      nextTick(() => {
+        setupImageClick();
+      });
     }
+
   } catch (error: any) {
-    let errorMsg = '请求失败，请稍后再试';
+    let errorMsg = '对话失败，请重试';
     if (error.response?.data?.detail) {
       errorMsg = error.response.data.detail;
+    } else if (error.message) {
+      errorMsg = error.message;
     }
     ElMessage.error(errorMsg);
     messages.value.push({ 
@@ -754,15 +775,16 @@ const sendMessage = async () => {
     });
   } finally {
     isLoading.value = false;
-    await scrollToBottom();
-    setTimeout(setupImageClick, 100);
+    nextTick(() => {
+      scrollToBottom();
+    });
   }
 };
 
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     loadSessions();
-    scrollToBottom();
+    scrollToBottom(true);
   }
 });
 

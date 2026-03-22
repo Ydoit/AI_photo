@@ -1,12 +1,13 @@
 import uuid
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.api.deps import get_current_user
 from app.db.models.user import User
-from app.service.agent.service import chat_with_agent
+from app.service.agent.service import chat_with_agent, stream_chat_with_agent
 from app.dependencies import get_db
 from app.crud import agent as agent_crud
 from app.schemas.agent import AgentSession, AgentSessionCreate, AgentSessionUpdate, AgentMessage
@@ -16,12 +17,13 @@ router = APIRouter()
 class ChatRequest(BaseModel):
     message: str
     session_id: str | None = None
+    stream: bool = False
 
 class ChatResponse(BaseModel):
     response: str
     session_id: str
 
-@router.post("/chat", response_model=ChatResponse, summary="与智能相册助手对话")
+@router.post("/chat", summary="与智能相册助手对话")
 def chat_endpoint(
     request: ChatRequest,
     current_user: User = Depends(get_current_user),
@@ -44,13 +46,25 @@ def chat_endpoint(
         agent_crud.create_session(db, obj_in=session_create, user_id=current_user.id)
 
     try:
-        reply = chat_with_agent(
-            user_id=str(current_user.id),
-            session_id=session_id,
-            user_input=request.message,
-            db=db
-        )
-        return ChatResponse(response=reply, session_id=session_id)
+        if request.stream:
+            # 返回流式响应
+            return StreamingResponse(
+                stream_chat_with_agent(
+                    user_id=str(current_user.id),
+                    session_id=session_id,
+                    user_input=request.message,
+                    db=db
+                ),
+                media_type="text/event-stream"
+            )
+        else:
+            reply = chat_with_agent(
+                user_id=str(current_user.id),
+                session_id=session_id,
+                user_input=request.message,
+                db=db
+            )
+            return ChatResponse(response=reply, session_id=session_id)
     except ValueError as ve:
         # 捕获由于未配置 LLM 引起的异常
         raise HTTPException(status_code=400, detail=str(ve))
