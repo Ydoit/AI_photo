@@ -11,6 +11,7 @@
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.gzip import GZipMiddleware, GZipResponder
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from contextlib import asynccontextmanager
 import os
 import logging
@@ -29,7 +30,7 @@ load_dotenv('./data/.env')
 from app.api import (
     user, train_ticket, flight_ticket, album, index, settings, face, ocr, 
     location, search, classification, system, media, stats, photo, tasks, 
-    annual_report, auth, deps, agent
+    annual_report, auth, deps, agent, agent_token
 )
 from railway.api import router as railway_router
 from app.db.session import engine, SessionLocal
@@ -66,8 +67,12 @@ async def lifespan(app: FastAPI):
     if log_listener:
         log_listener.stop()
 
-app = FastAPI(title="TrailSnap - 足迹相册", lifespan=lifespan, version=VERSION)
-
+app = FastAPI(
+    title="TrailSnap - 足迹相册", 
+    lifespan=lifespan, 
+    version=VERSION,
+    swagger_ui_parameters={"persistAuthorization": True}
+)
 # Initialize logging listener
 log_listener = None
 
@@ -145,6 +150,7 @@ def root():
     return {"message": "Image Manager Backend Ready"}
 
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+app.include_router(agent_token.router, prefix="/tokens", tags=["Tokens"])
 app.include_router(user.router, prefix="/users", tags=["Users"])
 app.include_router(train_ticket.router, prefix="/train-ticket", tags=["train-ticket"])
 app.include_router(flight_ticket.router, prefix="/flight-ticket", tags=["flight-ticket"])
@@ -164,6 +170,36 @@ app.include_router(classification.router, prefix="/tags", tags=["Classification"
 app.include_router(annual_report.router, prefix="/annual-report", tags=["AnnualReport"])
 app.include_router(system.router, prefix="/system", tags=["System"])
 app.include_router(agent.router, prefix="/agent", tags=["Agent"])
+
+from fastapi.openapi.utils import get_openapi
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title="TrailSnap - 足迹相册",
+        version=VERSION,
+        description="Image Manager Backend API",
+        routes=app.routes,
+    )
+    # Define the security scheme
+    openapi_schema["components"]["securitySchemes"] = {
+        "OAuth2PasswordBearer": {
+            "type": "oauth2",
+            "flows": {
+                "password": {
+                    "scopes": {},
+                    "tokenUrl": "/auth/login",
+                }
+            }
+        }
+    }
+    # Apply it globally
+    openapi_schema["security"] = [{"OAuth2PasswordBearer": []}]
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
 
 if __name__ == "__main__":
     import uvicorn

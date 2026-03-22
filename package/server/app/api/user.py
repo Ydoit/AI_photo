@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.schemas.user import UserCreate, UserResponse
-from app.crud.user import create, reset_password
+from app.crud.user import create, reset_password, delete
 from app.dependencies import get_db
 from app.api import deps
 from app.db.models.user import User
@@ -99,5 +99,4 @@ def delete_user(
     if not current_user.is_superuser and current_user.id != user_id:
         raise HTTPException(status_code=403, detail="The user doesn't have enough privileges")
 
-
-    return user
+    return delete(db, user_id)

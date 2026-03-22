@@ -20,6 +20,19 @@ def get_current_user(
         db: Session = Depends(get_db),
         token: str = Depends(reusable_oauth2)
 ) -> User:
+    if token.startswith("ts_"):
+        from app.crud.agent_token import get_token_by_string
+        from datetime import datetime
+        agent_token = get_token_by_string(db, token)
+        if not agent_token:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        if agent_token.expires_at < datetime.utcnow():
+            raise HTTPException(status_code=401, detail="Token has expired")
+        user = crud_user.get(db, id=agent_token.user_id)
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+
     try:
         payload = jwt.decode(
             token, config_manager.config.security.secret_key, algorithms=[config_manager.config.security.algorithm]

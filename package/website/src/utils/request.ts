@@ -94,7 +94,7 @@ service.interceptors.response.use(
           errorMsg = '服务器内部错误';
           break;
         default:
-          errorMsg = `请求错误（${error.response.status}）`;
+          errorMsg = `请求错误（${(error.response?.data as any)?.detail || error.response?.statusText || error.message}）`;
       }
     } else if (error.request) {
       errorMsg = '请求超时，请检查网络';

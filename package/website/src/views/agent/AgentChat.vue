@@ -490,7 +490,7 @@ md.renderer.rules.image = (tokens, idx, options, env, self) => {
     src = src.replace('//api/', '/api/');
   }
 
-  const fullSrc = src.replace('/thumbnail', '');
+  const fullSrc = src.replace('/thumbnail', '/file');
 
   return `<agent-image data-src="${src}" data-full-src="${fullSrc}" data-alt="${alt}"></agent-image>`;
 };

@@ -55,7 +55,7 @@ def create(db: Session, user: UserCreate) -> User:
     db.refresh(db_user)
     return db_user
 
-def delete(db: Session, user_id: UUID) -> bool:
+def delete(db: Session, user_id: UUID) -> User:
     user = get(db, user_id)
     if not user:
         return False
@@ -71,7 +71,7 @@ def delete(db: Session, user_id: UUID) -> bool:
     db.commit()
     db.delete(user)
     db.commit()
-    return True
+    return user
 
 def authenticate(db: Session, email: str, password: str) -> Optional[User]:
     # Try by email first, then username if not found (though param says email)
