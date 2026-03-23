@@ -48,7 +48,7 @@ export const agentApi = {
       data
     );
   },
-  async chatStream(data: ChatRequest, onMessage: (content: string) => void, onSessionId?: (id: string) => void) {
+  async chatStream(data: ChatRequest, onMessage: (content: string) => void, onSessionId?: (id: string) => void, onTitleUpdate?: (title: string) => void) {
     const userStore = (await import('@/stores/user')).useUserStore();
     const token = userStore.token;
     
@@ -107,6 +107,9 @@ export const agentApi = {
             }
             if (parsed.session_id && onSessionId) {
               onSessionId(parsed.session_id);
+            }
+            if (parsed.title && onTitleUpdate) {
+              onTitleUpdate(parsed.title);
             }
           } catch (e) {
             console.error('Failed to parse stream chunk', e);

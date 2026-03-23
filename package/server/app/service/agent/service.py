@@ -114,6 +114,53 @@ def chat_with_agent(user_id: str, session_id: str, user_input: str, db: Session)
         logger.error(f"Agent 对话失败：{str(e)}", exc_info=True)
         return f"抱歉，处理你的请求时出错了：{str(e)}，请稍后重试。"
 
+import json
+from concurrent.futures import ThreadPoolExecutor
+from app.db.session import SessionLocal
+
+def generate_session_title_task(user_id: str, session_id: str, user_input: str):
+    try:
+        from app.core.config_manager import config_manager
+        from langchain_openai import ChatOpenAI
+        from langchain_core.messages import HumanMessage
+        from app.crud.agent import get_session, update_session
+        from app.schemas.agent import AgentSessionUpdate
+        from uuid import UUID
+
+        with SessionLocal() as db:
+            if isinstance(user_id, str):
+                user_id = UUID(user_id)
+            user_config = config_manager.get_user_config(user_id, db)
+            llm_settings = user_config.ai.llm_settings
+            
+            if not llm_settings.api_key or not llm_settings.model_name:
+                return None
+                
+            llm = ChatOpenAI(
+                model=llm_settings.model_name,
+                api_key=llm_settings.api_key,
+                base_url=llm_settings.base_url if llm_settings.base_url else None,
+                temperature=0.7
+            )
+            
+            prompt = f"请根据用户的第一个问题，生成一个非常简短的会话标题（不超过10个字）。只返回标题文本，不要包含任何标点符号或其他多余解释。\n用户问题：{user_input}"
+            response = llm.invoke([HumanMessage(content=prompt)])
+            title = response.content.strip()
+            
+            if title.startswith('"') and title.endswith('"'):
+                title = title[1:-1]
+            if title.startswith("'") and title.endswith("'"):
+                title = title[1:-1]
+                
+            session = get_session(db, session_id)
+            if session:
+                update_session(db, session, AgentSessionUpdate(title=title))
+                
+            return title
+    except Exception as e:
+        logger.error(f"Failed to generate title: {e}")
+        return None
+
 def stream_chat_with_agent(user_id: str, session_id: str, user_input: str, db: Session):
     """
     与 Agent 对话，并使用 SSE 流式返回大模型的回复
@@ -133,9 +180,17 @@ def stream_chat_with_agent(user_id: str, session_id: str, user_input: str, db: S
         content=user_input,
     ))
     
+    full_response = ""
     try:
         import json
-        full_response = ""
+        
+        # Check if it's the first message (1 system prompt + 1 user message = 2)
+        is_first_message = len(messages) <= 2
+        future_title = None
+        executor = None
+        if is_first_message:
+            executor = ThreadPoolExecutor(max_workers=1)
+            future_title = executor.submit(generate_session_title_task, user_id, session_id, user_input)
         
         # 使用 langgraph stream 模式
         for chunk, metadata in agent.stream({"messages": messages}, stream_mode="messages"):
@@ -147,20 +202,42 @@ def stream_chat_with_agent(user_id: str, session_id: str, user_input: str, db: S
                     data = json.dumps({"content": content, "session_id": session_id})
                     yield f"data: {data}\n\n"
 
-        # 结束标志
-        yield f"data: [DONE]\n\n"
+        if future_title:
+            try:
+                new_title = future_title.result(timeout=10) # wait at most 10 seconds
+                if new_title:
+                    data = json.dumps({"title": new_title, "session_id": session_id})
+                    yield f"data: {data}\n\n"
+            except Exception as e:
+                logger.error(f"Wait for title generation timeout or error: {e}")
+            finally:
+                if executor:
+                    executor.shutdown(wait=False)
 
         # Save AI message to DB
+        if full_response:
+            create_message(db, AgentMessageCreate(
+                session_id=UUID(session_id),
+                role="assistant",
+                content=full_response,
+            ))
+
+        # 结束标志
+        yield "data: [DONE]\n\n"
+
+    except Exception as e:
+        logger.error(f"Agent 流式对话失败：{str(e)}", exc_info=True)
+        import json
+        error_msg = f"\n\n抱歉，处理你的请求时出错了：{str(e)}，请稍后重试。"
+        data = json.dumps({"content": error_msg, "session_id": session_id})
+        yield f"data: {data}\n\n"
+        
+        full_response += error_msg
+        # Save partial AI message with error to DB
         create_message(db, AgentMessageCreate(
             session_id=UUID(session_id),
             role="assistant",
             content=full_response,
         ))
-
-    except Exception as e:
-        logger.error(f"Agent 流式对话失败：{str(e)}", exc_info=True)
-        import json
-        error_msg = f"抱歉，处理你的请求时出错了：{str(e)}，请稍后重试。"
-        data = json.dumps({"content": error_msg, "session_id": session_id})
-        yield f"data: {data}\n\n"
-        yield f"data: [DONE]\n\n"
+        
+        yield "data: [DONE]\n\n"

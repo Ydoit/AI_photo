@@ -90,11 +90,12 @@
 
         <!-- Messages -->
         <div class="agent-chat-messages" ref="messagesContainer">
-          <div 
-            v-for="(msg, index) in messages" 
-            :key="msg.id || index"
-            class="flex w-full group relative"
-          >
+          <div class="w-full max-w-4xl mx-auto flex flex-col space-y-6 pb-2">
+            <div 
+              v-for="(msg, index) in messages" 
+              :key="msg.id || index"
+              class="flex w-full group relative"
+            >
             <!-- Checkbox for selection mode -->
             <div v-if="isSelectionMode" class="flex-shrink-0 w-8 flex justify-center pb-2 items-end">
               <el-checkbox :model-value="selectedMessages.includes(msg.id!)" @change="toggleSelectMessage(msg.id)" :disabled="msg.id === undefined" />
@@ -167,26 +168,29 @@
               <span class="text-sm text-slate-500">思考中...</span>
             </div>
           </div>
+          </div>
         </div>
 
         <!-- Input Area -->
         <div class="agent-chat-input-area">
-          <form @submit.prevent="sendMessage" class="relative">
-            <input
-              v-model="inputMessage"
-              type="text"
-              placeholder="问问我关于您的照片或行程..."
-              class="agent-input"
-              :disabled="isLoading || isSelectionMode"
-            />
-            <button 
-              type="submit" 
-              class="agent-send-btn"
-              :disabled="!inputMessage.trim() || isLoading || isSelectionMode"
-            >
-              <Send class="w-4 h-4" />
-            </button>
-          </form>
+          <div class="w-full max-w-4xl mx-auto">
+            <form @submit.prevent="sendMessage" class="relative">
+              <input
+                v-model="inputMessage"
+                type="text"
+                placeholder="问问我关于您的照片或行程..."
+                class="agent-input"
+                :disabled="isLoading || isSelectionMode"
+              />
+              <button 
+                type="submit" 
+                class="agent-send-btn"
+                :disabled="!inputMessage.trim() || isLoading || isSelectionMode"
+              >
+                <Send class="w-4 h-4" />
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
@@ -749,6 +753,17 @@ const sendMessage = async () => {
             currentSession.value = newSession;
           }
         }
+      },
+      (title) => {
+        // 更新当前会话的标题
+        if (currentSession.value) {
+          currentSession.value.title = title;
+        }
+        // 同步更新列表中对应的会话标题
+        const sessionInList = sessions.value.find(s => s.id === currentSession.value?.id);
+        if (sessionInList) {
+          sessionInList.title = title;
+        }
       }
     );
 
@@ -856,7 +871,7 @@ onMounted(() => {
 }
 
 .agent-chat-messages {
-  @apply flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth;
+  @apply flex-1 overflow-y-auto p-4 scroll-smooth;
 }
 
 .message-wrapper {
