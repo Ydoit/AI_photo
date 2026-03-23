@@ -216,7 +216,7 @@ const handleBatchDelete = async (ids: string[]) => {
         photo_ids: ids,
         action: 'delete'
     })
-    
+    galleryRef.value?.exitSelectionMode()
     photos.value = photos.value.filter(p => !ids.includes(p.id))
     ElMessage.success('批量删除成功')
   } catch (e) {
@@ -266,7 +266,6 @@ const handlePhotoDelete = async (id: string) => {
     await albumService.deletePhoto(id)
     photos.value = photos.value.filter(p => p.id !== id)
     ElMessage.success('删除成功')
-    
     if (photos.value.length === 0) {
       closeLightbox()
     } else {

@@ -148,6 +148,7 @@ const handleBatchDelete = async (ids: string[]) => {
     })
     
     photos.value = photos.value.filter(p => !ids.includes(p.id))
+    galleryRef.value?.exitSelectionMode()
     ElMessage.success('批量删除成功')
   } catch (e) {
     if (e !== 'cancel') {
@@ -161,6 +162,7 @@ const handleAddToAlbum = (ids: string[]) => {
     if (ids.length === 0) return
     tempSelectedIds.value = ids
     showAlbumSelectModal.value = true
+    galleryRef.value?.exitSelectionMode()
 }
 
 const closeAlbumSelectModal = () => {
